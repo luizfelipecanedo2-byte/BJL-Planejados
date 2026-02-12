@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Black Backgrounds */
+    --background: 0 0% 5%; /* Very dark black/gray */
+    --foreground: 46 70% 95%; /* Light Gold/White text */
+
+    /* Card Backgrounds - Slightly lighter than main background */
+    --card: 0 0% 8%;
+    --card-foreground: 46 70% 95%;
+
+    --popover: 0 0% 8%;
+    --popover-foreground: 46 70% 95%;
+
+    /* Gold Primary */
+    --primary: 46 70% 50%; /* #D4AF37 Gold */
+    --primary-foreground: 0 0% 5%; /* Dark text on Gold */
+
+    /* Secondary - Darker Gold */
+    --secondary: 46 30% 20%;
+    --secondary-foreground: 46 70% 60%;
+
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 46 50% 25%;
+    --accent-foreground: 46 70% 90%;
+
+    --destructive: 0 62% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success - Green (Keep but dampen for dark mode) */
+    --success: 152 60% 42%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Borders - Subtle Dark Gray */
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    
+    /* Ring - Gold */
+    --ring: 46 70% 50%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar - Blackest */
+    --sidebar-background: 0 0% 3%;
+    --sidebar-foreground: 46 30% 90%;
+    --sidebar-primary: 46 70% 50%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 46 30% 15%;
+    --sidebar-accent-foreground: 46 70% 90%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 46 70% 50%;
+
+    /* Kanban columns */
+    --kanban-prospecto: 46 70% 50%;
+    --kanban-contato: 38 92% 50%;
+    --kanban-visita: 200 70% 50%;
+    --kanban-projeto: 260 60% 55%;
+    --kanban-negociacao: 280 60% 50%;
+    --kanban-fechado: 152 60% 42%;
+    --kanban-nao_fechou: 0 72% 51%;
+    --kanban-congelado: 210 15% 60%;
+  }
+
+  /* Force dark mode colors even if .dark is not present, or ensure .dark matches */
+  .dark {
+    --background: 0 0% 5%;
+    --foreground: 46 70% 95%;
+    --card: 0 0% 8%;
+    --card-foreground: 46 70% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 46 70% 95%;
+    --primary: 46 70% 50%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 46 30% 20%;
+    --secondary-foreground: 46 70% 60%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 46 50% 25%;
+    --accent-foreground: 46 70% 90%;
+    --destructive: 0 62% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 46 70% 50%;
+    --sidebar-background: 0 0% 3%;
+    --sidebar-foreground: 46 30% 90%;
+    --sidebar-primary: 46 70% 50%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 46 30% 15%;
+    --sidebar-accent-foreground: 46 70% 90%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 46 70% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}

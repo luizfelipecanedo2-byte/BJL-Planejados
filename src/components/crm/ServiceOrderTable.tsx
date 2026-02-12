@@ -1,0 +1,92 @@
+
+import { ServiceOrder } from "@/types/serviceOrder";
+import { format, differenceInDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
+
+interface ServiceOrderTableProps {
+    orders: ServiceOrder[];
+    onEdit: (order: ServiceOrder) => void;
+}
+
+const ServiceOrderTable = ({ orders, onEdit }: ServiceOrderTableProps) => {
+    const getStatusDisplay = (order: ServiceOrder) => {
+        if (order.status === "Encerrado") {
+            return <Badge variant="secondary">Encerrado</Badge>;
+        }
+
+        const daysOpen = differenceInDays(new Date(), new Date(order.openDate));
+        return (
+            <Badge className="bg-yellow-500 hover:bg-yellow-600">
+                Em andamento há {daysOpen} {daysOpen === 1 ? "dia" : "dias"}
+            </Badge>
+        );
+    };
+
+    return (
+        <div className="rounded-md border">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>N° Chamado</TableHead>
+                        <TableHead>Data Abertura</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Ação</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Previsão</TableHead>
+                        <TableHead>Conclusão</TableHead>
+                        <TableHead className="w-[50px]">Ações</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {orders.map((order) => (
+                        <TableRow key={order.id}>
+                            <TableCell className="font-medium">{order.ticketNumber}</TableCell>
+                            <TableCell>
+                                {format(new Date(order.openDate), "dd/MM/yyyy", { locale: ptBR })}
+                            </TableCell>
+                            <TableCell>{order.client}</TableCell>
+                            <TableCell>{order.type}</TableCell>
+                            <TableCell>{order.action}</TableCell>
+                            <TableCell>{getStatusDisplay(order)}</TableCell>
+                            <TableCell>
+                                {format(new Date(order.forecastDate), "dd/MM/yyyy", { locale: ptBR })}
+                            </TableCell>
+                            <TableCell>
+                                {order.completionDate
+                                    ? format(new Date(order.completionDate), "dd/MM/yyyy", { locale: ptBR })
+                                    : "-"}
+                            </TableCell>
+                            <TableCell>
+                                <Button variant="ghost" size="icon" onClick={() => onEdit(order)}>
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                    {orders.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                                Nenhuma ordem de serviço encontrada.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </div>
+    );
+};
+
+export default ServiceOrderTable;
+
