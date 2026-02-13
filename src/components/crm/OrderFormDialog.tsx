@@ -15,6 +15,7 @@ interface OrderFormDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSubmit: (order: Omit<Order, "id">) => void;
+    onUpdate?: (id: string, updates: Partial<Order>) => void;
     editingOrder?: Order | null;
 }
 
@@ -22,6 +23,7 @@ const OrderFormDialog = ({
     open,
     onOpenChange,
     onSubmit,
+    onUpdate,
     editingOrder,
 }: OrderFormDialogProps) => {
     const [form, setForm] = useState({
@@ -58,15 +60,21 @@ const OrderFormDialog = ({
         const unitPrice = parseFloat(form.unitPrice) || 0;
         const totalValue = quantity * unitPrice;
 
-        onSubmit({
+        const orderData = {
             product: form.product,
             quantity,
             unitPrice,
             totalValue,
             client: form.client,
             supplier: form.supplier,
-            date: new Date(),
-        });
+            date: editingOrder ? editingOrder.date : new Date(),
+        };
+
+        if (editingOrder && onUpdate) {
+            onUpdate(editingOrder.id, orderData);
+        } else {
+            onSubmit(orderData);
+        }
         onOpenChange(false);
     };
 

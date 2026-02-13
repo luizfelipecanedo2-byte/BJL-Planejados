@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Order } from "@/types/order";
 import OrderFormDialog from "@/components/crm/OrderFormDialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -55,6 +55,37 @@ const PedidosSemana = () => {
     const handleNewOrder = () => {
         setEditingOrder(null);
         setIsDialogOpen(true);
+    };
+
+    const handleEditOrder = (order: Order) => {
+        setEditingOrder(order);
+        setIsDialogOpen(true);
+    };
+
+    const handleUpdateOrder = async (id: string, updates: Partial<Order>) => {
+        try {
+            const updateData: any = {};
+            if (updates.product) updateData.product = updates.product;
+            if (updates.quantity !== undefined) updateData.quantity = updates.quantity;
+            if (updates.unitPrice !== undefined) updateData.unit_price = updates.unitPrice;
+            if (updates.totalValue !== undefined) updateData.total_value = updates.totalValue;
+            if (updates.client) updateData.client = updates.client;
+            if (updates.supplier) updateData.supplier = updates.supplier;
+            if (updates.date) updateData.order_date = updates.date.toISOString().split('T')[0];
+
+            const { error } = await supabase
+                .from('weekly_orders')
+                .update(updateData)
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setOrders(orders.map(o => o.id === id ? { ...o, ...updates } : o));
+            toast.success("Pedido atualizado!");
+        } catch (error) {
+            console.error('Error updating order:', error);
+            toast.error("Erro ao atualizar pedido.");
+        }
     };
 
     const handleDeleteOrder = async (id: string) => {
@@ -167,7 +198,14 @@ const PedidosSemana = () => {
                                         <TableCell>{order.quantity}</TableCell>
                                         <TableCell>{formatCurrency(order.unitPrice)}</TableCell>
                                         <TableCell className="font-bold">{formatCurrency(order.totalValue)}</TableCell>
-                                        <TableCell>
+                                        <TableCell className="flex items-center gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleEditOrder(order)}
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -189,6 +227,7 @@ const PedidosSemana = () => {
                 open={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
                 onSubmit={handleOrderSubmit}
+                onUpdate={handleUpdateOrder}
                 editingOrder={editingOrder}
             />
         </div>
