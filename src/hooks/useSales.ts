@@ -61,10 +61,10 @@ export function useSales() {
         unit_price: sale.unitPrice,
         total_value: sale.totalValue,
         status: sale.status,
-        channel: sale.channel,
-        contact_date: sale.contactDate,
-        expected_close_date: sale.expectedCloseDate,
-        closed_date: sale.closedDate,
+        channel: sale.channel || null,
+        contact_date: sale.contactDate || null,
+        expected_close_date: sale.expectedCloseDate || null,
+        closed_date: sale.closedDate || null,
         notes: sale.notes
       };
 
@@ -75,8 +75,8 @@ export function useSales() {
         .single();
 
       if (error) {
-        console.error('Error adding sale:', error);
-        toast.error("Erro ao adicionar venda.");
+        console.error('Error adding sale details:', error);
+        toast.error(`Erro ao adicionar venda: ${error.message || 'Verifique o console'}`);
         return;
       }
 
