@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-
 interface SaleFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -47,8 +46,6 @@ const SaleFormDialog = ({
     expectedCloseDate: "",
     notes: "",
   });
-
-
 
   useEffect(() => {
     if (editingSale) {
@@ -85,7 +82,7 @@ const SaleFormDialog = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.clientName.trim()) {
-      alert("Por favor, selecione ou digite o nome do cliente.");
+      alert("Por favor, digite o nome do cliente.");
       return;
     }
     const totalValue = form.quantity * form.unitPrice;
