@@ -51,7 +51,7 @@ const MainLayout = () => {
                             target.style.display = 'none';
                             target.nextElementSibling?.classList.remove('hidden');
                         }} />
-                        <span className="hidden text-xl font-bold tracking-tight text-primary">BJL Planejados</span>
+                        <span className="text-2xl font-black tracking-tighter text-primary uppercase">BJL Planejados</span>
                     </div>
                     <Button
                         variant="ghost"
@@ -99,7 +99,7 @@ const MainLayout = () => {
                         target.style.display = 'none';
                         target.nextElementSibling?.classList.remove('hidden');
                     }} />
-                    <h1 className="hidden ml-4 text-lg font-bold text-primary">BJL Planejados</h1>
+                    <h1 className="ml-4 text-lg font-bold text-primary">BJL Planejados</h1>
                 </header>
 
                 <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
