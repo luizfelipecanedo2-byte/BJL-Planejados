@@ -2,16 +2,48 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ServiceOrderTable from "@/components/crm/ServiceOrderTable";
 import ServiceOrderFormDialog from "@/components/crm/ServiceOrderFormDialog";
 import { ServiceOrder } from "@/types/serviceOrder";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
-import { mockOrders } from "@/data/mockData";
+import { supabase } from "@/lib/supabase";
 
 const OrdemServico = () => {
-    const [orders, setOrders] = useState<ServiceOrder[]>(mockOrders);
+    const [orders, setOrders] = useState<ServiceOrder[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
+
+    useEffect(() => {
+        fetchOrders();
+    }, []);
+
+    const fetchOrders = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('service_orders')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const mappedOrders: ServiceOrder[] = (data || []).map(o => ({
+                id: o.id,
+                ticketNumber: o.ticket_number,
+                openDate: new Date(o.open_date + 'T12:00:00'),
+                client: o.client,
+                type: o.type as any,
+                action: o.action,
+                status: o.status as any,
+                forecastDate: new Date(o.forecast_date + 'T12:00:00'),
+                completionDate: o.completion_date ? new Date(o.completion_date + 'T12:00:00') : undefined
+            }));
+
+            setOrders(mappedOrders);
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+            toast.error("Erro ao carregar ordens de serviço.");
+        }
+    };
 
     const handleNewOrder = () => {
         setEditingOrder(null);
@@ -23,20 +55,92 @@ const OrdemServico = () => {
         setIsDialogOpen(true);
     };
 
-    const handleSubmit = (orderData: Omit<ServiceOrder, "id">) => {
-        const newOrder: ServiceOrder = {
-            ...orderData,
-            id: Math.random().toString(36).substr(2, 9),
-        };
-        setOrders([newOrder, ...orders]);
-        toast.success("Ordem de serviço criada com sucesso!");
+    const handleDeleteOrder = async (id: string) => {
+        try {
+            const { error } = await supabase
+                .from('service_orders')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setOrders(orders.filter(order => order.id !== id));
+            toast.success("Ordem de serviço removida!");
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            toast.error("Erro ao remover ordem de serviço.");
+        }
     };
 
-    const handleUpdate = (id: string, updates: Partial<ServiceOrder>) => {
-        setOrders(orders.map(order =>
-            order.id === id ? { ...order, ...updates } : order
-        ));
-        toast.success("Ordem de serviço atualizada com sucesso!");
+    const handleSubmit = async (orderData: Omit<ServiceOrder, "id">) => {
+        try {
+            const newOrder = {
+                ticket_number: orderData.ticketNumber,
+                open_date: orderData.openDate.toISOString().split('T')[0],
+                client: orderData.client,
+                type: orderData.type,
+                action: orderData.action,
+                status: orderData.status,
+                forecast_date: orderData.forecastDate.toISOString().split('T')[0],
+                completion_date: orderData.completionDate ? orderData.completionDate.toISOString().split('T')[0] : null
+            };
+
+            const { data, error } = await supabase
+                .from('service_orders')
+                .insert([newOrder])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            if (data) {
+                const createdOrder: ServiceOrder = {
+                    id: data.id,
+                    ticketNumber: data.ticket_number,
+                    openDate: new Date(data.open_date + 'T12:00:00'),
+                    client: data.client,
+                    type: data.type as any,
+                    action: data.action,
+                    status: data.status as any,
+                    forecastDate: new Date(data.forecast_date + 'T12:00:00'),
+                    completionDate: data.completion_date ? new Date(data.completion_date + 'T12:00:00') : undefined
+                };
+                setOrders([createdOrder, ...orders]);
+            }
+            toast.success("Ordem de serviço criada!");
+        } catch (error) {
+            console.error('Error adding order:', error);
+            toast.error("Erro ao criar ordem de serviço.");
+        }
+    };
+
+    const handleUpdate = async (id: string, updates: Partial<ServiceOrder>) => {
+        try {
+            const updateData: any = {};
+            if (updates.ticketNumber) updateData.ticket_number = updates.ticketNumber;
+            if (updates.openDate) updateData.open_date = updates.openDate.toISOString().split('T')[0];
+            if (updates.client) updateData.client = updates.client;
+            if (updates.type) updateData.type = updates.type;
+            if (updates.action) updateData.action = updates.action;
+            if (updates.status) updateData.status = updates.status;
+            if (updates.forecastDate) updateData.forecast_date = updates.forecastDate.toISOString().split('T')[0];
+            if (updates.completionDate) updateData.completion_date = updates.completionDate.toISOString().split('T')[0];
+
+            const { error } = await supabase
+                .from('service_orders')
+                .update(updateData)
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setOrders(orders.map(order =>
+                order.id === id ? { ...order, ...updates } : order
+            ));
+            toast.success("Ordem de serviço atualizada!");
+        } catch (error) {
+            console.error('Error updating order:', error);
+            toast.error("Erro ao atualizar ordem de serviço.");
+        }
     };
 
     return (
@@ -54,7 +158,11 @@ const OrdemServico = () => {
                     <CardTitle>Lista de Ordens de Serviço</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ServiceOrderTable orders={orders} onEdit={handleEditOrder} />
+                    <ServiceOrderTable
+                        orders={orders}
+                        onEdit={handleEditOrder}
+                        onDelete={handleDeleteOrder}
+                    />
                 </CardContent>
             </Card>
 
@@ -70,3 +178,4 @@ const OrdemServico = () => {
 };
 
 export default OrdemServico;
+
