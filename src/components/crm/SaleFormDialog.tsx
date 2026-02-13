@@ -128,6 +128,10 @@ const SaleFormDialog = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.clientName.trim()) {
+      alert("Por favor, selecione ou digite o nome do cliente.");
+      return;
+    }
     const totalValue = form.quantity * form.unitPrice;
     const submitData = {
       ...form,
