@@ -44,9 +44,9 @@ const MainLayout = () => {
                     isSidebarOpen ? "translate-x-0" : "-translate-x-full"
                 )}
             >
-                <div className="h-20 flex items-center px-6 border-b border-border/10 justify-between">
+                <div className="h-56 flex items-center px-6 border-b border-border/10 justify-between">
                     <div className="flex items-center gap-3 w-full justify-center">
-                        <img src="/logo-bjl.png" alt="BJL Planejados" className="h-12 w-auto object-contain" onError={(e) => {
+                        <img src="/logo-bjl.png" alt="BJL Planejados" className="h-48 w-auto object-contain" onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
                             target.nextElementSibling?.classList.remove('hidden');
