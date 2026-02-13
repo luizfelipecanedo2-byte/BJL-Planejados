@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
@@ -37,7 +37,20 @@ const mockClients: Client[] = [
 ];
 
 const Clientes = () => {
-    const [clients, setClients] = useState<Client[]>(mockClients);
+    const [clients, setClients] = useState<Client[]>(() => {
+        const saved = localStorage.getItem("clients");
+        if (saved) {
+            return JSON.parse(saved).map((c: any) => ({
+                ...c,
+                createdAt: new Date(c.createdAt)
+            }));
+        }
+        return mockClients;
+    });
+
+    useEffect(() => {
+        localStorage.setItem("clients", JSON.stringify(clients));
+    }, [clients]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<Client | null>(null);
 

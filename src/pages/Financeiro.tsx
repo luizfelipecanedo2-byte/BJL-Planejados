@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,12 +42,40 @@ import {
 import { mockTransactions, mockOrders } from "@/data/mockData";
 
 const Financeiro = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem("transactions");
+    if (saved) {
+      return JSON.parse(saved).map((t: any) => ({
+        ...t,
+        competenceDate: new Date(t.competenceDate),
+        dueDate: new Date(t.dueDate),
+        paymentDate: t.paymentDate ? new Date(t.paymentDate) : undefined
+      }));
+    }
+    return mockTransactions;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("transactions", JSON.stringify(transactions));
+  }, [transactions]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   // Asset State
-  const [assets, setAssets] = useState<Asset[]>([]);
+  const [assets, setAssets] = useState<Asset[]>(() => {
+    const saved = localStorage.getItem("assets");
+    if (saved) {
+      return JSON.parse(saved).map((a: any) => ({
+        ...a,
+        acquisitionDate: new Date(a.acquisitionDate)
+      }));
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("assets", JSON.stringify(assets));
+  }, [assets]);
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
 
