@@ -1,47 +1,45 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Product } from "@/types/product";
 import ProductTable from "@/components/crm/ProductTable";
 import ProductFormDialog from "@/components/crm/ProductFormDialog";
-
-const mockProducts: Product[] = [
-    {
-        id: "1",
-        name: "Cimento CP II",
-        unitPrice: 28.50,
-        quantity: 150,
-        minStockLevel: 50,
-    },
-    {
-        id: "2",
-        name: "Tijolo Baiano (Milheiro)",
-        unitPrice: 850.00,
-        quantity: 0.5,
-        minStockLevel: 1,
-    },
-    {
-        id: "3",
-        name: "Areia Grossa (m³)",
-        unitPrice: 120.00,
-        quantity: 2,
-        minStockLevel: 5,
-    },
-    {
-        id: "4",
-        name: "Tinta Acrílica Branca 18L",
-        unitPrice: 350.00,
-        quantity: 12,
-        minStockLevel: 10,
-    },
-];
+import { supabase } from "@/lib/supabase";
 
 const Estoque = () => {
-    const [products, setProducts] = useState<Product[]>(mockProducts);
+    const [products, setProducts] = useState<Product[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+    useEffect(() => {
+        fetchProducts();
+    }, []);
+
+    const fetchProducts = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('inventory')
+                .select('*')
+                .order('name', { ascending: true });
+
+            if (error) throw error;
+
+            const mappedProducts: Product[] = (data || []).map(p => ({
+                id: p.id,
+                name: p.name,
+                unitPrice: Number(p.unit_price),
+                quantity: Number(p.quantity),
+                minStockLevel: Number(p.min_stock_level)
+            }));
+
+            setProducts(mappedProducts);
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            toast.error("Erro ao carregar estoque.");
+        }
+    };
 
     const handleNewProduct = () => {
         setEditingProduct(null);
@@ -53,20 +51,80 @@ const Estoque = () => {
         setIsDialogOpen(true);
     };
 
-    const handleSubmit = (productData: Omit<Product, "id">) => {
-        const newProduct: Product = {
-            ...productData,
-            id: Math.random().toString(36).substr(2, 9),
-        };
-        setProducts([newProduct, ...products]);
-        toast.success("Produto adicionado ao estoque!");
+    const handleDeleteProduct = async (id: string) => {
+        try {
+            const { error } = await supabase
+                .from('inventory')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setProducts(products.filter(p => p.id !== id));
+            toast.success("Produto removido do estoque!");
+        } catch (error) {
+            console.error('Error deleting product:', error);
+            toast.error("Erro ao remover produto.");
+        }
     };
 
-    const handleUpdate = (id: string, updates: Partial<Product>) => {
-        setProducts(products.map(product =>
-            product.id === id ? { ...product, ...updates } : product
-        ));
-        toast.success("Produto atualizado com sucesso!");
+    const handleSubmit = async (productData: Omit<Product, "id">) => {
+        try {
+            const newProduct = {
+                name: productData.name,
+                unit_price: productData.unitPrice,
+                quantity: productData.quantity,
+                min_stock_level: productData.minStockLevel
+            };
+
+            const { data, error } = await supabase
+                .from('inventory')
+                .insert([newProduct])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            if (data) {
+                const createdProduct: Product = {
+                    id: data.id,
+                    name: data.name,
+                    unitPrice: Number(data.unit_price),
+                    quantity: Number(data.quantity),
+                    minStockLevel: Number(data.min_stock_level)
+                };
+                setProducts([createdProduct, ...products].sort((a, b) => a.name.localeCompare(b.name)));
+            }
+            toast.success("Produto adicionado!");
+        } catch (error) {
+            console.error('Error adding product:', error);
+            toast.error("Erro ao adicionar produto.");
+        }
+    };
+
+    const handleUpdate = async (id: string, updates: Partial<Product>) => {
+        try {
+            const updateData: any = {};
+            if (updates.name) updateData.name = updates.name;
+            if (updates.unitPrice !== undefined) updateData.unit_price = updates.unitPrice;
+            if (updates.quantity !== undefined) updateData.quantity = updates.quantity;
+            if (updates.minStockLevel !== undefined) updateData.min_stock_level = updates.minStockLevel;
+
+            const { error } = await supabase
+                .from('inventory')
+                .update(updateData)
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setProducts(products.map(p =>
+                p.id === id ? { ...p, ...updates } : p
+            ));
+            toast.success("Produto atualizado!");
+        } catch (error) {
+            console.error('Error updating product:', error);
+            toast.error("Erro ao atualizar produto.");
+        }
     };
 
     return (
@@ -84,7 +142,11 @@ const Estoque = () => {
                     <CardTitle>Controle de Estoque</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ProductTable products={products} onEdit={handleEditProduct} />
+                    <ProductTable
+                        products={products}
+                        onEdit={handleEditProduct}
+                        onDelete={handleDeleteProduct}
+                    />
                 </CardContent>
             </Card>
 
@@ -100,3 +162,4 @@ const Estoque = () => {
 };
 
 export default Estoque;
+

@@ -9,14 +9,15 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 interface ProductTableProps {
     products: Product[];
     onEdit: (product: Product) => void;
+    onDelete: (id: string) => void;
 }
 
-const ProductTable = ({ products, onEdit }: ProductTableProps) => {
+const ProductTable = ({ products, onEdit, onDelete }: ProductTableProps) => {
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
             style: "currency",
@@ -64,9 +65,12 @@ const ProductTable = ({ products, onEdit }: ProductTableProps) => {
                                         <span className="text-muted-foreground">-</span>
                                     )}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="flex items-center gap-1">
                                     <Button variant="ghost" size="icon" onClick={() => onEdit(product)}>
                                         <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => onDelete(product.id)}>
+                                        <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </TableCell>
                             </TableRow>
