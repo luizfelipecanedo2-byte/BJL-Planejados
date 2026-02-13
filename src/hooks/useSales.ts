@@ -1,142 +1,178 @@
 import { useState, useEffect } from "react";
 import { Sale } from "@/types/sale";
-
-const STORAGE_KEY = "crm-sales-data";
-
-const sampleSales: Sale[] = [
-  {
-    id: "1",
-    clientName: "Maria Silva",
-    clientPhone: "(11) 99999-1234",
-    clientEmail: "maria@empresa.com",
-    product: "Consultoria Premium",
-    quantity: 1,
-    unitPrice: 5000,
-    totalValue: 5000,
-    status: "fechado",
-    contactDate: "2026-01-15",
-    expectedCloseDate: "2026-02-01",
-    closedDate: "2026-01-28",
-    createdAt: "2026-01-15",
-  },
-  {
-    id: "2",
-    clientName: "João Mendes",
-    clientPhone: "(21) 98888-5678",
-    clientEmail: "joao@tech.io",
-    product: "Plano Anual",
-    quantity: 1,
-    unitPrice: 12000,
-    totalValue: 12000,
-    status: "negociacao",
-    contactDate: "2026-02-01",
-    expectedCloseDate: "2026-02-15",
-    createdAt: "2026-02-01",
-  },
-  {
-    id: "3",
-    clientName: "Ana Costa",
-    clientPhone: "(31) 97777-9012",
-    clientEmail: "ana@loja.com.br",
-    product: "Pacote Básico",
-    quantity: 3,
-    unitPrice: 1500,
-    totalValue: 4500,
-    status: "contato",
-    contactDate: "2026-02-05",
-    expectedCloseDate: "2026-02-20",
-    createdAt: "2026-02-05",
-  },
-  {
-    id: "4",
-    clientName: "Carlos Oliveira",
-    clientPhone: "(41) 96666-3456",
-    clientEmail: "carlos@startup.com",
-    product: "Consultoria Premium",
-    quantity: 1,
-    unitPrice: 5000,
-    totalValue: 5000,
-    status: "prospecto",
-    contactDate: "2026-02-08",
-    expectedCloseDate: "2026-03-01",
-    createdAt: "2026-02-08",
-  },
-  {
-    id: "5",
-    clientName: "Fernanda Lima",
-    clientPhone: "(51) 95555-7890",
-    clientEmail: "fernanda@agencia.com",
-    product: "Plano Anual",
-    quantity: 1,
-    unitPrice: 12000,
-    totalValue: 12000,
-    status: "nao_fechou",
-    contactDate: "2026-01-10",
-    expectedCloseDate: "2026-01-25",
-    notes: "Optou por concorrente",
-    createdAt: "2026-01-10",
-  },
-  {
-    id: "6",
-    clientName: "Roberto Santos",
-    clientPhone: "(61) 94444-1111",
-    clientEmail: "roberto@corp.com",
-    product: "Pacote Básico",
-    quantity: 5,
-    unitPrice: 1500,
-    totalValue: 7500,
-    status: "fechado",
-    contactDate: "2026-01-20",
-    expectedCloseDate: "2026-02-05",
-    closedDate: "2026-02-03",
-    createdAt: "2026-01-20",
-  },
-];
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner"; // Assuming sonner is used for toasts
 
 export function useSales() {
-  const [sales, setSales] = useState<Sale[]>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch {
-        return sampleSales;
-      }
-    }
-    return sampleSales;
-  });
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sales));
-  }, [sales]);
+    fetchSales();
+  }, []);
 
-  const addSale = (sale: Omit<Sale, "id" | "createdAt">) => {
-    const newSale: Sale = {
-      ...sale,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString().split("T")[0],
-    };
-    setSales((prev) => [newSale, ...prev]);
+  const fetchSales = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching sales:', error);
+        return;
+      }
+
+      if (data) {
+        const mappedSales: Sale[] = data.map((item: any) => ({
+          id: item.id,
+          clientName: item.client_name,
+          clientPhone: item.client_phone || "",
+          clientEmail: item.client_email || "",
+          product: item.product,
+          quantity: item.quantity,
+          unitPrice: Number(item.unit_price),
+          totalValue: Number(item.total_value),
+          status: item.status,
+          channel: item.channel,
+          contactDate: item.contact_date,
+          expectedCloseDate: item.expected_close_date,
+          closedDate: item.closed_date,
+          notes: item.notes,
+          createdAt: item.created_at,
+        }));
+        setSales(mappedSales);
+      }
+    } catch (error) {
+      console.error('Error in fetchSales:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updateSale = (id: string, updates: Partial<Sale>) => {
-    setSales((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
-    );
+  const addSale = async (sale: Omit<Sale, "id" | "createdAt">) => {
+    try {
+      const newSale = {
+        client_name: sale.clientName,
+        client_phone: sale.clientPhone,
+        client_email: sale.clientEmail,
+        product: sale.product,
+        quantity: sale.quantity,
+        unit_price: sale.unitPrice,
+        total_value: sale.totalValue,
+        status: sale.status,
+        channel: sale.channel,
+        contact_date: sale.contactDate,
+        expected_close_date: sale.expectedCloseDate,
+        closed_date: sale.closedDate,
+        notes: sale.notes
+      };
+
+      const { data, error } = await supabase
+        .from('sales')
+        .insert([newSale])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding sale:', error);
+        toast.error("Erro ao adicionar venda.");
+        return;
+      }
+
+      if (data) {
+        const createdSale: Sale = {
+          id: data.id,
+          clientName: data.client_name,
+          clientPhone: data.client_phone || "",
+          clientEmail: data.client_email || "",
+          product: data.product,
+          quantity: data.quantity,
+          unitPrice: Number(data.unit_price),
+          totalValue: Number(data.total_value),
+          status: data.status,
+          channel: data.channel,
+          contactDate: data.contact_date,
+          expectedCloseDate: data.expected_close_date,
+          closedDate: data.closed_date,
+          notes: data.notes,
+          createdAt: data.created_at,
+        };
+        setSales((prev) => [createdSale, ...prev]);
+        toast.success("Venda adicionada com sucesso!");
+      }
+    } catch (error) {
+      console.error('Error adding sale:', error);
+      toast.error("Erro ao adicionar venda.");
+    }
   };
 
-  const deleteSale = (id: string) => {
-    setSales((prev) => prev.filter((s) => s.id !== id));
+  const updateSale = async (id: string, updates: Partial<Sale>) => {
+    try {
+      const updateData: any = {};
+      if (updates.clientName) updateData.client_name = updates.clientName;
+      if (updates.clientPhone) updateData.client_phone = updates.clientPhone;
+      if (updates.clientEmail) updateData.client_email = updates.clientEmail;
+      if (updates.product) updateData.product = updates.product;
+      if (updates.quantity) updateData.quantity = updates.quantity;
+      if (updates.unitPrice) updateData.unit_price = updates.unitPrice;
+      if (updates.totalValue) updateData.total_value = updates.totalValue;
+      if (updates.status) updateData.status = updates.status;
+      if (updates.channel) updateData.channel = updates.channel;
+      if (updates.contactDate) updateData.contact_date = updates.contactDate;
+      if (updates.expectedCloseDate) updateData.expected_close_date = updates.expectedCloseDate;
+      if (updates.closedDate) updateData.closed_date = updates.closedDate;
+      if (updates.notes) updateData.notes = updates.notes;
+
+      const { error } = await supabase
+        .from('sales')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating sale:', error);
+        toast.error("Erro ao atualizar venda.");
+        return;
+      }
+
+      setSales((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
+      );
+      toast.success("Venda atualizada!");
+    } catch (error) {
+      console.error('Error updating sale:', error);
+      toast.error("Erro ao atualizar venda.");
+    }
   };
 
-  const updateStatus = (id: string, status: Sale["status"]) => {
-    updateSale(id, {
-      status,
-      ...(status === "fechado"
-        ? { closedDate: new Date().toISOString().split("T")[0] }
-        : {}),
-    });
+  const deleteSale = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting sale:', error);
+        toast.error("Erro ao remover venda.");
+        return;
+      }
+
+      setSales((prev) => prev.filter((s) => s.id !== id));
+      toast.success("Venda removida.");
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+      toast.error("Erro ao remover venda.");
+    }
   };
 
-  return { sales, addSale, updateSale, deleteSale, updateStatus };
+  const updateStatus = async (id: string, status: Sale["status"]) => {
+    const updates: Partial<Sale> = { status };
+    if (status === "fechado") {
+      updates.closedDate = new Date().toISOString().split("T")[0];
+    }
+    await updateSale(id, updates);
+  };
+
+  return { sales, loading, addSale, updateSale, deleteSale, updateStatus };
 }
