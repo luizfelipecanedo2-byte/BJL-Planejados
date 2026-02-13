@@ -1,4 +1,4 @@
-git remote add origin SUA_URL_AQUIimport { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
