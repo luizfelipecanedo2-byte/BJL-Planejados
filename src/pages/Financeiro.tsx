@@ -40,42 +40,80 @@ import {
 } from "recharts";
 
 import { mockTransactions, mockOrders } from "@/data/mockData";
+import { supabase } from "@/lib/supabase";
 
 const Financeiro = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem("transactions");
-    if (saved) {
-      return JSON.parse(saved).map((t: any) => ({
-        ...t,
-        competenceDate: new Date(t.competenceDate),
-        dueDate: new Date(t.dueDate),
-        paymentDate: t.paymentDate ? new Date(t.paymentDate) : undefined
-      }));
-    }
-    return mockTransactions;
-  });
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
 
   useEffect(() => {
-    localStorage.setItem("transactions", JSON.stringify(transactions));
-  }, [transactions]);
+    fetchTransactions();
+    fetchAssets();
+  }, []);
+
+  const fetchTransactions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const mappedTransactions: Transaction[] = (data || []).map(t => ({
+        id: t.id,
+        description: t.description,
+        amount: Number(t.amount),
+        type: t.type as any,
+        category: t.category,
+        subcategory: t.subcategory,
+        service: t.service,
+        contact: t.contact,
+        financialInstitution: t.financial_institution,
+        paymentMethod: t.payment_method,
+        competenceDate: new Date(t.competence_date + 'T12:00:00'),
+        dueDate: new Date(t.due_date + 'T12:00:00'),
+        paymentDate: t.payment_date ? new Date(t.payment_date + 'T12:00:00') : undefined,
+        status: t.status as any,
+        invoiceNumber: t.invoice_number,
+        orderService: t.order_service
+      }));
+
+      setTransactions(mappedTransactions);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      toast.error("Erro ao carregar lançamentos.");
+    }
+  };
+
+  const fetchAssets = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('assets')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const mappedAssets: Asset[] = (data || []).map(a => ({
+        id: a.id,
+        name: a.name,
+        acquisitionDate: new Date(a.acquisition_date + 'T12:00:00'),
+        value: Number(a.value),
+        usefulLife: Number(a.useful_life),
+        depreciationRate: a.depreciation_rate ? Number(a.depreciation_rate) : undefined
+      }));
+
+      setAssets(mappedAssets);
+    } catch (error) {
+      console.error('Error fetching assets:', error);
+      toast.error("Erro ao carregar patrimônio.");
+    }
+  };
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  // Asset State
-  const [assets, setAssets] = useState<Asset[]>(() => {
-    const saved = localStorage.getItem("assets");
-    if (saved) {
-      return JSON.parse(saved).map((a: any) => ({
-        ...a,
-        acquisitionDate: new Date(a.acquisitionDate)
-      }));
-    }
-    return [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem("assets", JSON.stringify(assets));
-  }, [assets]);
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
 
@@ -497,32 +535,110 @@ const Financeiro = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteTransaction = (id: string) => {
-    setTransactions(transactions.filter(t => t.id !== id));
-    toast.success("Lançamento removido!");
-  };
-
-  const handleSubmit = (data: Omit<Transaction, "id"> | Omit<Transaction, "id">[]) => {
-    const dataArray = Array.isArray(data) ? data : [data];
-    const newTransactions = dataArray.map(item => ({
-      ...item,
-      id: Math.random().toString(36).substr(2, 9),
-    }));
-
-    setTransactions(prev => [...newTransactions, ...prev]);
-
-    if (dataArray.length > 1) {
-      toast.success(`${dataArray.length} parcelas geradas com sucesso!`);
-    } else {
-      toast.success(dataArray[0].type === 'income' ? "Receita adicionada!" : "Despesa registrada!");
+  const handleDeleteTransaction = async (id: string) => {
+    try {
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      if (error) throw error;
+      setTransactions(transactions.filter(t => t.id !== id));
+      toast.success("Lançamento removido!");
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      toast.error("Erro ao remover lançamento.");
     }
   };
 
-  const handleUpdate = (id: string, updates: Partial<Transaction>) => {
-    setTransactions(transactions.map(t =>
-      t.id === id ? { ...t, ...updates } : t
-    ));
-    toast.success("Lançamento atualizado!");
+  const handleSubmit = async (data: Omit<Transaction, "id"> | Omit<Transaction, "id">[]) => {
+    try {
+      const dataArray = Array.isArray(data) ? data : [data];
+
+      const transactionsToInsert = dataArray.map(item => ({
+        description: item.description,
+        amount: item.amount,
+        type: item.type,
+        category: item.category,
+        subcategory: item.subcategory,
+        service: item.service,
+        contact: item.contact,
+        financial_institution: item.financialInstitution,
+        payment_method: item.paymentMethod,
+        competence_date: item.competenceDate.toISOString().split('T')[0],
+        due_date: item.dueDate.toISOString().split('T')[0],
+        payment_date: item.paymentDate ? item.paymentDate.toISOString().split('T')[0] : null,
+        status: item.status,
+        invoice_number: item.invoiceNumber,
+        order_service: item.orderService
+      }));
+
+      const { data: insertedData, error } = await supabase
+        .from('transactions')
+        .insert(transactionsToInsert)
+        .select();
+
+      if (error) throw error;
+
+      if (insertedData) {
+        const newTransactions: Transaction[] = insertedData.map(t => ({
+          id: t.id,
+          description: t.description,
+          amount: Number(t.amount),
+          type: t.type as any,
+          category: t.category,
+          subcategory: t.subcategory,
+          service: t.service,
+          contact: t.contact,
+          financialInstitution: t.financial_institution,
+          paymentMethod: t.payment_method,
+          competenceDate: new Date(t.competence_date + 'T12:00:00'),
+          dueDate: new Date(t.due_date + 'T12:00:00'),
+          paymentDate: t.payment_date ? new Date(t.payment_date + 'T12:00:00') : undefined,
+          status: t.status as any,
+          invoiceNumber: t.invoice_number,
+          orderService: t.order_service
+        }));
+        setTransactions(prev => [...newTransactions, ...prev]);
+      }
+
+      toast.success(dataArray.length > 1 ? `${dataArray.length} parcelas geradas!` : "Lançamento registrado!");
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      toast.error("Erro ao registrar lançamento.");
+    }
+  };
+
+  const handleUpdate = async (id: string, updates: Partial<Transaction>) => {
+    try {
+      const updateData: any = {};
+      if (updates.description) updateData.description = updates.description;
+      if (updates.amount) updateData.amount = updates.amount;
+      if (updates.type) updateData.type = updates.type;
+      if (updates.category) updateData.category = updates.category;
+      if (updates.subcategory) updateData.subcategory = updates.subcategory;
+      if (updates.service) updateData.service = updates.service;
+      if (updates.contact) updateData.contact = updates.contact;
+      if (updates.financialInstitution) updateData.financial_institution = updates.financialInstitution;
+      if (updates.paymentMethod) updateData.payment_method = updates.paymentMethod;
+      if (updates.competenceDate) updateData.competence_date = updates.competenceDate.toISOString().split('T')[0];
+      if (updates.dueDate) updateData.due_date = updates.dueDate.toISOString().split('T')[0];
+      if (updates.paymentDate) updateData.payment_date = updates.paymentDate.toISOString().split('T')[0];
+      if (updates.status) updateData.status = updates.status;
+      if (updates.invoiceNumber) updateData.invoice_number = updates.invoiceNumber;
+      if (updates.orderService) updateData.order_service = updates.orderService;
+
+      const { error } = await supabase
+        .from('transactions')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setTransactions(transactions.map(t =>
+        t.id === id ? { ...t, ...updates } : t
+      ));
+      toast.success("Lançamento atualizado!");
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      toast.error("Erro ao atualizar lançamento.");
+    }
   };
 
   // Asset Handlers
@@ -531,18 +647,63 @@ const Financeiro = () => {
     setIsAssetDialogOpen(true);
   };
 
-  const handleAssetSubmit = (data: Omit<Asset, "id">) => {
-    const newAsset = {
-      ...data,
-      id: Math.random().toString(36).substr(2, 9),
-    };
-    setAssets([...assets, newAsset]);
-    toast.success("Patrimônio adicionado!");
+  const handleAssetSubmit = async (data: Omit<Asset, "id">) => {
+    try {
+      const newAsset = {
+        name: data.name,
+        acquisition_date: data.acquisitionDate.toISOString().split('T')[0],
+        value: data.value,
+        useful_life: data.usefulLife,
+        depreciation_rate: data.depreciationRate
+      };
+
+      const { data: insertedData, error } = await supabase
+        .from('assets')
+        .insert([newAsset])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const createdAsset: Asset = {
+        id: insertedData.id,
+        name: insertedData.name,
+        acquisitionDate: new Date(insertedData.acquisition_date + 'T12:00:00'),
+        value: Number(insertedData.value),
+        usefulLife: Number(insertedData.useful_life),
+        depreciationRate: insertedData.depreciation_rate ? Number(insertedData.depreciation_rate) : undefined
+      };
+
+      setAssets([...assets, createdAsset]);
+      toast.success("Patrimônio adicionado!");
+    } catch (error) {
+      console.error('Error adding asset:', error);
+      toast.error("Erro ao adicionar patrimônio.");
+    }
   };
 
-  const handleAssetUpdate = (id: string, updates: Partial<Asset>) => {
-    setAssets(assets.map(a => a.id === id ? { ...a, ...updates } : a));
-    toast.success("Patrimônio atualizado!");
+  const handleAssetUpdate = async (id: string, updates: Partial<Asset>) => {
+    try {
+      const updateData: any = {};
+      if (updates.name) updateData.name = updates.name;
+      if (updates.acquisitionDate) updateData.acquisition_date = updates.acquisitionDate.toISOString().split('T')[0];
+      if (updates.value) updateData.value = updates.value;
+      if (updates.usefulLife) updateData.useful_life = updates.usefulLife;
+      if (updates.depreciationRate) updateData.depreciation_rate = updates.depreciationRate;
+
+      const { error } = await supabase
+        .from('assets')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setAssets(assets.map(a => a.id === id ? { ...a, ...updates } : a));
+      toast.success("Patrimônio atualizado!");
+    } catch (error) {
+      console.error('Error updating asset:', error);
+      toast.error("Erro ao atualizar patrimônio.");
+    }
   };
 
   return (
