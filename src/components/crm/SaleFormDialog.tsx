@@ -1,8 +1,4 @@
 import { useState, useEffect } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
-import { Client } from "@/types/client";
 import { Sale, SaleStatus, SaleChannel, STATUS_LABELS, CHANNEL_LABELS } from "@/types/sale";
 import {
   Dialog,
@@ -21,19 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+
 
 interface SaleFormDialogProps {
   open: boolean;
@@ -64,35 +48,7 @@ const SaleFormDialog = ({
     notes: "",
   });
 
-  const [clients, setClients] = useState<Client[]>([]);
-  const [openClientSelect, setOpenClientSelect] = useState(false);
 
-  useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const { data } = await supabase.from('clients').select('*').order('name');
-        if (data) {
-          const mappedClients: Client[] = data.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            phone: item.phone || "",
-            email: item.email || "",
-            address: item.address || "",
-            city: item.city || "",
-            state: item.state || "",
-            zipCode: item.zip_code || "",
-            document: item.document || "",
-            notes: item.notes || "",
-            createdAt: new Date(item.created_at)
-          }));
-          setClients(mappedClients);
-        }
-      } catch (error) {
-        console.error("Error fetching clients", error);
-      }
-    };
-    fetchClients();
-  }, []);
 
   useEffect(() => {
     if (editingSale) {
@@ -163,51 +119,13 @@ const SaleFormDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <Label htmlFor="clientName">Nome do Cliente</Label>
-              <Popover open={openClientSelect} onOpenChange={setOpenClientSelect}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openClientSelect}
-                    className="w-full justify-between font-normal"
-                  >
-                    {form.clientName
-                      ? clients.find((client) => client.name === form.clientName)?.name || form.clientName
-                      : "Selecione..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Buscar..." />
-                    <CommandList>
-                      <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
-                      <CommandGroup>
-                        {clients.map((client) => (
-                          <CommandItem
-                            key={client.id}
-                            value={client.name}
-                            onSelect={() => {
-                              update("clientName", client.name);
-                              if (client.phone) update("clientPhone", client.phone);
-                              if (client.email) update("clientEmail", client.email);
-                              setOpenClientSelect(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                form.clientName === client.name ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {client.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Input
+                id="clientName"
+                value={form.clientName}
+                onChange={(e) => update("clientName", e.target.value)}
+                required
+                placeholder="Ex: Maria Silva"
+              />
             </div>
             <div>
               <Label htmlFor="clientPhone">Telefone</Label>
