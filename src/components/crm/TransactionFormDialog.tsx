@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { addMonths } from "date-fns";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Transaction, CATEGORIES, PAYMENT_METHODS, TransactionType, TransactionStatus, SUBCATEGORIES } from "@/types/finance";
+import { Client } from "@/types/client";
+import { supabase } from "@/lib/supabase";
 import { mockOrders } from "@/data/mockData";
 import {
     Dialog,
@@ -20,6 +24,19 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface TransactionFormDialogProps {
     open: boolean;
@@ -41,6 +58,36 @@ const TransactionFormDialog = ({
     const [status, setStatus] = useState<TransactionStatus>("pending");
     const [isInstallment, setIsInstallment] = useState(false);
     const [installmentsCount, setInstallmentsCount] = useState("2");
+
+    const [clients, setClients] = useState<Client[]>([]);
+    const [openClientSelect, setOpenClientSelect] = useState(false);
+
+    useEffect(() => {
+        const fetchClients = async () => {
+            try {
+                const { data } = await supabase.from('clients').select('*').order('name');
+                if (data) {
+                    const mappedClients: Client[] = data.map((item: any) => ({
+                        id: item.id,
+                        name: item.name,
+                        phone: item.phone || "",
+                        email: item.email || "",
+                        address: item.address || "",
+                        city: item.city || "",
+                        state: item.state || "",
+                        zipCode: item.zip_code || "",
+                        document: item.document || "",
+                        notes: item.notes || "",
+                        createdAt: new Date(item.created_at)
+                    }));
+                    setClients(mappedClients);
+                }
+            } catch (error) {
+                console.error("Error fetching clients", error);
+            }
+        };
+        fetchClients();
+    }, []);
 
     const [form, setForm] = useState({
         description: "",
@@ -231,15 +278,51 @@ const TransactionFormDialog = ({
                             </datalist>
                         </div>
 
-                        <div className="col-span-2">
+                        <div className="col-span-2 flex flex-col gap-2">
                             <Label htmlFor="contact">{type === 'income' ? 'Cliente' : 'Fornecedor'}</Label>
-                            <Input
-                                id="contact"
-                                value={form.contact}
-                                onChange={(e) => handleUpdateField("contact", e.target.value)}
-                                required
-                                placeholder="Nome do Cliente ou Fornecedor"
-                            />
+                            <Popover open={openClientSelect} onOpenChange={setOpenClientSelect}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={openClientSelect}
+                                        className="w-full justify-between font-normal"
+                                    >
+                                        {form.contact
+                                            ? clients.find((client) => client.name === form.contact)?.name || form.contact
+                                            : "Selecione..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[400px] p-0" align="start">
+                                    <Command>
+                                        <CommandInput placeholder="Buscar..." />
+                                        <CommandList>
+                                            <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
+                                            <CommandGroup>
+                                                {clients.map((client) => (
+                                                    <CommandItem
+                                                        key={client.id}
+                                                        value={client.name}
+                                                        onSelect={() => {
+                                                            handleUpdateField("contact", client.name);
+                                                            setOpenClientSelect(false);
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                form.contact === client.name ? "opacity-100" : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {client.name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                     </div>
 
