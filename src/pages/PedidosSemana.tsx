@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Order } from "@/types/order";
 import OrderFormDialog from "@/components/crm/OrderFormDialog";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -13,24 +13,106 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { format } from "date-fns";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const PedidosSemana = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
+    useEffect(() => {
+        fetchOrders();
+    }, []);
+
+    const fetchOrders = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('weekly_orders')
+                .select('*')
+                .order('order_date', { ascending: false });
+
+            if (error) throw error;
+
+            const mappedOrders: Order[] = (data || []).map(o => ({
+                id: o.id,
+                product: o.product,
+                quantity: Number(o.quantity),
+                unitPrice: Number(o.unit_price),
+                totalValue: Number(o.total_value),
+                client: o.client,
+                supplier: o.supplier,
+                date: new Date(o.order_date + 'T12:00:00')
+            }));
+
+            setOrders(mappedOrders);
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+            toast.error("Erro ao carregar pedidos.");
+        }
+    };
+
     const handleNewOrder = () => {
         setEditingOrder(null);
         setIsDialogOpen(true);
     };
 
-    const handleOrderSubmit = (orderData: Omit<Order, "id">) => {
-        const newOrder: Order = {
-            ...orderData,
-            id: Math.random().toString(36).substr(2, 9),
-        };
-        setOrders([...orders, newOrder]);
-        setIsDialogOpen(false);
+    const handleDeleteOrder = async (id: string) => {
+        try {
+            const { error } = await supabase
+                .from('weekly_orders')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setOrders(orders.filter(o => o.id !== id));
+            toast.success("Pedido removido!");
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            toast.error("Erro ao remover pedido.");
+        }
+    };
+
+    const handleOrderSubmit = async (orderData: Omit<Order, "id">) => {
+        try {
+            const newOrder = {
+                product: orderData.product,
+                quantity: orderData.quantity,
+                unit_price: orderData.unitPrice,
+                total_value: orderData.totalValue,
+                client: orderData.client,
+                supplier: orderData.supplier,
+                order_date: orderData.date.toISOString().split('T')[0]
+            };
+
+            const { data, error } = await supabase
+                .from('weekly_orders')
+                .insert([newOrder])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            if (data) {
+                const createdOrder: Order = {
+                    id: data.id,
+                    product: data.product,
+                    quantity: Number(data.quantity),
+                    unitPrice: Number(data.unit_price),
+                    totalValue: Number(data.total_value),
+                    client: data.client,
+                    supplier: data.supplier,
+                    date: new Date(data.order_date + 'T12:00:00')
+                };
+                setOrders([createdOrder, ...orders]);
+            }
+            setIsDialogOpen(false);
+            toast.success("Pedido registrado!");
+        } catch (error) {
+            console.error('Error adding order:', error);
+            toast.error("Erro ao registrar pedido.");
+        }
     };
 
     const formatCurrency = (value: number) => {
@@ -65,25 +147,36 @@ const PedidosSemana = () => {
                                 <TableHead>Qtd</TableHead>
                                 <TableHead>Valor Unit.</TableHead>
                                 <TableHead>Total</TableHead>
+                                <TableHead className="w-[50px]">Ação</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {orders.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center text-muted-foreground h-24">
+                                    <TableCell colSpan={8} className="text-center text-muted-foreground h-24">
                                         Nenhum pedido registrado nesta semana.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 orders.map((order) => (
                                     <TableRow key={order.id}>
-                                        <TableCell>{format(new Date(), "dd/MM/yyyy")}</TableCell>
+                                        <TableCell>{format(new Date(order.date), "dd/MM/yyyy")}</TableCell>
                                         <TableCell>{order.product}</TableCell>
                                         <TableCell>{order.client}</TableCell>
                                         <TableCell>{order.supplier}</TableCell>
                                         <TableCell>{order.quantity}</TableCell>
                                         <TableCell>{formatCurrency(order.unitPrice)}</TableCell>
                                         <TableCell className="font-bold">{formatCurrency(order.totalValue)}</TableCell>
+                                        <TableCell>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                onClick={() => handleDeleteOrder(order.id)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
                                     </TableRow>
                                 ))
                             )}
