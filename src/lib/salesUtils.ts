@@ -26,9 +26,10 @@ export function getMetrics(sales: Sale[]) {
   const closedSales = sales.filter((s) => s.status === "fechado").length;
   const lostSales = sales.filter((s) => s.status === "nao_fechou").length;
   const conversionRate =
-    closedSales + lostSales > 0
-      ? Math.round((closedSales / (closedSales + lostSales)) * 100)
+    totalSales > 0
+      ? Math.round((closedSales / totalSales) * 100)
       : 0;
+
 
   const byStatus: Record<SaleStatus, number> = {
     prospecto: 0,
