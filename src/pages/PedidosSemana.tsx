@@ -89,6 +89,7 @@ const PedidosSemana = () => {
     };
 
     const handleDeleteOrder = async (id: string) => {
+        if (!window.confirm("Tem certeza que deseja remover este pedido?")) return;
         try {
             const { error } = await supabase
                 .from('weekly_orders')

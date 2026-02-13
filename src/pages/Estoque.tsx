@@ -52,6 +52,7 @@ const Estoque = () => {
     };
 
     const handleDeleteProduct = async (id: string) => {
+        if (!window.confirm("Tem certeza que deseja remover este produto do estoque?")) return;
         try {
             const { error } = await supabase
                 .from('inventory')

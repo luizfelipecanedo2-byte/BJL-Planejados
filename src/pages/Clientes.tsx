@@ -59,6 +59,7 @@ const Clientes = () => {
     };
 
     const handleDeleteClient = async (id: string) => {
+        if (!window.confirm("Tem certeza que deseja remover este cliente?")) return;
         try {
             const { error } = await supabase
                 .from('clients')

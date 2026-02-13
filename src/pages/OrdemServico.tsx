@@ -56,6 +56,7 @@ const OrdemServico = () => {
     };
 
     const handleDeleteOrder = async (id: string) => {
+        if (!window.confirm("Tem certeza que deseja remover esta ordem de serviço?")) return;
         try {
             const { error } = await supabase
                 .from('service_orders')

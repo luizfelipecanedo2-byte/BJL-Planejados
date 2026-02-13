@@ -536,6 +536,7 @@ const Financeiro = () => {
   };
 
   const handleDeleteTransaction = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir esta transação?")) return;
     try {
       const { error } = await supabase.from('transactions').delete().eq('id', id);
       if (error) throw error;
