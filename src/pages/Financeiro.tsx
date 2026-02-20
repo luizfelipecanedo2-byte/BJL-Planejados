@@ -76,7 +76,8 @@ const Financeiro = () => {
         paymentDate: t.payment_date ? new Date(t.payment_date + 'T12:00:00') : undefined,
         status: t.status as any,
         invoiceNumber: t.invoice_number,
-        orderService: t.order_service
+        orderService: t.order_service,
+        boletoUrl: t.boleto_url
       }));
 
       setTransactions(mappedTransactions);
@@ -567,7 +568,8 @@ const Financeiro = () => {
         payment_date: item.paymentDate ? item.paymentDate.toISOString().split('T')[0] : null,
         status: item.status,
         invoice_number: item.invoiceNumber,
-        order_service: item.orderService
+        order_service: item.orderService,
+        boleto_url: item.boletoUrl
       }));
 
       const { data: insertedData, error } = await supabase
@@ -594,7 +596,8 @@ const Financeiro = () => {
           paymentDate: t.payment_date ? new Date(t.payment_date + 'T12:00:00') : undefined,
           status: t.status as any,
           invoiceNumber: t.invoice_number,
-          orderService: t.order_service
+          orderService: t.order_service,
+          boletoUrl: t.boleto_url
         }));
         setTransactions(prev => [...newTransactions, ...prev]);
       }
@@ -624,6 +627,7 @@ const Financeiro = () => {
       if (updates.status) updateData.status = updates.status;
       if (updates.invoiceNumber) updateData.invoice_number = updates.invoiceNumber;
       if (updates.orderService) updateData.order_service = updates.orderService;
+      if (updates.boletoUrl !== undefined) updateData.boleto_url = updates.boletoUrl;
 
       const { error } = await supabase
         .from('transactions')

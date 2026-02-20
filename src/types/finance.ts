@@ -19,6 +19,7 @@ export interface Transaction {
     status: TransactionStatus;
     invoiceNumber: string;
     orderService?: string;
+    boletoUrl?: string;
 }
 
 export const CATEGORIES = {

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, FileImage } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -91,6 +91,17 @@ const TransactionTable = ({ transactions, onEdit, onDelete }: TransactionTablePr
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-2">
+                                        {transaction.boletoUrl && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                onClick={() => window.open(transaction.boletoUrl, '_blank')}
+                                                title="Ver Boleto"
+                                            >
+                                                <FileImage className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                         <Button variant="ghost" size="icon" onClick={() => onEdit(transaction)}>
                                             <Pencil className="h-4 w-4" />
                                         </Button>

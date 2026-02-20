@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { addMonths } from "date-fns";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, FileImage, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Transaction, CATEGORIES, PAYMENT_METHODS, TransactionType, TransactionStatus, SUBCATEGORIES } from "@/types/finance";
 import { Client } from "@/types/client";
@@ -58,6 +58,7 @@ const TransactionFormDialog = ({
     const [status, setStatus] = useState<TransactionStatus>("pending");
     const [isInstallment, setIsInstallment] = useState(false);
     const [installmentsCount, setInstallmentsCount] = useState("2");
+    const [isUploading, setIsUploading] = useState(false);
 
     const [clients, setClients] = useState<Client[]>([]);
     const [openClientSelect, setOpenClientSelect] = useState(false);
@@ -102,6 +103,7 @@ const TransactionFormDialog = ({
         dueDate: new Date().toISOString().split('T')[0],
         paymentDate: "",
         orderService: "",
+        boletoUrl: "",
     });
 
     useEffect(() => {
@@ -122,6 +124,7 @@ const TransactionFormDialog = ({
                 dueDate: new Date(editingTransaction.dueDate).toISOString().split('T')[0],
                 paymentDate: editingTransaction.paymentDate ? new Date(editingTransaction.paymentDate).toISOString().split('T')[0] : "",
                 orderService: editingTransaction.orderService || "",
+                boletoUrl: editingTransaction.boletoUrl || "",
             });
         } else {
             // Reset Default state
@@ -141,6 +144,7 @@ const TransactionFormDialog = ({
                 dueDate: new Date().toISOString().split('T')[0],
                 paymentDate: "",
                 orderService: "",
+                boletoUrl: "",
             });
             setIsInstallment(false);
             setInstallmentsCount("2");
@@ -172,6 +176,35 @@ const TransactionFormDialog = ({
             }
             return newState;
         });
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setIsUploading(true);
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+            const filePath = `boletos/${fileName}`;
+
+            const { data, error } = await supabase.storage
+                .from('attachments')
+                .upload(filePath, file);
+
+            if (error) throw error;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('attachments')
+                .getPublicUrl(filePath);
+
+            handleUpdateField("boletoUrl", publicUrl);
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            alert("Erro ao fazer upload do arquivo. Verifique se o bucket 'attachments' existe no Supabase.");
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -210,6 +243,7 @@ const TransactionFormDialog = ({
                         dueDate: newDueDate,
                         status: i === 0 ? status : 'pending', // Only first one takes the form status (e.g. paid), others pending
                         paymentDate: i === 0 ? baseSubmitData.paymentDate : undefined,
+                        boletoUrl: i === 0 ? baseSubmitData.boletoUrl : undefined,
                     });
                 }
                 onSubmit(transactions);
@@ -511,6 +545,78 @@ const TransactionFormDialog = ({
                             onChange={(e) => handleUpdateField("invoiceNumber", e.target.value)}
                             placeholder="Nº da Nota ou Recibo"
                         />
+                    </div>
+
+                    <div className="p-4 border rounded-lg bg-blue-50/50 space-y-4">
+                        <div className="flex items-center gap-2 text-blue-700">
+                            <FileImage className="h-5 w-5" />
+                            <h4 className="font-semibold">Imagem do Boleto</h4>
+                        </div>
+
+                        {form.boletoUrl ? (
+                            <div className="flex items-center justify-between p-2 bg-white rounded border border-blue-200">
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                    <FileImage className="h-4 w-4 text-blue-500 shrink-0" />
+                                    <span className="text-xs text-blue-600 truncate max-w-[200px]">Boleto anexado</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                        onClick={() => window.open(form.boletoUrl, '_blank')}
+                                    >
+                                        Ver
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        onClick={() => handleUpdateField("boletoUrl", "")}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-2">
+                                <Label htmlFor="boleto-upload" className="cursor-pointer">
+                                    <div className="flex flex-col items-center justify-center py-4 border-2 border-dashed border-blue-200 rounded-lg hover:bg-blue-100/50 transition-colors">
+                                        {isUploading ? (
+                                            <div className="flex items-center gap-2">
+                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                                <span className="text-sm text-blue-600">Enviando...</span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Upload className="h-6 w-6 text-blue-400 mb-1" />
+                                                <span className="text-sm text-blue-600">Clique para anexar imagem o boleto</span>
+                                                <span className="text-[10px] text-blue-400">PDF, JPG, PNG</span>
+                                            </>
+                                        )}
+                                    </div>
+                                    <Input
+                                        id="boleto-upload"
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/*,.pdf"
+                                        onChange={handleFileUpload}
+                                        disabled={isUploading}
+                                    />
+                                </Label>
+                                <div className="flex gap-2 items-center">
+                                    <span className="text-[10px] text-muted-foreground">Ou cole o link:</span>
+                                    <Input
+                                        className="h-7 text-xs"
+                                        placeholder="https://..."
+                                        value={form.boletoUrl}
+                                        onChange={(e) => handleUpdateField("boletoUrl", e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex justify-end gap-2 pt-4">
