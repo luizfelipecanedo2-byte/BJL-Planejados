@@ -30,8 +30,8 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 bg-[url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2029&auto=format&fit=crop')] bg-cover bg-center">
-            <div className="absolute inset-0 bg-white/60 backdrop-blur-sm"></div>
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 bg-[url('/login-bg.jpg')] bg-cover bg-center">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
             <Card className="w-full max-w-md relative shadow-2xl border-none">
                 <CardHeader className="space-y-1 flex flex-col items-center">
                     <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4">
