@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -1238,7 +1238,7 @@ const Financeiro = () => {
                   </TableHeader>
                   <TableBody>
                     {detailedExpenses.map((cat) => (
-                      <>
+                      <Fragment key={cat.category}>
                         {/* Category Row */}
                         <TableRow key={cat.category} className="bg-muted/50 font-bold hover:bg-muted/60">
                           <TableCell>{cat.category}</TableCell>
@@ -1264,7 +1264,7 @@ const Financeiro = () => {
                             <TableCell className="text-right font-medium text-sm">{formatCurrency(sub.total)}</TableCell>
                           </TableRow>
                         ))}
-                      </>
+                      </Fragment>
                     ))}
                     {/* Grand Total Row could be added here if needed */}
                   </TableBody>

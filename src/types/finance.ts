@@ -30,11 +30,22 @@ export const CATEGORIES = {
         "Despesa Operacional",
         "Despesa com Serviço",
         "Despesa com Maquinário",
-        "Despesa com Pessoal"
+        "Despesa com Pessoal",
+        "Impostos"
     ]
 };
 
 export const SUBCATEGORIES: Record<string, string[]> = {
+    "Impostos": [
+        "Simples Nacional",
+        "DAS",
+        "ICMS",
+        "ISS",
+        "PIS/COFINS",
+        "IRPJ/CSLL",
+        "IPTU",
+        "IPVA"
+    ],
     "Despesa Operacional": [
         "Água",
         "Aluguel",
@@ -51,6 +62,12 @@ export const SUBCATEGORIES: Record<string, string[]> = {
         "Mão de Obra",
         "Outros custos",
         "RT Arquiteto"
+    ],
+    "Despesa com Maquinário": [
+        "Manutenção",
+        "Peças",
+        "Combustível",
+        "Outros"
     ],
     "Despesa com Pessoal": [
         "Alimentação",
