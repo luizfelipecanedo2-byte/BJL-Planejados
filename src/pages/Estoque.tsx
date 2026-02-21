@@ -21,8 +21,7 @@ const Estoque = () => {
         try {
             const { data, error } = await supabase
                 .from('inventory')
-                .select('*')
-                .order('name', { ascending: true });
+                .select('*');
 
             if (error) throw error;
 
@@ -34,6 +33,13 @@ const Estoque = () => {
                 quantity: Number(p.quantity),
                 minStockLevel: Number(p.min_stock_level)
             }));
+
+            // Sort by idEstoque (numeric sort)
+            mappedProducts.sort((a, b) => {
+                const idA = parseInt(a.idEstoque || "999");
+                const idB = parseInt(b.idEstoque || "999");
+                return idA - idB;
+            });
 
             setProducts(mappedProducts);
         } catch (error) {
