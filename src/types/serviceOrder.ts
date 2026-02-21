@@ -12,4 +12,5 @@ export interface ServiceOrder {
     status: ServiceStatus;
     forecastDate: Date;
     completionDate?: Date;
+    notes?: string;
 }

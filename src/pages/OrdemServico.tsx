@@ -35,7 +35,8 @@ const OrdemServico = () => {
                 action: o.action,
                 status: o.status as any,
                 forecastDate: new Date(o.forecast_date + 'T12:00:00'),
-                completionDate: o.completion_date ? new Date(o.completion_date + 'T12:00:00') : undefined
+                completionDate: o.completion_date ? new Date(o.completion_date + 'T12:00:00') : undefined,
+                notes: o.notes
             }));
 
             setOrders(mappedOrders);
@@ -83,7 +84,8 @@ const OrdemServico = () => {
                 action: orderData.action,
                 status: orderData.status,
                 forecast_date: orderData.forecastDate.toISOString().split('T')[0],
-                completion_date: orderData.completionDate ? orderData.completionDate.toISOString().split('T')[0] : null
+                completion_date: orderData.completionDate ? orderData.completionDate.toISOString().split('T')[0] : null,
+                notes: orderData.notes
             };
 
             const { data, error } = await supabase
@@ -104,7 +106,8 @@ const OrdemServico = () => {
                     action: data.action,
                     status: data.status as any,
                     forecastDate: new Date(data.forecast_date + 'T12:00:00'),
-                    completionDate: data.completion_date ? new Date(data.completion_date + 'T12:00:00') : undefined
+                    completionDate: data.completion_date ? new Date(data.completion_date + 'T12:00:00') : undefined,
+                    notes: data.notes
                 };
                 setOrders([createdOrder, ...orders]);
             }
@@ -126,6 +129,7 @@ const OrdemServico = () => {
             if (updates.status) updateData.status = updates.status;
             if (updates.forecastDate) updateData.forecast_date = updates.forecastDate.toISOString().split('T')[0];
             if (updates.completionDate) updateData.completion_date = updates.completionDate.toISOString().split('T')[0];
+            if (updates.notes !== undefined) updateData.notes = updates.notes;
 
             const { error } = await supabase
                 .from('service_orders')
