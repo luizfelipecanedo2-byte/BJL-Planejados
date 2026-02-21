@@ -19,7 +19,7 @@ export function getMetrics(sales: Sale[]) {
     .reduce((sum, s) => sum + s.totalValue, 0);
 
   const pipelineValue = sales
-    .filter((s) => !["fechado", "nao_fechou"].includes(s.status))
+    .filter((s) => !["fechado", "nao_fechou", "pos_venda"].includes(s.status))
     .reduce((sum, s) => sum + s.totalValue, 0);
 
   const totalSales = sales.length;
@@ -40,6 +40,7 @@ export function getMetrics(sales: Sale[]) {
     fechado: 0,
     nao_fechou: 0,
     congelado: 0,
+    pos_venda: 0,
   };
   sales.forEach((s) => {
     byStatus[s.status]++;

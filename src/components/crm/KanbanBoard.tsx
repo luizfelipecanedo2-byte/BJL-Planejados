@@ -18,6 +18,7 @@ const columnColors: Record<SaleStatus, string> = {
   fechado: "border-t-kanban-fechado",
   nao_fechou: "border-t-kanban-nao_fechou",
   congelado: "border-t-kanban-congelado",
+  pos_venda: "border-t-kanban-pos_venda",
 };
 
 const dotColors: Record<SaleStatus, string> = {
@@ -29,6 +30,7 @@ const dotColors: Record<SaleStatus, string> = {
   fechado: "bg-kanban-fechado",
   nao_fechou: "bg-kanban-nao_fechou",
   congelado: "bg-kanban-congelado",
+  pos_venda: "bg-kanban-pos_venda",
 };
 
 const statusOrder: SaleStatus[] = [
@@ -38,6 +40,7 @@ const statusOrder: SaleStatus[] = [
   "projeto",
   "negociacao",
   "fechado",
+  "pos_venda",
   "nao_fechou",
   "congelado",
 ];

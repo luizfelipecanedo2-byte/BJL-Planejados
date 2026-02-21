@@ -86,6 +86,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
       "Em Andamento": 0,
       Congelado: 0,
       "Não Fechou": 0,
+      "Pós Venda": 0,
     }));
 
     yearSales.forEach((sale) => {
@@ -98,6 +99,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
       if (sale.status === "fechado") item.Fechado += sale.totalValue;
       else if (sale.status === "nao_fechou") item["Não Fechou"] += sale.totalValue;
       else if (sale.status === "congelado") item.Congelado += sale.totalValue;
+      else if (sale.status === "pos_venda") item["Pós Venda"] += sale.totalValue;
       else item["Em Andamento"] += sale.totalValue;
     });
 
@@ -114,6 +116,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
         "Em Andamento": 0,
         Congelado: 0,
         "Não Fechou": 0,
+        "Pós Venda": 0,
       };
     });
 
@@ -127,6 +130,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
       if (sale.status === "fechado") item.Fechado += sale.totalValue;
       else if (sale.status === "nao_fechou") item["Não Fechou"] += sale.totalValue;
       else if (sale.status === "congelado") item.Congelado += sale.totalValue;
+      else if (sale.status === "pos_venda") item["Pós Venda"] += sale.totalValue;
       else item["Em Andamento"] += sale.totalValue;
     });
 
@@ -309,6 +313,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
                       <Bar dataKey="Fechado" fill="hsl(var(--kanban-fechado))" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="Em Andamento" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="Congelado" fill="hsl(var(--kanban-congelado))" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Pós Venda" fill="hsl(var(--kanban-pos_venda))" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="Não Fechou" fill="hsl(var(--kanban-nao_fechou))" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -357,6 +362,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
                               <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                               <Tooltip formatter={(v: number) => formatCurrency(v)} />
                               <Bar dataKey="Fechado" fill="hsl(var(--kanban-fechado))" />
+                              <Bar dataKey="Pós Venda" fill="hsl(var(--kanban-pos_venda))" />
                             </BarChart>
                           </ResponsiveContainer>
                         </div>

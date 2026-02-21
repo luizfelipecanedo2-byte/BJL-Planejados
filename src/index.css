@@ -7,8 +7,10 @@
 @layer base {
   :root {
     /* Black Backgrounds */
-    --background: 0 0% 5%; /* Very dark black/gray */
-    --foreground: 46 70% 95%; /* Light Gold/White text */
+    --background: 0 0% 5%;
+    /* Very dark black/gray */
+    --foreground: 46 70% 95%;
+    /* Light Gold/White text */
 
     /* Card Backgrounds - Slightly lighter than main background */
     --card: 0 0% 8%;
@@ -18,8 +20,10 @@
     --popover-foreground: 46 70% 95%;
 
     /* Gold Primary */
-    --primary: 46 70% 50%; /* #D4AF37 Gold */
-    --primary-foreground: 0 0% 5%; /* Dark text on Gold */
+    --primary: 46 70% 50%;
+    /* #D4AF37 Gold */
+    --primary-foreground: 0 0% 5%;
+    /* Dark text on Gold */
 
     /* Secondary - Darker Gold */
     --secondary: 46 30% 20%;
@@ -44,7 +48,7 @@
     /* Borders - Subtle Dark Gray */
     --border: 0 0% 20%;
     --input: 0 0% 20%;
-    
+
     /* Ring - Gold */
     --ring: 46 70% 50%;
 
@@ -69,6 +73,7 @@
     --kanban-fechado: 152 60% 42%;
     --kanban-nao_fechou: 0 72% 51%;
     --kanban-congelado: 210 15% 60%;
+    --kanban-pos_venda: 180 60% 50%;
   }
 
   /* Force dark mode colors even if .dark is not present, or ensure .dark matches */
@@ -107,6 +112,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', system-ui, sans-serif;

@@ -1,4 +1,4 @@
-export type SaleStatus = "prospecto" | "contato" | "visita" | "projeto" | "negociacao" | "fechado" | "nao_fechou" | "congelado";
+export type SaleStatus = "prospecto" | "contato" | "visita" | "projeto" | "negociacao" | "fechado" | "nao_fechou" | "congelado" | "pos_venda";
 
 export type SaleChannel = "instagram" | "cliente" | "arquiteto" | "indicacao";
 
@@ -36,6 +36,7 @@ export const STATUS_LABELS: Record<SaleStatus, string> = {
   fechado: "Fechado",
   nao_fechou: "Não Fechou",
   congelado: "Congelado",
+  pos_venda: "Pós Venda",
 };
 
 export const STATUS_COLORS: Record<SaleStatus, string> = {
@@ -47,4 +48,5 @@ export const STATUS_COLORS: Record<SaleStatus, string> = {
   fechado: "bg-kanban-fechado",
   nao_fechou: "bg-kanban-nao_fechou",
   congelado: "bg-kanban-congelado",
+  pos_venda: "bg-kanban-pos_venda",
 };
