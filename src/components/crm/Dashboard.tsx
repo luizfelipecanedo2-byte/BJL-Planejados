@@ -41,19 +41,67 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ sales }: DashboardProps) => {
-  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+  const years = useMemo(() => {
+    const yearsSet = new Set<string>();
+    sales.forEach(sale => {
+      const dateStr = sale.contactDate || sale.createdAt;
+      if (dateStr) {
+        try {
+          const year = new Date(dateStr).getFullYear();
+          if (!isNaN(year)) yearsSet.add(year.toString());
+        } catch (e) { }
+      }
+    });
+    if (yearsSet.size === 0) yearsSet.add(new Date().getFullYear().toString());
+    return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
+  }, [sales]);
+
   const MONTH_NAMES = [
     "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
     "Jul", "Ago", "Set", "Out", "Nov", "Dez",
   ];
 
-  const getMonthData = (monthIndex: number) => {
+  const getYearData = (year: string) => {
     return sales.filter((sale) => {
       const dateStr = sale.contactDate || sale.createdAt || "";
       if (!dateStr) return false;
       const date = new Date(dateStr);
-      return date.getMonth() === monthIndex && date.getFullYear() === parseInt(selectedYear);
+      return date.getFullYear().toString() === year;
     });
+  };
+
+  const getMonthData = (yearSales: Sale[], monthIndex: number) => {
+    return yearSales.filter((sale) => {
+      const dateStr = sale.contactDate || sale.createdAt || "";
+      if (!dateStr) return false;
+      const date = new Date(dateStr);
+      return date.getMonth() === monthIndex;
+    });
+  };
+
+  const getYearlyChartData = (yearSales: Sale[]) => {
+    const data = MONTH_NAMES.map((name) => ({
+      name,
+      Fechado: 0,
+      "Em Andamento": 0,
+      Congelado: 0,
+      "Não Fechou": 0,
+    }));
+
+    yearSales.forEach((sale) => {
+      const dateStr = sale.contactDate || sale.createdAt;
+      if (!dateStr) return;
+      const d = new Date(dateStr);
+      const monthIndex = d.getMonth();
+      const item = data[monthIndex];
+
+      if (sale.status === "fechado") item.Fechado += sale.totalValue;
+      else if (sale.status === "nao_fechou") item["Não Fechou"] += sale.totalValue;
+      else if (sale.status === "congelado") item.Congelado += sale.totalValue;
+      else item["Em Andamento"] += sale.totalValue;
+    });
+
+    return data;
   };
 
   const getDailyData = (monthSales: Sale[], year: number, month: number) => {
@@ -85,8 +133,8 @@ const Dashboard = ({ sales }: DashboardProps) => {
     return data;
   };
 
-  const getChannelData = (monthSales: Sale[], closedOnly: boolean = false) => {
-    const targetSales = closedOnly ? monthSales.filter(s => s.status === 'fechado') : monthSales;
+  const getChannelData = (filteredSales: Sale[], closedOnly: boolean = false) => {
+    const targetSales = closedOnly ? filteredSales.filter(s => s.status === 'fechado') : filteredSales;
     const total = targetSales.length;
     if (total === 0) return [];
 
@@ -109,44 +157,34 @@ const Dashboard = ({ sales }: DashboardProps) => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Visão Mensal</h3>
-        <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-[120px]">
-            <SelectValue placeholder="Ano" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="2024">2024</SelectItem>
-            <SelectItem value="2025">2025</SelectItem>
-            <SelectItem value="2026">2026</SelectItem>
-          </SelectContent>
-        </Select>
+        <h3 className="text-lg font-medium">Dashboard de Vendas</h3>
       </div>
 
-      <Tabs defaultValue={String(new Date().getMonth())} className="w-full">
+      <Tabs defaultValue={years[0]} className="w-full">
         <TabsList className="w-full justify-start overflow-x-auto h-12 mb-6 bg-muted/50">
-          {MONTH_NAMES.map((month, index) => (
-            <TabsTrigger key={month} value={String(index)} className="min-w-[60px]">
-              {month}
+          {years.map((year) => (
+            <TabsTrigger key={year} value={year} className="min-w-[80px]">
+              {year}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {MONTH_NAMES.map((month, index) => {
-          const monthSales = getMonthData(index);
-          const metrics = getMetrics(monthSales);
-          const dailyData = getDailyData(monthSales, parseInt(selectedYear), index);
-          const channelData = getChannelData(monthSales, true);
-          const allChannelData = getChannelData(monthSales, false);
+        {years.map((year) => {
+          const yearSales = getYearData(year);
+          const metrics = getMetrics(yearSales);
+          const yearlyChartData = getYearlyChartData(yearSales);
+          const channelData = getChannelData(yearSales, true);
+          const allChannelData = getChannelData(yearSales, false);
 
           const avgTicketAll = metrics.totalSales > 0
-            ? monthSales.reduce((sum, s) => sum + s.totalValue, 0) / metrics.totalSales
+            ? yearSales.reduce((sum, s) => sum + s.totalValue, 0) / metrics.totalSales
             : 0;
 
           const avgTicketClosed = metrics.closedSales > 0
             ? metrics.totalRevenue / metrics.closedSales
             : 0;
 
-          const totalBudget = monthSales.reduce((sum, s) => sum + s.totalValue, 0);
+          const totalBudget = yearSales.reduce((sum, s) => sum + s.totalValue, 0);
 
           const cards = [
             {
@@ -215,7 +253,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
           ];
 
           return (
-            <TabsContent key={month} value={String(index)} className="space-y-6">
+            <TabsContent key={year} value={year} className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
                 {cards.map((card) => (
                   <Card
@@ -241,14 +279,14 @@ const Dashboard = ({ sales }: DashboardProps) => {
                 ))}
               </div>
 
-              {/* Daily Chart */}
+              {/* Yearly Chart */}
               <Card className="border-none shadow-sm">
                 <CardContent className="p-6">
                   <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
-                    Vendas por Dia ({month})
+                    Vendas por Mês ({year})
                   </h3>
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={dailyData} barGap={4}>
+                    <BarChart data={yearlyChartData} barGap={4}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                       <YAxis
@@ -277,13 +315,64 @@ const Dashboard = ({ sales }: DashboardProps) => {
                 </CardContent>
               </Card>
 
+              {/* Monthly Drilldown - Optional but helpful */}
+              <div className="mt-8">
+                <h4 className="text-md font-medium mb-4">Detalhamento Mensal</h4>
+                <Tabs defaultValue={String(new Date().getMonth())} className="w-full">
+                  <TabsList className="w-full justify-start overflow-x-auto h-10 mb-4 bg-muted/30">
+                    {MONTH_NAMES.map((month, idx) => (
+                      <TabsTrigger key={month} value={String(idx)} className="text-xs">
+                        {month}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                  {MONTH_NAMES.map((month, idx) => {
+                    const monthSales = getMonthData(yearSales, idx);
+                    const monthMetrics = getMetrics(monthSales);
+                    const dailyData = getDailyData(monthSales, parseInt(year), idx);
+
+                    return (
+                      <TabsContent key={idx} value={String(idx)} className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                          <Card className="p-3 border-none bg-success/5">
+                            <p className="text-xs text-muted-foreground">Receita</p>
+                            <p className="text-md font-bold text-success">{formatCurrency(monthMetrics.totalRevenue)}</p>
+                          </Card>
+                          <Card className="p-3 border-none bg-primary/5">
+                            <p className="text-xs text-muted-foreground">Vendas</p>
+                            <p className="text-md font-bold">{monthMetrics.totalSales}</p>
+                          </Card>
+                          <Card className="p-3 border-none bg-blue-500/5">
+                            <p className="text-xs text-muted-foreground">Fechadas</p>
+                            <p className="text-md font-bold">{monthMetrics.closedSales}</p>
+                          </Card>
+                          <Card className="p-3 border-none bg-accent/5">
+                            <p className="text-xs text-muted-foreground">Conversão</p>
+                            <p className="text-md font-bold">{monthMetrics.conversionRate}%</p>
+                          </Card>
+                        </div>
+                        <div className="h-[200px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dailyData}>
+                              <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                              <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                              <Bar dataKey="Fechado" fill="hsl(var(--kanban-fechado))" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </TabsContent>
+                    );
+                  })}
+                </Tabs>
+              </div>
+
               {/* Channel Pie Charts Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
                 {/* Closed Sales Chart */}
                 <Card className="border-none shadow-sm">
                   <CardContent className="p-6">
                     <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
-                      Vendas Fechadas por Canal ({month})
+                      Vendas Fechadas por Canal ({year})
                     </h3>
                     {channelData.length > 0 ? (
                       <div className="h-[300px] w-full">
@@ -314,7 +403,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
                       </div>
                     ) : (
                       <p className="text-center text-muted-foreground py-8">
-                        Nenhuma venda fechada registrada neste mês.
+                        Nenhuma venda fechada registrada neste ano.
                       </p>
                     )}
                   </CardContent>
@@ -324,7 +413,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
                 <Card className="border-none shadow-sm">
                   <CardContent className="p-6">
                     <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
-                      Total de Orçamentos por Canal ({month})
+                      Total de Orçamentos por Canal ({year})
                     </h3>
                     {allChannelData.length > 0 ? (
                       <div className="h-[300px] w-full">
@@ -355,7 +444,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
                       </div>
                     ) : (
                       <p className="text-center text-muted-foreground py-8">
-                        Nenhum orçamento registrado neste mês.
+                        Nenhum orçamento registrado neste ano.
                       </p>
                     )}
                   </CardContent>
@@ -364,8 +453,6 @@ const Dashboard = ({ sales }: DashboardProps) => {
             </TabsContent>
           );
         })}
-
-
       </Tabs>
     </div>
   );
