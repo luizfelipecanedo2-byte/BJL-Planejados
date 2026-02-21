@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
+import { Mail, Lock, Loader2 } from "lucide-react";
 
 export default function Login() {
     const [loading, setLoading] = useState(false);
@@ -34,8 +34,12 @@ export default function Login() {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
             <Card className="w-full max-w-md relative shadow-2xl border-none">
                 <CardHeader className="space-y-1 flex flex-col items-center">
-                    <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                        <LogIn className="w-10 h-10 text-primary" />
+                    <div className="mb-6">
+                        <img
+                            src="/logo-bjl.png"
+                            alt="BJL Planejados"
+                            className="h-32 w-auto object-contain"
+                        />
                     </div>
                     <CardTitle className="text-3xl font-bold tracking-tight">BJL Planejados</CardTitle>
                     <CardDescription className="text-base">
