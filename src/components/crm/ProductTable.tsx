@@ -48,7 +48,7 @@ const ProductTable = ({ products, onEdit, onDelete }: ProductTableProps) => {
 
                         return (
                             <TableRow key={product.id}>
-                                <TableCell className="font-medium">{product.id}</TableCell>
+                                <TableCell className="font-medium">{product.idEstoque || "-"}</TableCell>
                                 <TableCell>{product.name}</TableCell>
                                 <TableCell>{formatCurrency(product.unitPrice)}</TableCell>
                                 <TableCell>{product.quantity}</TableCell>

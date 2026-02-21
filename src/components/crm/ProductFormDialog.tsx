@@ -26,6 +26,7 @@ const ProductFormDialog = ({
     editingProduct,
 }: ProductFormDialogProps) => {
     const [form, setForm] = useState({
+        idEstoque: "",
         name: "",
         unitPrice: 0,
         quantity: 0,
@@ -35,6 +36,7 @@ const ProductFormDialog = ({
     useEffect(() => {
         if (editingProduct) {
             setForm({
+                idEstoque: editingProduct.idEstoque || "",
                 name: editingProduct.name,
                 unitPrice: editingProduct.unitPrice,
                 quantity: editingProduct.quantity,
@@ -42,6 +44,7 @@ const ProductFormDialog = ({
             });
         } else {
             setForm({
+                idEstoque: "",
                 name: "",
                 unitPrice: 0,
                 quantity: 0,
@@ -80,15 +83,26 @@ const ProductFormDialog = ({
                     </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <Label htmlFor="name">Nome do Produto</Label>
-                        <Input
-                            id="name"
-                            value={form.name}
-                            onChange={(e) => update("name", e.target.value)}
-                            required
-                            placeholder="Ex: Parafuso 10mm"
-                        />
+                    <div className="grid grid-cols-4 gap-4">
+                        <div className="col-span-1">
+                            <Label htmlFor="idEstoque">ID</Label>
+                            <Input
+                                id="idEstoque"
+                                value={form.idEstoque}
+                                onChange={(e) => update("idEstoque", e.target.value)}
+                                placeholder="Ex: 1"
+                            />
+                        </div>
+                        <div className="col-span-3">
+                            <Label htmlFor="name">Nome do Produto</Label>
+                            <Input
+                                id="name"
+                                value={form.name}
+                                onChange={(e) => update("name", e.target.value)}
+                                required
+                                placeholder="Ex: Parafuso 10mm"
+                            />
+                        </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>

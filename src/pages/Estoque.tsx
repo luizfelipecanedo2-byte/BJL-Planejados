@@ -28,6 +28,7 @@ const Estoque = () => {
 
             const mappedProducts: Product[] = (data || []).map(p => ({
                 id: p.id,
+                idEstoque: p.id_estoque,
                 name: p.name,
                 unitPrice: Number(p.unit_price),
                 quantity: Number(p.quantity),
@@ -72,6 +73,7 @@ const Estoque = () => {
     const handleSubmit = async (productData: Omit<Product, "id">) => {
         try {
             const newProduct = {
+                id_estoque: productData.idEstoque,
                 name: productData.name,
                 unit_price: productData.unitPrice,
                 quantity: productData.quantity,
@@ -89,6 +91,7 @@ const Estoque = () => {
             if (data) {
                 const createdProduct: Product = {
                     id: data.id,
+                    idEstoque: data.id_estoque,
                     name: data.name,
                     unitPrice: Number(data.unit_price),
                     quantity: Number(data.quantity),
@@ -106,6 +109,7 @@ const Estoque = () => {
     const handleUpdate = async (id: string, updates: Partial<Product>) => {
         try {
             const updateData: any = {};
+            if (updates.idEstoque !== undefined) updateData.id_estoque = updates.idEstoque;
             if (updates.name) updateData.name = updates.name;
             if (updates.unitPrice !== undefined) updateData.unit_price = updates.unitPrice;
             if (updates.quantity !== undefined) updateData.quantity = updates.quantity;
