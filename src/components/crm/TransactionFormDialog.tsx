@@ -4,8 +4,8 @@ import { Check, ChevronsUpDown, FileImage, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Transaction, CATEGORIES, PAYMENT_METHODS, TransactionType, TransactionStatus, SUBCATEGORIES } from "@/types/finance";
 import { Client } from "@/types/client";
+import { ServiceOrder } from "@/types/serviceOrder";
 import { supabase } from "@/lib/supabase";
-import { mockOrders } from "@/data/mockData";
 import {
     Dialog,
     DialogContent,
@@ -61,6 +61,7 @@ const TransactionFormDialog = ({
     const [isUploading, setIsUploading] = useState(false);
 
     const [clients, setClients] = useState<Client[]>([]);
+    const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
     const [openClientSelect, setOpenClientSelect] = useState(false);
 
     useEffect(() => {
@@ -87,7 +88,31 @@ const TransactionFormDialog = ({
                 console.error("Error fetching clients", error);
             }
         };
+
+        const fetchOrders = async () => {
+            try {
+                const { data } = await supabase.from('service_orders').select('*').order('created_at', { ascending: false });
+                if (data) {
+                    const mappedOrders: ServiceOrder[] = data.map((o: any) => ({
+                        id: o.id,
+                        ticketNumber: o.ticket_number,
+                        openDate: new Date(o.open_date + 'T12:00:00'),
+                        client: o.client,
+                        type: o.type,
+                        action: o.action,
+                        status: o.status,
+                        forecastDate: new Date(o.forecast_date + 'T12:00:00'),
+                        completionDate: o.completion_date ? new Date(o.completion_date + 'T12:00:00') : undefined
+                    }));
+                    setServiceOrders(mappedOrders);
+                }
+            } catch (error) {
+                console.error("Error fetching service orders", error);
+            }
+        };
+
         fetchClients();
+        fetchOrders();
     }, []);
 
     const [form, setForm] = useState({
@@ -166,7 +191,7 @@ const TransactionFormDialog = ({
 
             // Regra: Se selecionar uma OS no campo serviço, preencher cliente automaticamente
             if (field === 'service') {
-                const selectedOS = mockOrders.find(os => `${os.ticketNumber} - ${os.action} ` === value);
+                const selectedOS = serviceOrders.find(os => `${os.ticketNumber} - ${os.action} ` === value);
                 if (selectedOS) {
                     if (!prev.contact) {
                         newState.contact = selectedOS.client;
@@ -304,7 +329,7 @@ const TransactionFormDialog = ({
                                 placeholder="Digite ou selecione uma OS..."
                             />
                             <datalist id="os-suggestions">
-                                {mockOrders.map((os) => (
+                                {serviceOrders.map((os) => (
                                     <option key={os.id} value={`${os.ticketNumber} - ${os.action} `}>
                                         {os.client} - {os.status}
                                     </option>

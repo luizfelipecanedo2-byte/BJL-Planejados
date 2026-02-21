@@ -39,16 +39,18 @@ import {
   Area,
 } from "recharts";
 
-import { mockTransactions, mockOrders } from "@/data/mockData";
+import { ServiceOrder } from "@/types/serviceOrder";
 import { supabase } from "@/lib/supabase";
 
 const Financeiro = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
 
   useEffect(() => {
     fetchTransactions();
     fetchAssets();
+    fetchServiceOrders();
   }, []);
 
   const fetchTransactions = async () => {
@@ -112,6 +114,32 @@ const Financeiro = () => {
     }
   };
 
+  const fetchServiceOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('service_orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const mappedOrders: ServiceOrder[] = (data || []).map(o => ({
+        id: o.id,
+        ticketNumber: o.ticket_number,
+        openDate: new Date(o.open_date + 'T12:00:00'),
+        client: o.client,
+        type: o.type as any,
+        action: o.action,
+        status: o.status as any,
+        forecastDate: new Date(o.forecast_date + 'T12:00:00'),
+        completionDate: o.completion_date ? new Date(o.completion_date + 'T12:00:00') : undefined
+      }));
+
+      setServiceOrders(mappedOrders);
+    } catch (error) {
+      console.error('Error fetching service orders:', error);
+    }
+  };
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
@@ -1084,7 +1112,7 @@ const Financeiro = () => {
                       <SelectItem value="all">Todas</SelectItem>
                       {Array.from(new Set([
                         ...transactions.map(t => t.orderService),
-                        ...mockOrders.map(o => o.ticketNumber)
+                        ...serviceOrders.map(o => o.ticketNumber)
                       ].filter(Boolean))).sort().map(os => (
                         <SelectItem key={os} value={os as string}>{os}</SelectItem>
                       ))}
