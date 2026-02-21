@@ -41,6 +41,9 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ sales }: DashboardProps) => {
+  const [viewType, setViewType] = useState<"monthly" | "yearly">("monthly");
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+
   const years = useMemo(() => {
     const yearsSet = new Set<string>();
     sales.forEach(sale => {
@@ -61,25 +64,20 @@ const Dashboard = ({ sales }: DashboardProps) => {
     "Jul", "Ago", "Set", "Out", "Nov", "Dez",
   ];
 
-  const getYearData = (year: string) => {
+  const getFilteredSales = (year: string, monthIndex?: number) => {
     return sales.filter((sale) => {
       const dateStr = sale.contactDate || sale.createdAt || "";
       if (!dateStr) return false;
       const date = new Date(dateStr);
-      return date.getFullYear().toString() === year;
+      const yearMatch = date.getFullYear().toString() === year;
+      if (monthIndex !== undefined) {
+        return yearMatch && date.getMonth() === monthIndex;
+      }
+      return yearMatch;
     });
   };
 
-  const getMonthData = (yearSales: Sale[], monthIndex: number) => {
-    return yearSales.filter((sale) => {
-      const dateStr = sale.contactDate || sale.createdAt || "";
-      if (!dateStr) return false;
-      const date = new Date(dateStr);
-      return date.getMonth() === monthIndex;
-    });
-  };
-
-  const getYearlyChartData = (yearSales: Sale[]) => {
+  const getYearlyGraphData = (year: string) => {
     const data = MONTH_NAMES.map((name) => ({
       name,
       Fechado: 0,
@@ -88,6 +86,8 @@ const Dashboard = ({ sales }: DashboardProps) => {
       "Não Fechou": 0,
       "Pós Venda": 0,
     }));
+
+    const yearSales = getFilteredSales(year);
 
     yearSales.forEach((sale) => {
       const dateStr = sale.contactDate || sale.createdAt;
@@ -158,308 +158,284 @@ const Dashboard = ({ sales }: DashboardProps) => {
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
+  const renderDashboardContent = (filteredSales: Sale[], titleSuffix: string, chartData: any[], isDaily: boolean = false) => {
+    const metrics = getMetrics(filteredSales);
+    const channelData = getChannelData(filteredSales, true);
+    const allChannelData = getChannelData(filteredSales, false);
+
+    const avgTicketAll = metrics.totalSales > 0
+      ? filteredSales.reduce((sum, s) => sum + s.totalValue, 0) / metrics.totalSales
+      : 0;
+
+    const avgTicketClosed = metrics.closedSales > 0
+      ? metrics.totalRevenue / metrics.closedSales
+      : 0;
+
+    const totalBudget = filteredSales.reduce((sum, s) => sum + s.totalValue, 0);
+
+    const cards = [
+      {
+        title: "Valor Total de Orçamentos",
+        value: formatCurrency(totalBudget),
+        icon: DollarSign,
+        color: "text-blue-500",
+        bgColor: "bg-blue-500/10",
+      },
+      {
+        title: "Receita Total",
+        value: formatCurrency(metrics.totalRevenue),
+        icon: DollarSign,
+        color: "text-success",
+        bgColor: "bg-success/10",
+      },
+      {
+        title: "Pipeline",
+        value: formatCurrency(metrics.pipelineValue),
+        icon: TrendingUp,
+        color: "text-primary",
+        bgColor: "bg-primary/10",
+      },
+      {
+        title: "Ticket Médio Orçamentos",
+        value: formatCurrency(avgTicketAll),
+        icon: Receipt,
+        color: "text-accent",
+        bgColor: "bg-accent/10",
+      },
+      {
+        title: "Ticket Médio Fechadas",
+        value: formatCurrency(avgTicketClosed),
+        icon: Target,
+        color: "text-success",
+        bgColor: "bg-success/10",
+      },
+      {
+        title: "Total de Vendas",
+        value: metrics.totalSales.toString(),
+        icon: Users,
+        color: "text-accent",
+        bgColor: "bg-accent/10",
+      },
+      {
+        title: "Fechadas",
+        value: metrics.closedSales.toString(),
+        icon: CheckCircle,
+        color: "text-success",
+        bgColor: "bg-success/10",
+      },
+      {
+        title: "Perdidas",
+        value: metrics.lostSales.toString(),
+        icon: XCircle,
+        color: "text-destructive",
+        bgColor: "bg-destructive/10",
+      },
+      {
+        title: "Conversão",
+        value: `${metrics.closedSales}/${metrics.totalSales} (${metrics.conversionRate}%)`,
+        icon: BarChart3,
+        color: "text-primary",
+        bgColor: "bg-primary/10",
+      },
+    ];
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
+          {cards.map((card) => (
+            <Card
+              key={card.title}
+              className="border-none shadow-sm hover:shadow-md transition-shadow"
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${card.bgColor}`}>
+                    <card.icon className={`h-4 w-4 ${card.color}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground truncate">
+                      {card.title}
+                    </p>
+                    <p className="text-lg font-bold tracking-tight">
+                      {card.value}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <Card className="border-none shadow-sm">
+          <CardContent className="p-6">
+            <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
+              {isDaily ? "Vendas por Dia" : "Vendas por Mês"} ({titleSuffix})
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis
+                  tick={{ fontSize: 12 }}
+                  stroke="hsl(var(--muted-foreground))"
+                  tickFormatter={(v) =>
+                    v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toString()
+                  }
+                />
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "var(--radius)",
+                    fontSize: 12,
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="Fechado" fill="hsl(var(--kanban-fechado))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Em Andamento" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Congelado" fill="hsl(var(--kanban-congelado))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Pós Venda" fill="hsl(var(--kanban-pos_venda))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Não Fechou" fill="hsl(var(--kanban-nao_fechou))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="border-none shadow-sm">
+            <CardContent className="p-6">
+              <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
+                Vendas Fechadas por Canal ({titleSuffix})
+              </h3>
+              {channelData.length > 0 ? (
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={channelData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({ name, percentage }) => `${name} (${percentage}%)`}
+                      >
+                        {channelData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number, name: string, props: any) => [`${value} Vendas`, props.payload.name]}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  Nenhuma venda fechada registrada neste período.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm">
+            <CardContent className="p-6">
+              <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
+                Total de Orçamentos por Canal ({titleSuffix})
+              </h3>
+              {allChannelData.length > 0 ? (
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={allChannelData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        fill="#82ca9d"
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({ name, percentage }) => `${name} (${percentage}%)`}
+                      >
+                        {allChannelData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number, name: string, props: any) => [`${value} Leads`, props.payload.name]}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  Nenhum orçamento registrado neste período.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Dashboard de Vendas</h3>
+        <div className="flex items-center gap-4">
+          <h3 className="text-lg font-medium">Dashboard de Vendas</h3>
+          <Tabs value={viewType} onValueChange={(v) => setViewType(v as any)}>
+            <TabsList className="bg-muted/50 h-9">
+              <TabsTrigger value="monthly" className="text-xs h-7">Mensal</TabsTrigger>
+              <TabsTrigger value="yearly" className="text-xs h-7">Anual</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger className="w-[120px]">
+            <SelectValue placeholder="Ano" />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map(y => (
+              <SelectItem key={y} value={y}>{y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      <Tabs defaultValue={years[0]} className="w-full">
-        <TabsList className="w-full justify-start overflow-x-auto h-12 mb-6 bg-muted/50">
-          {years.map((year) => (
-            <TabsTrigger key={year} value={year} className="min-w-[80px]">
-              {year}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {viewType === "monthly" ? (
+        <Tabs defaultValue={String(new Date().getMonth())} className="w-full">
+          <TabsList className="w-full justify-start overflow-x-auto h-12 mb-6 bg-muted/50">
+            {MONTH_NAMES.map((month, index) => (
+              <TabsTrigger key={month} value={String(index)} className="min-w-[60px]">
+                {month}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-        {years.map((year) => {
-          const yearSales = getYearData(year);
-          const metrics = getMetrics(yearSales);
-          const yearlyChartData = getYearlyChartData(yearSales);
-          const channelData = getChannelData(yearSales, true);
-          const allChannelData = getChannelData(yearSales, false);
-
-          const avgTicketAll = metrics.totalSales > 0
-            ? yearSales.reduce((sum, s) => sum + s.totalValue, 0) / metrics.totalSales
-            : 0;
-
-          const avgTicketClosed = metrics.closedSales > 0
-            ? metrics.totalRevenue / metrics.closedSales
-            : 0;
-
-          const totalBudget = yearSales.reduce((sum, s) => sum + s.totalValue, 0);
-
-          const cards = [
-            {
-              title: "Valor Total de Orçamentos",
-              value: formatCurrency(totalBudget),
-              icon: DollarSign,
-              color: "text-blue-500",
-              bgColor: "bg-blue-500/10",
-            },
-            {
-              title: "Receita Total",
-              value: formatCurrency(metrics.totalRevenue),
-              icon: DollarSign,
-              color: "text-success",
-              bgColor: "bg-success/10",
-            },
-            {
-              title: "Pipeline",
-              value: formatCurrency(metrics.pipelineValue),
-              icon: TrendingUp,
-              color: "text-primary",
-              bgColor: "bg-primary/10",
-            },
-            {
-              title: "Ticket Médio Orçamentos",
-              value: formatCurrency(avgTicketAll),
-              icon: Receipt,
-              color: "text-accent",
-              bgColor: "bg-accent/10",
-            },
-            {
-              title: "Ticket Médio Fechadas",
-              value: formatCurrency(avgTicketClosed),
-              icon: Target,
-              color: "text-success",
-              bgColor: "bg-success/10",
-            },
-            {
-              title: "Total de Vendas",
-              value: metrics.totalSales.toString(),
-              icon: Users,
-              color: "text-accent",
-              bgColor: "bg-accent/10",
-            },
-            {
-              title: "Fechadas",
-              value: metrics.closedSales.toString(),
-              icon: CheckCircle,
-              color: "text-success",
-              bgColor: "bg-success/10",
-            },
-            {
-              title: "Perdidas",
-              value: metrics.lostSales.toString(),
-              icon: XCircle,
-              color: "text-destructive",
-              bgColor: "bg-destructive/10",
-            },
-            {
-              title: "Conversão",
-              value: `${metrics.closedSales}/${metrics.totalSales} (${metrics.conversionRate}%)`,
-              icon: BarChart3,
-              color: "text-primary",
-              bgColor: "bg-primary/10",
-            },
-          ];
-
-          return (
-            <TabsContent key={year} value={year} className="space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
-                {cards.map((card) => (
-                  <Card
-                    key={card.title}
-                    className="border-none shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${card.bgColor}`}>
-                          <card.icon className={`h-4 w-4 ${card.color}`} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs text-muted-foreground truncate">
-                            {card.title}
-                          </p>
-                          <p className="text-lg font-bold tracking-tight">
-                            {card.value}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              {/* Yearly Chart */}
-              <Card className="border-none shadow-sm">
-                <CardContent className="p-6">
-                  <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
-                    Vendas por Mês ({year})
-                  </h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={yearlyChartData} barGap={4}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        stroke="hsl(var(--muted-foreground))"
-                        tickFormatter={(v) =>
-                          v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toString()
-                        }
-                      />
-                      <Tooltip
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "var(--radius)",
-                          fontSize: 12,
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="Fechado" fill="hsl(var(--kanban-fechado))" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Em Andamento" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Congelado" fill="hsl(var(--kanban-congelado))" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Pós Venda" fill="hsl(var(--kanban-pos_venda))" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Não Fechou" fill="hsl(var(--kanban-nao_fechou))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              {/* Monthly Drilldown - Optional but helpful */}
-              <div className="mt-8">
-                <h4 className="text-md font-medium mb-4">Detalhamento Mensal</h4>
-                <Tabs defaultValue={String(new Date().getMonth())} className="w-full">
-                  <TabsList className="w-full justify-start overflow-x-auto h-10 mb-4 bg-muted/30">
-                    {MONTH_NAMES.map((month, idx) => (
-                      <TabsTrigger key={month} value={String(idx)} className="text-xs">
-                        {month}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                  {MONTH_NAMES.map((month, idx) => {
-                    const monthSales = getMonthData(yearSales, idx);
-                    const monthMetrics = getMetrics(monthSales);
-                    const dailyData = getDailyData(monthSales, parseInt(year), idx);
-
-                    return (
-                      <TabsContent key={idx} value={String(idx)} className="space-y-4">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                          <Card className="p-3 border-none bg-success/5">
-                            <p className="text-xs text-muted-foreground">Receita</p>
-                            <p className="text-md font-bold text-success">{formatCurrency(monthMetrics.totalRevenue)}</p>
-                          </Card>
-                          <Card className="p-3 border-none bg-primary/5">
-                            <p className="text-xs text-muted-foreground">Vendas</p>
-                            <p className="text-md font-bold">{monthMetrics.totalSales}</p>
-                          </Card>
-                          <Card className="p-3 border-none bg-blue-500/5">
-                            <p className="text-xs text-muted-foreground">Fechadas</p>
-                            <p className="text-md font-bold">{monthMetrics.closedSales}</p>
-                          </Card>
-                          <Card className="p-3 border-none bg-accent/5">
-                            <p className="text-xs text-muted-foreground">Conversão</p>
-                            <p className="text-md font-bold">{monthMetrics.conversionRate}%</p>
-                          </Card>
-                        </div>
-                        <div className="h-[200px]">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={dailyData}>
-                              <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                              <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                              <Bar dataKey="Fechado" fill="hsl(var(--kanban-fechado))" />
-                              <Bar dataKey="Pós Venda" fill="hsl(var(--kanban-pos_venda))" />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </TabsContent>
-                    );
-                  })}
-                </Tabs>
-              </div>
-
-              {/* Channel Pie Charts Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-                {/* Closed Sales Chart */}
-                <Card className="border-none shadow-sm">
-                  <CardContent className="p-6">
-                    <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
-                      Vendas Fechadas por Canal ({year})
-                    </h3>
-                    {channelData.length > 0 ? (
-                      <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={channelData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={80}
-                              fill="#8884d8"
-                              paddingAngle={5}
-                              dataKey="value"
-                              label={({ name, percentage }) => `${name} (${percentage}%)`}
-                            >
-                              {channelData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              formatter={(value: number, name: string, props: any) => [`${value} Vendas`, props.payload.name]}
-                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            />
-                            <Legend />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    ) : (
-                      <p className="text-center text-muted-foreground py-8">
-                        Nenhuma venda fechada registrada neste ano.
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* All Leads Chart */}
-                <Card className="border-none shadow-sm">
-                  <CardContent className="p-6">
-                    <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
-                      Total de Orçamentos por Canal ({year})
-                    </h3>
-                    {allChannelData.length > 0 ? (
-                      <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={allChannelData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={80}
-                              fill="#82ca9d"
-                              paddingAngle={5}
-                              dataKey="value"
-                              label={({ name, percentage }) => `${name} (${percentage}%)`}
-                            >
-                              {allChannelData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              formatter={(value: number, name: string, props: any) => [`${value} Leads`, props.payload.name]}
-                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            />
-                            <Legend />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    ) : (
-                      <p className="text-center text-muted-foreground py-8">
-                        Nenhum orçamento registrado neste ano.
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          );
-        })}
-      </Tabs>
+          {MONTH_NAMES.map((month, index) => {
+            const monthSales = getFilteredSales(selectedYear, index);
+            const dailyData = getDailyData(monthSales, parseInt(selectedYear), index);
+            return (
+              <TabsContent key={month} value={String(index)}>
+                {renderDashboardContent(monthSales, `${month} ${selectedYear}`, dailyData, true)}
+              </TabsContent>
+            );
+          })}
+        </Tabs>
+      ) : (
+        <div className="mt-2">
+          {renderDashboardContent(getFilteredSales(selectedYear), selectedYear, getYearlyGraphData(selectedYear), false)}
+        </div>
+      )}
     </div>
   );
 };
