@@ -130,35 +130,49 @@ const MainLayout = () => {
                     ))}
                 </nav>
 
-                <div className="p-4 border-t border-border/10 shrink-0">
-                    <Button
-                        variant="ghost"
-                        className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 gap-3"
-                        onClick={handleLogout}
-                    >
-                        <LogOut className="h-5 w-5" />
-                        <span>Sair do Sistema</span>
-                    </Button>
-                </div>
             </aside>
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Mobile Header */}
-                <header className="h-16 border-b bg-card/80 backdrop-blur-md flex items-center px-4 lg:hidden sticky top-0 z-30">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setIsSidebarOpen(true)}
-                    >
-                        <Menu className="h-6 w-6" />
-                    </Button>
-                    <img src="/logo-bjl.png" alt="BJL Planejados" className="h-10 ml-4 w-auto object-contain" onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        target.nextElementSibling?.classList.remove('hidden');
-                    }} />
-                    <h1 className="ml-4 text-lg font-bold text-primary italic">BJL</h1>
+                {/* Header */}
+                <header className="h-16 border-b bg-card/80 backdrop-blur-md flex items-center justify-between px-4 sticky top-0 z-30">
+                    <div className="flex items-center">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="lg:hidden"
+                            onClick={() => setIsSidebarOpen(true)}
+                        >
+                            <Menu className="h-6 w-6" />
+                        </Button>
+                        <div className="lg:hidden flex items-center">
+                            <img src="/logo-bjl.png" alt="BJL Planejados" className="h-10 ml-4 w-auto object-contain" onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.nextElementSibling?.classList.remove('hidden');
+                            }} />
+                            <h1 className="ml-4 text-lg font-bold text-primary italic">BJL</h1>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <div className="hidden sm:flex flex-col items-end">
+                            <span className="text-sm font-semibold truncate max-w-[150px]">{userEmail?.split('@')[0]}</span>
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                                {role === 'admin' ? 'Administrador' : 'Funcionário'}
+                            </span>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-2 border border-destructive/20"
+                            onClick={handleLogout}
+                        >
+                            <LogOut className="h-4 w-4" />
+                            <span className="hidden sm:inline">Sair do Sistema</span>
+                        </Button>
+                    </div>
                 </header>
 
                 <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto bg-slate-50/30">
