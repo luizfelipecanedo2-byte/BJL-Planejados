@@ -12,6 +12,7 @@ const Estoque = () => {
     const [products, setProducts] = useState<Product[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
 
     useEffect(() => {
         fetchProducts();
@@ -138,6 +139,10 @@ const Estoque = () => {
         }
     };
 
+    const filteredProducts = showOnlyLowStock
+        ? products.filter(p => p.quantity < p.minStockLevel)
+        : products;
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -149,12 +154,22 @@ const Estoque = () => {
             </div>
 
             <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                     <CardTitle>Controle de Estoque</CardTitle>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant={showOnlyLowStock ? "destructive" : "outline"}
+                            size="sm"
+                            onClick={() => setShowOnlyLowStock(!showOnlyLowStock)}
+                            className="text-xs"
+                        >
+                            {showOnlyLowStock ? "Mostrando: Precisa Pedir" : "Filtrar: Precisa Pedir"}
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <ProductTable
-                        products={products}
+                        products={filteredProducts}
                         onEdit={handleEditProduct}
                         onDelete={handleDeleteProduct}
                     />
