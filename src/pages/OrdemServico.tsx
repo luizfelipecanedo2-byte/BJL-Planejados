@@ -36,7 +36,8 @@ const OrdemServico = () => {
                 status: o.status as any,
                 forecastDate: new Date(o.forecast_date + 'T12:00:00'),
                 completionDate: o.completion_date ? new Date(o.completion_date + 'T12:00:00') : undefined,
-                notes: o.notes
+                notes: o.notes,
+                attachments: o.attachments || []
             }));
 
             setOrders(mappedOrders);
@@ -85,7 +86,8 @@ const OrdemServico = () => {
                 status: orderData.status,
                 forecast_date: orderData.forecastDate.toISOString().split('T')[0],
                 completion_date: orderData.completionDate ? orderData.completionDate.toISOString().split('T')[0] : null,
-                notes: orderData.notes
+                notes: orderData.notes,
+                attachments: orderData.attachments || []
             };
 
             const { data, error } = await supabase
@@ -107,7 +109,8 @@ const OrdemServico = () => {
                     status: data.status as any,
                     forecastDate: new Date(data.forecast_date + 'T12:00:00'),
                     completionDate: data.completion_date ? new Date(data.completion_date + 'T12:00:00') : undefined,
-                    notes: data.notes
+                    notes: data.notes,
+                    attachments: data.attachments || []
                 };
                 setOrders([createdOrder, ...orders]);
             }
@@ -130,6 +133,7 @@ const OrdemServico = () => {
             if (updates.forecastDate) updateData.forecast_date = updates.forecastDate.toISOString().split('T')[0];
             if (updates.completionDate) updateData.completion_date = updates.completionDate.toISOString().split('T')[0];
             if (updates.notes !== undefined) updateData.notes = updates.notes;
+            if (updates.attachments !== undefined) updateData.attachments = updates.attachments;
 
             const { error } = await supabase
                 .from('service_orders')

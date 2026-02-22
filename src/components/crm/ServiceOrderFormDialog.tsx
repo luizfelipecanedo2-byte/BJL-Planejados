@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, File, Upload, X, ExternalLink, Loader2, Clipboard, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { Client } from "@/types/client";
@@ -40,7 +40,7 @@ import {
     TabsTrigger,
 } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, Clipboard } from "lucide-react";
+
 
 interface ServiceOrderFormDialogProps {
     open: boolean;
@@ -67,7 +67,9 @@ const ServiceOrderFormDialog = ({
         forecastDate: "",
         completionDate: "",
         notes: "",
+        attachments: [] as string[],
     });
+    const [isUploading, setIsUploading] = useState(false);
 
     const [clients, setClients] = useState<Client[]>([]);
     const [openClientSelect, setOpenClientSelect] = useState(false);
@@ -113,6 +115,7 @@ const ServiceOrderFormDialog = ({
                     ? new Date(editingOrder.completionDate).toISOString().split("T")[0]
                     : "",
                 notes: editingOrder.notes || "",
+                attachments: editingOrder.attachments || [],
             });
         } else {
             setForm({
@@ -125,6 +128,7 @@ const ServiceOrderFormDialog = ({
                 forecastDate: "",
                 completionDate: "",
                 notes: "",
+                attachments: [],
             });
         }
     }, [editingOrder, open]);
@@ -161,8 +165,41 @@ const ServiceOrderFormDialog = ({
         onOpenChange(false);
     };
 
-    const update = (field: string, value: string) => {
+    const update = (field: string, value: any) => {
         setForm((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setIsUploading(true);
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+            const filePath = `service_orders/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('attachments')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('attachments')
+                .getPublicUrl(filePath);
+
+            update("attachments", [...form.attachments, publicUrl]);
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            alert("Erro ao fazer upload do arquivo.");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const removeAttachment = (url: string) => {
+        update("attachments", form.attachments.filter(a => a !== url));
     };
 
     return (
@@ -175,7 +212,7 @@ const ServiceOrderFormDialog = ({
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <Tabs defaultValue="geral" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 mb-4">
+                        <TabsList className="grid w-full grid-cols-3 mb-4">
                             <TabsTrigger value="geral" className="gap-2">
                                 <Clipboard className="h-4 w-4" />
                                 Geral
@@ -183,6 +220,10 @@ const ServiceOrderFormDialog = ({
                             <TabsTrigger value="observacao" className="gap-2">
                                 <MessageSquare className="h-4 w-4" />
                                 Observações
+                            </TabsTrigger>
+                            <TabsTrigger value="arquivos" className="gap-2">
+                                <File className="h-4 w-4" />
+                                Arquivos
                             </TabsTrigger>
                         </TabsList>
 
@@ -329,6 +370,86 @@ const ServiceOrderFormDialog = ({
                                 <p className="text-xs text-muted-foreground italic">
                                     Use este espaço para detalhar o projeto, materiais ou qualquer instrução importante para a produção.
                                 </p>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="arquivos" className="space-y-4 pt-4">
+                            <div className="space-y-4">
+                                <div className="flex flex-col gap-2">
+                                    <Label>Anexar Projetos e Plano de Cortes</Label>
+                                    <Label htmlFor="file-upload" className="cursor-pointer">
+                                        <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
+                                            {isUploading ? (
+                                                <div className="flex flex-center gap-2">
+                                                    <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
+                                                    <span className="text-sm text-blue-600">Enviando...</span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <Upload className="h-8 w-8 text-blue-400 mb-2" />
+                                                    <span className="text-sm text-blue-600 font-medium">Clique para fazer upload</span>
+                                                    <span className="text-xs text-blue-400">PDF, Imagens, DXF, etc.</span>
+                                                </>
+                                            )}
+                                        </div>
+                                        <Input
+                                            id="file-upload"
+                                            type="file"
+                                            className="hidden"
+                                            onChange={handleFileUpload}
+                                            disabled={isUploading}
+                                        />
+                                    </Label>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-medium">Arquivos Anexados</h4>
+                                    {form.attachments.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground italic py-4 text-center border rounded-lg bg-muted/20">
+                                            Nenhum arquivo anexado ainda.
+                                        </p>
+                                    ) : (
+                                        <div className="grid gap-2">
+                                            {form.attachments.map((url, index) => (
+                                                <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100 group hover:border-blue-300 transition-colors">
+                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                        <div className="p-2 bg-blue-50 rounded text-blue-600">
+                                                            <File className="h-4 w-4" />
+                                                        </div>
+                                                        <div className="flex flex-col overflow-hidden">
+                                                            <span className="text-xs font-medium truncate max-w-[200px]">
+                                                                Arquivo {index + 1}
+                                                            </span>
+                                                            <span className="text-[10px] text-muted-foreground truncate">
+                                                                {url.split('/').pop()}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                            onClick={() => window.open(url, '_blank')}
+                                                        >
+                                                            <ExternalLink className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                            onClick={() => removeAttachment(url)}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </TabsContent>
                     </Tabs>

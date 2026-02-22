@@ -13,4 +13,5 @@ export interface ServiceOrder {
     forecastDate: Date;
     completionDate?: Date;
     notes?: string;
+    attachments?: string[];
 }
