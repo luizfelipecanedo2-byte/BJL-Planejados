@@ -925,45 +925,45 @@ const Financeiro = () => {
           </div>
 
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/20">
+            <Card className="bg-card/50 border-primary/20 hover:border-primary/50 transition-all">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Entrada (Mês)</CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-500" />
+                <CardTitle className="text-sm font-medium text-primary">Entrada (Mês)</CardTitle>
+                <TrendingUp className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{formatCurrency(currentSummary.entradaMes)}</div>
+                <div className="text-2xl font-bold text-primary">{formatCurrency(currentSummary.entradaMes)}</div>
                 <p className="text-xs text-muted-foreground">Recebido (Caixa)</p>
               </CardContent>
             </Card>
-            <Card className="bg-gradient-to-br from-red-50 to-white dark:from-red-950/20">
+            <Card className="bg-card/50 border-rose-500/20 hover:border-rose-500/50 transition-all">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Saída (Mês)</CardTitle>
-                <TrendingDown className="h-4 w-4 text-red-500" />
+                <CardTitle className="text-sm font-medium text-rose-400">Saída (Mês)</CardTitle>
+                <TrendingDown className="h-4 w-4 text-rose-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">{formatCurrency(currentSummary.saidaMes)}</div>
+                <div className="text-2xl font-bold text-rose-500">{formatCurrency(currentSummary.saidaMes)}</div>
                 <p className="text-xs text-muted-foreground">Pago (Caixa)</p>
               </CardContent>
             </Card>
-            <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20">
+            <Card className="bg-card/50 border-cyan-500/20 hover:border-cyan-500/50 transition-all">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Saldo (Mês)</CardTitle>
-                <DollarSign className="h-4 w-4 text-blue-500" />
+                <CardTitle className="text-sm font-medium text-cyan-400">Saldo (Mês)</CardTitle>
+                <DollarSign className="h-4 w-4 text-cyan-400" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${currentSummary.saldoMes >= 0 ? "text-blue-600" : "text-red-600"}`}>
+                <div className={`text-2xl font-bold ${currentSummary.saldoMes >= 0 ? "text-cyan-500" : "text-rose-500"}`}>
                   {formatCurrency(currentSummary.saldoMes)}
                 </div>
                 <p className="text-xs text-muted-foreground">Fluxo de Caixa</p>
               </CardContent>
             </Card>
-            <Card className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20">
+            <Card className="bg-card/50 border-indigo-500/20 hover:border-indigo-500/50 transition-all">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Saldo Acumulado</CardTitle>
-                <DollarSign className="h-4 w-4 text-purple-500" />
+                <CardTitle className="text-sm font-medium text-indigo-400">Saldo Acumulado</CardTitle>
+                <DollarSign className="h-4 w-4 text-indigo-400" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${currentSummary.saldoAtual >= 0 ? "text-purple-600" : "text-red-600"}`}>
+                <div className={`text-2xl font-bold ${currentSummary.saldoAtual >= 0 ? "text-indigo-500" : "text-rose-500"}`}>
                   {formatCurrency(currentSummary.saldoAtual)}
                 </div>
                 <p className="text-xs text-muted-foreground">Total histórico pago</p>
@@ -972,68 +972,68 @@ const Financeiro = () => {
           </div>
 
           <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-            <Card className="border-l-4 border-l-emerald-500 shadow-sm transition-all hover:shadow-md">
+            <Card className="bg-card/40 border-l-4 border-l-primary shadow-lg backdrop-blur-sm transition-all hover:scale-[1.02]">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="space-y-1">
-                  <CardTitle className="text-sm font-medium">Faturamento</CardTitle>
-                  <p className="text-lg font-bold text-emerald-600">{formatCurrency(currentSummary.receitaBrutaMes)}</p>
+                  <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-tighter">Faturamento</CardTitle>
+                  <p className="text-2xl font-black text-primary">{formatCurrency(currentSummary.receitaBrutaMes)}</p>
                 </div>
-                <TrendingUp className="h-5 w-5 text-emerald-500" />
+                <TrendingUp className="h-5 w-5 text-primary animate-pulse" />
               </CardHeader>
               <CardContent>
-                <div className="text-xs text-muted-foreground mb-4 font-medium uppercase tracking-wider">Visão por Competência</div>
+                <div className="text-[10px] text-primary/70 mb-4 font-bold uppercase tracking-widest bg-primary/10 w-fit px-2 py-0.5 rounded">Visão por Competência</div>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Já Recebido:</span>
-                    <span className="text-green-600 font-bold">{formatCurrency(currentSummary.entradaMes)}</span>
+                    <span className="text-emerald-400 font-bold">{formatCurrency(currentSummary.entradaMes)}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Ainda a Receber:</span>
-                    <span className="text-orange-600 font-bold">{formatCurrency(currentSummary.accountsReceivable)}</span>
+                    <span className="text-primary font-bold">{formatCurrency(currentSummary.accountsReceivable)}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-rose-500 shadow-sm transition-all hover:shadow-md">
+            <Card className="bg-card/40 border-l-4 border-l-rose-500 shadow-lg backdrop-blur-sm transition-all hover:scale-[1.02]">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="space-y-1">
-                  <CardTitle className="text-sm font-medium">Gastos</CardTitle>
-                  <p className="text-lg font-bold text-rose-600">{formatCurrency(currentSummary.gastosMes)}</p>
+                  <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-tighter">Gastos</CardTitle>
+                  <p className="text-2xl font-black text-rose-500">{formatCurrency(currentSummary.gastosMes)}</p>
                 </div>
                 <TrendingDown className="h-5 w-5 text-rose-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-xs text-muted-foreground mb-4 font-medium uppercase tracking-wider">Visão por Competência</div>
+                <div className="text-[10px] text-rose-500/70 mb-4 font-bold uppercase tracking-widest bg-rose-500/10 w-fit px-2 py-0.5 rounded">Visão por Competência</div>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Já Pago:</span>
-                    <span className="text-rose-600 font-bold">{formatCurrency(currentSummary.saidaMes)}</span>
+                    <span className="text-rose-400 font-bold">{formatCurrency(currentSummary.saidaMes)}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Ainda a Pagar:</span>
-                    <span className="text-red-600 font-bold">{formatCurrency(currentSummary.accountsPayable)}</span>
+                    <span className="text-rose-600 font-bold">{formatCurrency(currentSummary.accountsPayable)}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-indigo-500 shadow-sm transition-all hover:shadow-md">
+            <Card className="bg-card/40 border-l-4 border-l-cyan-500 shadow-lg backdrop-blur-sm transition-all hover:scale-[1.02]">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="space-y-1">
-                  <CardTitle className="text-sm font-medium">Resultado Projetado</CardTitle>
-                  <p className={`text-lg font-bold ${currentSummary.projectedBalance >= 0 ? "text-indigo-600" : "text-red-600"}`}>
+                  <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-tighter">Resultado Projetado</CardTitle>
+                  <p className={`text-2xl font-black ${currentSummary.projectedBalance >= 0 ? "text-cyan-400" : "text-rose-500"}`}>
                     {formatCurrency(currentSummary.projectedBalance)}
                   </p>
                 </div>
-                <DollarSign className="h-5 w-5 text-indigo-500" />
+                <DollarSign className="h-5 w-5 text-cyan-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-xs text-muted-foreground mb-4 font-medium uppercase tracking-wider">Pago + Pendente</div>
+                <div className="text-[10px] text-cyan-400/70 mb-4 font-bold uppercase tracking-widest bg-cyan-400/10 w-fit px-2 py-0.5 rounded">Pago + Pendente</div>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Lucro Contábil:</span>
-                    <span className={`font-bold ${currentSummary.resultadoMes >= 0 ? "text-indigo-600" : "text-red-600"}`}>
+                    <span className={`font-bold ${currentSummary.resultadoMes >= 0 ? "text-cyan-400" : "text-rose-500"}`}>
                       {formatCurrency(currentSummary.resultadoMes)}
                     </span>
                   </div>
@@ -1067,9 +1067,9 @@ const Financeiro = () => {
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       />
                       <Legend verticalAlign="top" height={36} />
-                      <Bar dataKey="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={30} />
-                      <Bar dataKey="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={30} />
-                      <Line type="monotone" dataKey="Saldo" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: "#3b82f6" }} activeDot={{ r: 6 }} />
+                      <Bar dataKey="Receitas" fill="#06b6d4" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                      <Bar dataKey="Despesas" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                      <Line type="monotone" dataKey="Saldo" stroke="#22d3ee" strokeWidth={3} dot={{ r: 4, fill: "#22d3ee" }} activeDot={{ r: 6 }} />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
@@ -1100,9 +1100,9 @@ const Financeiro = () => {
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       />
                       <Legend verticalAlign="top" height={36} />
-                      <Bar dataKey="A Receber" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={30} />
-                      <Bar dataKey="A Pagar" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={30} />
-                      <Line type="monotone" dataKey="Saldo" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                      <Bar dataKey="A Receber" fill="#22d3ee" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                      <Bar dataKey="A Pagar" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                      <Line type="monotone" dataKey="Saldo" stroke="#06b6d4" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
