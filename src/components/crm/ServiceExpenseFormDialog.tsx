@@ -33,7 +33,7 @@ const ServiceExpenseFormDialog = ({
         serviceValue: "",
     });
     const [items, setItems] = useState<ExpenseItem[]>([]);
-    const [newItem, setNewItem] = useState({ description: "", quantity: "1", unitValue: "" });
+    const [newItem, setNewItem] = useState({ description: "", unit: "un", quantity: "1", unitValue: "" });
 
     useEffect(() => {
         if (editingExpense) {
@@ -62,11 +62,12 @@ const ServiceExpenseFormDialog = ({
 
         setItems([...items, {
             description: newItem.description,
+            unit: newItem.unit,
             quantity: qty,
             unitValue: unitVal,
             totalValue: totalVal
         }]);
-        setNewItem({ description: "", quantity: "1", unitValue: "" });
+        setNewItem({ description: "", unit: "un", quantity: "1", unitValue: "" });
     };
 
     const handleRemoveItem = (index: number) => {
@@ -110,7 +111,7 @@ const ServiceExpenseFormDialog = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[750px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[850px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{editingExpense ? "Editar Gasto por Serviço" : "Novo Gasto por Serviço"}</DialogTitle>
                 </DialogHeader>
@@ -152,7 +153,7 @@ const ServiceExpenseFormDialog = ({
                         <Label className="text-base font-bold">Lista de Materiais / Gastos</Label>
 
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-                            <div className="sm:col-span-5 space-y-1">
+                            <div className="sm:col-span-4 space-y-1">
                                 <Label htmlFor="itemDesc" className="text-xs">Descrição do Material</Label>
                                 <Input
                                     id="itemDesc"
@@ -161,8 +162,17 @@ const ServiceExpenseFormDialog = ({
                                     onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
                                 />
                             </div>
+                            <div className="sm:col-span-1 space-y-1">
+                                <Label htmlFor="itemUnit" className="text-xs">Un.</Label>
+                                <Input
+                                    id="itemUnit"
+                                    placeholder="un"
+                                    value={newItem.unit}
+                                    onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
+                                />
+                            </div>
                             <div className="sm:col-span-2 space-y-1">
-                                <Label htmlFor="itemQty" className="text-xs">Qtd / Un.</Label>
+                                <Label htmlFor="itemQty" className="text-xs">Qtd.</Label>
                                 <Input
                                     id="itemQty"
                                     type="number"
@@ -197,7 +207,8 @@ const ServiceExpenseFormDialog = ({
                         <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
                             {items.length > 0 ? (
                                 <div className="hidden sm:grid grid-cols-12 gap-2 px-2 text-xs font-bold text-muted-foreground mb-1">
-                                    <div className="col-span-5">Descrição</div>
+                                    <div className="col-span-4">Descrição</div>
+                                    <div className="col-span-1 text-center">Un.</div>
                                     <div className="col-span-2 text-center">Qtd.</div>
                                     <div className="col-span-2 text-right">Valor Un.</div>
                                     <div className="col-span-2 text-right">Total</div>
@@ -207,7 +218,8 @@ const ServiceExpenseFormDialog = ({
 
                             {items.map((item, index) => (
                                 <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-background p-2 rounded border group">
-                                    <div className="col-span-5 text-sm font-medium">{item.description}</div>
+                                    <div className="col-span-4 text-sm font-medium">{item.description}</div>
+                                    <div className="col-span-1 text-center text-sm text-muted-foreground">{item.unit}</div>
                                     <div className="col-span-2 text-center text-sm">{item.quantity}</div>
                                     <div className="col-span-2 text-right text-sm">{formatCurrency(item.unitValue)}</div>
                                     <div className="col-span-2 text-right text-sm font-bold text-red-600">{formatCurrency(item.totalValue)}</div>

@@ -1,6 +1,7 @@
 
 export interface ExpenseItem {
     description: string;
+    unit: string;
     quantity: number;
     unitValue: number;
     totalValue: number;
