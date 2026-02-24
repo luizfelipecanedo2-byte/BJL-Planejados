@@ -40,17 +40,22 @@ import {
 } from "recharts";
 
 import { ServiceOrder } from "@/types/serviceOrder";
+import { ServiceExpense } from "@/types/serviceExpense";
+import ServiceExpenseFormDialog from "@/components/crm/ServiceExpenseFormDialog";
 import { supabase } from "@/lib/supabase";
+import { Pencil, Trash2 } from "lucide-react";
 
 const Financeiro = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
+  const [serviceExpenses, setServiceExpenses] = useState<ServiceExpense[]>([]);
 
   useEffect(() => {
     fetchTransactions();
     fetchAssets();
     fetchServiceOrders();
+    fetchServiceExpenses();
   }, []);
 
   const fetchTransactions = async () => {
@@ -140,11 +145,39 @@ const Financeiro = () => {
       console.error('Error fetching service orders:', error);
     }
   };
+
+  const fetchServiceExpenses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('service_expenses')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const mappedExpenses: ServiceExpense[] = (data || []).map(e => ({
+        id: e.id,
+        clientName: e.client_name,
+        environment: e.environment,
+        serviceValue: Number(e.service_value),
+        spentValue: Number(e.spent_value),
+        createdAt: new Date(e.created_at)
+      }));
+
+      setServiceExpenses(mappedExpenses);
+    } catch (error) {
+      console.error('Error fetching service expenses:', error);
+      toast.error("Erro ao carregar gastos por serviços.");
+    }
+  };
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+
+  const [isServiceExpenseDialogOpen, setIsServiceExpenseDialogOpen] = useState(false);
+  const [editingServiceExpense, setEditingServiceExpense] = useState<ServiceExpense | null>(null);
 
   // Filtros
   const [searchTerm, setSearchTerm] = useState("");
@@ -227,50 +260,6 @@ const Financeiro = () => {
       days
     };
   }, [reconciliationData, currentDateReconciliation]);
-
-  const serviceExpensesData = useMemo(() => {
-    const allOrderNumbers = Array.from(new Set([
-      ...serviceOrders.map(os => os.ticketNumber),
-      ...transactions.map(t => t.orderService).filter(Boolean)
-    ]));
-
-    return allOrderNumbers.map(ticket => {
-      const os = serviceOrders.find(o => o.ticketNumber === ticket);
-      const relatedTransactions = transactions.filter(t => t.orderService === ticket);
-
-      const incomeTotal = relatedTransactions
-        .filter(t => t.type === 'income')
-        .reduce((acc, t) => acc + t.amount, 0);
-
-      const expenseTotal = relatedTransactions
-        .filter(t => t.type === 'expense')
-        .reduce((acc, t) => acc + t.amount, 0);
-
-      const grossProfit = incomeTotal - expenseTotal;
-
-      // Tenta encontrar o "Ambiente" (action) e "Cliente"
-      let clientName = os ? os.client : "";
-      let environment = os ? os.action : "";
-
-      if (!clientName || !environment) {
-        // Fallback para transações se OS não encontrada ou incompleta
-        const firstTrans = relatedTransactions[0];
-        if (firstTrans) {
-          if (!clientName) clientName = firstTrans.contact;
-          if (!environment) environment = firstTrans.service || firstTrans.description;
-        }
-      }
-
-      return {
-        ticketNumber: ticket || "",
-        clientName,
-        environment,
-        serviceValue: incomeTotal,
-        spentValue: expenseTotal,
-        grossProfit: grossProfit
-      };
-    }).filter(item => item.serviceValue > 0 || item.spentValue > 0);
-  }, [serviceOrders, transactions]);
 
   const handlePrevMonth = () => {
     setCurrentDateReconciliation(new Date(currentDateReconciliation.getFullYear(), currentDateReconciliation.getMonth() - 1, 1));
@@ -780,6 +769,87 @@ const Financeiro = () => {
     } catch (error) {
       console.error('Error updating asset:', error);
       toast.error("Erro ao atualizar patrimônio.");
+    }
+  };
+
+  // Service Expense Handlers
+  const handleNewServiceExpense = () => {
+    setEditingServiceExpense(null);
+    setIsServiceExpenseDialogOpen(true);
+  };
+
+  const handleEditServiceExpense = (expense: ServiceExpense) => {
+    setEditingServiceExpense(expense);
+    setIsServiceExpenseDialogOpen(true);
+  };
+
+  const handleServiceExpenseSubmit = async (data: Omit<ServiceExpense, "id" | "createdAt">) => {
+    try {
+      const newExpense = {
+        client_name: data.clientName,
+        environment: data.environment,
+        service_value: data.serviceValue,
+        spent_value: data.spentValue,
+      };
+
+      const { data: insertedData, error } = await supabase
+        .from('service_expenses')
+        .insert([newExpense])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const createdExpense: ServiceExpense = {
+        id: insertedData.id,
+        clientName: insertedData.client_name,
+        environment: insertedData.environment,
+        serviceValue: Number(insertedData.service_value),
+        spentValue: Number(insertedData.spent_value),
+        createdAt: new Date(insertedData.created_at)
+      };
+
+      setServiceExpenses([createdExpense, ...serviceExpenses]);
+      toast.success("Gasto por serviço adicionado!");
+    } catch (error) {
+      console.error('Error adding service expense:', error);
+      toast.error("Erro ao adicionar gasto.");
+    }
+  };
+
+  const handleServiceExpenseUpdate = async (id: string, updates: Partial<ServiceExpense>) => {
+    try {
+      const updateData: any = {};
+      if (updates.clientName) updateData.client_name = updates.clientName;
+      if (updates.environment) updateData.environment = updates.environment;
+      if (updates.serviceValue !== undefined) updateData.service_value = updates.serviceValue;
+      if (updates.spentValue !== undefined) updateData.spent_value = updates.spentValue;
+
+      const { error } = await supabase
+        .from('service_expenses')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setServiceExpenses(serviceExpenses.map(e => e.id === id ? { ...e, ...updates } : e));
+      toast.success("Gasto por serviço atualizado!");
+    } catch (error) {
+      console.error('Error updating service expense:', error);
+      toast.error("Erro ao atualizar gasto.");
+    }
+  };
+
+  const handleDeleteServiceExpense = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir?")) return;
+    try {
+      const { error } = await supabase.from('service_expenses').delete().eq('id', id);
+      if (error) throw error;
+      setServiceExpenses(serviceExpenses.filter(e => e.id !== id));
+      toast.success("Gasto removido!");
+    } catch (error) {
+      console.error('Error deleting service expense:', error);
+      toast.error("Erro ao remover gasto.");
     }
   };
 
@@ -1353,53 +1423,70 @@ const Financeiro = () => {
 
 
         <TabsContent value="gastos_servicos" className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={handleNewServiceExpense} size="sm" className="gap-1.5 shadow-lg">
+              <Plus className="h-4 w-4" />
+              Novo Gasto por Serviço
+            </Button>
+          </div>
           <Card>
             <CardHeader>
-              <CardTitle>Gastos por Serviços</CardTitle>
+              <CardTitle>Gastos por Serviços (Adição Manual)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nº OS</TableHead>
                       <TableHead>Nome do Cliente</TableHead>
                       <TableHead>Ambiente</TableHead>
                       <TableHead className="text-right">Valor do Serviço</TableHead>
                       <TableHead className="text-right">Valor Gasto</TableHead>
                       <TableHead className="text-right">Lucro Bruto</TableHead>
                       <TableHead className="text-right">Margem (%)</TableHead>
+                      <TableHead className="w-[100px] text-center">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {serviceExpensesData.length === 0 ? (
+                    {serviceExpenses.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center text-muted-foreground h-24">
-                          Nenhum serviço com movimentação financeira encontrado.
+                          Nenhum gasto por serviço cadastrado manualmente.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      serviceExpensesData.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="font-mono text-xs">{item.ticketNumber}</TableCell>
-                          <TableCell className="font-medium">{item.clientName}</TableCell>
-                          <TableCell>{item.environment}</TableCell>
-                          <TableCell className="text-right text-green-600 font-medium">
-                            {formatCurrency(item.serviceValue)}
-                          </TableCell>
-                          <TableCell className="text-right text-red-600">
-                            {formatCurrency(item.spentValue)}
-                          </TableCell>
-                          <TableCell className={`text-right font-bold ${item.grossProfit >= 0 ? "text-blue-600" : "text-red-600"}`}>
-                            {formatCurrency(item.grossProfit)}
-                          </TableCell>
-                          <TableCell className="text-right text-xs text-muted-foreground">
-                            {item.serviceValue > 0
-                              ? `${((item.grossProfit / item.serviceValue) * 100).toFixed(1)}%`
-                              : "0%"}
-                          </TableCell>
-                        </TableRow>
-                      ))
+                      serviceExpenses.map((expense) => {
+                        const grossProfit = expense.serviceValue - expense.spentValue;
+                        const margin = expense.serviceValue > 0 ? (grossProfit / expense.serviceValue) * 100 : 0;
+                        return (
+                          <TableRow key={expense.id}>
+                            <TableCell className="font-medium">{expense.clientName}</TableCell>
+                            <TableCell>{expense.environment}</TableCell>
+                            <TableCell className="text-right text-green-600 font-medium">
+                              {formatCurrency(expense.serviceValue)}
+                            </TableCell>
+                            <TableCell className="text-right text-red-600">
+                              {formatCurrency(expense.spentValue)}
+                            </TableCell>
+                            <TableCell className={`text-right font-bold ${grossProfit >= 0 ? "text-blue-600" : "text-red-600"}`}>
+                              {formatCurrency(grossProfit)}
+                            </TableCell>
+                            <TableCell className="text-right text-xs text-muted-foreground">
+                              {margin.toFixed(1)}%
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex justify-center gap-2">
+                                <Button variant="ghost" size="icon" onClick={() => handleEditServiceExpense(expense)} className="h-8 w-8 text-blue-600">
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleDeleteServiceExpense(expense.id)} className="h-8 w-8 text-red-600">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
@@ -1601,6 +1688,14 @@ const Financeiro = () => {
         onSubmit={handleAssetSubmit}
         onUpdate={handleAssetUpdate}
         editingAsset={editingAsset}
+      />
+
+      <ServiceExpenseFormDialog
+        open={isServiceExpenseDialogOpen}
+        onOpenChange={setIsServiceExpenseDialogOpen}
+        onSubmit={handleServiceExpenseSubmit}
+        onUpdate={handleServiceExpenseUpdate}
+        editingExpense={editingServiceExpense}
       />
     </div >
   );
