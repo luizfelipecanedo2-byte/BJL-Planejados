@@ -228,6 +228,50 @@ const Financeiro = () => {
     };
   }, [reconciliationData, currentDateReconciliation]);
 
+  const serviceExpensesData = useMemo(() => {
+    const allOrderNumbers = Array.from(new Set([
+      ...serviceOrders.map(os => os.ticketNumber),
+      ...transactions.map(t => t.orderService).filter(Boolean)
+    ]));
+
+    return allOrderNumbers.map(ticket => {
+      const os = serviceOrders.find(o => o.ticketNumber === ticket);
+      const relatedTransactions = transactions.filter(t => t.orderService === ticket);
+
+      const incomeTotal = relatedTransactions
+        .filter(t => t.type === 'income')
+        .reduce((acc, t) => acc + t.amount, 0);
+
+      const expenseTotal = relatedTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((acc, t) => acc + t.amount, 0);
+
+      const grossProfit = incomeTotal - expenseTotal;
+
+      // Tenta encontrar o "Ambiente" (action) e "Cliente"
+      let clientName = os ? os.client : "";
+      let environment = os ? os.action : "";
+
+      if (!clientName || !environment) {
+        // Fallback para transações se OS não encontrada ou incompleta
+        const firstTrans = relatedTransactions[0];
+        if (firstTrans) {
+          if (!clientName) clientName = firstTrans.contact;
+          if (!environment) environment = firstTrans.service || firstTrans.description;
+        }
+      }
+
+      return {
+        ticketNumber: ticket || "",
+        clientName,
+        environment,
+        serviceValue: incomeTotal,
+        spentValue: expenseTotal,
+        grossProfit: grossProfit
+      };
+    }).filter(item => item.serviceValue > 0 || item.spentValue > 0);
+  }, [serviceOrders, transactions]);
+
   const handlePrevMonth = () => {
     setCurrentDateReconciliation(new Date(currentDateReconciliation.getFullYear(), currentDateReconciliation.getMonth() - 1, 1));
   };
@@ -750,6 +794,7 @@ const Financeiro = () => {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
           <TabsTrigger value="dre">DRE</TabsTrigger>
+          <TabsTrigger value="gastos_servicos">Gastos por Serviços</TabsTrigger>
           <TabsTrigger value="conciliacao">Conciliação Bancária</TabsTrigger>
           <TabsTrigger value="patrimonio">Patrimônio</TabsTrigger>
         </TabsList>
@@ -1306,6 +1351,62 @@ const Financeiro = () => {
           </Card>
         </TabsContent>
 
+
+        <TabsContent value="gastos_servicos" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gastos por Serviços</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nº OS</TableHead>
+                      <TableHead>Nome do Cliente</TableHead>
+                      <TableHead>Ambiente</TableHead>
+                      <TableHead className="text-right">Valor do Serviço</TableHead>
+                      <TableHead className="text-right">Valor Gasto</TableHead>
+                      <TableHead className="text-right">Lucro Bruto</TableHead>
+                      <TableHead className="text-right">Margem (%)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {serviceExpensesData.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground h-24">
+                          Nenhum serviço com movimentação financeira encontrado.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      serviceExpensesData.map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-mono text-xs">{item.ticketNumber}</TableCell>
+                          <TableCell className="font-medium">{item.clientName}</TableCell>
+                          <TableCell>{item.environment}</TableCell>
+                          <TableCell className="text-right text-green-600 font-medium">
+                            {formatCurrency(item.serviceValue)}
+                          </TableCell>
+                          <TableCell className="text-right text-red-600">
+                            {formatCurrency(item.spentValue)}
+                          </TableCell>
+                          <TableCell className={`text-right font-bold ${item.grossProfit >= 0 ? "text-blue-600" : "text-red-600"}`}>
+                            {formatCurrency(item.grossProfit)}
+                          </TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">
+                            {item.serviceValue > 0
+                              ? `${((item.grossProfit / item.serviceValue) * 100).toFixed(1)}%`
+                              : "0%"}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="conciliacao" className="space-y-4">
           <div className="flex flex-col gap-4">
