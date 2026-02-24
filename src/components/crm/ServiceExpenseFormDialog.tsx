@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ServiceExpense, ExpenseItem } from "@/types/serviceExpense";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
 
 interface ServiceExpenseFormDialogProps {
     open: boolean;
@@ -34,6 +34,7 @@ const ServiceExpenseFormDialog = ({
     });
     const [items, setItems] = useState<ExpenseItem[]>([]);
     const [newItem, setNewItem] = useState({ description: "", unit: "un", quantity: "1", unitValue: "" });
+    const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
 
     useEffect(() => {
         if (editingExpense) {
@@ -60,13 +61,39 @@ const ServiceExpenseFormDialog = ({
         const unitVal = parseFloat(newItem.unitValue) || 0;
         const totalVal = qty * unitVal;
 
-        setItems([...items, {
+        const itemData: ExpenseItem = {
             description: newItem.description,
             unit: newItem.unit,
             quantity: qty,
             unitValue: unitVal,
             totalValue: totalVal
-        }]);
+        };
+
+        if (editingItemIndex !== null) {
+            const newItems = [...items];
+            newItems[editingItemIndex] = itemData;
+            setItems(newItems);
+            setEditingItemIndex(null);
+        } else {
+            setItems([...items, itemData]);
+        }
+
+        setNewItem({ description: "", unit: "un", quantity: "1", unitValue: "" });
+    };
+
+    const handleEditItem = (index: number) => {
+        const item = items[index];
+        setNewItem({
+            description: item.description,
+            unit: item.unit,
+            quantity: item.quantity.toString(),
+            unitValue: item.unitValue.toString()
+        });
+        setEditingItemIndex(index);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingItemIndex(null);
         setNewItem({ description: "", unit: "un", quantity: "1", unitValue: "" });
     };
 
@@ -199,9 +226,20 @@ const ServiceExpenseFormDialog = ({
                                     {formatCurrency((parseFloat(newItem.quantity) || 0) * (parseFloat(newItem.unitValue) || 0))}
                                 </div>
                             </div>
-                            <Button type="button" onClick={handleAddItem} className="sm:col-span-1">
-                                <Plus className="h-4 w-4" />
-                            </Button>
+                            <div className="sm:col-span-1 flex gap-1">
+                                <Button
+                                    type="button"
+                                    onClick={handleAddItem}
+                                    className={`w-full ${editingItemIndex !== null ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                                >
+                                    {editingItemIndex !== null ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                </Button>
+                                {editingItemIndex !== null && (
+                                    <Button type="button" onClick={handleCancelEdit} variant="outline" className="px-2">
+                                        <X className="h-4 w-4 text-red-500" />
+                                    </Button>
+                                )}
+                            </div>
                         </div>
 
                         <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
@@ -217,21 +255,33 @@ const ServiceExpenseFormDialog = ({
                             ) : null}
 
                             {items.map((item, index) => (
-                                <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-background p-2 rounded border group">
+                                <div
+                                    key={index}
+                                    className={`grid grid-cols-1 sm:grid-cols-12 gap-2 items-center p-2 rounded border group transition-colors ${editingItemIndex === index ? 'bg-green-50 border-green-200' : 'bg-background'}`}
+                                >
                                     <div className="col-span-4 text-sm font-medium">{item.description}</div>
                                     <div className="col-span-1 text-center text-sm text-muted-foreground">{item.unit}</div>
                                     <div className="col-span-2 text-center text-sm">{item.quantity}</div>
                                     <div className="col-span-2 text-right text-sm">{formatCurrency(item.unitValue)}</div>
                                     <div className="col-span-2 text-right text-sm font-bold text-red-600">{formatCurrency(item.totalValue)}</div>
-                                    <div className="col-span-1 flex justify-end">
+                                    <div className="col-span-1 flex justify-end gap-1">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleEditItem(index)}
+                                            className="h-8 w-8 text-blue-600 sm:opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleRemoveItem(index)}
-                                            className="h-8 w-8 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="h-8 w-8 text-red-500 sm:opacity-0 group-hover:opacity-100 transition-opacity"
                                         >
-                                            <Trash2 className="h-4 w-4" />
+                                            <Trash2 className="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
                                 </div>
