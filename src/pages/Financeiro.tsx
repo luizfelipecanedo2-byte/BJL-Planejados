@@ -191,6 +191,7 @@ const Financeiro = () => {
   // Dashboard State
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [selectedDREYear, setSelectedDREYear] = useState<string>(new Date().getFullYear().toString());
+  const [selectedDashMonth, setSelectedDashMonth] = useState<number>(new Date().getMonth());
 
   // Conciliation State
   const [selectedAccount, setSelectedAccount] = useState<string>("banco_itau");
@@ -521,13 +522,12 @@ const Financeiro = () => {
 
   // Current Month Summary Calculation
   const currentSummary = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+    const currentMonth = selectedDashMonth;
+    const currentYear = parseInt(selectedYear);
 
-    // Transactions in the current calendar month
+    // Transactions in the current selected month
     const currentMonthTransactions = transactions.filter(t => {
-      const date = new Date(t.paymentDate || t.dueDate); // Fallback to dueDate if date is missing
+      const date = new Date(t.paymentDate || t.dueDate);
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     });
 
@@ -545,7 +545,6 @@ const Financeiro = () => {
     const saldoMes = entradaMes - saidaMes;
 
     // Saldo Atual (Total Accumulated Balance - All Time)
-    // Assuming initial balance is 0 or just summing all historical paid transactions
     const saldoAtual = transactions
       .filter(t => t.status === 'paid')
       .reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
@@ -569,6 +568,21 @@ const Financeiro = () => {
     // Resultado no Mês (Accrual Result)
     const resultadoMes = receitaBrutaMes - gastosMes;
 
+    // Accounts Payable (Despesas Pendentes)
+    const accountsPayable = currentMonthTransactions
+      .filter(t => t.type === 'expense' && t.status === 'pending')
+      .reduce((acc, t) => acc + t.amount, 0);
+
+    // Accounts Receivable (Receitas Pendentes)
+    const accountsReceivable = currentMonthTransactions
+      .filter(t => t.type === 'income' && t.status === 'pending')
+      .reduce((acc, t) => acc + t.amount, 0);
+
+    // Paid Expenses (Already Saída no Mês)
+    // Received Income (Already Entrada no Mês)
+
+    const projectedBalance = (entradaMes + accountsReceivable) - (saidaMes + accountsPayable);
+
     return {
       entradaMes,
       saidaMes,
@@ -576,9 +590,12 @@ const Financeiro = () => {
       saldoAtual,
       receitaBrutaMes,
       gastosMes,
-      resultadoMes
+      resultadoMes,
+      accountsPayable,
+      accountsReceivable,
+      projectedBalance
     };
-  }, [transactions]);
+  }, [transactions, selectedDashMonth, selectedYear]);
 
 
   const formatCurrency = (value: number) => {
@@ -874,25 +891,43 @@ const Financeiro = () => {
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-bold tracking-tight">Visão Geral</h3>
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Ano" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="2024">2024</SelectItem>
-                <SelectItem value="2025">2025</SelectItem>
-                <SelectItem value="2026">2026</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-4 bg-muted/30 p-4 rounded-xl border border-border/50">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="text-2xl font-bold tracking-tight">Visão Geral</h3>
+                <p className="text-sm text-muted-foreground">Selecione o período para análise</p>
+              </div>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-[120px] bg-background">
+                  <SelectValue placeholder="Ano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2024">2024</SelectItem>
+                  <SelectItem value="2025">2025</SelectItem>
+                  <SelectItem value="2026">2026</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Tabs value={String(selectedDashMonth)} onValueChange={(v) => setSelectedDashMonth(parseInt(v))} className="w-full">
+              <TabsList className="w-full justify-start overflow-x-auto h-12 bg-background/50 p-1">
+                {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"].map((month, index) => (
+                  <TabsTrigger
+                    key={month}
+                    value={String(index)}
+                    className="flex-1 sm:flex-none min-w-[60px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                  >
+                    {month}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
 
-          {/* Summary Cards Grid */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Entrada no Mês</CardTitle>
+                <CardTitle className="text-sm font-medium">Entrada (Mês)</CardTitle>
                 <TrendingUp className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
@@ -900,9 +935,9 @@ const Financeiro = () => {
                 <p className="text-xs text-muted-foreground">Recebido (Caixa)</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="bg-gradient-to-br from-red-50 to-white dark:from-red-950/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Saída no Mês</CardTitle>
+                <CardTitle className="text-sm font-medium">Saída (Mês)</CardTitle>
                 <TrendingDown className="h-4 w-4 text-red-500" />
               </CardHeader>
               <CardContent>
@@ -910,9 +945,9 @@ const Financeiro = () => {
                 <p className="text-xs text-muted-foreground">Pago (Caixa)</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Saldo no Mês</CardTitle>
+                <CardTitle className="text-sm font-medium">Saldo (Mês)</CardTitle>
                 <DollarSign className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
@@ -922,199 +957,162 @@ const Financeiro = () => {
                 <p className="text-xs text-muted-foreground">Fluxo de Caixa</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Saldo Atual</CardTitle>
+                <CardTitle className="text-sm font-medium">Saldo Acumulado</CardTitle>
                 <DollarSign className="h-4 w-4 text-purple-500" />
               </CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${currentSummary.saldoAtual >= 0 ? "text-purple-600" : "text-red-600"}`}>
                   {formatCurrency(currentSummary.saldoAtual)}
                 </div>
-                <p className="text-xs text-muted-foreground">Acumulado Total</p>
+                <p className="text-xs text-muted-foreground">Total histórico pago</p>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+            <Card className="border-l-4 border-l-emerald-500 shadow-sm transition-all hover:shadow-md">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Receita Bruta (Mês)</CardTitle>
-                <TrendingUp className="h-4 w-4 text-emerald-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-emerald-600">{formatCurrency(currentSummary.receitaBrutaMes)}</div>
-                <p className="text-xs text-muted-foreground">Competência (Faturado)</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Gastos (Mês)</CardTitle>
-                <TrendingDown className="h-4 w-4 text-rose-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-rose-600">{formatCurrency(currentSummary.gastosMes)}</div>
-                <p className="text-xs text-muted-foreground">Competência (Incorrido)</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Resultado (Mês)</CardTitle>
-                <DollarSign className="h-4 w-4 text-indigo-500" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${currentSummary.resultadoMes >= 0 ? "text-indigo-600" : "text-red-600"}`}>
-                  {formatCurrency(currentSummary.resultadoMes)}
+                <div className="space-y-1">
+                  <CardTitle className="text-sm font-medium">Faturamento</CardTitle>
+                  <p className="text-lg font-bold text-emerald-600">{formatCurrency(currentSummary.receitaBrutaMes)}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">Lucro/Prejuízo Contábil</p>
+                <TrendingUp className="h-5 w-5 text-emerald-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xs text-muted-foreground mb-4 font-medium uppercase tracking-wider">Visão por Competência</div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Já Recebido:</span>
+                    <span className="text-green-600 font-bold">{formatCurrency(currentSummary.entradaMes)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Ainda a Receber:</span>
+                    <span className="text-orange-600 font-bold">{formatCurrency(currentSummary.accountsReceivable)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-rose-500 shadow-sm transition-all hover:shadow-md">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="space-y-1">
+                  <CardTitle className="text-sm font-medium">Gastos</CardTitle>
+                  <p className="text-lg font-bold text-rose-600">{formatCurrency(currentSummary.gastosMes)}</p>
+                </div>
+                <TrendingDown className="h-5 w-5 text-rose-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xs text-muted-foreground mb-4 font-medium uppercase tracking-wider">Visão por Competência</div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Já Pago:</span>
+                    <span className="text-rose-600 font-bold">{formatCurrency(currentSummary.saidaMes)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Ainda a Pagar:</span>
+                    <span className="text-red-600 font-bold">{formatCurrency(currentSummary.accountsPayable)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-indigo-500 shadow-sm transition-all hover:shadow-md">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="space-y-1">
+                  <CardTitle className="text-sm font-medium">Resultado Projetado</CardTitle>
+                  <p className={`text-lg font-bold ${currentSummary.projectedBalance >= 0 ? "text-indigo-600" : "text-red-600"}`}>
+                    {formatCurrency(currentSummary.projectedBalance)}
+                  </p>
+                </div>
+                <DollarSign className="h-5 w-5 text-indigo-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xs text-muted-foreground mb-4 font-medium uppercase tracking-wider">Pago + Pendente</div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Lucro Contábil:</span>
+                    <span className={`font-bold ${currentSummary.resultadoMes >= 0 ? "text-indigo-600" : "text-red-600"}`}>
+                      {formatCurrency(currentSummary.resultadoMes)}
+                    </span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
 
+          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 mt-6">
+            <Card className="shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Balanço Anual ({selectedYear})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pl-2">
+                <div className="h-[350px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                      <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) => `R$${value >= 1000 ? (value / 1000) + 'k' : value}`}
+                      />
+                      <Tooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Legend verticalAlign="top" height={36} />
+                      <Bar dataKey="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                      <Bar dataKey="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                      <Line type="monotone" dataKey="Saldo" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: "#3b82f6" }} activeDot={{ r: 6 }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
 
+            <Card className="shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-orange-500" />
+                  Previsão Financeira ({selectedYear})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pl-2">
+                <div className="h-[350px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={dashboardChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                      <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) => `R$${value >= 1000 ? (value / 1000) + 'k' : value}`}
+                      />
+                      <Tooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Legend verticalAlign="top" height={36} />
+                      <Bar dataKey="A Receber" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                      <Bar dataKey="A Pagar" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                      <Line type="monotone" dataKey="Saldo" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card className="col-span-4">
+          <Card className="shadow-md border-none bg-muted/20">
             <CardHeader>
-              <CardTitle>Balanço Anual</CardTitle>
-            </CardHeader>
-            <CardContent className="pl-2">
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => `R$${value}`}
-                    />
-                    <Tooltip
-                      formatter={(value: number) => formatCurrency(value)}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Legend />
-                    <Bar dataKey="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                    <Bar dataKey="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                    <Line type="monotone" dataKey="Saldo" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Tabs defaultValue={String(new Date().getMonth())} className="w-full">
-            <TabsList className="w-full justify-start overflow-x-auto h-12">
-              {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"].map((month, index) => (
-                <TabsTrigger key={month} value={String(index)} className="min-w-[50px]">{month}</TabsTrigger>
-              ))}
-            </TabsList>
-
-            {Array.from({ length: 12 }).map((_, index) => {
-              // Calculate metrics based on DUE DATE (Data de Vencimento)
-              const currentYear = parseInt(selectedYear);
-              const monthTransactions = transactions.filter(t => {
-                const date = new Date(t.dueDate); // Changed from competenceDate to dueDate
-                return date.getMonth() === index && date.getFullYear() === currentYear;
-              });
-
-              // Accounts Payable (Despesas Pendentes)
-              const accountsPayable = monthTransactions
-                .filter(t => t.type === 'expense' && t.status === 'pending')
-                .reduce((acc, t) => acc + t.amount, 0);
-
-              // Accounts Receivable (Receitas Pendentes)
-              const accountsReceivable = monthTransactions
-                .filter(t => t.type === 'income' && t.status === 'pending')
-                .reduce((acc, t) => acc + t.amount, 0);
-
-              // Paid Expenses (Despesas Pagas)
-              const paidExpenses = monthTransactions
-                .filter(t => t.type === 'expense' && t.status === 'paid')
-                .reduce((acc, t) => acc + t.amount, 0);
-
-              // Received Income (Receitas Recebidas)
-              const receivedIncome = monthTransactions
-                .filter(t => t.type === 'income' && t.status === 'paid')
-                .reduce((acc, t) => acc + t.amount, 0);
-
-              const projectedBalance = (receivedIncome + accountsReceivable) - (paidExpenses + accountsPayable);
-
-              return (
-                <TabsContent key={index} value={String(index)} className="space-y-4 pt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">A Receber</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-orange-500" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold text-orange-600">{formatCurrency(accountsReceivable)}</div>
-                        <p className="text-xs text-muted-foreground">Recebido: {formatCurrency(receivedIncome)}</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">A Pagar</CardTitle>
-                        <TrendingDown className="h-4 w-4 text-red-500" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold text-red-600">{formatCurrency(accountsPayable)}</div>
-                        <p className="text-xs text-muted-foreground">Pago: {formatCurrency(paidExpenses)}</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Balanço do Mês</CardTitle>
-                        <DollarSign className="h-4 w-4 text-blue-500" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className={`text-2xl font-bold ${projectedBalance >= 0 ? "text-blue-600" : "text-red-600"}`}>
-                          {formatCurrency(projectedBalance)}
-                        </div>
-                        <p className="text-xs text-muted-foreground">Projetado (Pago + Pendente)</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                </TabsContent>
-              );
-            })}
-          </Tabs>
-
-          <Card className="col-span-4 mt-6">
-            <CardHeader>
-              <CardTitle>Contas a Receber x A Pagar (Previsão)</CardTitle>
-            </CardHeader>
-            <CardContent className="pl-2">
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={dashboardChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => `R$${value}`}
-                    />
-                    <Tooltip
-                      formatter={(value: number) => formatCurrency(value)}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Legend />
-                    <Bar dataKey="A Receber" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                    <Bar dataKey="A Pagar" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                    <Line type="monotone" dataKey="Saldo" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-4 mt-6">
-            <CardHeader>
-              <CardTitle>Saldo Acumulado do Ano</CardTitle>
+              <CardTitle className="text-lg">Saldo Acumulado do Ano</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
               <div className="h-[300px] w-full">
@@ -1134,12 +1132,12 @@ const Financeiro = () => {
                       axisLine={false}
                       tickFormatter={(value) => `R$${value}`}
                     />
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
                     <Tooltip
                       formatter={(value: number) => formatCurrency(value)}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      contentStyle={{ borderRadius: '12px', border: 'none' }}
                     />
-                    <Area type="monotone" dataKey="Acumulado" stroke="#3b82f6" fillOpacity={1} fill="url(#colorAcumulado)" />
+                    <Area type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorAcumulado)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -1701,7 +1699,7 @@ const Financeiro = () => {
         onUpdate={handleServiceExpenseUpdate}
         editingExpense={editingServiceExpense}
       />
-    </div >
+    </div>
   );
 };
 
