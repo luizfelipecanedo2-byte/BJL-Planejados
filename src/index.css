@@ -6,83 +6,83 @@
 
 @layer base {
   :root {
-    /* Deep Modern Navy/Teal Background */
-    --background: 220 40% 4%;
-    --foreground: 180 20% 98%;
+    /* Deep Aurora Black/Green Background */
+    --background: 180 30% 2%;
+    --foreground: 160 20% 98%;
 
-    /* Card Backgrounds - Slightly translucent or depth-focused */
-    --card: 220 40% 7%;
-    --card-foreground: 180 20% 98%;
+    /* Card Backgrounds - Deep and Subdued */
+    --card: 180 30% 4%;
+    --card-foreground: 160 20% 98%;
 
-    --popover: 220 40% 7%;
-    --popover-foreground: 180 20% 98%;
+    --popover: 180 30% 4%;
+    --popover-foreground: 160 20% 98%;
 
-    /* Cyan Primary - Like the BI bars */
-    --primary: 185 90% 50%;
-    --primary-foreground: 220 40% 4%;
+    /* Vibrant Aurora Emerald */
+    --primary: 160 100% 50%;
+    --primary-foreground: 180 30% 2%;
 
-    /* Secondary - Muted Navy */
-    --secondary: 220 30% 12%;
-    --secondary-foreground: 185 90% 80%;
+    /* Secondary - Muted Emerald/Teal */
+    --secondary: 180 30% 8%;
+    --secondary-foreground: 160 100% 70%;
 
-    --muted: 220 20% 15%;
-    --muted-foreground: 180 10% 60%;
+    --muted: 180 20% 12%;
+    --muted-foreground: 160 10% 55%;
 
-    --accent: 185 90% 20%;
-    --accent-foreground: 185 90% 95%;
+    --accent: 160 100% 20%;
+    --accent-foreground: 160 100% 95%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 350 80% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* Success - Emerald */
-    --success: 150 100% 50%;
-    --success-foreground: 220 40% 4%;
+    /* Success - Forest Green */
+    --success: 155 100% 45%;
+    --success-foreground: 180 30% 2%;
 
     --warning: 35 100% 50%;
-    --warning-foreground: 220 40% 4%;
+    --warning-foreground: 180 30% 2%;
 
-    /* Borders - Subtle Cyan/Navy Blend */
-    --border: 220 30% 18%;
-    --input: 220 30% 18%;
+    /* Borders - Subtle Emerald Glow */
+    --border: 180 30% 15%;
+    --input: 180 30% 15%;
 
-    /* Ring - Glowing Cyan */
-    --ring: 185 90% 50%;
+    /* Ring - Glowing Emerald */
+    --ring: 160 100% 50%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    /* Sidebar - Sleek and Dark */
-    --sidebar-background: 220 45% 3%;
-    --sidebar-foreground: 180 20% 85%;
-    --sidebar-primary: 185 90% 50%;
-    --sidebar-primary-foreground: 220 40% 4%;
-    --sidebar-accent: 220 30% 10%;
-    --sidebar-accent-foreground: 185 90% 90%;
-    --sidebar-border: 220 30% 12%;
-    --sidebar-ring: 185 90% 50%;
+    /* Sidebar - Deep and Sleek */
+    --sidebar-background: 180 40% 1%;
+    --sidebar-foreground: 160 20% 85%;
+    --sidebar-primary: 160 100% 50%;
+    --sidebar-primary-foreground: 180 30% 2%;
+    --sidebar-accent: 180 30% 6%;
+    --sidebar-accent-foreground: 160 100% 90%;
+    --sidebar-border: 180 30% 10%;
+    --sidebar-ring: 160 100% 50%;
 
-    /* Kanban columns - Styled to match current BI style */
-    --kanban-prospecto: 185 90% 50%;
-    --kanban-contato: 185 70% 40%;
-    --kanban-visita: 200 80% 50%;
-    --kanban-projeto: 240 70% 60%;
-    --kanban-negociacao: 270 70% 60%;
-    --kanban-fechado: 150 100% 40%;
+    /* Kanban columns - Aurora Style */
+    --kanban-prospecto: 160 100% 55%;
+    --kanban-contato: 160 60% 45%;
+    --kanban-visita: 185 80% 55%;
+    --kanban-projeto: 260 70% 65%;
+    --kanban-negociacao: 320 80% 60%;
+    --kanban-fechado: 155 100% 40%;
     --kanban-nao_fechou: 0 84% 50%;
-    --kanban-congelado: 220 20% 40%;
-    --kanban-pos_venda: 170 90% 45%;
+    --kanban-congelado: 180 15% 45%;
+    --kanban-pos_venda: 165 90% 50%;
   }
 
-  /* Dark mode enhancement */
+  /* Dark mode enhancement with gradient support */
   .dark {
-    --background: 220 40% 4%;
-    --foreground: 180 20% 98%;
-    --card: 220 40% 7%;
-    --card-foreground: 180 20% 98%;
-    --primary: 185 90% 50%;
-    --primary-foreground: 220 40% 4%;
-    --border: 220 30% 18%;
-    --ring: 185 90% 50%;
-    --sidebar-background: 220 45% 3%;
+    --background: 180 30% 2%;
+    --foreground: 160 20% 98%;
+    --card: 180 30% 4%;
+    --card-foreground: 160 20% 98%;
+    --primary: 160 100% 50%;
+    --primary-foreground: 180 30% 2%;
+    --border: 180 30% 12%;
+    --ring: 160 100% 50%;
+    --sidebar-background: 180 40% 1%;
   }
 }
 

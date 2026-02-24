@@ -925,7 +925,7 @@ const Financeiro = () => {
           </div>
 
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="bg-card/50 border-primary/20 hover:border-primary/50 transition-all">
+            <Card className="bg-card/40 border-primary/20 hover:border-primary/50 transition-all border shadow-lg backdrop-blur-md">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-primary">Entrada (Mês)</CardTitle>
                 <TrendingUp className="h-4 w-4 text-primary" />
@@ -935,7 +935,7 @@ const Financeiro = () => {
                 <p className="text-xs text-muted-foreground">Recebido (Caixa)</p>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 border-rose-500/20 hover:border-rose-500/50 transition-all">
+            <Card className="bg-card/40 border-rose-500/20 hover:border-rose-500/50 transition-all border shadow-lg backdrop-blur-md">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-rose-400">Saída (Mês)</CardTitle>
                 <TrendingDown className="h-4 w-4 text-rose-400" />
@@ -945,25 +945,25 @@ const Financeiro = () => {
                 <p className="text-xs text-muted-foreground">Pago (Caixa)</p>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 border-cyan-500/20 hover:border-cyan-500/50 transition-all">
+            <Card className="bg-card/40 border-emerald-500/20 hover:border-emerald-500/50 transition-all border shadow-lg backdrop-blur-md">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-cyan-400">Saldo (Mês)</CardTitle>
-                <DollarSign className="h-4 w-4 text-cyan-400" />
+                <CardTitle className="text-sm font-medium text-emerald-400">Saldo (Mês)</CardTitle>
+                <DollarSign className="h-4 w-4 text-emerald-400" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${currentSummary.saldoMes >= 0 ? "text-cyan-500" : "text-rose-500"}`}>
+                <div className={`text-2xl font-bold ${currentSummary.saldoMes >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                   {formatCurrency(currentSummary.saldoMes)}
                 </div>
                 <p className="text-xs text-muted-foreground">Fluxo de Caixa</p>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 border-indigo-500/20 hover:border-indigo-500/50 transition-all">
+            <Card className="bg-card/40 border-emerald-700/20 hover:border-emerald-700/50 transition-all border shadow-lg backdrop-blur-md">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-indigo-400">Saldo Acumulado</CardTitle>
-                <DollarSign className="h-4 w-4 text-indigo-400" />
+                <CardTitle className="text-sm font-medium text-emerald-600">Saldo Acumulado</CardTitle>
+                <DollarSign className="h-4 w-4 text-emerald-600" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${currentSummary.saldoAtual >= 0 ? "text-indigo-500" : "text-rose-500"}`}>
+                <div className={`text-2xl font-bold ${currentSummary.saldoAtual >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                   {formatCurrency(currentSummary.saldoAtual)}
                 </div>
                 <p className="text-xs text-muted-foreground">Total histórico pago</p>
@@ -972,7 +972,7 @@ const Financeiro = () => {
           </div>
 
           <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-            <Card className="bg-card/40 border-l-4 border-l-primary shadow-lg backdrop-blur-sm transition-all hover:scale-[1.02]">
+            <Card className="bg-card/40 border-l-4 border-l-primary shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="space-y-1">
                   <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-tighter">Faturamento</CardTitle>
@@ -981,7 +981,7 @@ const Financeiro = () => {
                 <TrendingUp className="h-5 w-5 text-primary animate-pulse" />
               </CardHeader>
               <CardContent>
-                <div className="text-[10px] text-primary/70 mb-4 font-bold uppercase tracking-widest bg-primary/10 w-fit px-2 py-0.5 rounded">Visão por Competência</div>
+                <div className="text-[10px] text-primary/70 mb-4 font-bold uppercase tracking-widest bg-emerald-500/10 w-fit px-2 py-0.5 rounded border border-emerald-500/20">Visão por Competência</div>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Já Recebido:</span>
@@ -995,7 +995,7 @@ const Financeiro = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-card/40 border-l-4 border-l-rose-500 shadow-lg backdrop-blur-sm transition-all hover:scale-[1.02]">
+            <Card className="bg-card/40 border-l-4 border-l-rose-500 shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="space-y-1">
                   <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-tighter">Gastos</CardTitle>
@@ -1004,7 +1004,7 @@ const Financeiro = () => {
                 <TrendingDown className="h-5 w-5 text-rose-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-[10px] text-rose-500/70 mb-4 font-bold uppercase tracking-widest bg-rose-500/10 w-fit px-2 py-0.5 rounded">Visão por Competência</div>
+                <div className="text-[10px] text-rose-500/70 mb-4 font-bold uppercase tracking-widest bg-rose-500/10 w-fit px-2 py-0.5 rounded border border-rose-500/20">Visão por Competência</div>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Já Pago:</span>
@@ -1018,22 +1018,22 @@ const Financeiro = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-card/40 border-l-4 border-l-cyan-500 shadow-lg backdrop-blur-sm transition-all hover:scale-[1.02]">
+            <Card className="bg-card/40 border-l-4 border-l-emerald-600 shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="space-y-1">
                   <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-tighter">Resultado Projetado</CardTitle>
-                  <p className={`text-2xl font-black ${currentSummary.projectedBalance >= 0 ? "text-cyan-400" : "text-rose-500"}`}>
+                  <p className={`text-2xl font-black ${currentSummary.projectedBalance >= 0 ? "text-emerald-400" : "text-rose-500"}`}>
                     {formatCurrency(currentSummary.projectedBalance)}
                   </p>
                 </div>
-                <DollarSign className="h-5 w-5 text-cyan-400" />
+                <DollarSign className="h-5 w-5 text-emerald-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-[10px] text-cyan-400/70 mb-4 font-bold uppercase tracking-widest bg-cyan-400/10 w-fit px-2 py-0.5 rounded">Pago + Pendente</div>
+                <div className="text-[10px] text-emerald-400/70 mb-4 font-bold uppercase tracking-widest bg-emerald-400/10 w-fit px-2 py-0.5 rounded border border-emerald-400/20">Pago + Pendente</div>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Lucro Contábil:</span>
-                    <span className={`font-bold ${currentSummary.resultadoMes >= 0 ? "text-cyan-400" : "text-rose-500"}`}>
+                    <span className={`font-bold ${currentSummary.resultadoMes >= 0 ? "text-emerald-400" : "text-rose-500"}`}>
                       {formatCurrency(currentSummary.resultadoMes)}
                     </span>
                   </div>
@@ -1067,9 +1067,9 @@ const Financeiro = () => {
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       />
                       <Legend verticalAlign="top" height={36} />
-                      <Bar dataKey="Receitas" fill="#06b6d4" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                      <Bar dataKey="Receitas" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
                       <Bar dataKey="Despesas" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={30} />
-                      <Line type="monotone" dataKey="Saldo" stroke="#22d3ee" strokeWidth={3} dot={{ r: 4, fill: "#22d3ee" }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="Saldo" stroke="#34d399" strokeWidth={3} dot={{ r: 4, fill: "#34d399" }} activeDot={{ r: 6 }} />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
@@ -1100,9 +1100,9 @@ const Financeiro = () => {
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       />
                       <Legend verticalAlign="top" height={36} />
-                      <Bar dataKey="A Receber" fill="#22d3ee" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                      <Bar dataKey="A Receber" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
                       <Bar dataKey="A Pagar" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={30} />
-                      <Line type="monotone" dataKey="Saldo" stroke="#06b6d4" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                      <Line type="monotone" dataKey="Saldo" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
