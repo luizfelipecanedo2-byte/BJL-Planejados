@@ -161,6 +161,7 @@ const Financeiro = () => {
         environment: e.environment,
         serviceValue: Number(e.service_value),
         spentValue: Number(e.spent_value),
+        items: e.items || [],
         createdAt: new Date(e.created_at)
       }));
 
@@ -790,6 +791,7 @@ const Financeiro = () => {
         environment: data.environment,
         service_value: data.serviceValue,
         spent_value: data.spentValue,
+        items: data.items,
       };
 
       const { data: insertedData, error } = await supabase
@@ -806,6 +808,7 @@ const Financeiro = () => {
         environment: insertedData.environment,
         serviceValue: Number(insertedData.service_value),
         spentValue: Number(insertedData.spent_value),
+        items: insertedData.items || [],
         createdAt: new Date(insertedData.created_at)
       };
 
@@ -824,6 +827,7 @@ const Financeiro = () => {
       if (updates.environment) updateData.environment = updates.environment;
       if (updates.serviceValue !== undefined) updateData.service_value = updates.serviceValue;
       if (updates.spentValue !== undefined) updateData.spent_value = updates.spentValue;
+      if (updates.items !== undefined) updateData.items = updates.items;
 
       const { error } = await supabase
         .from('service_expenses')

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.service_expenses (
     environment TEXT NOT NULL,
     service_value NUMERIC(15, 2) NOT NULL DEFAULT 0,
     spent_value NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    items JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
