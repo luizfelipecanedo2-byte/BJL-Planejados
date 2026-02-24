@@ -263,6 +263,12 @@ const Financeiro = () => {
     };
   }, [reconciliationData, currentDateReconciliation]);
 
+  const totalAccountBalance = useMemo(() => {
+    return reconciliationData
+      .filter(t => t.status === 'paid')
+      .reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
+  }, [reconciliationData]);
+
   const handlePrevMonth = () => {
     setCurrentDateReconciliation(new Date(currentDateReconciliation.getFullYear(), currentDateReconciliation.getMonth() - 1, 1));
   };
@@ -1499,19 +1505,32 @@ const Financeiro = () => {
 
         <TabsContent value="conciliacao" className="space-y-4">
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-bold tracking-tight text-[#0f5156]">Conciliação Bancária</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Instituição Financeira</span>
-                <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                  <SelectTrigger className="w-[220px] bg-[#dbeceb] border-[#0f5156] text-[#0f5156] font-medium">
-                    <SelectValue placeholder="Selecione a conta" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="banco_itau">Banco Itaú</SelectItem>
-                    <SelectItem value="dinheiro">Dinheiro (Caixa)</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-2xl font-bold tracking-tight text-primary">Conciliação Bancária</h3>
+                <p className="text-sm text-muted-foreground">Analise a movimentação diária das suas contas</p>
+              </div>
+
+              <div className="flex items-center gap-6">
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Saldo Atual</span>
+                  <div className="text-2xl font-black text-primary">
+                    {formatCurrency(totalAccountBalance)}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Conta:</span>
+                  <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+                    <SelectTrigger className="w-[200px] border-primary/20 bg-card/40 backdrop-blur-md text-primary font-bold">
+                      <SelectValue placeholder="Selecione a conta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="banco_itau">Banco Itaú</SelectItem>
+                      <SelectItem value="dinheiro">Dinheiro (Caixa)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
