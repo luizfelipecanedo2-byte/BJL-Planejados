@@ -33,7 +33,7 @@ const ServiceExpenseFormDialog = ({
         serviceValue: "",
     });
     const [items, setItems] = useState<ExpenseItem[]>([]);
-    const [newItem, setNewItem] = useState({ description: "", value: "" });
+    const [newItem, setNewItem] = useState({ description: "", quantity: "1", unitValue: "" });
 
     useEffect(() => {
         if (editingExpense) {
@@ -54,16 +54,26 @@ const ServiceExpenseFormDialog = ({
     }, [editingExpense, open]);
 
     const handleAddItem = () => {
-        if (!newItem.description || !newItem.value) return;
-        setItems([...items, { description: newItem.description, value: parseFloat(newItem.value) || 0 }]);
-        setNewItem({ description: "", value: "" });
+        if (!newItem.description || !newItem.quantity || !newItem.unitValue) return;
+
+        const qty = parseFloat(newItem.quantity) || 0;
+        const unitVal = parseFloat(newItem.unitValue) || 0;
+        const totalVal = qty * unitVal;
+
+        setItems([...items, {
+            description: newItem.description,
+            quantity: qty,
+            unitValue: unitVal,
+            totalValue: totalVal
+        }]);
+        setNewItem({ description: "", quantity: "1", unitValue: "" });
     };
 
     const handleRemoveItem = (index: number) => {
         setItems(items.filter((_, i) => i !== index));
     };
 
-    const totalSpent = items.reduce((acc, item) => acc + item.value, 0);
+    const totalSpent = items.reduce((acc, item) => acc + item.totalValue, 0);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -100,7 +110,7 @@ const ServiceExpenseFormDialog = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[750px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{editingExpense ? "Editar Gasto por Serviço" : "Novo Gasto por Serviço"}</DialogTitle>
                 </DialogHeader>
@@ -141,55 +151,84 @@ const ServiceExpenseFormDialog = ({
                     <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
                         <Label className="text-base font-bold">Lista de Materiais / Gastos</Label>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-7 gap-2 items-end">
-                            <div className="sm:col-span-4 space-y-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                            <div className="sm:col-span-5 space-y-1">
                                 <Label htmlFor="itemDesc" className="text-xs">Descrição do Material</Label>
                                 <Input
                                     id="itemDesc"
-                                    placeholder="Ex: MDF Branco, Dobradiças..."
+                                    placeholder="Ex: MDF Branco..."
                                     value={newItem.description}
                                     onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
                                 />
                             </div>
                             <div className="sm:col-span-2 space-y-1">
-                                <Label htmlFor="itemVal" className="text-xs">Valor</Label>
+                                <Label htmlFor="itemQty" className="text-xs">Qtd / Un.</Label>
+                                <Input
+                                    id="itemQty"
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="1"
+                                    value={newItem.quantity}
+                                    onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
+                                />
+                            </div>
+                            <div className="sm:col-span-2 space-y-1">
+                                <Label htmlFor="itemVal" className="text-xs">Valor Un.</Label>
                                 <Input
                                     id="itemVal"
                                     type="number"
                                     step="0.01"
                                     placeholder="0,00"
-                                    value={newItem.value}
-                                    onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
+                                    value={newItem.unitValue}
+                                    onChange={(e) => setNewItem({ ...newItem, unitValue: e.target.value })}
                                 />
                             </div>
-                            <Button type="button" onClick={handleAddItem} className="w-full">
+                            <div className="sm:col-span-2 space-y-1">
+                                <Label className="text-xs">Total</Label>
+                                <div className="h-10 flex items-center px-3 bg-background border rounded text-sm font-medium">
+                                    {formatCurrency((parseFloat(newItem.quantity) || 0) * (parseFloat(newItem.unitValue) || 0))}
+                                </div>
+                            </div>
+                            <Button type="button" onClick={handleAddItem} className="sm:col-span-1">
                                 <Plus className="h-4 w-4" />
                             </Button>
                         </div>
 
-                        <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                            {items.length > 0 ? (
+                                <div className="hidden sm:grid grid-cols-12 gap-2 px-2 text-xs font-bold text-muted-foreground mb-1">
+                                    <div className="col-span-5">Descrição</div>
+                                    <div className="col-span-2 text-center">Qtd.</div>
+                                    <div className="col-span-2 text-right">Valor Un.</div>
+                                    <div className="col-span-2 text-right">Total</div>
+                                    <div className="col-span-1"></div>
+                                </div>
+                            ) : null}
+
                             {items.map((item, index) => (
-                                <div key={index} className="flex justify-between items-center bg-background p-2 rounded border group">
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-medium">{item.description}</span>
-                                        <span className="text-xs text-muted-foreground">{formatCurrency(item.value)}</span>
+                                <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-background p-2 rounded border group">
+                                    <div className="col-span-5 text-sm font-medium">{item.description}</div>
+                                    <div className="col-span-2 text-center text-sm">{item.quantity}</div>
+                                    <div className="col-span-2 text-right text-sm">{formatCurrency(item.unitValue)}</div>
+                                    <div className="col-span-2 text-right text-sm font-bold text-red-600">{formatCurrency(item.totalValue)}</div>
+                                    <div className="col-span-1 flex justify-end">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleRemoveItem(index)}
+                                            className="h-8 w-8 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
                                     </div>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleRemoveItem(index)}
-                                        className="h-8 w-8 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
                                 </div>
                             ))}
                         </div>
 
                         <div className="flex justify-between items-center pt-2 border-t font-bold">
-                            <span>Total Gasto:</span>
-                            <span className="text-red-600">{formatCurrency(totalSpent)}</span>
+                            <span>Total Gasto Acumulado:</span>
+                            <span className="text-red-600 text-lg">{formatCurrency(totalSpent)}</span>
                         </div>
                     </div>
 

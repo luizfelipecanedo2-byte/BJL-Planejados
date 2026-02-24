@@ -1,7 +1,9 @@
 
 export interface ExpenseItem {
     description: string;
-    value: number;
+    quantity: number;
+    unitValue: number;
+    totalValue: number;
 }
 
 export interface ServiceExpense {
