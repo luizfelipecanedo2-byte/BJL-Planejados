@@ -1535,25 +1535,25 @@ const Financeiro = () => {
             </div>
 
             <div className="flex items-center justify-center gap-4 py-2">
-              <div className="flex items-center bg-orange-400 rounded-lg px-2 text-white">
-                <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="text-white hover:text-white hover:bg-orange-500">
+              <div className="flex items-center bg-primary/20 hover:bg-primary/30 rounded-lg px-2 text-primary border border-primary/30 transition-colors">
+                <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="text-primary hover:text-primary hover:bg-primary/20">
                   <ChevronLeft className="h-6 w-6" />
                 </Button>
                 <span className="font-bold text-lg px-4 capitalize">
                   {currentDateReconciliation.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
                 </span>
-                <Button variant="ghost" size="icon" onClick={handleNextMonth} className="text-white hover:text-white hover:bg-orange-500">
+                <Button variant="ghost" size="icon" onClick={handleNextMonth} className="text-primary hover:text-primary hover:bg-primary/20">
                   <ChevronRight className="h-6 w-6" />
                 </Button>
               </div>
               <div className="flex-1 flex justify-end items-center gap-4">
-                <span className="font-bold">
+                <span className="font-bold text-muted-foreground text-sm">
                   Saldo final no dia {reconciliationDailyData.previousMonthDate.toLocaleDateString()}
                 </span>
-                <span className="font-bold text-xl">
+                <span className="font-bold text-xl text-primary">
                   {formatCurrency(reconciliationDailyData.initialBalance)}
                 </span>
-                <Button className="bg-orange-400 hover:bg-orange-500 text-white font-bold">
+                <Button className="bg-primary hover:bg-primary/80 text-primary-foreground font-bold">
                   Editar Saldos
                 </Button>
               </div>
