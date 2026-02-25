@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Transaction, CATEGORIES, SUBCATEGORIES } from "@/types/finance";
 import TransactionTable from "@/components/crm/TransactionTable";
