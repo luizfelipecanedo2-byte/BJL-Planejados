@@ -147,11 +147,16 @@ const OrdemServico = () => {
                 if (orderData.laborLogs && orderData.laborLogs.length > 0) {
                     const logsToInsert = orderData.laborLogs.map(l => ({
                         service_order_id: data.id,
-                        date: new Date(l.date).toISOString().split('T')[0],
-                        hours: l.hours,
-                        description: l.description
+                        date: l.date instanceof Date ? l.date.toISOString().split('T')[0] : l.date,
+                        hours: Number(l.hours),
+                        description: l.description || ""
                     }));
-                    await supabase.from('service_order_labor_logs').insert(logsToInsert);
+
+                    const { error: logsError } = await supabase.from('service_order_labor_logs').insert(logsToInsert);
+                    if (logsError) {
+                        console.error("Erro ao inserir logs na criação:", logsError);
+                        toast.error("OS criada, mas houve erro ao salvar as horas.");
+                    }
                 }
 
                 const createdOrder: ServiceOrder = {
@@ -187,7 +192,14 @@ const OrdemServico = () => {
             if (updates.action) updateData.action = updates.action;
             if (updates.status) updateData.status = updates.status;
             if (updates.forecastDate) updateData.forecast_date = updates.forecastDate.toISOString().split('T')[0];
-            if (updates.completionDate) updateData.completion_date = updates.completionDate.toISOString().split('T')[0];
+
+            // Permitir limpar a data de conclusão
+            if (updates.hasOwnProperty('completionDate')) {
+                updateData.completion_date = updates.completionDate
+                    ? updates.completionDate.toISOString().split('T')[0]
+                    : null;
+            }
+
             if (updates.notes !== undefined) updateData.notes = updates.notes;
             if (updates.attachments !== undefined) updateData.attachments = updates.attachments;
 
@@ -196,22 +208,41 @@ const OrdemServico = () => {
                 .update(updateData)
                 .eq('id', id);
 
-            if (error) throw error;
+            if (error) {
+                console.error("Erro ao atualizar service_orders:", error);
+                throw error;
+            }
 
             // Sincronizar logs de horas
             if (updates.laborLogs) {
                 // Delete existing first
-                await supabase.from('service_order_labor_logs').delete().eq('service_order_id', id);
+                const { error: deleteError } = await supabase
+                    .from('service_order_labor_logs')
+                    .delete()
+                    .eq('service_order_id', id);
+
+                if (deleteError) {
+                    console.error("Erro ao deletar logs antigos:", deleteError);
+                    // Não travamos o processo aqui, mas avisamos no console
+                }
 
                 // Insert current ones
                 if (updates.laborLogs.length > 0) {
                     const logsToInsert = updates.laborLogs.map((l: any) => ({
                         service_order_id: id,
-                        date: new Date(l.date).toISOString().split('T')[0],
-                        hours: l.hours,
-                        description: l.description
+                        date: l.date instanceof Date ? l.date.toISOString().split('T')[0] : l.date,
+                        hours: Number(l.hours),
+                        description: l.description || ""
                     }));
-                    await supabase.from('service_order_labor_logs').insert(logsToInsert);
+
+                    const { error: insertError } = await supabase
+                        .from('service_order_labor_logs')
+                        .insert(logsToInsert);
+
+                    if (insertError) {
+                        console.error("Erro ao inserir novos logs:", insertError);
+                        toast.error("Ordem atualizada, mas houve erro ao salvar as horas.");
+                    }
                 }
             }
 
