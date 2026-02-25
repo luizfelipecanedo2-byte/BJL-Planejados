@@ -4,7 +4,7 @@ import ServiceOrderFormDialog from "@/components/crm/ServiceOrderFormDialog";
 import { ServiceOrder } from "@/types/serviceOrder";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
@@ -13,12 +13,15 @@ const OrdemServico = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
 
+    const [isLoading, setIsLoading] = useState(true);
+
     useEffect(() => {
         fetchOrders();
     }, []);
 
     const fetchOrders = async () => {
         try {
+            setIsLoading(true);
             const { data, error } = await supabase
                 .from('service_orders')
                 .select('*')
@@ -26,16 +29,26 @@ const OrdemServico = () => {
 
             if (error) throw error;
 
+            const parseDate = (dateStr: any) => {
+                if (!dateStr) return new Date();
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) {
+                    const d2 = new Date(dateStr + (dateStr.includes('T') ? '' : 'T12:00:00'));
+                    return isNaN(d2.getTime()) ? new Date() : d2;
+                }
+                return d;
+            };
+
             const mappedOrders: ServiceOrder[] = (data || []).map(o => ({
                 id: o.id,
-                ticketNumber: o.ticket_number,
-                openDate: new Date(o.open_date + 'T12:00:00'),
-                client: o.client,
-                type: o.type as any,
-                action: o.action,
-                status: o.status as any,
-                forecastDate: new Date(o.forecast_date + 'T12:00:00'),
-                completionDate: o.completion_date ? new Date(o.completion_date + 'T12:00:00') : undefined,
+                ticketNumber: o.ticket_number || "S/N",
+                openDate: parseDate(o.open_date),
+                client: o.client || "Não informado",
+                type: o.type as any || "Fabricação",
+                action: o.action || "",
+                status: o.status as any || "Em Andamento",
+                forecastDate: parseDate(o.forecast_date),
+                completionDate: o.completion_date ? parseDate(o.completion_date) : undefined,
                 notes: o.notes,
                 attachments: o.attachments || []
             }));
@@ -44,6 +57,8 @@ const OrdemServico = () => {
         } catch (error) {
             console.error('Error fetching orders:', error);
             toast.error("Erro ao carregar ordens de serviço.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -167,11 +182,18 @@ const OrdemServico = () => {
                     <CardTitle>Lista de Ordens de Serviço</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ServiceOrderTable
-                        orders={orders}
-                        onEdit={handleEditOrder}
-                        onDelete={handleDeleteOrder}
-                    />
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground italic">
+                            <Loader2 className="h-8 w-8 animate-spin mb-2 text-primary/50" />
+                            Carregando ordens de serviço...
+                        </div>
+                    ) : (
+                        <ServiceOrderTable
+                            orders={orders}
+                            onEdit={handleEditOrder}
+                            onDelete={handleDeleteOrder}
+                        />
+                    )}
                 </CardContent>
             </Card>
 

@@ -55,18 +55,22 @@ const ServiceOrderTable = ({ orders, onEdit, onDelete }: ServiceOrderTableProps)
                         <TableRow key={order.id}>
                             <TableCell className="font-medium">{order.ticketNumber}</TableCell>
                             <TableCell>
-                                {format(new Date(order.openDate), "dd/MM/yyyy", { locale: ptBR })}
+                                {order.openDate instanceof Date && !isNaN(order.openDate.getTime())
+                                    ? format(order.openDate, "dd/MM/yyyy", { locale: ptBR })
+                                    : "S/D"}
                             </TableCell>
                             <TableCell>{order.client}</TableCell>
                             <TableCell>{order.type}</TableCell>
                             <TableCell>{order.action}</TableCell>
                             <TableCell>{getStatusDisplay(order)}</TableCell>
                             <TableCell>
-                                {format(new Date(order.forecastDate), "dd/MM/yyyy", { locale: ptBR })}
+                                {order.forecastDate instanceof Date && !isNaN(order.forecastDate.getTime())
+                                    ? format(order.forecastDate, "dd/MM/yyyy", { locale: ptBR })
+                                    : "S/D"}
                             </TableCell>
                             <TableCell>
-                                {order.completionDate
-                                    ? format(new Date(order.completionDate), "dd/MM/yyyy", { locale: ptBR })
+                                {order.completionDate instanceof Date && !isNaN(order.completionDate.getTime())
+                                    ? format(order.completionDate, "dd/MM/yyyy", { locale: ptBR })
                                     : "-"}
                             </TableCell>
                             <TableCell className="flex items-center gap-1">

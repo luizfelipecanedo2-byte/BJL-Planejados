@@ -184,6 +184,8 @@ const Financeiro = () => {
   const [isServiceExpenseDialogOpen, setIsServiceExpenseDialogOpen] = useState(false);
   const [editingServiceExpense, setEditingServiceExpense] = useState<ServiceExpense | null>(null);
 
+  const [activeTab, setActiveTab] = useState("dashboard");
+
   // Filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all");
@@ -653,6 +655,8 @@ const Financeiro = () => {
   const handleEditTransaction = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setIsDialogOpen(true);
+    // Navega para a aba de lançamentos para mostrar o contexto
+    setActiveTab("lancamentos");
   };
 
   const handleDeleteTransaction = async (id: string) => {
@@ -920,7 +924,7 @@ const Financeiro = () => {
         <h2 className="text-3xl font-bold tracking-tight">Financeiro</h2>
       </div>
 
-      <Tabs defaultValue="lancamentos" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
@@ -1126,10 +1130,14 @@ const Financeiro = () => {
             ) : (
               <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 {upcomingTransactions.map((t) => (
-                  <Card key={t.id} className={cn(
-                    "bg-card/40 backdrop-blur-md border shadow-lg transition-all hover:scale-[1.02]",
-                    t.type === 'income' ? "border-l-4 border-l-emerald-500" : "border-l-4 border-l-rose-500"
-                  )}>
+                  <Card
+                    key={t.id}
+                    className={cn(
+                      "bg-card/40 backdrop-blur-md border shadow-lg transition-all hover:scale-[1.02] cursor-pointer hover:border-primary/50",
+                      t.type === 'income' ? "border-l-4 border-l-emerald-500" : "border-l-4 border-l-rose-500"
+                    )}
+                    onClick={() => handleEditTransaction(t)}
+                  >
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
