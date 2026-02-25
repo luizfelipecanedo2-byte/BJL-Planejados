@@ -38,6 +38,9 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
 import { ServiceOrder } from "@/types/serviceOrder";
@@ -606,7 +609,16 @@ const Financeiro = () => {
         .reduce((acc, t) => acc + t.amount, 0),
       pontoEquilibrio: currentMonthTransactions
         .filter(t => t.type === 'expense' && ["Despesa Operacional", "Despesa com Maquinário", "Despesa com Pessoal"].includes(t.category))
-        .reduce((acc, t) => acc + t.amount, 0)
+        .reduce((acc, t) => acc + t.amount, 0),
+      ticketMedio: currentMonthTransactions.filter(t => t.type === 'income').length > 0
+        ? receitaBrutaMes / currentMonthTransactions.filter(t => t.type === 'income').length
+        : 0,
+      expensesByCategory: CATEGORIES.expense.map(cat => ({
+        name: cat,
+        value: currentMonthTransactions
+          .filter(t => t.type === 'expense' && t.category === cat)
+          .reduce((acc, t) => acc + t.amount, 0)
+      })).filter(item => item.value > 0)
     };
   }, [transactions, selectedDashMonth, selectedYear]);
 
@@ -1019,6 +1031,10 @@ const Financeiro = () => {
                     <span className="text-muted-foreground">Ainda a Receber:</span>
                     <span className="text-primary font-bold">{formatCurrency(currentSummary.accountsReceivable)}</span>
                   </div>
+                  <div className="mt-2 pt-2 border-t border-primary/10 flex justify-between items-center text-[10px]">
+                    <span className="text-muted-foreground uppercase font-bold">Ticket Médio:</span>
+                    <span className="text-primary font-bold">{formatCurrency(currentSummary.ticketMedio)}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1208,39 +1224,81 @@ const Financeiro = () => {
             </Card>
           </div>
 
-          <Card className="shadow-md border-none bg-muted/20">
-            <CardHeader>
-              <CardTitle className="text-lg">Saldo Acumulado do Ano</CardTitle>
-            </CardHeader>
-            <CardContent className="pl-2">
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={accumulatedData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorAcumulado" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis
-                      stroke="#888888"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => `R$${value}`}
-                    />
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                    <Tooltip
-                      formatter={(value: number) => formatCurrency(value)}
-                      contentStyle={{ borderRadius: '12px', border: 'none' }}
-                    />
-                    <Area type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorAcumulado)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 mt-6">
+            <Card className="shadow-md bg-card/40 backdrop-blur-md border border-primary/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingDown className="h-5 w-5 text-rose-500" />
+                  Distribuição de Despesas (Mês Atual)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[350px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={currentSummary.expensesByCategory}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={80}
+                        outerRadius={120}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {currentSummary.expensesByCategory.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={[
+                            '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4'
+                          ][index % 7]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{ backgroundColor: '#020617', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '8px' }}
+                      />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-md border-none bg-muted/20">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Saldo Acumulado do Ano
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pl-2">
+                <div className="h-[350px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={accumulatedData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorAcumulado" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis
+                        stroke="#888888"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) => `R$${value}`}
+                      />
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                      <Tooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{ borderRadius: '12px', border: 'none' }}
+                      />
+                      <Area type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorAcumulado)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="lancamentos" className="space-y-6">
