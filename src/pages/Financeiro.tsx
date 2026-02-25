@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Transaction, CATEGORIES, SUBCATEGORIES } from "@/types/finance";
 import TransactionTable from "@/components/crm/TransactionTable";
@@ -609,6 +610,21 @@ const Financeiro = () => {
     };
   }, [transactions, selectedDashMonth, selectedYear]);
 
+  const upcomingTransactions = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nextWeek = new Date();
+    nextWeek.setDate(today.getDate() + 7);
+    nextWeek.setHours(23, 59, 59, 999);
+
+    return transactions
+      .filter(t => {
+        const dueDate = new Date(t.dueDate);
+        return t.status === 'pending' && dueDate >= today && dueDate <= nextWeek;
+      })
+      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+  }, [transactions]);
+
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -1078,6 +1094,50 @@ const Financeiro = () => {
                 <div className="text-[10px] text-emerald-400/70 mx-auto text-center font-bold uppercase tracking-widest bg-emerald-400/10 w-fit px-2 py-0.5 rounded border border-emerald-400/20">Visão Final (Pago + Pendente)</div>
               </CardContent>
             </Card>
+          </div>
+
+          <div className="mt-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="h-5 w-5 text-primary" />
+              <h3 className="text-xl font-bold text-primary">Próximos 7 Dias (Agenda de Caixa)</h3>
+            </div>
+            {upcomingTransactions.length === 0 ? (
+              <Card className="bg-card/40 border-dashed border-2 border-primary/20 backdrop-blur-md">
+                <CardContent className="py-8 text-center text-muted-foreground italic">
+                  Tudo em dia! Nenhuma conta vencendo nos próximos 7 dias.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                {upcomingTransactions.map((t) => (
+                  <Card key={t.id} className={cn(
+                    "bg-card/40 backdrop-blur-md border shadow-lg transition-all hover:scale-[1.02]",
+                    t.type === 'income' ? "border-l-4 border-l-emerald-500" : "border-l-4 border-l-rose-500"
+                  )}>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                          {new Date(t.dueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                        </span>
+                        <div className={cn(
+                          "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                          t.type === 'income' ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                        )}>
+                          {t.type === 'income' ? 'Receber' : 'Pagar'}
+                        </div>
+                      </div>
+                      <h4 className="font-bold text-sm truncate mb-1" title={t.description}>{t.description}</h4>
+                      <div className="flex justify-between items-center group">
+                        <span className="text-lg font-black">{formatCurrency(t.amount)}</span>
+                        <div className="text-[9px] text-muted-foreground truncate max-w-[80px] opacity-0 group-hover:opacity-100 transition-opacity">
+                          {t.category}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 mt-6">
