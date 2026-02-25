@@ -176,9 +176,9 @@ const OrdemServico = () => {
                 setOrders([createdOrder, ...orders]);
             }
             toast.success("Ordem de serviço criada!");
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error adding order:', error);
-            toast.error("Erro ao criar ordem de serviço.");
+            toast.error(`Erro ao criar OS: ${error.message || 'Erro desconhecido'}`);
         }
     };
 
@@ -228,12 +228,19 @@ const OrdemServico = () => {
 
                 // Insert current ones
                 if (updates.laborLogs.length > 0) {
-                    const logsToInsert = updates.laborLogs.map((l: any) => ({
-                        service_order_id: id,
-                        date: l.date instanceof Date ? l.date.toISOString().split('T')[0] : l.date,
-                        hours: Number(l.hours),
-                        description: l.description || ""
-                    }));
+                    const logsToInsert = updates.laborLogs.map((l: any) => {
+                        const dateObj = l.date instanceof Date ? l.date : new Date(l.date);
+                        const dateStr = !isNaN(dateObj.getTime())
+                            ? dateObj.toISOString().split('T')[0]
+                            : new Date().toISOString().split('T')[0];
+
+                        return {
+                            service_order_id: id,
+                            date: dateStr,
+                            hours: Number(l.hours) || 0,
+                            description: l.description || ""
+                        };
+                    });
 
                     const { error: insertError } = await supabase
                         .from('service_order_labor_logs')
@@ -241,7 +248,7 @@ const OrdemServico = () => {
 
                     if (insertError) {
                         console.error("Erro ao inserir novos logs:", insertError);
-                        toast.error("Ordem atualizada, mas houve erro ao salvar as horas.");
+                        toast.error(`Erro nas horas: ${insertError.message}`);
                     }
                 }
             }
@@ -250,9 +257,9 @@ const OrdemServico = () => {
                 order.id === id ? { ...order, ...updates } : order
             ));
             toast.success("Ordem de serviço atualizada!");
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error updating order:', error);
-            toast.error("Erro ao atualizar ordem de serviço.");
+            toast.error(`Erro ao atualizar: ${error.message || 'Erro desconhecido'}`);
         }
     };
 
