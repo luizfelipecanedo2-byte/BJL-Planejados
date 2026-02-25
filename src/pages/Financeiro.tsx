@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, CreditCard } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, CreditCard, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Transaction, CATEGORIES, SUBCATEGORIES } from "@/types/finance";
@@ -682,6 +682,12 @@ const Financeiro = () => {
         value: currentMonthTransactions
           .filter(t => t.type === 'expense' && t.category === cat)
           .reduce((acc, t) => acc + t.amount, 0)
+      })).filter(item => item.value > 0),
+      incomesByCategory: CATEGORIES.income.map(cat => ({
+        name: cat,
+        value: currentMonthTransactions
+          .filter(t => t.type === 'income' && t.category === cat)
+          .reduce((acc, t) => acc + t.amount, 0)
       })).filter(item => item.value > 0)
     };
   }, [transactions, selectedDashMonth, selectedYear]);
@@ -707,6 +713,66 @@ const Financeiro = () => {
       style: "currency",
       currency: "BRL",
     }).format(value);
+  };
+
+  const exportToCSV = (data: any[], filename: string) => {
+    if (data.length === 0) {
+      toast.error("Nenhum dado para exportar");
+      return;
+    }
+    const csvRows = [];
+    const headers = Object.keys(data[0]);
+    csvRows.push(headers.join(','));
+
+    for (const row of data) {
+      const values = headers.map(header => {
+        const val = row[header] === null || row[header] === undefined ? '' : row[header];
+        const escaped = ('' + val).replace(/"/g, '\\"');
+        return `"${escaped}"`;
+      });
+      csvRows.push(values.join(','));
+    }
+
+    const blob = new Blob(["\ufeff" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `${filename}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success("Relatório exportado com sucesso!");
+  };
+
+  const handleExportTransactions = () => {
+    const dataToExport = filteredTransactions.map(t => ({
+      Data_Competencia: new Date(t.competenceDate).toLocaleDateString('pt-BR'),
+      Data_Vencimento: new Date(t.dueDate).toLocaleDateString('pt-BR'),
+      Descricao: t.description,
+      Valor: t.amount,
+      Tipo: t.type === 'income' ? 'Receita' : 'Despesa',
+      Categoria: t.category,
+      Subcategoria: t.subcategory,
+      Instituicao: t.financialInstitution,
+      Metodo_Pagamento: t.paymentMethod,
+      Status: t.status === 'paid' ? 'Concluido' : 'Pendente',
+      OS: t.orderService || ''
+    }));
+    exportToCSV(dataToExport, `financeiro_lancamentos_${monthFilter || 'geral'}`);
+  };
+
+  const handleExportDRE = () => {
+    const dataToExport = [
+      { Descricao: '(+) Receita Operacional Bruta', Valor: dreData.grossRevenue, AV_Percentual: '100%' },
+      { Descricao: '(-) Impostos sobre Vendas', Valor: dreData.taxes, AV_Percentual: `${(dreData.taxes / (dreData.grossRevenue || 1) * 100).toFixed(2)}%` },
+      { Descricao: '(=) Receita Operacional Liquida', Valor: dreData.netRevenue, AV_Percentual: `${(dreData.netRevenue / (dreData.grossRevenue || 1) * 100).toFixed(2)}%` },
+      { Descricao: '(-) Custos Variaveis', Valor: dreData.variableCosts, AV_Percentual: `${(dreData.variableCosts / (dreData.grossRevenue || 1) * 100).toFixed(2)}%` },
+      { Descricao: '(=) Margem de Contribuicao', Valor: dreData.contributionMargin, AV_Percentual: `${(dreData.contributionMargin / (dreData.grossRevenue || 1) * 100).toFixed(2)}%` },
+      { Descricao: '(-) Despesas Fixas Operacionais', Valor: dreData.fixedExpenses, AV_Percentual: `${(dreData.fixedExpenses / (dreData.grossRevenue || 1) * 100).toFixed(2)}%` },
+      { Descricao: '(=) Resultado Liquido do Exercício', Valor: dreData.netResult, AV_Percentual: `${(dreData.netResult / (dreData.grossRevenue || 1) * 100).toFixed(2)}%` }
+    ];
+    exportToCSV(dataToExport, `dre_gerencial_${selectedDREYear}`);
   };
 
   const handleNewTransaction = () => {
@@ -1409,6 +1475,44 @@ const Financeiro = () => {
             <Card className="shadow-md bg-card/40 backdrop-blur-md border border-primary/10">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-emerald-500" />
+                  Fontes de Receita (Mês Atual)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[350px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={currentSummary.incomesByCategory}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={80}
+                        outerRadius={120}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {currentSummary.incomesByCategory.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={[
+                            '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#ef4444', '#06b6d4'
+                          ][index % 7]} />
+                        ))}
+                      </Pie>
+                      <XAxis hide />
+                      <Tooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{ backgroundColor: '#020617', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '8px' }}
+                      />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-md bg-card/40 backdrop-blur-md border border-primary/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
                   <TrendingDown className="h-5 w-5 text-rose-500" />
                   Distribuição de Despesas (Mês Atual)
                 </CardTitle>
@@ -1428,7 +1532,7 @@ const Financeiro = () => {
                       >
                         {currentSummary.expensesByCategory.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={[
-                            '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4'
+                            '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4', '#10b981'
                           ][index % 7]} />
                         ))}
                       </Pie>
@@ -1442,44 +1546,44 @@ const Financeiro = () => {
                 </div>
               </CardContent>
             </Card>
-
-            <Card className="shadow-md border-none bg-muted/20">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Saldo Acumulado do Ano
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pl-2">
-                <div className="h-[350px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={accumulatedData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorAcumulado" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                      <YAxis
-                        stroke="#888888"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value) => `R$${value}`}
-                      />
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                      <Tooltip
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{ borderRadius: '12px', border: 'none' }}
-                      />
-                      <Area type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorAcumulado)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
           </div>
+
+          <Card className="shadow-md border-none bg-muted/20 mt-6">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Saldo Acumulado do Ano
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pl-2">
+              <div className="h-[350px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={accumulatedData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorAcumulado" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis
+                      stroke="#888888"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `R$${value}`}
+                    />
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                    <Tooltip
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{ borderRadius: '12px', border: 'none' }}
+                    />
+                    <Area type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorAcumulado)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="lancamentos" className="space-y-6">
@@ -1577,7 +1681,11 @@ const Financeiro = () => {
             </CardContent>
           </Card>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button onClick={handleExportTransactions} variant="outline" size="sm" className="gap-1.5 shadow-sm">
+              <Download className="h-4 w-4" />
+              Exportar CSV
+            </Button>
             <Button onClick={handleNewTransaction} size="sm" className="gap-1.5 shadow-lg">
               <Plus className="h-4 w-4" />
               Novo Lançamento
@@ -1636,16 +1744,22 @@ const Financeiro = () => {
         <TabsContent value="dre" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-2xl font-bold tracking-tight">DRE Gerencial</h3>
-            <Select value={selectedDREYear} onValueChange={setSelectedDREYear}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Ano" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="2024">2024</SelectItem>
-                <SelectItem value="2025">2025</SelectItem>
-                <SelectItem value="2026">2026</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Button onClick={handleExportDRE} variant="outline" size="sm" className="gap-1.5 shadow-sm">
+                <Download className="h-4 w-4" />
+                Exportar DRE
+              </Button>
+              <Select value={selectedDREYear} onValueChange={setSelectedDREYear}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Ano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2024">2024</SelectItem>
+                  <SelectItem value="2025">2025</SelectItem>
+                  <SelectItem value="2026">2026</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <Card>
@@ -1654,50 +1768,82 @@ const Financeiro = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {/* Header for Analysis */}
+                <div className="hidden md:flex justify-between items-center px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b mb-2">
+                  <span className="w-1/2">Descrição</span>
+                  <div className="w-1/2 flex justify-end gap-12">
+                    <span className="w-32 text-right">Valor</span>
+                    <span className="w-20 text-right">AV (%)</span>
+                  </div>
+                </div>
+
                 {/* Receita Bruta */}
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="font-semibold text-lg text-green-600">(+) Receita Operacional Bruta</span>
-                  <span className="font-bold text-lg">{formatCurrency(dreData.grossRevenue)}</span>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center py-2 border-b">
+                  <span className="font-semibold text-lg text-green-600 w-full md:w-1/2">(+) Receita Operacional Bruta</span>
+                  <div className="w-full md:w-1/2 flex justify-between md:justify-end gap-4 md:gap-12">
+                    <span className="font-bold text-lg">{formatCurrency(dreData.grossRevenue)}</span>
+                    <span className="font-bold text-lg text-muted-foreground w-20 text-right">100%</span>
+                  </div>
                 </div>
 
                 {/* Impostos */}
-                <div className="flex justify-between items-center py-1 pl-4 text-sm text-muted-foreground">
-                  <span>(-) Impostos sobre Vendas</span>
-                  <span>{formatCurrency(dreData.taxes)}</span>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center py-1 pl-4 text-sm text-muted-foreground">
+                  <span className="w-full md:w-1/2">(-) Impostos sobre Vendas</span>
+                  <div className="w-full md:w-1/2 flex justify-between md:justify-end gap-4 md:gap-12">
+                    <span>{formatCurrency(dreData.taxes)}</span>
+                    <span className="w-20 text-right">{(dreData.taxes / (dreData.grossRevenue || 1) * 100).toFixed(1)}%</span>
+                  </div>
                 </div>
 
                 {/* Receita Líquida */}
-                <div className="flex justify-between items-center py-2 border-t border-b bg-muted/20">
-                  <span className="font-semibold text-base">(=) Receita Operacional Líquida</span>
-                  <span className="font-bold">{formatCurrency(dreData.netRevenue)}</span>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center py-2 border-t border-b bg-muted/20 px-2">
+                  <span className="font-semibold text-base w-full md:w-1/2">(=) Receita Operacional Líquida</span>
+                  <div className="w-full md:w-1/2 flex justify-between md:justify-end gap-4 md:gap-12">
+                    <span className="font-bold">{formatCurrency(dreData.netRevenue)}</span>
+                    <span className="text-muted-foreground w-20 text-right font-medium">{(dreData.netRevenue / (dreData.grossRevenue || 1) * 100).toFixed(1)}%</span>
+                  </div>
                 </div>
 
                 {/* Custos Variáveis */}
-                <div className="flex justify-between items-center py-1 pl-4 text-sm text-muted-foreground">
-                  <span>(-) Custos Variáveis (Matéria-Prima, Comissões...)</span>
-                  <span>{formatCurrency(dreData.variableCosts)}</span>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center py-1 pl-4 text-sm text-muted-foreground">
+                  <span className="w-full md:w-1/2">(-) Custos Variáveis (Matéria-Prima, Comissões...)</span>
+                  <div className="w-full md:w-1/2 flex justify-between md:justify-end gap-4 md:gap-12">
+                    <span>{formatCurrency(dreData.variableCosts)}</span>
+                    <span className="w-20 text-right">{(dreData.variableCosts / (dreData.grossRevenue || 1) * 100).toFixed(1)}%</span>
+                  </div>
                 </div>
 
                 {/* Margem de Contribuição */}
-                <div className="flex justify-between items-center py-2 border-t border-b bg-muted/20">
-                  <span className="font-semibold text-base">(=) Margem de Contribuição</span>
-                  <span className={`font-bold ${dreData.contributionMargin >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                    {formatCurrency(dreData.contributionMargin)}
-                  </span>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center py-2 border-t border-b bg-muted/20 px-2">
+                  <span className="font-semibold text-base w-full md:w-1/2">(=) Margem de Contribuição</span>
+                  <div className="w-full md:w-1/2 flex justify-between md:justify-end gap-4 md:gap-12">
+                    <span className={`font-bold ${dreData.contributionMargin >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                      {formatCurrency(dreData.contributionMargin)}
+                    </span>
+                    <span className="text-muted-foreground w-20 text-right font-medium">{(dreData.contributionMargin / (dreData.grossRevenue || 1) * 100).toFixed(1)}%</span>
+                  </div>
                 </div>
 
                 {/* Despesas Fixas */}
-                <div className="flex justify-between items-center py-1 pl-4 text-sm text-muted-foreground">
-                  <span>(-) Despesas Fixas Operacionais</span>
-                  <span>{formatCurrency(dreData.fixedExpenses)}</span>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center py-1 pl-4 text-sm text-muted-foreground">
+                  <span className="w-full md:w-1/2">(-) Despesas Fixas Operacionais</span>
+                  <div className="w-full md:w-1/2 flex justify-between md:justify-end gap-4 md:gap-12">
+                    <span>{formatCurrency(dreData.fixedExpenses)}</span>
+                    <span className="w-20 text-right">{(dreData.fixedExpenses / (dreData.grossRevenue || 1) * 100).toFixed(1)}%</span>
+                  </div>
                 </div>
 
                 {/* Resultado Líquido */}
-                <div className="flex justify-between items-center py-4 border-t-2 border-black mt-2 bg-muted/40 rounded-lg px-2">
-                  <span className="font-bold text-xl">(=) Resultado Líquido do Exercício</span>
-                  <span className={`font-bold text-xl ${dreData.netResult >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(dreData.netResult)}
-                  </span>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center py-4 border-t-2 border-black mt-2 bg-muted/40 rounded-lg px-2">
+                  <span className="font-bold text-xl w-full md:w-1/2">(=) Resultado Líquido do Exercício</span>
+                  <div className="w-full md:w-1/2 flex justify-between md:justify-end gap-4 md:gap-12">
+                    <span className={`font-bold text-xl ${dreData.netResult >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(dreData.netResult)}
+                    </span>
+                    <span className={`font-bold text-xl w-20 text-right ${dreData.netResult >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      {(dreData.netResult / (dreData.grossRevenue || 1) * 100).toFixed(1)}%
+                    </span>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -2024,7 +2170,7 @@ const Financeiro = () => {
           </Card>
         </TabsContent>
 
-      </Tabs>
+      </Tabs >
 
       <TransactionFormDialog
         open={isDialogOpen}
@@ -2049,7 +2195,7 @@ const Financeiro = () => {
         onUpdate={handleServiceExpenseUpdate}
         editingExpense={editingServiceExpense}
       />
-    </div>
+    </div >
   );
 };
 
