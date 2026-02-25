@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Transaction, CATEGORIES, SUBCATEGORIES } from "@/types/finance";
@@ -595,6 +595,62 @@ const Financeiro = () => {
 
     const projectedBalance = (entradaMes + accountsReceivable) - (saidaMes + accountsPayable);
 
+    // --- COMPARISON WITH PREVIOUS MONTH ---
+    const prevMonthDate = new Date(currentYear, currentMonth - 1, 1);
+    const prevMonth = prevMonthDate.getMonth();
+    const prevYear = prevMonthDate.getFullYear();
+
+    const prevMonthTransactions = transactions.filter(t => {
+      const date = new Date(t.paymentDate || t.dueDate);
+      return date.getMonth() === prevMonth && date.getFullYear() === prevYear;
+    });
+
+    const entradaMesAnterior = prevMonthTransactions
+      .filter(t => t.type === 'income' && t.status === 'paid')
+      .reduce((acc, t) => acc + t.amount, 0);
+
+    const saidaMesAnterior = prevMonthTransactions
+      .filter(t => t.type === 'expense' && t.status === 'paid')
+      .reduce((acc, t) => acc + t.amount, 0);
+
+    const calcGrowth = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return ((current - previous) / previous) * 100;
+    };
+
+    // --- BANK BALANCES ---
+    const balancesByAccount = transactions
+      .filter(t => t.status === 'paid')
+      .reduce((acc: Record<string, number>, t) => {
+        const account = t.financialInstitution || 'Outros';
+        const amount = t.type === 'income' ? t.amount : -t.amount;
+        acc[account] = (acc[account] || 0) + amount;
+        return acc;
+      }, {});
+
+    // --- TOP EXPENSES ---
+    const subcategoryExpenses = currentMonthTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((acc: Record<string, number>, t) => {
+        const sub = t.subcategory || t.category || 'Outros';
+        acc[sub] = (acc[sub] || 0) + t.amount;
+        return acc;
+      }, {});
+
+    const topExpenses = Object.entries(subcategoryExpenses)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    const topDebtors = transactions
+      .filter(t => t.type === 'income' && t.status === 'pending' && new Date(t.dueDate) < new Date())
+      .reduce((acc: Record<string, { total: number, count: number }>, t) => {
+        acc[t.contact] = acc[t.contact] || { total: 0, count: 0 };
+        acc[t.contact].total += t.amount;
+        acc[t.contact].count += 1;
+        return acc;
+      }, {});
+
     return {
       entradaMes,
       saidaMes,
@@ -606,6 +662,11 @@ const Financeiro = () => {
       accountsPayable,
       accountsReceivable,
       projectedBalance,
+      entradaGrowth: calcGrowth(entradaMes, entradaMesAnterior),
+      saidaGrowth: calcGrowth(saidaMes, saidaMesAnterior),
+      balancesByAccount,
+      topExpenses,
+      topDebtors,
       inadimplenciaTotal: transactions
         .filter(t => t.type === 'income' && t.status === 'pending' && new Date(t.dueDate) < new Date())
         .reduce((acc, t) => acc + t.amount, 0),
@@ -615,6 +676,7 @@ const Financeiro = () => {
       ticketMedio: currentMonthTransactions.filter(t => t.type === 'income').length > 0
         ? receitaBrutaMes / currentMonthTransactions.filter(t => t.type === 'income').length
         : 0,
+      margemLucro: receitaBrutaMes > 0 ? (resultadoMes / receitaBrutaMes) * 100 : 0,
       expensesByCategory: CATEGORIES.expense.map(cat => ({
         name: cat,
         value: currentMonthTransactions
@@ -975,7 +1037,12 @@ const Financeiro = () => {
                 <TrendingUp className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{formatCurrency(currentSummary.entradaMes)}</div>
+                <div className="flex items-baseline gap-2">
+                  <div className="text-2xl font-bold text-primary">{formatCurrency(currentSummary.entradaMes)}</div>
+                  <span className={`text-[10px] font-bold ${currentSummary.entradaGrowth >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                    {currentSummary.entradaGrowth >= 0 ? "+" : ""}{currentSummary.entradaGrowth.toFixed(1)}%
+                  </span>
+                </div>
                 <p className="text-xs text-muted-foreground">Recebido (Caixa)</p>
               </CardContent>
             </Card>
@@ -985,7 +1052,12 @@ const Financeiro = () => {
                 <TrendingDown className="h-4 w-4 text-rose-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-rose-500">{formatCurrency(currentSummary.saidaMes)}</div>
+                <div className="flex items-baseline gap-2">
+                  <div className="text-2xl font-bold text-rose-500">{formatCurrency(currentSummary.saidaMes)}</div>
+                  <span className={`text-[10px] font-bold ${currentSummary.saidaGrowth <= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                    {currentSummary.saidaGrowth >= 0 ? "+" : ""}{currentSummary.saidaGrowth.toFixed(1)}%
+                  </span>
+                </div>
                 <p className="text-xs text-muted-foreground">Pago (Caixa)</p>
               </CardContent>
             </Card>
@@ -1014,6 +1086,92 @@ const Financeiro = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* NOVAS SEÇÕES: SALDOS POR CONTA E MAIORES GASTOS */}
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+            <Card className="bg-card/40 border shadow-lg backdrop-blur-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-primary" />
+                  Saldos por Conta / Instituição
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {Object.entries(currentSummary.balancesByAccount).length > 0 ? (
+                    Object.entries(currentSummary.balancesByAccount).map(([account, balance]: [string, any]) => (
+                      <div key={account} className="flex justify-between items-center p-2 rounded-lg bg-background/50 border border-border/50">
+                        <span className="text-sm font-medium">{account}</span>
+                        <span className={`text-sm font-bold ${balance >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                          {formatCurrency(balance)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic py-4 text-center">Nenhum saldo registrado.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/40 border shadow-lg backdrop-blur-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <TrendingDown className="h-4 w-4 text-rose-500" />
+                  Maiores Gastos do Mês
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {currentSummary.topExpenses.length > 0 ? (
+                    currentSummary.topExpenses.map((exp: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center p-2 rounded-lg bg-background/50 border border-border/50">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-muted-foreground w-4">{idx + 1}.</span>
+                          <span className="text-sm font-medium">{exp.name}</span>
+                        </div>
+                        <span className="text-sm font-bold text-rose-500">
+                          {formatCurrency(exp.value)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic py-4 text-center">Nenhum gasto registrado no mês.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* RADAR DE INADIMPLÊNCIA */}
+          {Object.entries(currentSummary.topDebtors).length > 0 && (
+            <div className="mt-4">
+              <Card className="bg-orange-500/5 border-orange-500/20 shadow-lg backdrop-blur-md border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-orange-500 flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Radar de Inadimplência (Clientes em Atraso)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {Object.entries(currentSummary.topDebtors)
+                      .sort((a: any, b: any) => b[1].total - a[1].total)
+                      .slice(0, 6)
+                      .map(([name, data]: [string, any]) => (
+                        <div key={name} className="flex justify-between items-center p-3 rounded-lg bg-background/40 border border-orange-500/10">
+                          <div className="space-y-0.5">
+                            <p className="text-sm font-bold truncate max-w-[150px]">{name}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase">{data.count} pagamentos pendentes</p>
+                          </div>
+                          <span className="text-sm font-black text-orange-600">{formatCurrency(data.total)}</span>
+                        </div>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
             <Card className="bg-card/40 border-l-4 border-l-primary shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] border">
@@ -1099,7 +1257,7 @@ const Financeiro = () => {
             </Card>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4 grid gap-4 grid-cols-1 md:grid-cols-2">
             <Card className="bg-card/40 border-l-4 border-l-emerald-600 shadow-xl backdrop-blur-md transition-all border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="space-y-1">
@@ -1112,6 +1270,21 @@ const Financeiro = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-[10px] text-emerald-400/70 mx-auto text-center font-bold uppercase tracking-widest bg-emerald-400/10 w-fit px-2 py-0.5 rounded border border-emerald-400/20">Visão Final (Pago + Pendente)</div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/40 border-l-4 border-l-blue-600 shadow-xl backdrop-blur-md transition-all border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="space-y-1">
+                  <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-tighter text-center">Margem de Lucro Operacional</CardTitle>
+                  <p className={`text-4xl font-black text-center ${currentSummary.margemLucro >= 0 ? "text-blue-400" : "text-rose-500"}`}>
+                    {currentSummary.margemLucro.toFixed(1)}%
+                  </p>
+                </div>
+                <TrendingUp className={`h-8 w-8 ${currentSummary.margemLucro >= 0 ? "text-blue-400" : "text-rose-500"}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-[10px] text-blue-400/70 mx-auto text-center font-bold uppercase tracking-widest bg-blue-400/10 w-fit px-2 py-0.5 rounded border border-blue-400/20">Eficiência Financeira</div>
               </CardContent>
             </Card>
           </div>
