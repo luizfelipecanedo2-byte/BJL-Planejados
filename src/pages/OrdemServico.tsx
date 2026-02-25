@@ -121,32 +121,39 @@ const OrdemServico = () => {
 
     const handleSubmit = async (orderData: Omit<ServiceOrder, "id">) => {
         try {
+            const formatDate = (date: any) => {
+                if (!date || isNaN(new Date(date).getTime())) return null;
+                return new Date(date).toISOString().split('T')[0];
+            };
+
             const newOrder = {
                 ticket_number: orderData.ticketNumber,
-                open_date: orderData.openDate.toISOString().split('T')[0],
+                open_date: formatDate(orderData.openDate),
                 client: orderData.client,
                 type: orderData.type,
                 action: orderData.action,
                 status: orderData.status,
-                forecast_date: orderData.forecastDate.toISOString().split('T')[0],
-                completion_date: orderData.completionDate ? orderData.completionDate.toISOString().split('T')[0] : null,
+                forecast_date: formatDate(orderData.forecastDate),
+                completion_date: formatDate(orderData.completionDate),
                 notes: orderData.notes,
                 attachments: orderData.attachments || []
             };
 
+            console.log("Enviando nova OS:", newOrder);
+
             const { data, error } = await supabase
                 .from('service_orders')
                 .insert([newOrder])
-                .select()
-                .single();
+                .select();
 
             if (error) throw error;
 
-            if (data) {
+            if (data && data[0]) {
+                const insertedOrder = data[0];
                 // Inserir logs de horas se houver
                 if (orderData.laborLogs && orderData.laborLogs.length > 0) {
                     const logsToInsert = orderData.laborLogs.map(l => ({
-                        service_order_id: data.id,
+                        service_order_id: insertedOrder.id,
                         date: l.date instanceof Date ? l.date.toISOString().split('T')[0] : l.date,
                         hours: Number(l.hours),
                         description: l.description || ""
@@ -160,17 +167,17 @@ const OrdemServico = () => {
                 }
 
                 const createdOrder: ServiceOrder = {
-                    id: data.id,
-                    ticketNumber: data.ticket_number,
-                    openDate: parseDate(data.open_date),
-                    client: data.client,
-                    type: data.type as any,
-                    action: data.action,
-                    status: data.status as any,
-                    forecastDate: parseDate(data.forecast_date),
-                    completionDate: data.completion_date ? parseDate(data.completion_date) : undefined,
-                    notes: data.notes,
-                    attachments: data.attachments || [],
+                    id: insertedOrder.id,
+                    ticketNumber: insertedOrder.ticket_number,
+                    openDate: parseDate(insertedOrder.open_date),
+                    client: insertedOrder.client,
+                    type: insertedOrder.type as any,
+                    action: insertedOrder.action,
+                    status: insertedOrder.status as any,
+                    forecastDate: parseDate(insertedOrder.forecast_date),
+                    completionDate: insertedOrder.completion_date ? parseDate(insertedOrder.completion_date) : undefined,
+                    notes: insertedOrder.notes,
+                    attachments: insertedOrder.attachments || [],
                     laborLogs: orderData.laborLogs || []
                 };
                 setOrders([createdOrder, ...orders]);
