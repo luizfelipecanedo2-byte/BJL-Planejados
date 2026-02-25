@@ -599,7 +599,13 @@ const Financeiro = () => {
       resultadoMes,
       accountsPayable,
       accountsReceivable,
-      projectedBalance
+      projectedBalance,
+      inadimplenciaTotal: transactions
+        .filter(t => t.type === 'income' && t.status === 'pending' && new Date(t.dueDate) < new Date())
+        .reduce((acc, t) => acc + t.amount, 0),
+      pontoEquilibrio: currentMonthTransactions
+        .filter(t => t.type === 'expense' && ["Despesa Operacional", "Despesa com Maquinário", "Despesa com Pessoal"].includes(t.category))
+        .reduce((acc, t) => acc + t.amount, 0)
     };
   }, [transactions, selectedDashMonth, selectedYear]);
 
@@ -977,7 +983,7 @@ const Financeiro = () => {
             </Card>
           </div>
 
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
             <Card className="bg-card/40 border-l-4 border-l-primary shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="space-y-1">
@@ -1024,26 +1030,52 @@ const Financeiro = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-card/40 border-l-4 border-l-emerald-600 shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] border">
+            <Card className="bg-card/40 border-l-4 border-l-orange-500 shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="space-y-1">
-                  <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-tighter">Resultado Projetado</CardTitle>
-                  <p className={`text-2xl font-black ${currentSummary.projectedBalance >= 0 ? "text-emerald-400" : "text-rose-500"}`}>
+                  <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-tighter">Inadimplência</CardTitle>
+                  <p className="text-2xl font-black text-orange-500">{formatCurrency(currentSummary.inadimplenciaTotal)}</p>
+                </div>
+                <Users className="h-5 w-5 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-[10px] text-orange-500/70 mb-4 font-bold uppercase tracking-widest bg-orange-500/10 w-fit px-2 py-0.5 rounded border border-orange-500/20 text-center">Contas em Atraso</div>
+                <div className="flex flex-col items-center justify-center py-2">
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold">Total Pendente Acumulado</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/40 border-l-4 border-l-yellow-600 shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="space-y-1">
+                  <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-tighter">Ponto de Equilíbrio</CardTitle>
+                  <p className="text-2xl font-black text-yellow-500">{formatCurrency(currentSummary.pontoEquilibrio)}</p>
+                </div>
+                <TrendingUp className="h-5 w-5 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-[10px] text-yellow-500/70 mb-4 font-bold uppercase tracking-widest bg-yellow-500/10 w-fit px-2 py-0.5 rounded border border-yellow-500/20">Meta p/ Custos Fixos</div>
+                <div className="space-y-3">
+                  <div className="text-[10px] text-muted-foreground">Valor mínimo para pagar contas operacionais do mês.</div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-4">
+            <Card className="bg-card/40 border-l-4 border-l-emerald-600 shadow-xl backdrop-blur-md transition-all border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="space-y-1">
+                  <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-tighter text-center">Resultado Projetado Final do Mês</CardTitle>
+                  <p className={`text-4xl font-black text-center ${currentSummary.projectedBalance >= 0 ? "text-emerald-400" : "text-rose-500"}`}>
                     {formatCurrency(currentSummary.projectedBalance)}
                   </p>
                 </div>
-                <DollarSign className="h-5 w-5 text-emerald-400" />
+                <DollarSign className={`h-8 w-8 ${currentSummary.projectedBalance >= 0 ? "text-emerald-400" : "text-rose-500"}`} />
               </CardHeader>
               <CardContent>
-                <div className="text-[10px] text-emerald-400/70 mb-4 font-bold uppercase tracking-widest bg-emerald-400/10 w-fit px-2 py-0.5 rounded border border-emerald-400/20">Pago + Pendente</div>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Lucro Contábil:</span>
-                    <span className={`font-bold ${currentSummary.resultadoMes >= 0 ? "text-emerald-400" : "text-rose-500"}`}>
-                      {formatCurrency(currentSummary.resultadoMes)}
-                    </span>
-                  </div>
-                </div>
+                <div className="text-[10px] text-emerald-400/70 mx-auto text-center font-bold uppercase tracking-widest bg-emerald-400/10 w-fit px-2 py-0.5 rounded border border-emerald-400/20">Visão Final (Pago + Pendente)</div>
               </CardContent>
             </Card>
           </div>
