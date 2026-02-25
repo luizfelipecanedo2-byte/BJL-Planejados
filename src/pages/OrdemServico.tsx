@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import ServiceOrderTable from "@/components/crm/ServiceOrderTable";
 import ServiceOrderFormDialog from "@/components/crm/ServiceOrderFormDialog";
 import { ServiceOrder } from "@/types/serviceOrder";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
@@ -14,6 +15,16 @@ const OrdemServico = () => {
     const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
 
     const [isLoading, setIsLoading] = useState(true);
+
+    const parseDate = (dateStr: any) => {
+        if (!dateStr) return new Date();
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) {
+            const d2 = new Date(dateStr + (dateStr.includes('T') ? '' : 'T12:00:00'));
+            return isNaN(d2.getTime()) ? new Date() : d2;
+        }
+        return d;
+    };
 
     useEffect(() => {
         fetchOrders();
@@ -29,15 +40,7 @@ const OrdemServico = () => {
 
             if (error) throw error;
 
-            const parseDate = (dateStr: any) => {
-                if (!dateStr) return new Date();
-                const d = new Date(dateStr);
-                if (isNaN(d.getTime())) {
-                    const d2 = new Date(dateStr + (dateStr.includes('T') ? '' : 'T12:00:00'));
-                    return isNaN(d2.getTime()) ? new Date() : d2;
-                }
-                return d;
-            };
+
 
             const mappedOrders: ServiceOrder[] = (data || []).map(o => ({
                 id: o.id,
@@ -50,14 +53,40 @@ const OrdemServico = () => {
                 forecastDate: parseDate(o.forecast_date),
                 completionDate: o.completion_date ? parseDate(o.completion_date) : undefined,
                 notes: o.notes,
-                attachments: o.attachments || []
+                attachments: o.attachments || [],
+                laborLogs: []
             }));
 
+            // Mostra o que já tem
             setOrders(mappedOrders);
+            setIsLoading(false);
+
+            // Passo 2: Tenta buscar as horas separadamente
+            try {
+                const { data: logsData, error: logsError } = await supabase
+                    .from('service_order_labor_logs')
+                    .select('*');
+
+                if (!logsError && logsData) {
+                    const ordersWithLogs = mappedOrders.map(order => ({
+                        ...order,
+                        laborLogs: logsData
+                            .filter((l: any) => l.service_order_id === order.id)
+                            .map((l: any) => ({
+                                id: l.id,
+                                date: parseDate(l.date),
+                                hours: Number(l.hours),
+                                description: l.description
+                            }))
+                    }));
+                    setOrders(ordersWithLogs);
+                }
+            } catch (logsErr) {
+                console.warn("Erro ao buscar logs de horas:", logsErr);
+            }
         } catch (error) {
             console.error('Error fetching orders:', error);
             toast.error("Erro ao carregar ordens de serviço.");
-        } finally {
             setIsLoading(false);
         }
     };
@@ -114,18 +143,30 @@ const OrdemServico = () => {
             if (error) throw error;
 
             if (data) {
+                // Inserir logs de horas se houver
+                if (orderData.laborLogs && orderData.laborLogs.length > 0) {
+                    const logsToInsert = orderData.laborLogs.map(l => ({
+                        service_order_id: data.id,
+                        date: new Date(l.date).toISOString().split('T')[0],
+                        hours: l.hours,
+                        description: l.description
+                    }));
+                    await supabase.from('service_order_labor_logs').insert(logsToInsert);
+                }
+
                 const createdOrder: ServiceOrder = {
                     id: data.id,
                     ticketNumber: data.ticket_number,
-                    openDate: new Date(data.open_date + 'T12:00:00'),
+                    openDate: parseDate(data.open_date),
                     client: data.client,
                     type: data.type as any,
                     action: data.action,
                     status: data.status as any,
-                    forecastDate: new Date(data.forecast_date + 'T12:00:00'),
-                    completionDate: data.completion_date ? new Date(data.completion_date + 'T12:00:00') : undefined,
+                    forecastDate: parseDate(data.forecast_date),
+                    completionDate: data.completion_date ? parseDate(data.completion_date) : undefined,
                     notes: data.notes,
-                    attachments: data.attachments || []
+                    attachments: data.attachments || [],
+                    laborLogs: orderData.laborLogs || []
                 };
                 setOrders([createdOrder, ...orders]);
             }
@@ -157,6 +198,23 @@ const OrdemServico = () => {
 
             if (error) throw error;
 
+            // Sincronizar logs de horas
+            if (updates.laborLogs) {
+                // Delete existing first
+                await supabase.from('service_order_labor_logs').delete().eq('service_order_id', id);
+
+                // Insert current ones
+                if (updates.laborLogs.length > 0) {
+                    const logsToInsert = updates.laborLogs.map((l: any) => ({
+                        service_order_id: id,
+                        date: new Date(l.date).toISOString().split('T')[0],
+                        hours: l.hours,
+                        description: l.description
+                    }));
+                    await supabase.from('service_order_labor_logs').insert(logsToInsert);
+                }
+            }
+
             setOrders(orders.map(order =>
                 order.id === id ? { ...order, ...updates } : order
             ));
@@ -171,10 +229,22 @@ const OrdemServico = () => {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">Ordem de Serviço</h2>
-                <Button onClick={handleNewOrder} size="sm" className="gap-1.5">
-                    <Plus className="h-4 w-4" />
-                    Nova OS
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={fetchOrders}
+                        disabled={isLoading}
+                        className="gap-1.5"
+                    >
+                        <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                        Atualizar
+                    </Button>
+                    <Button onClick={handleNewOrder} size="sm" className="gap-1.5">
+                        <Plus className="h-4 w-4" />
+                        Nova OS
+                    </Button>
+                </div>
             </div>
 
             <Card>

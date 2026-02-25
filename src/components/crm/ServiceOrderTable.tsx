@@ -45,6 +45,7 @@ const ServiceOrderTable = ({ orders, onEdit, onDelete }: ServiceOrderTableProps)
                         <TableHead>Tipo</TableHead>
                         <TableHead>Ação</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Total Horas</TableHead>
                         <TableHead>Previsão</TableHead>
                         <TableHead>Conclusão</TableHead>
                         <TableHead className="w-[50px]">Ações</TableHead>
@@ -63,6 +64,9 @@ const ServiceOrderTable = ({ orders, onEdit, onDelete }: ServiceOrderTableProps)
                             <TableCell>{order.type}</TableCell>
                             <TableCell>{order.action}</TableCell>
                             <TableCell>{getStatusDisplay(order)}</TableCell>
+                            <TableCell className="font-bold">
+                                {(order.laborLogs || []).reduce((acc, l) => acc + l.hours, 0).toFixed(1)}h
+                            </TableCell>
                             <TableCell>
                                 {order.forecastDate instanceof Date && !isNaN(order.forecastDate.getTime())
                                     ? format(order.forecastDate, "dd/MM/yyyy", { locale: ptBR })

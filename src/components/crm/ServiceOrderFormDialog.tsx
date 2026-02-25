@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, ChevronsUpDown, File, Upload, X, ExternalLink, Loader2, Clipboard, MessageSquare } from "lucide-react";
+import { Check, ChevronsUpDown, File, Upload, X, ExternalLink, Loader2, Clipboard, MessageSquare, Clock, Trash2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { Client } from "@/types/client";
@@ -41,7 +41,6 @@ import {
 } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
-
 interface ServiceOrderFormDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -68,6 +67,7 @@ const ServiceOrderFormDialog = ({
         completionDate: "",
         notes: "",
         attachments: [] as string[],
+        laborLogs: [] as any[],
     });
     const [isUploading, setIsUploading] = useState(false);
 
@@ -116,10 +116,11 @@ const ServiceOrderFormDialog = ({
                     : "",
                 notes: editingOrder.notes || "",
                 attachments: editingOrder.attachments || [],
+                laborLogs: editingOrder.laborLogs || [],
             });
         } else {
             setForm({
-                ticketNumber: "", // Idealmente seria gerado
+                ticketNumber: "",
                 client: "",
                 type: "Fabricação",
                 action: "",
@@ -129,6 +130,7 @@ const ServiceOrderFormDialog = ({
                 completionDate: "",
                 notes: "",
                 attachments: [],
+                laborLogs: [],
             });
         }
     }, [editingOrder, open]);
@@ -136,37 +138,36 @@ const ServiceOrderFormDialog = ({
     const handleDateChange = (field: string, value: string) => {
         setForm((prev) => {
             const updates = { ...prev, [field]: value };
-
-            // Regra: Quando digitar a data da conclusão o status já muda para encerrado
             if (field === "completionDate" && value) {
                 updates.status = "Encerrado";
             }
-
             return updates;
         });
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        // Converter strings de data para objetos Date
-        const submitData = {
-            ...form,
-            openDate: new Date(form.openDate),
-            forecastDate: new Date(form.forecastDate),
-            completionDate: form.completionDate ? new Date(form.completionDate) : undefined,
-        };
-
-        if (editingOrder && onUpdate) {
-            onUpdate(editingOrder.id, submitData);
-        } else {
-            onSubmit(submitData);
-        }
-        onOpenChange(false);
-    };
-
     const update = (field: string, value: any) => {
         setForm((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const addLaborLog = () => {
+        const newLog = {
+            date: new Date().toISOString().split("T")[0],
+            hours: 0,
+            description: ""
+        };
+        update("laborLogs", [...form.laborLogs, newLog]);
+    };
+
+    const removeLaborLog = (index: number) => {
+        const newLogs = [...form.laborLogs];
+        newLogs.splice(index, 1);
+        update("laborLogs", newLogs);
+    };
+
+    const updateLaborLog = (index: number, field: string, value: any) => {
+        const newLogs = [...form.laborLogs];
+        newLogs[index] = { ...newLogs[index], [field]: value };
+        update("laborLogs", newLogs);
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,6 +203,27 @@ const ServiceOrderFormDialog = ({
         update("attachments", form.attachments.filter(a => a !== url));
     };
 
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const submitData = {
+            ...form,
+            openDate: new Date(form.openDate),
+            forecastDate: new Date(form.forecastDate),
+            completionDate: form.completionDate ? new Date(form.completionDate) : undefined,
+            laborLogs: form.laborLogs.map(l => ({
+                ...l,
+                date: new Date(l.date)
+            }))
+        };
+
+        if (editingOrder && onUpdate) {
+            onUpdate(editingOrder.id, submitData);
+        } else {
+            onSubmit(submitData);
+        }
+        onOpenChange(false);
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -212,22 +234,26 @@ const ServiceOrderFormDialog = ({
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <Tabs defaultValue="geral" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 mb-4">
+                        <TabsList className="grid w-full grid-cols-4 mb-4">
                             <TabsTrigger value="geral" className="gap-2">
                                 <Clipboard className="h-4 w-4" />
                                 Geral
                             </TabsTrigger>
                             <TabsTrigger value="observacao" className="gap-2">
                                 <MessageSquare className="h-4 w-4" />
-                                Observações
+                                Obs
                             </TabsTrigger>
                             <TabsTrigger value="arquivos" className="gap-2">
                                 <File className="h-4 w-4" />
                                 Arquivos
                             </TabsTrigger>
+                            <TabsTrigger value="horas" className="gap-2">
+                                <Clock className="h-4 w-4" />
+                                Horas
+                            </TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="geral" className="space-y-4 pt-4">
+                        <TabsContent value="geral" className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor="ticketNumber">N° Chamado</Label>
@@ -332,11 +358,11 @@ const ServiceOrderFormDialog = ({
                                         value={form.action}
                                         onChange={(e) => update("action", e.target.value)}
                                         required
-                                        placeholder="Descrição do serviço a ser realizado"
+                                        placeholder="Descrição do serviço"
                                     />
                                 </div>
                                 <div>
-                                    <Label htmlFor="forecastDate">Previsão de Finalização</Label>
+                                    <Label htmlFor="forecastDate">Previsão</Label>
                                     <Input
                                         id="forecastDate"
                                         type="date"
@@ -346,7 +372,7 @@ const ServiceOrderFormDialog = ({
                                     />
                                 </div>
                                 <div>
-                                    <Label htmlFor="completionDate">Data de Conclusão</Label>
+                                    <Label htmlFor="completionDate">Conclusão</Label>
                                     <Input
                                         id="completionDate"
                                         type="date"
@@ -357,113 +383,108 @@ const ServiceOrderFormDialog = ({
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="observacao" className="space-y-4 pt-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="notes">Observações para os Marceneiros</Label>
-                                <Textarea
-                                    id="notes"
-                                    value={form.notes}
-                                    onChange={(e) => update("notes", e.target.value)}
-                                    placeholder="Digite aqui as orientações e observações técnicas..."
-                                    className="min-h-[200px] resize-none"
-                                />
-                                <p className="text-xs text-muted-foreground italic">
-                                    Use este espaço para detalhar o projeto, materiais ou qualquer instrução importante para a produção.
-                                </p>
+                        <TabsContent value="observacao" className="space-y-4">
+                            <Label htmlFor="notes">Observações Técnicas</Label>
+                            <Textarea
+                                id="notes"
+                                value={form.notes}
+                                onChange={(e) => update("notes", e.target.value)}
+                                placeholder="Instruções para a produção..."
+                                className="min-h-[200px]"
+                            />
+                        </TabsContent>
+
+                        <TabsContent value="horas" className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <Label>Lançamentos de Horas</Label>
+                                <Button type="button" variant="outline" size="sm" onClick={addLaborLog} className="gap-1">
+                                    <Plus className="h-4 w-4" />
+                                    Adicionar
+                                </Button>
+                            </div>
+                            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                                {form.laborLogs.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground italic text-center py-6 border rounded-lg">
+                                        Nenhuma hora lançada.
+                                    </p>
+                                ) : (
+                                    form.laborLogs.map((log, index) => (
+                                        <div key={index} className="p-3 border rounded-lg bg-card/50 space-y-3 relative group">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="absolute top-2 right-2 text-red-500 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => removeLaborLog(index)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <Input
+                                                    type="date"
+                                                    value={typeof log.date === 'string' ? log.date : new Date(log.date).toISOString().split('T')[0]}
+                                                    onChange={(e) => updateLaborLog(index, "date", e.target.value)}
+                                                    className="h-8 text-xs"
+                                                />
+                                                <Input
+                                                    type="number"
+                                                    step="0.5"
+                                                    value={log.hours}
+                                                    onChange={(e) => updateLaborLog(index, "hours", parseFloat(e.target.value))}
+                                                    className="h-8 text-xs"
+                                                    placeholder="Horas"
+                                                />
+                                            </div>
+                                            <Input
+                                                value={log.description}
+                                                onChange={(e) => updateLaborLog(index, "description", e.target.value)}
+                                                placeholder="Descrição do trabalho..."
+                                                className="h-8 text-xs"
+                                            />
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="arquivos" className="space-y-4 pt-4">
-                            <div className="space-y-4">
-                                <div className="flex flex-col gap-2">
-                                    <Label>Anexar Projetos e Plano de Cortes</Label>
-                                    <Label htmlFor="file-upload" className="cursor-pointer">
-                                        <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
-                                            {isUploading ? (
-                                                <div className="flex flex-center gap-2">
-                                                    <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
-                                                    <span className="text-sm text-blue-600">Enviando...</span>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <Upload className="h-8 w-8 text-blue-400 mb-2" />
-                                                    <span className="text-sm text-blue-600 font-medium">Clique para fazer upload</span>
-                                                    <span className="text-xs text-blue-400">PDF, Imagens, DXF, etc.</span>
-                                                </>
-                                            )}
-                                        </div>
-                                        <Input
-                                            id="file-upload"
-                                            type="file"
-                                            className="hidden"
-                                            onChange={handleFileUpload}
-                                            disabled={isUploading}
-                                        />
-                                    </Label>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <h4 className="text-sm font-medium">Arquivos Anexados</h4>
-                                    {form.attachments.length === 0 ? (
-                                        <p className="text-sm text-muted-foreground italic py-4 text-center border rounded-lg bg-muted/20">
-                                            Nenhum arquivo anexado ainda.
-                                        </p>
+                        <TabsContent value="arquivos" className="space-y-4">
+                            <Label htmlFor="file-upload" className="cursor-pointer">
+                                <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-primary/20 rounded-lg hover:bg-primary/5 transition-colors">
+                                    {isUploading ? (
+                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                     ) : (
-                                        <div className="grid gap-2">
-                                            {form.attachments.map((url, index) => (
-                                                <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100 group hover:border-blue-300 transition-colors">
-                                                    <div className="flex items-center gap-3 overflow-hidden">
-                                                        <div className="p-2 bg-blue-50 rounded text-blue-600">
-                                                            <File className="h-4 w-4" />
-                                                        </div>
-                                                        <div className="flex flex-col overflow-hidden">
-                                                            <span className="text-xs font-medium truncate max-w-[200px]">
-                                                                Arquivo {index + 1}
-                                                            </span>
-                                                            <span className="text-[10px] text-muted-foreground truncate">
-                                                                {url.split('/').pop()}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                            onClick={() => window.open(url, '_blank')}
-                                                        >
-                                                            <ExternalLink className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                            onClick={() => removeAttachment(url)}
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <>
+                                            <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                                            <span className="text-sm font-medium">Anexar arquivos</span>
+                                        </>
                                     )}
                                 </div>
+                                <Input id="file-upload" type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
+                            </Label>
+                            <div className="space-y-2">
+                                {form.attachments.map((url, index) => (
+                                    <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-xs">
+                                        <span className="truncate flex-1 mr-2">{url.split('/').pop()}</span>
+                                        <div className="flex gap-1">
+                                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => window.open(url, '_blank')}>
+                                                <ExternalLink className="h-3 w-3" />
+                                            </Button>
+                                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500" onClick={() => removeAttachment(url)}>
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </TabsContent>
                     </Tabs>
 
-                    <div className="flex justify-end gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => onOpenChange(false)}
-                        >
+                    <div className="flex justify-end gap-2 pt-4">
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                             Cancelar
                         </Button>
                         <Button type="submit">
-                            {editingOrder ? "Salvar" : "Adicionar"}
+                            {editingOrder ? "Salvar Alterações" : "Criar Ordem de Serviço"}
                         </Button>
                     </div>
                 </form>
