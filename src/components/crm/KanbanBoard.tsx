@@ -84,8 +84,13 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit }: KanbanBoardProps) => {
     // Usar a última data de contato mapeada. Como não temos 'updatedAt' ou 'lastContactDate' explícito, 
     // usaremos a contactDate (que o usuário deveria atualizar ao fazer novo contato)
     const contact = new Date(sale.contactDate);
+    // Se a data for inválida, retorna 0 para não quebrar o layout
+    if (isNaN(contact.getTime())) {
+      return 0;
+    }
     const today = new Date();
-    return differenceInDays(today, contact);
+    const diff = differenceInDays(today, contact);
+    return isNaN(diff) ? 0 : diff;
   };
 
   return (
