@@ -1,7 +1,9 @@
 import { Sale, STATUS_LABELS, SaleStatus } from "@/types/sale";
 import { formatCurrency } from "@/lib/salesUtils";
 import { Card, CardContent } from "@/components/ui/card";
-import { Phone } from "lucide-react";
+import { Phone, Calendar, Flame, AlertTriangle, Clock } from "lucide-react";
+import { formatDistanceToNow, differenceInDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface KanbanBoardProps {
   sales: Sale[];
@@ -62,6 +64,30 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit }: KanbanBoardProps) => {
     e.preventDefault();
   };
 
+  const isHotLead = (sale: Sale) => {
+    // Aberto e com previsão de fechamento próxima (próximos 7 dias ou atrasado)
+    if (['fechado', 'nao_fechou', 'congelado'].includes(sale.status)) return false;
+    if (!sale.expectedCloseDate) return false;
+
+    const expectedDate = new Date(sale.expectedCloseDate);
+    const today = new Date();
+    const diffTime = expectedDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays <= 7;
+  };
+
+  const getDaysWithoutContact = (sale: Sale) => {
+    if (['fechado', 'nao_fechou'].includes(sale.status)) return 0;
+    if (!sale.contactDate) return 0;
+
+    // Usar a última data de contato mapeada. Como não temos 'updatedAt' ou 'lastContactDate' explícito, 
+    // usaremos a contactDate (que o usuário deveria atualizar ao fazer novo contato)
+    const contact = new Date(sale.contactDate);
+    const today = new Date();
+    return differenceInDays(today, contact);
+  };
+
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 animate-fade-in">
       {statusOrder.map((status) => {
@@ -96,34 +122,57 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit }: KanbanBoardProps) => {
             </div>
 
             <div className="p-2 space-y-2 min-h-[200px]">
-              {columnSales.map((sale) => (
-                <Card
-                  key={sale.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, sale.id)}
-                  onClick={() => onEdit(sale)}
-                  className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow border-none shadow-sm"
-                >
-                  <CardContent className="p-3">
-                    <p className="font-medium text-sm mb-1">
-                      {sale.clientName}
-                    </p>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {sale.product}{" "}
-                      {sale.quantity > 1 && `(×${sale.quantity})`}
-                    </p>
-                    <p className="text-sm font-mono font-semibold text-primary mb-2">
-                      {formatCurrency(sale.totalValue)}
-                    </p>
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        <span className="text-[10px]">{sale.clientPhone}</span>
+              {columnSales.map((sale) => {
+                const hot = isHotLead(sale);
+                const lostDays = getDaysWithoutContact(sale);
+                const showWarning = lostDays >= 15 && !['fechado', 'nao_fechou', 'congelado'].includes(sale.status);
+
+                return (
+                  <Card
+                    key={sale.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, sale.id)}
+                    onClick={() => onEdit(sale)}
+                    className={`cursor-grab active:cursor-grabbing transition-all border-l-4 shadow-sm hover:shadow-md relative overflow-hidden group
+                        ${hot ? 'border-l-orange-500 bg-orange-50/30' : 'border-l-transparent'}
+                    `}
+                  >
+                    {hot && (
+                      <div className="absolute top-0 right-0 p-1.5 bg-orange-500 text-white rounded-bl-lg shrink-0">
+                        <Flame size={14} className="animate-pulse" />
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    )}
+                    <CardContent className="p-3 pt-4">
+                      {showWarning && (
+                        <div className="flex items-center gap-1.5 text-red-500 bg-red-50 px-2 py-1 rounded-md mb-2 w-fit border border-red-100">
+                          <Clock size={12} className="animate-pulse" />
+                          <span className="text-[10px] uppercase font-bold tracking-tighter">
+                            {lostDays} dias sem contato
+                          </span>
+                        </div>
+                      )}
+
+                      <p className="font-bold text-sm mb-0.5 leading-tight truncate pr-4 text-foreground/90">
+                        {sale.clientName}
+                      </p>
+
+                      <p className="text-[11px] text-muted-foreground mb-2 font-medium">
+                        {sale.product}{" "}
+                        {sale.quantity > 1 && `(×${sale.quantity})`}
+                      </p>
+
+                      <div className="flex items-center justify-between mt-3">
+                        <p className="text-sm font-black text-primary tracking-tighter bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
+                          {formatCurrency(sale.totalValue)}
+                        </p>
+                        <div className="flex items-center gap-1.5 text-muted-foreground opacity-60">
+                          <Phone className="h-3.5 w-3.5" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         );

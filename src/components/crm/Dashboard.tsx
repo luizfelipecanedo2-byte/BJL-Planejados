@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   DollarSign,
   TrendingUp,
+  TrendingDown,
   Users,
   CheckCircle,
   XCircle,
@@ -171,7 +172,9 @@ const Dashboard = ({ sales }: DashboardProps) => {
       ? metrics.totalRevenue / metrics.closedSales
       : 0;
 
-    const totalBudget = filteredSales.reduce((sum, s) => sum + s.totalValue, 0);
+    const totalLostValue = filteredSales
+      .filter(s => ['nao_fechou', 'congelado'].includes(s.status))
+      .reduce((sum, s) => sum + s.totalValue, 0);
 
     const cards = [
       {
@@ -182,61 +185,54 @@ const Dashboard = ({ sales }: DashboardProps) => {
         bgColor: "bg-blue-500/10",
       },
       {
-        title: "Receita Total",
+        title: "Receita (Fechado + Pós-Venda)",
         value: formatCurrency(metrics.totalRevenue),
-        icon: DollarSign,
-        color: "text-success",
-        bgColor: "bg-success/10",
+        icon: Target,
+        color: "text-emerald-500",
+        bgColor: "bg-emerald-500/10",
       },
       {
-        title: "Pipeline",
+        title: "Dinheiro na Mesa (Perdidos)",
+        value: formatCurrency(totalLostValue),
+        icon: TrendingDown,
+        color: "text-rose-500",
+        bgColor: "bg-rose-500/10",
+      },
+      {
+        title: "Pipeline Atual (Andamento)",
         value: formatCurrency(metrics.pipelineValue),
         icon: TrendingUp,
         color: "text-primary",
         bgColor: "bg-primary/10",
       },
       {
-        title: "Ticket Médio Orçamentos",
+        title: "Ticket Médio (Fechadas)",
+        value: formatCurrency(avgTicketClosed),
+        icon: Receipt,
+        color: "text-emerald-500",
+        bgColor: "bg-emerald-500/10",
+      },
+      {
+        title: "Ticket Médio (Geral)",
         value: formatCurrency(avgTicketAll),
         icon: Receipt,
-        color: "text-accent",
-        bgColor: "bg-accent/10",
+        color: "text-blue-500",
+        bgColor: "bg-blue-500/10",
       },
       {
-        title: "Ticket Médio Fechadas",
-        value: formatCurrency(avgTicketClosed),
-        icon: Target,
-        color: "text-success",
-        bgColor: "bg-success/10",
-      },
-      {
-        title: "Total de Vendas",
-        value: metrics.totalSales.toString(),
-        icon: Users,
-        color: "text-accent",
-        bgColor: "bg-accent/10",
-      },
-      {
-        title: "Fechadas",
-        value: metrics.closedSales.toString(),
-        icon: CheckCircle,
-        color: "text-success",
-        bgColor: "bg-success/10",
-      },
-      {
-        title: "Perdidas",
-        value: metrics.lostSales.toString(),
-        icon: XCircle,
-        color: "text-destructive",
-        bgColor: "bg-destructive/10",
-      },
-      {
-        title: "Conversão",
+        title: "Conversão Geral",
         value: `${metrics.closedSales}/${metrics.totalSales} (${metrics.conversionRate}%)`,
         icon: BarChart3,
-        color: "text-primary",
-        bgColor: "bg-primary/10",
+        color: "text-indigo-500",
+        bgColor: "bg-indigo-500/10",
       },
+      {
+        title: "Leads Perdidos",
+        value: metrics.lostSales.toString(),
+        icon: XCircle,
+        color: "text-rose-500",
+        bgColor: "bg-rose-500/10",
+      }
     ];
 
     return (
@@ -245,18 +241,21 @@ const Dashboard = ({ sales }: DashboardProps) => {
           {cards.map((card) => (
             <Card
               key={card.title}
-              className="border-none shadow-sm hover:shadow-md transition-shadow"
+              className="border-none shadow-sm hover:shadow-md transition-all group overflow-hidden"
             >
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${card.bgColor}`}>
-                    <card.icon className={`h-4 w-4 ${card.color}`} />
+              <CardContent className="p-4 relative">
+                <div className={`absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 ${card.color}`}>
+                  <card.icon size={80} />
+                </div>
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className={`p-2.5 rounded-xl ${card.bgColor} shadow-sm`}>
+                    <card.icon className={`h-5 w-5 ${card.color}`} />
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground truncate">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] text-muted-foreground uppercase font-black tracking-tighter truncate opacity-80 mb-0.5">
                       {card.title}
                     </p>
-                    <p className="text-lg font-bold tracking-tight">
+                    <p className={`text-xl font-black tracking-tighter ${card.color}`}>
                       {card.value}
                     </p>
                   </div>
@@ -306,34 +305,32 @@ const Dashboard = ({ sales }: DashboardProps) => {
           <Card className="border-none shadow-sm">
             <CardContent className="p-6">
               <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
-                Vendas Fechadas por Canal ({titleSuffix})
+                Eficiência por Canal ({titleSuffix})
               </h3>
               {channelData.length > 0 ? (
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={channelData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        paddingAngle={5}
-                        dataKey="value"
-                        label={({ name, percentage }) => `${name} (${percentage}%)`}
-                      >
-                        {channelData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value: number, name: string, props: any) => [`${value} Vendas`, props.payload.name]}
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                <div className="space-y-4">
+                  {allChannelData.map((channel, i) => {
+                    // Try to find how many we closed vs total leads from this channel
+                    const closedData = channelData.find(c => c.name === channel.name);
+                    const closedValue = closedData ? closedData.value : 0;
+                    const conversion = channel.value > 0 ? ((closedValue / channel.value) * 100).toFixed(0) : 0;
+
+                    return (
+                      <div key={channel.name} className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/40 border border-muted/50 hover:border-primary/20 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-sm tracking-tight">{channel.name}</span>
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-black">{conversion}% Conv.</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-muted-foreground">
+                          <span>{channel.value} Leads gerados</span>
+                          <span className="font-semibold text-emerald-500">{closedValue} Fechados</span>
+                        </div>
+                        <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden mt-1">
+                          <div className="bg-primary h-full rounded-full" style={{ width: `${conversion}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-center text-muted-foreground py-8">
