@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ServiceExpense, ExpenseItem } from "@/types/serviceExpense";
 import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/lib/supabase";
 
 interface ServiceExpenseFormDialogProps {
     open: boolean;
@@ -35,6 +37,15 @@ const ServiceExpenseFormDialog = ({
     const [items, setItems] = useState<ExpenseItem[]>([]);
     const [newItem, setNewItem] = useState({ description: "", unit: "un", quantity: "1", unitValue: "" });
     const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+    const [clients, setClients] = useState<{ name: string }[]>([]);
+
+    useEffect(() => {
+        const fetchClients = async () => {
+            const { data } = await supabase.from('clients').select('name').order('name');
+            if (data) setClients(data);
+        };
+        fetchClients();
+    }, []);
 
     useEffect(() => {
         if (editingExpense) {
@@ -146,12 +157,18 @@ const ServiceExpenseFormDialog = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="clientName">Nome do Cliente</Label>
-                            <Input
-                                id="clientName"
-                                value={form.clientName}
-                                onChange={(e) => update("clientName", e.target.value)}
-                                required
-                            />
+                            <Select value={form.clientName} onValueChange={(value) => update("clientName", value)} required>
+                                <SelectTrigger id="clientName" className="w-full">
+                                    <SelectValue placeholder="Selecione um cliente..." />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[200px]">
+                                    {clients.map((client, index) => (
+                                        <SelectItem key={index} value={client.name}>
+                                            {client.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="environment">Ambiente</Label>
