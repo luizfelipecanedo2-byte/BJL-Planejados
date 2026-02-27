@@ -27,26 +27,32 @@ const MainLayout = () => {
 
     useEffect(() => {
         const fetchUserProfile = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                setUserEmail(user.email || null);
-                // Fetch role from profiles table
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', user.id)
-                    .single();
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    setUserEmail(user.email || null);
 
-                if (data) {
-                    setRole(data.role);
-                } else {
-                    // Fallback imediato para garantir que o menu apareça
+                    // Verificação manual imediata pelo e-mail (mais rápido que o banco)
                     if (user.email === 'luizfelipe.canedo2@gmail.com') {
                         setRole('admin');
+                        return; // Se é o admin, já para aqui
+                    }
+
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .select('role')
+                        .eq('id', user.id)
+                        .single();
+
+                    if (data) {
+                        setRole(data.role);
                     } else {
                         setRole('colaborador');
                     }
                 }
+            } catch (e) {
+                console.error("Erro ao carregar perfil:", e);
+                setRole('colaborador');
             }
         };
         fetchUserProfile();
@@ -67,10 +73,10 @@ const MainLayout = () => {
         { icon: Calendar, label: "Pedidos da Semana", path: "/pedidos-semana", roles: ['admin', 'colaborador'] },
     ];
 
-    // Se o role for 'colaborador', não mostra CRM, Clientes e Financeiro
+    // Lógica simplificada e robusta para o menu
     const menuItems = allMenuItems.filter(item => {
-        if (!role) return item.roles.includes('colaborador'); // Por segurança, mostra o básico se estiver carregando
-        return item.roles.includes(role);
+        if (role === 'admin') return true; // Admin vê TUDO
+        return item.roles.includes('colaborador'); // Colaborador vê apenas o que ele tem permissão
     });
 
     return (
