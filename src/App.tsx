@@ -21,20 +21,46 @@ const App = () => {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const [role, setRole] = useState<string | null>(null);
+
   useEffect(() => {
-    // Check active sessions
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setLoading(false);
+      if (session?.user) {
+        fetchRole(session.user.id, session.user.email);
+      } else {
+        setLoading(false);
+      }
     });
 
-    // Listen for changes on auth state
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session?.user) {
+        fetchRole(session.user.id, session.user.email);
+      } else {
+        setRole(null);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchRole = async (userId: string, email?: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (data) {
+      setRole(data.role);
+    } else if (email === 'luizfelipe.canedo2@gmail.com') {
+      setRole('admin');
+    } else {
+      setRole('colaborador');
+    }
+    setLoading(false);
+  };
 
   if (loading) {
     return (
@@ -43,6 +69,8 @@ const App = () => {
       </div>
     );
   }
+
+  const isAdmin = role === 'admin';
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -54,9 +82,9 @@ const App = () => {
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
 
             <Route path="/" element={session ? <MainLayout /> : <Navigate to="/login" />}>
-              <Route index element={<Index />} />
-              <Route path="financeiro" element={<Financeiro />} />
-              <Route path="clientes" element={<Clientes />} />
+              <Route index element={isAdmin ? <Index /> : <Navigate to="/ordem-servico" />} />
+              <Route path="financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/ordem-servico" />} />
+              <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="/ordem-servico" />} />
               <Route path="ordem-servico" element={<OrdemServico />} />
               <Route path="estoque" element={<Estoque />} />
               <Route path="pedidos-semana" element={<PedidosSemana />} />

@@ -40,8 +40,12 @@ const MainLayout = () => {
                 if (data) {
                     setRole(data.role);
                 } else {
-                    // Default to admin if profiles table isn't ready or user not found
-                    setRole('admin');
+                    // Fallback para o seu e-mail de administrador caso a tabela ainda não exista
+                    if (user.email === 'luizfelipe.canedo2@gmail.com') {
+                        setRole('admin');
+                    } else {
+                        setRole('colaborador');
+                    }
                 }
             }
         };
@@ -55,12 +59,12 @@ const MainLayout = () => {
     };
 
     const allMenuItems = [
-        { icon: TrendingUp, label: "Vendas", path: "/", roles: ['admin'] },
+        { icon: TrendingUp, label: "CRM", path: "/", roles: ['admin'] },
         { icon: Users, label: "Cliente e Fornecedores", path: "/clientes", roles: ['admin'] },
         { icon: DollarSign, label: "Financeiro", path: "/financeiro", roles: ['admin'] },
-        { icon: ClipboardList, label: "Ordem de Serviço", path: "/ordem-servico", roles: ['admin', 'employee'] },
-        { icon: Package, label: "Estoque", path: "/estoque", roles: ['admin', 'employee'] },
-        { icon: Calendar, label: "Pedidos da Semana", path: "/pedidos-semana", roles: ['admin', 'employee'] },
+        { icon: ClipboardList, label: "Ordem de Serviço", path: "/ordem-servico", roles: ['admin', 'colaborador'] },
+        { icon: Package, label: "Estoque", path: "/estoque", roles: ['admin', 'colaborador'] },
+        { icon: Calendar, label: "Pedidos da Semana", path: "/pedidos-semana", roles: ['admin', 'colaborador'] },
     ];
 
     const menuItems = allMenuItems.filter(item => !role || item.roles.includes(role));
@@ -107,7 +111,7 @@ const MainLayout = () => {
                     </div>
                     <div className="flex flex-col min-w-0">
                         <span className="text-sm font-semibold truncate">{userEmail?.split('@')[0]}</span>
-                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{role === 'admin' ? 'Administrador' : 'Funcionário'}</span>
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{role === 'admin' ? 'Administrador' : 'Colaborador'}</span>
                     </div>
                 </div>
 
@@ -160,7 +164,7 @@ const MainLayout = () => {
                         <div className="hidden sm:flex flex-col items-end">
                             <span className="text-sm font-semibold truncate max-w-[150px]">{userEmail?.split('@')[0]}</span>
                             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-                                {role === 'admin' ? 'Administrador' : 'Funcionário'}
+                                {role === 'admin' ? 'Administrador' : 'Colaborador'}
                             </span>
                         </div>
                         <Button
