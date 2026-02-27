@@ -53,25 +53,33 @@ const Financeiro = () => {
 
       if (error) throw error;
 
-      const mappedTransactions: Transaction[] = (data || []).map(t => ({
-        id: t.id,
-        description: t.description,
-        amount: Number(t.amount),
-        type: t.type as any,
-        category: t.category,
-        subcategory: t.subcategory,
-        service: t.service,
-        contact: t.contact,
-        financialInstitution: t.financial_institution,
-        paymentMethod: t.payment_method,
-        competenceDate: new Date(t.competence_date + 'T12:00:00'),
-        dueDate: new Date(t.due_date + 'T12:00:00'),
-        paymentDate: t.payment_date ? new Date(t.payment_date + 'T12:00:00') : undefined,
-        status: t.status as any,
-        invoiceNumber: t.invoice_number,
-        orderService: t.order_service,
-        boletoUrl: t.boleto_url
-      }));
+      const mappedTransactions: Transaction[] = (data || []).map(t => {
+        const parseDate = (dateStr: string | null) => {
+          if (!dateStr) return undefined;
+          const d = new Date(dateStr + 'T12:00:00');
+          return isNaN(d.getTime()) ? undefined : d;
+        };
+
+        return {
+          id: t.id,
+          description: t.description,
+          amount: Number(t.amount),
+          type: t.type as any,
+          category: t.category || "Sem Categoria",
+          subcategory: t.subcategory || "",
+          service: t.service,
+          contact: t.contact,
+          financialInstitution: t.financial_institution,
+          paymentMethod: t.payment_method,
+          competenceDate: parseDate(t.competence_date) || new Date(),
+          dueDate: parseDate(t.due_date) || new Date(),
+          paymentDate: parseDate(t.payment_date),
+          status: t.status as any,
+          invoiceNumber: t.invoice_number,
+          orderService: t.order_service,
+          boletoUrl: t.boleto_url
+        };
+      });
 
       setTransactions(mappedTransactions);
     } catch (error) {
@@ -148,7 +156,7 @@ const Financeiro = () => {
         serviceValue: Number(e.service_value),
         spentValue: Number(e.spent_value),
         items: e.items || [],
-        createdAt: new Date(e.created_at)
+        createdAt: e.created_at ? new Date(e.created_at) : new Date()
       }));
 
       setServiceExpenses(mappedExpenses);
@@ -175,8 +183,8 @@ const Financeiro = () => {
   const [osFilter, setOsFilter] = useState("all");
 
   // Dashboard State
-  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
-  const [selectedDREYear, setSelectedDREYear] = useState<string>(new Date().getFullYear().toString());
+  const [selectedYear, setSelectedYear] = useState<string>("2026");
+  const [selectedDREYear, setSelectedDREYear] = useState<string>("2026");
   const [selectedDashMonth, setSelectedDashMonth] = useState<number>(new Date().getMonth());
 
   // Conciliation State
@@ -365,60 +373,131 @@ const Financeiro = () => {
   }, [transactions, selectedYear]);
 
   const dreData = useMemo(() => {
-    const yearTransactions = transactions.filter(t => new Date(t.competenceDate).getFullYear() === parseInt(selectedDREYear));
-    const grossRevenue = yearTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-    const taxes = yearTransactions.filter(t => t.category === 'Impostos').reduce((acc, t) => acc + t.amount, 0);
-    const netRevenue = grossRevenue - taxes;
-    const variableCosts = yearTransactions.filter(t => t.type === 'expense' && ["Despesa com Serviço"].includes(t.category)).reduce((acc, t) => acc + t.amount, 0);
-    const contributionMargin = netRevenue - variableCosts;
-    const fixedExpenses = yearTransactions.filter(t => t.type === 'expense' && ["Despesa Operacional", "Despesa com Maquinário", "Despesa com Pessoal"].includes(t.category)).reduce((acc, t) => acc + t.amount, 0);
-    const netResult = contributionMargin - fixedExpenses;
+    const yearTransactions = transactions.filter(t => {
+      const date = new Date(t.competenceDate);
+      return !isNaN(date.getTime()) && (date.getUTCFullYear() === parseInt(selectedDREYear) || date.getFullYear() === parseInt(selectedDREYear));
+    });
 
-    return { grossRevenue, taxes, netRevenue, variableCosts, contributionMargin, fixedExpenses, netResult };
+    const grossRevenue = yearTransactions
+      .filter(t => t.type === 'income')
+      .reduce((acc, t) => acc + t.amount, 0);
+
+    const taxes = yearTransactions.filter(t =>
+      t.type === 'expense' && (
+        t.category === 'Impostos' ||
+        t.category === 'Impostos sobre a receita' ||
+        t.category === 'Outras deduções' ||
+        t.subcategory === 'Simples Nacional'
+      )
+    ).reduce((acc, t) => acc + t.amount, 0);
+
+    const netRevenue = grossRevenue - taxes;
+
+    // Custos Variáveis: Tudo que é custo de serviço/venda
+    const variableCosts = yearTransactions.filter(t =>
+      t.type === 'expense' &&
+      ["Despesa com Serviço", "Custo dos serviços", "Serviços de terceiros", "Despesas com vendas"].includes(t.category)
+    ).reduce((acc, t) => acc + t.amount, 0);
+
+    const contributionMargin = netRevenue - variableCosts;
+
+    // Despesas Fixas: Tudo que é operacional/administrativo
+    const fixedExpenses = yearTransactions.filter(t =>
+      t.type === 'expense' &&
+      [
+        "Despesa Operacional",
+        "Despesa com Maquinário",
+        "Despesa com Pessoal",
+        "Despesas com pessoal",
+        "Despesas administrativas",
+        "Maquinario"
+      ].includes(t.category)
+    ).reduce((acc, t) => acc + t.amount, 0);
+
+    // Capturar gastos que não caíram em nenhuma categoria acima para garantir que o resultado bata com o total real
+    const accountedExpenses = taxes + variableCosts + fixedExpenses;
+    const totalExpenses = yearTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const otherExpenses = totalExpenses - accountedExpenses;
+
+    // Se houver despesas não categorizadas, jogamos em despesas fixas para fins de cálculo do DRE gerencial simplificado, 
+    // ou subtraímos do resultado final.
+    const netResult = netRevenue - variableCosts - fixedExpenses - otherExpenses;
+
+    return {
+      grossRevenue,
+      taxes,
+      netRevenue,
+      variableCosts,
+      contributionMargin,
+      fixedExpenses: fixedExpenses + otherExpenses,
+      netResult
+    };
   }, [transactions, selectedDREYear]);
 
   const detailedExpenses = useMemo(() => {
     const year = parseInt(selectedDREYear);
     const months = Array.from({ length: 12 }, (_, i) => i);
-    const expenseCategories = CATEGORIES.expense;
 
-    return expenseCategories.map(category => {
+    // Pegar todas as categorias únicas do ano, mais as padrão
+    const yearTransactions = transactions.filter(t => {
+      const d = new Date(t.competenceDate);
+      return d.getUTCFullYear() === year || d.getFullYear() === year;
+    });
+
+    const dataCategories = Array.from(new Set(yearTransactions.map(t => t.category || "Sem Categoria")));
+    const baseCategories = [...CATEGORIES.income, ...CATEGORIES.expense];
+    const allCategories = Array.from(new Set([...baseCategories, ...dataCategories]));
+
+    return allCategories.map(category => {
       const subcategories = SUBCATEGORIES[category] || [];
+      const isIncome = CATEGORIES.income.includes(category) ||
+        yearTransactions.some(t => t.category === category && t.type === 'income') ||
+        (category === "Sem Categoria" && yearTransactions.some(t => !t.category && t.type === 'income'));
+
       const categoryMonthlyTotals = months.map(month => {
-        return transactions
-          .filter(t =>
-            t.type === 'expense' &&
-            t.category === category &&
-            new Date(t.competenceDate).getFullYear() === year &&
-            new Date(t.competenceDate).getMonth() === month
-          )
+        return yearTransactions
+          .filter(t => {
+            const cat = t.category || "Sem Categoria";
+            const date = new Date(t.competenceDate);
+            return cat === category && (date.getUTCMonth() === month || date.getMonth() === month);
+          })
           .reduce((acc, t) => acc + t.amount, 0);
       });
 
       const categoryTotal = categoryMonthlyTotals.reduce((a, b) => a + b, 0);
+
+      // Se a categoria não tem transações no ano e não é das padrão vazias, podemos pular
+      if (categoryTotal === 0 && !baseCategories.includes(category)) return null;
+
       const subcategoryBreakdown = subcategories.map(sub => {
         const subMonthlyTotals = months.map(month => {
-          return transactions
-            .filter(t =>
-              t.type === 'expense' &&
-              t.category === category &&
-              t.subcategory === sub &&
-              new Date(t.competenceDate).getFullYear() === year &&
-              new Date(t.competenceDate).getMonth() === month
-            )
+          return yearTransactions
+            .filter(t => {
+              const cat = t.category || "Sem Categoria";
+              const date = new Date(t.competenceDate);
+              return cat === category && t.subcategory === sub && (date.getUTCMonth() === month || date.getMonth() === month);
+            })
             .reduce((acc, t) => acc + t.amount, 0);
         });
         const subTotal = subMonthlyTotals.reduce((a, b) => a + b, 0);
         return { name: sub, monthly: subMonthlyTotals, total: subTotal };
       });
 
-      return { category, monthly: categoryMonthlyTotals, total: categoryTotal, subcategories: subcategoryBreakdown };
-    });
+      return {
+        category,
+        monthly: categoryMonthlyTotals,
+        total: categoryTotal,
+        subcategories: subcategoryBreakdown,
+        type: isIncome ? 'income' : 'expense'
+      };
+    }).filter(Boolean);
   }, [transactions, selectedDREYear]);
 
   const currentSummary = useMemo(() => {
-    const currentMonth = selectedDashMonth;
+    const currentMonth = Number(selectedDashMonth);
     const currentYear = parseInt(selectedYear);
+
+    // Filtro por Mês/Ano (Data de Movimentação de Caixa)
     const currentMonthTransactions = transactions.filter(t => {
       const date = new Date(t.paymentDate || t.dueDate);
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
@@ -427,27 +506,36 @@ const Financeiro = () => {
     const entradaMes = currentMonthTransactions.filter(t => t.type === 'income' && t.status === 'paid').reduce((acc, t) => acc + t.amount, 0);
     const saidaMes = currentMonthTransactions.filter(t => t.type === 'expense' && t.status === 'paid').reduce((acc, t) => acc + t.amount, 0);
     const saldoMes = entradaMes - saidaMes;
+
     const saldoAtual = transactions.filter(t => t.status === 'paid').reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
+
+    // Faturamento (Competência)
     const receitaBrutaMes = transactions.filter(t => {
       const date = new Date(t.competenceDate);
       return t.type === 'income' && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     }).reduce((acc, t) => acc + t.amount, 0);
+
+    // Gastos Totais (Competência)
     const gastosMes = transactions.filter(t => {
       const date = new Date(t.competenceDate);
       return t.type === 'expense' && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     }).reduce((acc, t) => acc + t.amount, 0);
+
     const resultadoMes = receitaBrutaMes - gastosMes;
+
     const accountsPayable = currentMonthTransactions.filter(t => t.type === 'expense' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0);
     const accountsReceivable = currentMonthTransactions.filter(t => t.type === 'income' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0);
     const projectedBalance = (entradaMes + accountsReceivable) - (saidaMes + accountsPayable);
+
+    const expenseCategories = CATEGORIES.expense;
 
     return {
       entradaMes, saidaMes, saldoMes, saldoAtual, receitaBrutaMes, gastosMes, resultadoMes,
       accountsPayable, accountsReceivable, projectedBalance,
       inadimplenciaTotal: transactions.filter(t => t.type === 'income' && t.status === 'pending' && new Date(t.dueDate) < new Date()).reduce((acc, t) => acc + t.amount, 0),
-      pontoEquilibrio: currentMonthTransactions.filter(t => t.type === 'expense' && ["Despesa Operacional", "Despesa com Maquinário", "Despesa com Pessoal"].includes(t.category)).reduce((acc, t) => acc + t.amount, 0),
+      pontoEquilibrio: currentMonthTransactions.filter(t => t.type === 'expense' && ["Despesa Operacional", "Despesa com Maquinário", "Despesa com Pessoal", "Despesas administrativas", "Maquinario"].includes(t.category)).reduce((acc, t) => acc + t.amount, 0),
       ticketMedio: currentMonthTransactions.filter(t => t.type === 'income').length > 0 ? receitaBrutaMes / currentMonthTransactions.filter(t => t.type === 'income').length : 0,
-      expensesByCategory: CATEGORIES.expense.map(cat => ({
+      expensesByCategory: expenseCategories.map(cat => ({
         name: cat,
         value: currentMonthTransactions.filter(t => t.type === 'expense' && t.category === cat).reduce((acc, t) => acc + t.amount, 0)
       })).filter(item => item.value > 0)
@@ -501,7 +589,7 @@ const Financeiro = () => {
           financialInstitution: t.financial_institution, paymentMethod: t.payment_method,
           competenceDate: new Date(t.competence_date + 'T12:00:00'), dueDate: new Date(t.due_date + 'T12:00:00'),
           paymentDate: t.payment_date ? new Date(t.payment_date + 'T12:00:00') : undefined,
-          status: t.status as any, invoice_number: t.invoice_number, order_service: t.order_service, boletoUrl: t.boleto_url
+          status: t.status as any, invoiceNumber: t.invoice_number, orderService: t.order_service, boletoUrl: t.boleto_url
         }));
         setTransactions(prev => [...newTrans, ...prev]);
       }
@@ -660,7 +748,7 @@ const Financeiro = () => {
         </TabsContent>
 
         <TabsContent value="dre"><DRETab selectedDREYear={selectedDREYear} setSelectedDREYear={setSelectedDREYear} dreData={dreData} detailedExpenses={detailedExpenses} formatCurrency={formatCurrency} /></TabsContent>
-        <TabsContent value="gastos_servicos"><ServiceExpensesTab serviceExpenses={serviceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
+        <TabsContent value="gastos_servicos"><ServiceExpensesTab transactions={transactions} serviceExpenses={serviceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="conciliacao"><ConciliationTab selectedAccount={selectedAccount} setSelectedAccount={setSelectedAccount} currentDateReconciliation={currentDateReconciliation} handlePrevMonth={handlePrevMonth} handleNextMonth={handleNextMonth} totalAccountBalance={totalAccountBalance} reconciliationDailyData={reconciliationDailyData} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="patrimonio"><AssetsTab assets={assets} handleNewAsset={handleNewAsset} formatCurrency={formatCurrency} /></TabsContent>
       </Tabs>

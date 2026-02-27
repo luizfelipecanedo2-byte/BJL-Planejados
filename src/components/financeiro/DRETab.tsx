@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Fragment } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 interface DRETabProps {
     selectedDREYear: string;
@@ -125,35 +126,53 @@ const DRETab = ({
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {detailedExpenses.map((cat) => (
-                                        <Fragment key={cat.category}>
-                                            <TableRow className="bg-muted/20 hover:bg-muted/40 transition-colors border-l-2 border-l-primary/30">
-                                                <TableCell className="font-black text-xs text-primary px-6 h-12 uppercase tracking-tighter">{cat.category}</TableCell>
-                                                {cat.monthly.map((amount: number, idx: number) => (
-                                                    <TableCell key={idx} className="text-right text-[10px] font-bold text-foreground">
-                                                        {amount > 0 ? amount.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '-'}
-                                                    </TableCell>
-                                                ))}
-                                                <TableCell className="text-right font-black text-xs text-primary bg-primary/5 border-l border-primary/5 pr-6">{formatCurrency(cat.total)}</TableCell>
-                                            </TableRow>
-                                            {cat.subcategories.map((sub: any) => (
-                                                <TableRow key={`${cat.category}-${sub.name}`} className="hover:bg-primary/[0.02] border-b border-border/30 group">
-                                                    <TableCell className="pl-12 py-3 text-[11px] font-medium text-muted-foreground flex items-center gap-2 group-hover:text-foreground transition-colors">
-                                                        <span className="w-1 h-1 rounded-full bg-primary/20 group-hover:bg-primary group-hover:scale-150 transition-all" />
-                                                        {sub.name}
-                                                    </TableCell>
-                                                    {sub.monthly.map((amount: number, idx: number) => (
-                                                        <TableCell key={idx} className="text-right text-[10px] text-muted-foreground/70 group-hover:text-foreground/90 transition-colors">
+                                    {detailedExpenses.map((cat) => {
+                                        const isIncome = cat.type === 'income';
+                                        return (
+                                            <Fragment key={cat.category}>
+                                                <TableRow className={cn(
+                                                    "transition-colors border-l-2",
+                                                    isIncome ? "bg-emerald-500/5 hover:bg-emerald-500/10 border-l-emerald-500" : "bg-muted/20 hover:bg-muted/40 border-l-primary/30"
+                                                )}>
+                                                    <TableCell className={cn(
+                                                        "font-black text-xs px-6 h-12 uppercase tracking-tighter",
+                                                        isIncome ? "text-emerald-600" : "text-primary"
+                                                    )}>{cat.category}</TableCell>
+                                                    {cat.monthly.map((amount: number, idx: number) => (
+                                                        <TableCell key={idx} className="text-right text-[10px] font-bold text-foreground">
                                                             {amount > 0 ? amount.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '-'}
                                                         </TableCell>
                                                     ))}
-                                                    <TableCell className="text-right font-bold text-xs text-muted-foreground group-hover:text-primary transition-colors border-l border-primary/5 pr-6">
-                                                        {formatCurrency(sub.total)}
-                                                    </TableCell>
+                                                    <TableCell className={cn(
+                                                        "text-right font-black text-xs border-l border-primary/5 pr-6",
+                                                        isIncome ? "text-emerald-600 bg-emerald-500/5" : "text-primary bg-primary/5"
+                                                    )}>{formatCurrency(cat.total)}</TableCell>
                                                 </TableRow>
-                                            ))}
-                                        </Fragment>
-                                    ))}
+                                                {cat.subcategories.map((sub: any) => (
+                                                    <TableRow key={`${cat.category}-${sub.name}`} className="hover:bg-primary/[0.02] border-b border-border/30 group">
+                                                        <TableCell className="pl-12 py-3 text-[11px] font-medium text-muted-foreground flex items-center gap-2 group-hover:text-foreground transition-colors">
+                                                            <span className={cn(
+                                                                "w-1 h-1 rounded-full transition-all group-hover:scale-150",
+                                                                isIncome ? "bg-emerald-500/40 group-hover:bg-emerald-500" : "bg-primary/20 group-hover:bg-primary"
+                                                            )} />
+                                                            {sub.name}
+                                                        </TableCell>
+                                                        {sub.monthly.map((amount: number, idx: number) => (
+                                                            <TableCell key={idx} className="text-right text-[10px] text-muted-foreground/70 group-hover:text-foreground/90 transition-colors">
+                                                                {amount > 0 ? amount.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '-'}
+                                                            </TableCell>
+                                                        ))}
+                                                        <TableCell className={cn(
+                                                            "text-right font-bold text-xs transition-colors border-l border-primary/5 pr-6",
+                                                            isIncome ? "text-emerald-500/70 group-hover:text-emerald-600" : "text-muted-foreground group-hover:text-primary"
+                                                        )}>
+                                                            {formatCurrency(sub.total)}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </Fragment>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </div>

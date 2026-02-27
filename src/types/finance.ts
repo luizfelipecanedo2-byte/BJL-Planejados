@@ -25,14 +25,24 @@ export interface Transaction {
 export const CATEGORIES = {
     income: [
         "Receita com Serviço",
-        "Receita Investimento"
+        "Receita Investimento",
+        "Receitas financeiras",
+        "Receita com prestação de serviços"
     ],
     expense: [
         "Despesa Operacional",
         "Despesa com Serviço",
         "Despesa com Maquinário",
         "Despesa com Pessoal",
-        "Impostos"
+        "Despesas com pessoal",
+        "Impostos",
+        "Custo dos serviços",
+        "Maquinario",
+        "Despesas administrativas",
+        "Serviços de terceiros",
+        "Outras deduções",
+        "Despesas com vendas",
+        "Impostos sobre a receita"
     ]
 };
 
