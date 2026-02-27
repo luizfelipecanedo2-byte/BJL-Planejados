@@ -257,7 +257,9 @@ const DashboardTab = ({
                                     </Pie>
                                     <Tooltip
                                         formatter={(value: number) => formatCurrency(value)}
-                                        contentStyle={{ backgroundColor: '#020617', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '12px', padding: '12px', color: 'white' }}
+                                        contentStyle={{ backgroundColor: '#020617', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '12px', padding: '12px' }}
+                                        itemStyle={{ color: 'white' }}
+                                        labelStyle={{ color: 'white' }}
                                     />
                                     <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
                                 </PieChart>
@@ -355,7 +357,9 @@ const DashboardTab = ({
                                     />
                                     <Tooltip
                                         formatter={(value: number) => formatCurrency(value)}
-                                        contentStyle={{ borderRadius: '14px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.5)', backgroundColor: '#020617', color: 'white' }}
+                                        contentStyle={{ borderRadius: '14px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.5)', backgroundColor: '#020617' }}
+                                        itemStyle={{ color: 'white' }}
+                                        labelStyle={{ color: 'white' }}
                                     />
                                     <Legend verticalAlign="top" height={40} iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase' }} />
                                     <Bar dataKey="Receitas" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={25} />
@@ -389,7 +393,9 @@ const DashboardTab = ({
                                     />
                                     <Tooltip
                                         formatter={(value: number) => formatCurrency(value)}
-                                        contentStyle={{ borderRadius: '14px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.5)', backgroundColor: '#020617', color: 'white' }}
+                                        contentStyle={{ borderRadius: '14px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.5)', backgroundColor: '#020617' }}
+                                        itemStyle={{ color: 'white' }}
+                                        labelStyle={{ color: 'white' }}
                                     />
                                     <Legend verticalAlign="top" height={40} iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase' }} />
                                     <Bar dataKey="A Receber" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={25} />
@@ -431,7 +437,9 @@ const DashboardTab = ({
                                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted opacity-20" vertical={false} />
                                     <Tooltip
                                         formatter={(value: number) => formatCurrency(value)}
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', backgroundColor: '#020617', color: 'white' }}
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', backgroundColor: '#020617' }}
+                                        itemStyle={{ color: 'white' }}
+                                        labelStyle={{ color: 'white' }}
                                     />
                                     <Area type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={5} fillOpacity={1} fill="url(#colorAcumulado)" activeDot={{ r: 8, strokeWidth: 3, stroke: '#fff' }} />
                                 </AreaChart>
