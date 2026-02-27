@@ -58,6 +58,8 @@ const TransactionFormDialog = ({
     const [status, setStatus] = useState<TransactionStatus>("pending");
     const [isInstallment, setIsInstallment] = useState(false);
     const [installmentsCount, setInstallmentsCount] = useState("2");
+    const [isRecurring, setIsRecurring] = useState(false);
+    const [recurringCount, setRecurringCount] = useState("12");
     const [isUploading, setIsUploading] = useState(false);
 
     const [clients, setClients] = useState<Client[]>([]);
@@ -173,6 +175,8 @@ const TransactionFormDialog = ({
             });
             setIsInstallment(false);
             setInstallmentsCount("2");
+            setIsRecurring(false);
+            setRecurringCount("12");
         }
     }, [editingTransaction, open]);
 
@@ -267,6 +271,28 @@ const TransactionFormDialog = ({
                         description: `${form.description} (${i + 1}/${count})`,
                         dueDate: newDueDate,
                         status: i === 0 ? status : 'pending', // Only first one takes the form status (e.g. paid), others pending
+                        paymentDate: i === 0 ? baseSubmitData.paymentDate : undefined,
+                        boletoUrl: i === 0 ? baseSubmitData.boletoUrl : undefined,
+                    });
+                }
+                onSubmit(transactions);
+            } else if (isRecurring && Number(recurringCount) > 1) {
+                const count = Number(recurringCount);
+                const transactions = [];
+
+                for (let i = 0; i < count; i++) {
+                    const dueDate = new Date(form.dueDate);
+                    const newDueDate = addMonths(dueDate, i);
+
+                    const competenceDate = new Date(form.competenceDate);
+                    const newCompetenceDate = addMonths(competenceDate, i);
+
+                    transactions.push({
+                        ...baseSubmitData,
+                        description: `${form.description} - Mês ${i + 1}`,
+                        dueDate: newDueDate,
+                        competenceDate: newCompetenceDate,
+                        status: i === 0 ? status : 'pending', // Apenas o primeiro pode já ser pago, os próximos são contas a pagar
                         paymentDate: i === 0 ? baseSubmitData.paymentDate : undefined,
                         boletoUrl: i === 0 ? baseSubmitData.boletoUrl : undefined,
                     });
@@ -425,24 +451,24 @@ const TransactionFormDialog = ({
                         </div>
                     </div>
 
-                    {/* Seção Nova: Parcelamento */}
+                    {/* Seção Nova: Parcelamento / Recorrência */}
                     {!editingTransaction && (
-                        <div className="p-4 border rounded-lg bg-muted/20 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                    <Label className="text-base">Parcelamento</Label>
-                                    <p className="text-sm text-muted-foreground">Dividir o valor em parcelas mensais</p>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className={`p-4 border rounded-lg space-y-4 ${isInstallment ? 'bg-primary/5 border-primary/30' : 'bg-muted/20'} ${isRecurring && 'opacity-50 pointer-events-none'}`}>
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-sm font-bold">Parcelar (Cartão)</Label>
+                                        <p className="text-[10px] text-muted-foreground mr-2">Dividir valor</p>
+                                    </div>
+                                    <Switch
+                                        checked={isInstallment}
+                                        onCheckedChange={setIsInstallment}
+                                        disabled={isRecurring}
+                                    />
                                 </div>
-                                <Switch
-                                    checked={isInstallment}
-                                    onCheckedChange={setIsInstallment}
-                                />
-                            </div>
-
-                            {isInstallment && (
-                                <div className="grid grid-cols-2 gap-4 pt-2">
-                                    <div>
-                                        <Label htmlFor="installments">Número de Parcelas</Label>
+                                {isInstallment && (
+                                    <div className="space-y-2 pt-2 border-t">
+                                        <Label htmlFor="installments">Parcelas</Label>
                                         <Input
                                             id="installments"
                                             type="number"
@@ -452,17 +478,47 @@ const TransactionFormDialog = ({
                                             onChange={(e) => setInstallmentsCount(e.target.value)}
                                             className="font-semibold"
                                         />
-                                    </div>
-                                    <div>
-                                        <Label className="text-muted-foreground">Valor por Parcela</Label>
-                                        <div className="h-10 px-3 py-2 border rounded-md bg-background text-sm font-medium flex items-center text-muted-foreground">
+                                        <div className="text-[11px] font-bold text-primary mt-1">
                                             {form.amount && Number(installmentsCount) > 0
-                                                ? (Number(form.amount) / Number(installmentsCount)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                                                ? `${installmentsCount}x de ${(Number(form.amount) / Number(installmentsCount)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
                                                 : 'R$ 0,00'}
                                         </div>
                                     </div>
+                                )}
+                            </div>
+
+                            <div className={`p-4 border rounded-lg space-y-4 ${isRecurring ? 'bg-orange-500/10 border-orange-500/30' : 'bg-muted/20'} ${isInstallment && 'opacity-50 pointer-events-none'}`}>
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-sm font-bold text-orange-600">Recorrência Mensal</Label>
+                                        <p className="text-[10px] text-muted-foreground">Ex: Aluguel, Salário</p>
+                                    </div>
+                                    <Switch
+                                        checked={isRecurring}
+                                        onCheckedChange={setIsRecurring}
+                                        disabled={isInstallment}
+                                        className="data-[state=checked]:bg-orange-500"
+                                    />
                                 </div>
-                            )}
+
+                                {isRecurring && (
+                                    <div className="space-y-2 pt-2 border-t">
+                                        <Label htmlFor="recurringCount">Meses a Repetir</Label>
+                                        <Input
+                                            id="recurringCount"
+                                            type="number"
+                                            min="2"
+                                            max="120"
+                                            value={recurringCount}
+                                            onChange={(e) => setRecurringCount(e.target.value)}
+                                            className="font-semibold"
+                                        />
+                                        <div className="text-[11px] font-bold text-orange-600 mt-1">
+                                            Irá gerar {recurringCount} lançamentos de {form.amount ? Number(form.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}.
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
