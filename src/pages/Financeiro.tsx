@@ -542,6 +542,65 @@ const Financeiro = () => {
     };
   }, [transactions, selectedDashMonth, selectedYear]);
 
+  const previousSummary = useMemo(() => {
+    const isAnual = selectedDashMonth === 'anual';
+    const currentMonth = !isAnual ? Number(selectedDashMonth) : -1;
+    const currentYear = parseInt(selectedYear);
+
+    let prevMonth = currentMonth - 1;
+    let prevYear = currentYear;
+
+    if (!isAnual && prevMonth < 0) {
+      prevMonth = 11;
+      prevYear = currentYear - 1;
+    } else if (isAnual) {
+      prevYear = currentYear - 1;
+    }
+
+    const prevTransactions = transactions.filter(t => {
+      const date = new Date(t.competenceDate);
+      return date.getFullYear() === prevYear && (isAnual || date.getMonth() === prevMonth);
+    });
+
+    return {
+      receitaBrutaMes: prevTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0),
+      gastosMes: prevTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0),
+    };
+  }, [transactions, selectedDashMonth, selectedYear]);
+
+  const topClients = useMemo(() => {
+    const isAnual = selectedDashMonth === 'anual';
+    const currentMonth = !isAnual ? Number(selectedDashMonth) : -1;
+    const currentYear = parseInt(selectedYear);
+
+    const periodIncome = transactions.filter(t => {
+      const date = new Date(t.competenceDate);
+      return t.type === 'income' && date.getFullYear() === currentYear && (isAnual || date.getMonth() === currentMonth);
+    });
+
+    const clientTotals: Record<string, number> = {};
+    periodIncome.forEach(t => {
+      const clientName = t.contact || 'Desconhecido';
+      clientTotals[clientName] = (clientTotals[clientName] || 0) + t.amount;
+    });
+
+    return Object.entries(clientTotals)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5); // Top 5
+  }, [transactions, selectedDashMonth, selectedYear]);
+
+  const overdueTransactions = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return transactions.filter(t => {
+      if (t.status !== 'pending') return false;
+      const dueDate = new Date(t.dueDate);
+      return dueDate < today;
+    });
+  }, [transactions]);
+
   const upcomingTransactions = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const nextWeek = new Date(); nextWeek.setDate(today.getDate() + 7); nextWeek.setHours(23, 59, 59, 999);
@@ -678,6 +737,9 @@ const Financeiro = () => {
             selectedDashMonth={selectedDashMonth}
             setSelectedDashMonth={setSelectedDashMonth}
             currentSummary={currentSummary}
+            previousSummary={previousSummary}
+            topClients={topClients}
+            overdueTransactions={overdueTransactions}
             upcomingTransactions={upcomingTransactions}
             chartData={chartData}
             dashboardChartData={dashboardChartData}
