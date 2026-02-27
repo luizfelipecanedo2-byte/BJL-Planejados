@@ -305,6 +305,13 @@ const TransactionFormDialog = ({
         onOpenChange(false);
     };
 
+    // Validações visuais
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isOverdue = !form.paymentDate && form.dueDate && new Date(`${form.dueDate}T00:00:00`) < today;
+    const isFuturePayment = form.paymentDate && new Date(`${form.paymentDate}T00:00:00`) > today;
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -446,7 +453,9 @@ const TransactionFormDialog = ({
                                     value={form.dueDate}
                                     onChange={(e) => handleUpdateField("dueDate", e.target.value)}
                                     required
+                                    className={isOverdue ? "border-red-500 text-red-600 focus-visible:ring-red-500" : ""}
                                 />
+                                {isOverdue && <span className="text-[10px] text-red-500 font-bold block mt-1">⚠️ Vencimento atrasado</span>}
                             </div>
                         </div>
                     </div>
@@ -531,13 +540,18 @@ const TransactionFormDialog = ({
                                 type="date"
                                 value={form.paymentDate}
                                 onChange={(e) => handleUpdateField("paymentDate", e.target.value)}
+                                className={isFuturePayment ? "border-amber-500 text-amber-600 focus-visible:ring-amber-500" : ""}
                             />
-                            <p className="text-[10px] text-muted-foreground mt-1">Preencher para concluir</p>
+                            {isFuturePayment ? (
+                                <span className="text-[10px] text-amber-500 font-bold block mt-1">⚠️ Data no futuro</span>
+                            ) : (
+                                <p className="text-[10px] text-muted-foreground mt-1">Preencher para alterar para concluído</p>
+                            )}
                         </div>
                         <div>
                             <Label>Status</Label>
-                            <Select value={status} onValueChange={(v) => setStatus(v as TransactionStatus)}>
-                                <SelectTrigger>
+                            <Select value={status} onValueChange={(v) => setStatus(v as TransactionStatus)} disabled={!!form.paymentDate}>
+                                <SelectTrigger className={status === 'paid' ? 'bg-green-50 text-green-700 border-green-200 font-semibold' : ''}>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -545,6 +559,7 @@ const TransactionFormDialog = ({
                                     <SelectItem value="pending">Pendente</SelectItem>
                                 </SelectContent>
                             </Select>
+                            {form.paymentDate && <span className="text-[10px] text-green-600 mt-1 block font-medium">Status automático via Efetivação</span>}
                         </div>
                     </div>
 
