@@ -23,8 +23,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 interface DashboardTabProps {
     selectedYear: string;
     setSelectedYear: (year: string) => void;
-    selectedDashMonth: number;
-    setSelectedDashMonth: (month: number) => void;
+    selectedDashMonth: number | 'anual';
+    setSelectedDashMonth: (month: number | 'anual') => void;
     currentSummary: {
         entradaMes: number;
         saidaMes: number;
@@ -37,7 +37,6 @@ interface DashboardTabProps {
         accountsReceivable: number;
         projectedBalance: number;
         inadimplenciaTotal: number;
-        pontoEquilibrio: number;
         ticketMedio: number;
         expensesByCategory: { name: string; value: number }[];
     };
@@ -86,10 +85,11 @@ const DashboardTab = ({
 
                 <Tabs
                     value={String(selectedDashMonth)}
-                    onValueChange={(v) => setSelectedDashMonth(parseInt(v))}
+                    onValueChange={(v) => setSelectedDashMonth(v === 'anual' ? 'anual' : parseInt(v))}
                     className="w-full"
                 >
                     <TabsList className="w-full justify-start overflow-x-auto h-12 bg-muted/20 p-1.5 backdrop-blur-md rounded-xl border border-border/30">
+                        <TabsTrigger value="anual" className="flex-1 sm:flex-none min-w-[80px] rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-black text-xs uppercase tracking-widest mr-2 border border-primary/20 bg-primary/5 text-primary">Anual</TabsTrigger>
                         {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"].map((month, index) => (
                             <TabsTrigger
                                 key={month}
@@ -103,7 +103,7 @@ const DashboardTab = ({
                 </Tabs>
             </div>
 
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {/* Main KPI Card: Projected Finish */}
                 <Card className="col-span-1 md:col-span-2 lg:col-span-2 overflow-hidden border-none bg-gradient-to-br from-emerald-600/95 to-emerald-900 shadow-2xl relative group">
                     <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform duration-500">
@@ -139,20 +139,6 @@ const DashboardTab = ({
                     <CardContent>
                         <div className="text-[9px] text-orange-500/70 mb-2 font-bold uppercase tracking-widest bg-orange-500/10 w-fit px-2 py-0.5 rounded border border-orange-500/20">Atrasos Críticos</div>
                         <p className="text-[10px] text-muted-foreground leading-tight italic">Total histórico que deveria ter sido recebido até hoje</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-card/40 border-l-4 border-l-yellow-600 shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] border group">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <div className="space-y-1">
-                            <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest group-hover:text-yellow-500 transition-colors">Ponto de Equilíbrio</CardTitle>
-                            <p className="text-2xl font-black text-yellow-500 group-hover:scale-110 transition-transform origin-left">{formatCurrency(currentSummary.pontoEquilibrio)}</p>
-                        </div>
-                        <TrendingUp className="h-5 w-5 text-yellow-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-[9px] text-yellow-500/70 mb-2 font-bold uppercase tracking-widest bg-yellow-500/10 w-fit px-2 py-0.5 rounded border border-yellow-500/20">Meta Operacional</div>
-                        <p className="text-[10px] text-muted-foreground leading-tight italic">Faturamento necessário para cobrir custos fixos do mês</p>
                     </CardContent>
                 </Card>
             </div>

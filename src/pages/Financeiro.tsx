@@ -185,7 +185,7 @@ const Financeiro = () => {
   // Dashboard State
   const [selectedYear, setSelectedYear] = useState<string>("2026");
   const [selectedDREYear, setSelectedDREYear] = useState<string>("2026");
-  const [selectedDashMonth, setSelectedDashMonth] = useState<number>(new Date().getMonth());
+  const [selectedDashMonth, setSelectedDashMonth] = useState<number | 'anual'>(new Date().getMonth());
 
   // Conciliation State
   const [selectedAccount, setSelectedAccount] = useState<string>("banco_itau");
@@ -494,13 +494,14 @@ const Financeiro = () => {
   }, [transactions, selectedDREYear]);
 
   const currentSummary = useMemo(() => {
-    const currentMonth = Number(selectedDashMonth);
+    const isAnual = selectedDashMonth === 'anual';
+    const currentMonth = !isAnual ? Number(selectedDashMonth) : -1;
     const currentYear = parseInt(selectedYear);
 
     // Filtro por Mês/Ano (Data de Movimentação de Caixa)
     const currentMonthTransactions = transactions.filter(t => {
       const date = new Date(t.paymentDate || t.dueDate);
-      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+      return date.getFullYear() === currentYear && (isAnual || date.getMonth() === currentMonth);
     });
 
     const entradaMes = currentMonthTransactions.filter(t => t.type === 'income' && t.status === 'paid').reduce((acc, t) => acc + t.amount, 0);
@@ -512,13 +513,13 @@ const Financeiro = () => {
     // Faturamento (Competência)
     const receitaBrutaMes = transactions.filter(t => {
       const date = new Date(t.competenceDate);
-      return t.type === 'income' && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+      return t.type === 'income' && date.getFullYear() === currentYear && (isAnual || date.getMonth() === currentMonth);
     }).reduce((acc, t) => acc + t.amount, 0);
 
     // Gastos Totais (Competência)
     const gastosMes = transactions.filter(t => {
       const date = new Date(t.competenceDate);
-      return t.type === 'expense' && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+      return t.type === 'expense' && date.getFullYear() === currentYear && (isAnual || date.getMonth() === currentMonth);
     }).reduce((acc, t) => acc + t.amount, 0);
 
     const resultadoMes = receitaBrutaMes - gastosMes;
@@ -533,7 +534,6 @@ const Financeiro = () => {
       entradaMes, saidaMes, saldoMes, saldoAtual, receitaBrutaMes, gastosMes, resultadoMes,
       accountsPayable, accountsReceivable, projectedBalance,
       inadimplenciaTotal: transactions.filter(t => t.type === 'income' && t.status === 'pending' && new Date(t.dueDate) < new Date()).reduce((acc, t) => acc + t.amount, 0),
-      pontoEquilibrio: currentMonthTransactions.filter(t => t.type === 'expense' && ["Despesa Operacional", "Despesa com Maquinário", "Despesa com Pessoal", "Despesas administrativas", "Maquinario"].includes(t.category)).reduce((acc, t) => acc + t.amount, 0),
       ticketMedio: currentMonthTransactions.filter(t => t.type === 'income').length > 0 ? receitaBrutaMes / currentMonthTransactions.filter(t => t.type === 'income').length : 0,
       expensesByCategory: expenseCategories.map(cat => ({
         name: cat,
