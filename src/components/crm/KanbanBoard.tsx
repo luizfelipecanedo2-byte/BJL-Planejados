@@ -2,8 +2,7 @@ import { Sale, STATUS_LABELS, SaleStatus } from "@/types/sale";
 import { formatCurrency } from "@/lib/salesUtils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Phone, Calendar, Flame, AlertTriangle, Clock } from "lucide-react";
-import { formatDistanceToNow, differenceInDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { differenceInDays } from "date-fns";
 
 interface KanbanBoardProps {
   sales: Sale[];
