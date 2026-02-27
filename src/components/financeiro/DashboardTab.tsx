@@ -110,7 +110,9 @@ const DashboardTab = ({
                         <DollarSign className="h-32 w-32 text-white" />
                     </div>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-white/80 text-sm font-bold uppercase tracking-widest">Resultado Projetado Final do Mês</CardTitle>
+                        <CardTitle className="text-white/80 text-sm font-bold uppercase tracking-widest">
+                            Resultado Projetado Final do {selectedDashMonth === 'anual' ? 'Ano' : 'Mês'}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="flex flex-col gap-1">
