@@ -40,7 +40,7 @@ const MainLayout = () => {
                 if (data) {
                     setRole(data.role);
                 } else {
-                    // Fallback para o seu e-mail de administrador caso a tabela ainda não exista
+                    // Fallback imediato para garantir que o menu apareça
                     if (user.email === 'luizfelipe.canedo2@gmail.com') {
                         setRole('admin');
                     } else {
@@ -86,9 +86,9 @@ const MainLayout = () => {
                     isSidebarOpen ? "translate-x-0" : "-translate-x-full"
                 )}
             >
-                <div className="h-56 flex items-center px-6 border-b border-border/10 justify-between shrink-0">
+                <div className="h-32 flex items-center px-6 border-b border-border/10 justify-between shrink-0 bg-primary/5">
                     <div className="flex items-center gap-3 w-full justify-center">
-                        <img src="/logo-bjl.png" alt="BJL Planejados" className="h-48 w-auto object-contain" onError={(e) => {
+                        <img src="/logo-bjl.png" alt="BJL Planejados" className="h-24 w-auto object-contain drop-shadow-md" onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
                             target.nextElementSibling?.classList.remove('hidden');
