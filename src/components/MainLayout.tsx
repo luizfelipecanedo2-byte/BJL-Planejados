@@ -20,7 +20,7 @@ import { toast } from "sonner";
 
 const MainLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [role, setRole] = useState<string | null>(null);
+    const [role, setRole] = useState<string | null>('colaborador'); // Default para colaborador para garantir que o menu não suma
     const [userEmail, setUserEmail] = useState<string | null>(null);
     const location = useLocation();
     const navigate = useNavigate();
@@ -67,7 +67,11 @@ const MainLayout = () => {
         { icon: Calendar, label: "Pedidos da Semana", path: "/pedidos-semana", roles: ['admin', 'colaborador'] },
     ];
 
-    const menuItems = allMenuItems.filter(item => !role || item.roles.includes(role));
+    // Se o role for 'colaborador', não mostra CRM, Clientes e Financeiro
+    const menuItems = allMenuItems.filter(item => {
+        if (!role) return item.roles.includes('colaborador'); // Por segurança, mostra o básico se estiver carregando
+        return item.roles.includes(role);
+    });
 
     return (
         <div className="min-h-screen bg-background flex">
@@ -115,21 +119,21 @@ const MainLayout = () => {
                     </div>
                 </div>
 
-                <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
+                <nav className="p-4 space-y-3 flex-1 overflow-y-auto min-h-0 bg-card">
                     {menuItems.map((item) => (
                         <Link
                             key={item.path}
                             to={item.path}
                             onClick={() => setIsSidebarOpen(false)}
                             className={cn(
-                                "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
+                                "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200",
                                 location.pathname === item.path
-                                    ? "bg-primary/20 text-primary border-r-2 border-primary"
-                                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                                    ? "bg-primary/15 text-primary border-r-4 border-primary shadow-sm font-bold"
+                                    : "hover:bg-muted text-muted-foreground hover:text-foreground active:bg-muted"
                             )}
                         >
-                            <item.icon className="h-5 w-5" />
-                            <span>{item.label}</span>
+                            <item.icon className={cn("h-6 w-6", location.pathname === item.path ? "text-primary" : "text-muted-foreground")} />
+                            <span className="text-base">{item.label}</span>
                         </Link>
                     ))}
                 </nav>
