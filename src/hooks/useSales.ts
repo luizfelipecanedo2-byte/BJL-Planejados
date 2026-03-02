@@ -52,6 +52,9 @@ export function useSales() {
 
   const addSale = async (sale: Omit<Sale, "id" | "createdAt">) => {
     try {
+      const isClosed = sale.status === "fechado" || sale.status === "pos_venda";
+      const closedDate = isClosed ? (sale.closedDate || new Date().toISOString().split("T")[0]) : null;
+
       const newSale = {
         client_name: sale.clientName,
         client_phone: sale.clientPhone,
@@ -64,7 +67,7 @@ export function useSales() {
         channel: sale.channel || null,
         contact_date: sale.contactDate || null,
         expected_close_date: sale.expectedCloseDate || null,
-        closed_date: sale.closedDate || null,
+        closed_date: closedDate,
         notes: sale.notes
       };
 
@@ -110,19 +113,29 @@ export function useSales() {
   const updateSale = async (id: string, updates: Partial<Sale>) => {
     try {
       const updateData: any = {};
-      if (updates.clientName) updateData.client_name = updates.clientName;
-      if (updates.clientPhone) updateData.client_phone = updates.clientPhone;
-      if (updates.clientEmail) updateData.client_email = updates.clientEmail;
-      if (updates.product) updateData.product = updates.product;
-      if (updates.quantity) updateData.quantity = updates.quantity;
-      if (updates.unitPrice) updateData.unit_price = updates.unitPrice;
-      if (updates.totalValue) updateData.total_value = updates.totalValue;
-      if (updates.status) updateData.status = updates.status;
-      if (updates.channel) updateData.channel = updates.channel;
-      if (updates.contactDate) updateData.contact_date = updates.contactDate;
-      if (updates.expectedCloseDate) updateData.expected_close_date = updates.expectedCloseDate;
-      if (updates.closedDate) updateData.closed_date = updates.closedDate;
-      if (updates.notes) updateData.notes = updates.notes;
+      if (updates.clientName !== undefined) updateData.client_name = updates.clientName;
+      if (updates.clientPhone !== undefined) updateData.client_phone = updates.clientPhone;
+      if (updates.clientEmail !== undefined) updateData.client_email = updates.clientEmail;
+      if (updates.product !== undefined) updateData.product = updates.product;
+      if (updates.quantity !== undefined) updateData.quantity = updates.quantity;
+      if (updates.unitPrice !== undefined) updateData.unit_price = updates.unitPrice;
+      if (updates.totalValue !== undefined) updateData.total_value = updates.totalValue;
+      if (updates.status !== undefined) updateData.status = updates.status;
+      if (updates.channel !== undefined) updateData.channel = updates.channel;
+      if (updates.contactDate !== undefined) updateData.contact_date = updates.contactDate;
+      if (updates.expectedCloseDate !== undefined) updateData.expected_close_date = updates.expectedCloseDate;
+      if (updates.notes !== undefined) updateData.notes = updates.notes;
+
+      // Handle closedDate based on status
+      const currentSale = sales.find(s => s.id === id);
+      const newStatus = updates.status || currentSale?.status;
+      const isClosed = newStatus === "fechado" || newStatus === "pos_venda";
+
+      if (isClosed) {
+        updateData.closed_date = updates.closedDate || currentSale?.closedDate || new Date().toISOString().split("T")[0];
+      } else {
+        updateData.closed_date = null;
+      }
 
       const { error } = await supabase
         .from('sales')
@@ -136,7 +149,7 @@ export function useSales() {
       }
 
       setSales((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
+        prev.map((s) => (s.id === id ? { ...s, ...updates, closedDate: updateData.closed_date } : s))
       );
       toast.success("Venda atualizada!");
     } catch (error) {
@@ -167,11 +180,7 @@ export function useSales() {
   };
 
   const updateStatus = async (id: string, status: Sale["status"]) => {
-    const updates: Partial<Sale> = { status };
-    if (status === "fechado") {
-      updates.closedDate = new Date().toISOString().split("T")[0];
-    }
-    await updateSale(id, updates);
+    await updateSale(id, { status });
   };
 
   return { sales, loading, addSale, updateSale, deleteSale, updateStatus };

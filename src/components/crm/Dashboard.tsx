@@ -48,13 +48,15 @@ const Dashboard = ({ sales }: DashboardProps) => {
   const years = useMemo(() => {
     const yearsSet = new Set<string>();
     sales.forEach(sale => {
-      const dateStr = sale.contactDate || sale.createdAt;
-      if (dateStr) {
-        try {
-          const year = new Date(dateStr).getFullYear();
-          if (!isNaN(year)) yearsSet.add(year.toString());
-        } catch (e) { }
-      }
+      const dates = [sale.contactDate, sale.createdAt, sale.closedDate];
+      dates.forEach(dateStr => {
+        if (dateStr) {
+          try {
+            const year = new Date(dateStr).getFullYear();
+            if (!isNaN(year)) yearsSet.add(year.toString());
+          } catch (e) { }
+        }
+      });
     });
     if (yearsSet.size === 0) yearsSet.add(new Date().getFullYear().toString());
     return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
@@ -67,14 +69,19 @@ const Dashboard = ({ sales }: DashboardProps) => {
 
   const getFilteredSales = (year: string, monthIndex?: number) => {
     return sales.filter((sale) => {
-      const dateStr = sale.contactDate || sale.createdAt || "";
-      if (!dateStr) return false;
-      const date = new Date(dateStr);
-      const yearMatch = date.getFullYear().toString() === year;
-      if (monthIndex !== undefined) {
-        return yearMatch && date.getMonth() === monthIndex;
-      }
-      return yearMatch;
+      const budgetDateStr = sale.contactDate || sale.createdAt || "";
+      const closedDateStr = sale.closedDate || "";
+
+      const budgetDate = budgetDateStr ? new Date(budgetDateStr) : null;
+      const closedDate = (sale.status === "fechado" || sale.status === "pos_venda") && closedDateStr ? new Date(closedDateStr) : null;
+
+      const budgetYearMatch = budgetDate?.getFullYear().toString() === year;
+      const budgetMonthMatch = monthIndex !== undefined ? budgetDate?.getMonth() === monthIndex : true;
+
+      const closedYearMatch = closedDate?.getFullYear().toString() === year;
+      const closedMonthMatch = monthIndex !== undefined ? closedDate?.getMonth() === monthIndex : true;
+
+      return (budgetYearMatch && budgetMonthMatch) || (closedYearMatch && closedMonthMatch);
     });
   };
 
@@ -91,17 +98,46 @@ const Dashboard = ({ sales }: DashboardProps) => {
     const yearSales = getFilteredSales(year);
 
     yearSales.forEach((sale) => {
-      const dateStr = sale.contactDate || sale.createdAt;
-      if (!dateStr) return;
-      const d = new Date(dateStr);
-      const monthIndex = d.getMonth();
-      const item = data[monthIndex];
+      const budgetDate = new Date(sale.contactDate || sale.createdAt);
+      const isBudgetInYear = budgetDate.getFullYear().toString() === year;
 
-      if (sale.status === "fechado") item.Fechado += sale.totalValue;
-      else if (sale.status === "nao_fechou") item["Não Fechou"] += sale.totalValue;
-      else if (sale.status === "congelado") item.Congelado += sale.totalValue;
-      else if (sale.status === "pos_venda") item["Pós Venda"] += sale.totalValue;
-      else item["Em Andamento"] += sale.totalValue;
+      const closedDate = (sale.status === "fechado" || sale.status === "pos_venda") && sale.closedDate ? new Date(sale.closedDate) : null;
+      const isClosedInYear = closedDate && closedDate.getFullYear().toString() === year;
+
+      if (isBudgetInYear) {
+        const monthIndex = budgetDate.getMonth();
+        const item = data[monthIndex];
+
+        if (sale.status === "fechado" || sale.status === "pos_venda") {
+          const budgetMonth = budgetDate.getMonth();
+          const closedMonth = closedDate?.getMonth();
+
+          if (isClosedInYear && budgetMonth === closedMonth) {
+            if (sale.status === "fechado") item.Fechado += sale.totalValue;
+            else if (sale.status === "pos_venda") item["Pós Venda"] += sale.totalValue;
+          } else {
+            // Histórico: no mês do orçamento ainda estava em andamento
+            item["Em Andamento"] += sale.totalValue;
+          }
+        } else {
+          if (sale.status === "nao_fechou") item["Não Fechou"] += sale.totalValue;
+          else if (sale.status === "congelado") item.Congelado += sale.totalValue;
+          else item["Em Andamento"] += sale.totalValue;
+        }
+      }
+
+      // Se fechou em um mês diferente do orçamento (ou foi orçado em outro ano)
+      if (isClosedInYear) {
+        const closedMonth = closedDate!.getMonth();
+        const budgetMonth = budgetDate.getMonth();
+        const budgetY = budgetDate.getFullYear().toString();
+
+        if (budgetY !== year || budgetMonth !== closedMonth) {
+          const item = data[closedMonth];
+          if (sale.status === "fechado") item.Fechado += sale.totalValue;
+          else if (sale.status === "pos_venda") item["Pós Venda"] += sale.totalValue;
+        }
+      }
     });
 
     return data;
@@ -122,24 +158,51 @@ const Dashboard = ({ sales }: DashboardProps) => {
     });
 
     monthSales.forEach((sale) => {
-      const dateStr = sale.contactDate || sale.createdAt;
-      if (!dateStr) return;
-      const d = new Date(dateStr);
-      const day = d.getDate();
-      const item = data[day - 1];
+      const budgetDate = new Date(sale.contactDate || sale.createdAt);
+      const isBudgetInPeriod = budgetDate.getFullYear() === year && budgetDate.getMonth() === month;
 
-      if (sale.status === "fechado") item.Fechado += sale.totalValue;
-      else if (sale.status === "nao_fechou") item["Não Fechou"] += sale.totalValue;
-      else if (sale.status === "congelado") item.Congelado += sale.totalValue;
-      else if (sale.status === "pos_venda") item["Pós Venda"] += sale.totalValue;
-      else item["Em Andamento"] += sale.totalValue;
+      const closedDate = (sale.status === "fechado" || sale.status === "pos_venda") && sale.closedDate ? new Date(sale.closedDate) : null;
+      const isClosedInPeriod = closedDate && closedDate.getFullYear() === year && closedDate.getMonth() === month;
+
+      if (isBudgetInPeriod) {
+        const day = budgetDate.getDate();
+        const item = data[day - 1];
+
+        if (sale.status === "fechado" || sale.status === "pos_venda") {
+          const budgetDay = budgetDate.getDate();
+          const closedDay = closedDate?.getDate();
+
+          if (isClosedInPeriod && budgetDay === closedDay) {
+            if (sale.status === "fechado") item.Fechado += sale.totalValue;
+            else if (sale.status === "pos_venda") item["Pós Venda"] += sale.totalValue;
+          } else {
+            item["Em Andamento"] += sale.totalValue;
+          }
+        } else {
+          if (sale.status === "nao_fechou") item["Não Fechou"] += sale.totalValue;
+          else if (sale.status === "congelado") item.Congelado += sale.totalValue;
+          else item["Em Andamento"] += sale.totalValue;
+        }
+      }
+
+      if (isClosedInPeriod) {
+        const closedDay = closedDate!.getDate();
+        const budgetDay = budgetDate.getDate();
+        const isSameDay = isBudgetInPeriod && closedDay === budgetDay;
+
+        if (!isSameDay) {
+          const item = data[closedDay - 1];
+          if (sale.status === "fechado") item.Fechado += sale.totalValue;
+          else if (sale.status === "pos_venda") item["Pós Venda"] += sale.totalValue;
+        }
+      }
     });
 
     return data;
   };
 
-  const getChannelData = (filteredSales: Sale[], closedOnly: boolean = false) => {
-    const targetSales = closedOnly ? filteredSales.filter(s => s.status === 'fechado') : filteredSales;
+  const getChannelData = (salesToProcess: Sale[], closedOnly: boolean = false) => {
+    const targetSales = closedOnly ? salesToProcess.filter(s => s.status === 'fechado') : salesToProcess;
     const total = targetSales.length;
     if (total === 0) return [];
 
@@ -159,24 +222,47 @@ const Dashboard = ({ sales }: DashboardProps) => {
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
-  const renderDashboardContent = (filteredSales: Sale[], titleSuffix: string, chartData: any[], isDaily: boolean = false) => {
-    const metrics = getMetrics(filteredSales);
-    const channelData = getChannelData(filteredSales, true);
-    const allChannelData = getChannelData(filteredSales, false);
+  const renderDashboardContent = (
+    filteredSales: Sale[],
+    titleSuffix: string,
+    chartData: any[],
+    isDaily: boolean = false,
+    targetYear: string,
+    targetMonth?: number
+  ) => {
+    const budgetSales = filteredSales.filter(s => {
+      const d = new Date(s.contactDate || s.createdAt);
+      return d.getFullYear().toString() === targetYear && (targetMonth === undefined || d.getMonth() === targetMonth);
+    });
 
-    const avgTicketAll = metrics.totalSales > 0
-      ? filteredSales.reduce((sum, s) => sum + s.totalValue, 0) / metrics.totalSales
-      : 0;
+    const revenueSales = filteredSales.filter(s => {
+      if (s.status !== 'fechado' && s.status !== 'pos_venda') return false;
+      if (!s.closedDate) return false;
+      const d = new Date(s.closedDate);
+      return d.getFullYear().toString() === targetYear && (targetMonth === undefined || d.getMonth() === targetMonth);
+    });
 
-    const avgTicketClosed = metrics.closedSales > 0
-      ? metrics.totalRevenue / metrics.closedSales
-      : 0;
+    const totalRevenue = revenueSales.reduce((sum, s) => sum + (s.totalValue || 0), 0);
+    const totalBudget = budgetSales.reduce((sum, s) => sum + (s.totalValue || 0), 0);
 
-    const totalLostValue = filteredSales
-      .filter(s => s && ['nao_fechou', 'congelado'].includes(s.status))
+    const pipelineValue = budgetSales
+      .filter(s => !['fechado', 'nao_fechou', 'pos_venda'].includes(s.status))
       .reduce((sum, s) => sum + (s.totalValue || 0), 0);
 
-    const totalBudget = filteredSales.reduce((sum, s) => sum + (s?.totalValue || 0), 0);
+    const lostSalesValue = budgetSales
+      .filter(s => ['nao_fechou', 'congelado'].includes(s.status))
+      .reduce((sum, s) => sum + (s.totalValue || 0), 0);
+
+    const numBudgets = budgetSales.length;
+    const numClosed = revenueSales.filter(s => s.status === 'fechado').length;
+    const numLost = budgetSales.filter(s => s.status === 'nao_fechou').length;
+
+    const conversionRate = numBudgets > 0 ? Math.round((numClosed / numBudgets) * 100) : 0;
+    const avgTicketClosed = numClosed > 0 ? totalRevenue / numClosed : 0;
+    const avgTicketAll = numBudgets > 0 ? totalBudget / numBudgets : 0;
+
+    const channelData = getChannelData(revenueSales, true);
+    const allChannelData = getChannelData(budgetSales, false);
 
     const cards = [
       {
@@ -188,21 +274,21 @@ const Dashboard = ({ sales }: DashboardProps) => {
       },
       {
         title: "Receita (Fechado + Pós-Venda)",
-        value: formatCurrency(metrics.totalRevenue),
+        value: formatCurrency(totalRevenue),
         icon: Target,
         color: "text-emerald-500",
         bgColor: "bg-emerald-500/10",
       },
       {
         title: "Dinheiro na Mesa (Perdidos)",
-        value: formatCurrency(totalLostValue),
+        value: formatCurrency(lostSalesValue),
         icon: TrendingDown,
         color: "text-rose-500",
         bgColor: "bg-rose-500/10",
       },
       {
         title: "Pipeline Atual (Andamento)",
-        value: formatCurrency(metrics.pipelineValue),
+        value: formatCurrency(pipelineValue),
         icon: TrendingUp,
         color: "text-primary",
         bgColor: "bg-primary/10",
@@ -223,14 +309,14 @@ const Dashboard = ({ sales }: DashboardProps) => {
       },
       {
         title: "Conversão Geral",
-        value: `${metrics.closedSales}/${metrics.totalSales} (${metrics.conversionRate}%)`,
+        value: `${numClosed}/${numBudgets} (${conversionRate}%)`,
         icon: BarChart3,
         color: "text-indigo-500",
         bgColor: "bg-indigo-500/10",
       },
       {
         title: "Leads Perdidos",
-        value: metrics.lostSales.toString(),
+        value: numLost.toString(),
         icon: XCircle,
         color: "text-rose-500",
         bgColor: "bg-rose-500/10",
@@ -424,14 +510,14 @@ const Dashboard = ({ sales }: DashboardProps) => {
             const dailyData = getDailyData(monthSales, parseInt(selectedYear), index);
             return (
               <TabsContent key={month} value={String(index)}>
-                {renderDashboardContent(monthSales, `${month} ${selectedYear}`, dailyData, true)}
+                {renderDashboardContent(monthSales, `${month} ${selectedYear}`, dailyData, true, selectedYear, index)}
               </TabsContent>
             );
           })}
         </Tabs>
       ) : (
         <div className="mt-2">
-          {renderDashboardContent(getFilteredSales(selectedYear), selectedYear, getYearlyGraphData(selectedYear), false)}
+          {renderDashboardContent(getFilteredSales(selectedYear), selectedYear, getYearlyGraphData(selectedYear), false, selectedYear)}
         </div>
       )}
     </div>
