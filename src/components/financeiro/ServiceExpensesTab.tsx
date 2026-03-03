@@ -163,6 +163,79 @@ const ServiceExpensesTab = ({
                     <p className="text-[11px] text-amber-600/80 font-medium leading-relaxed">Consideramos margens acima de 30% como saudáveis para serviços de marcenaria e design. Ambientes com margens abaixo de 15% devem ser revisados quanto aos custos de material ou tempo de produção.</p>
                 </div>
             </div>
+
+            {/* Seção de Gastos Automáticos (da Tabela de Transações) */}
+            <div className="space-y-6 pt-10 border-t border-border/40">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-primary/10 rounded-xl text-primary border border-primary/20 shadow-lg shadow-primary/5">
+                        <Briefcase className="h-6 w-6" />
+                    </div>
+                    <div className="space-y-1">
+                        <h3 className="text-2xl font-black tracking-tight text-primary uppercase tracking-widest">Análise Integrada <span className="text-[10px] font-normal text-muted-foreground ml-2 tracking-normal lowercase italic">(Gastos Automáticos via OS)</span></h3>
+                        <p className="text-xs text-muted-foreground font-medium uppercase opacity-70">Lançamentos financeiros automaticamente vinculados a Ordens de Serviço</p>
+                    </div>
+                </div>
+
+                <Card className="rounded-2xl border-none shadow-2xl bg-card overflow-hidden">
+                    <CardContent className="p-0">
+                        <div className="relative w-full overflow-auto">
+                            <table className="w-full text-xs border-collapse">
+                                <thead>
+                                    <tr className="bg-muted/50 text-muted-foreground border-b border-border/50 h-14">
+                                        <th className="px-6 text-left font-black uppercase tracking-widest text-[10px]">OS / Descrição</th>
+                                        <th className="px-6 text-left font-black uppercase tracking-widest text-[10px]">Categoria</th>
+                                        <th className="px-6 text-left font-black uppercase tracking-widest text-[10px]">Contato</th>
+                                        <th className="px-6 text-right font-black uppercase tracking-widest text-[10px]">Vencimento</th>
+                                        <th className="px-6 text-right font-black uppercase tracking-widest text-[10px]">Status</th>
+                                        <th className="px-6 text-right font-black uppercase tracking-widest text-[10px]">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {transactions.filter(t => t.orderService && t.orderService !== "all" && t.orderService !== "").length === 0 ? (
+                                        <tr className="border-b border-border/30 h-32 text-center text-muted-foreground italic">
+                                            <td colSpan={6}>Nenhum lançamento financeiro vinculado a OS encontrado.</td>
+                                        </tr>
+                                    ) : (
+                                        transactions
+                                            .filter(t => t.orderService && t.orderService !== "all" && t.orderService !== "")
+                                            .map((t) => (
+                                                <tr key={t.id} className="border-b border-border/30 hover:bg-muted/30 transition-all group">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-black text-primary text-[10px] uppercase tracking-tighter">OS: {t.orderService}</span>
+                                                            <span className="font-bold text-foreground text-sm truncate max-w-[200px]">{t.description}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="px-2 py-0.5 rounded bg-muted text-[9px] font-bold uppercase">{t.category}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 font-medium text-muted-foreground">{t.contact}</td>
+                                                    <td className="px-6 py-4 text-right font-mono text-[10px]">
+                                                        {new Date(t.dueDate).toLocaleDateString('pt-BR')}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <span className={cn(
+                                                            "px-2 py-0.5 rounded-full font-black text-[8px] uppercase border",
+                                                            t.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border-rose-500/20"
+                                                        )}>
+                                                            {t.status === 'paid' ? 'Pago' : 'Pendente'}
+                                                        </span>
+                                                    </td>
+                                                    <td className={cn(
+                                                        "px-6 py-4 text-right font-black text-sm",
+                                                        t.type === 'income' ? "text-emerald-500" : "text-rose-500"
+                                                    )}>
+                                                        {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 };

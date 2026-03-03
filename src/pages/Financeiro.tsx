@@ -384,24 +384,35 @@ const Financeiro = () => {
 
     const taxes = yearTransactions.filter(t =>
       t.type === 'expense' && (
-        t.category === 'Impostos' ||
-        t.category === 'Impostos sobre a receita' ||
-        t.category === 'Outras deduções' ||
-        t.subcategory === 'Simples Nacional'
+        t.category.toLowerCase().includes('imposto') ||
+        t.category.toLowerCase().includes('dedução') ||
+        t.subcategory?.toLowerCase().includes('simples nacional') ||
+        t.subcategory?.toLowerCase().includes('iss') ||
+        t.subcategory?.toLowerCase().includes('pis') ||
+        t.subcategory?.toLowerCase().includes('cofins')
       )
     ).reduce((acc, t) => acc + t.amount, 0);
 
     const netRevenue = grossRevenue - taxes;
 
-    // Custos Variáveis: Tudo que é custo de serviço/venda
+    // Custos Variáveis: Tudo que é custo de serviço/venda/material
     const variableCosts = yearTransactions.filter(t =>
       t.type === 'expense' &&
-      ["Despesa com Serviço", "Custo dos serviços", "Serviços de terceiros", "Despesas com vendas"].includes(t.category)
+      [
+        "Despesa com Serviço",
+        "Custo dos serviços",
+        "Serviços de terceiros",
+        "Despesas com vendas",
+        "Material",
+        "Compra de Material",
+        "Insumos",
+        "Mão de Obra"
+      ].some(cat => t.category.toLowerCase().includes(cat.toLowerCase()))
     ).reduce((acc, t) => acc + t.amount, 0);
 
     const contributionMargin = netRevenue - variableCosts;
 
-    // Despesas Fixas: Tudo que é operacional/administrativo
+    // Despesas Fixas: Tudo que é operacional/administrativo/manutenção
     const fixedExpenses = yearTransactions.filter(t =>
       t.type === 'expense' &&
       [
@@ -410,8 +421,14 @@ const Financeiro = () => {
         "Despesa com Pessoal",
         "Despesas com pessoal",
         "Despesas administrativas",
-        "Maquinario"
-      ].includes(t.category)
+        "Maquinario",
+        "Aluguel",
+        "Luz",
+        "Água",
+        "Internet",
+        "Salários",
+        "Retirada"
+      ].some(cat => t.category.toLowerCase().includes(cat.toLowerCase()))
     ).reduce((acc, t) => acc + t.amount, 0);
 
     // Capturar gastos que não caíram em nenhuma categoria acima para garantir que o resultado bata com o total real
@@ -691,6 +708,26 @@ const Financeiro = () => {
 
   const handleNewServiceExpense = () => { setEditingServiceExpense(null); setIsServiceExpenseDialogOpen(true); };
   const handleEditServiceExpense = (expense: ServiceExpense) => { setEditingServiceExpense(expense); setIsServiceExpenseDialogOpen(true); };
+  const handleUpdateServiceExpense = async (id: string, updates: Partial<ServiceExpense>) => {
+    try {
+      const updateData: any = {
+        client_name: updates.clientName,
+        environment: updates.environment,
+        service_value: updates.serviceValue,
+        spent_value: updates.spentValue,
+        items: updates.items
+      };
+
+      const { error } = await supabase.from('service_expenses').update(updateData).eq('id', id);
+      if (error) throw error;
+      setServiceExpenses(serviceExpenses.map(e => e.id === id ? { ...e, ...updates } : e));
+      toast.success("Gasto atualizado!");
+    } catch (error) {
+      console.error('Update error:', error);
+      toast.error("Erro ao atualizar gasto.");
+    }
+  };
+
   const handleServiceExpenseSubmit = async (data: Omit<ServiceExpense, "id" | "createdAt">) => {
     try {
       const { data: insertedData, error } = await supabase.from('service_expenses').insert([{
@@ -817,7 +854,7 @@ const Financeiro = () => {
 
       <TransactionFormDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} onSubmit={handleSubmit} onUpdate={handleUpdate} editingTransaction={editingTransaction} />
       <AssetFormDialog open={isAssetDialogOpen} onOpenChange={setIsAssetDialogOpen} onSubmit={handleAssetSubmit} onUpdate={() => { }} editingAsset={editingAsset} />
-      <ServiceExpenseFormDialog open={isServiceExpenseDialogOpen} onOpenChange={setIsServiceExpenseDialogOpen} onSubmit={handleServiceExpenseSubmit} onUpdate={() => { }} editingExpense={editingServiceExpense} />
+      <ServiceExpenseFormDialog open={isServiceExpenseDialogOpen} onOpenChange={setIsServiceExpenseDialogOpen} onSubmit={handleServiceExpenseSubmit} onUpdate={handleUpdateServiceExpense} editingExpense={editingServiceExpense} />
     </div>
   );
 };
