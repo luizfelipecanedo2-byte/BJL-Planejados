@@ -710,6 +710,8 @@ const Financeiro = () => {
   const handleEditServiceExpense = (expense: ServiceExpense) => { setEditingServiceExpense(expense); setIsServiceExpenseDialogOpen(true); };
   const handleUpdateServiceExpense = async (id: string, updates: Partial<ServiceExpense>) => {
     try {
+      console.log('Iniciando atualização de gasto:', id, updates);
+
       const updateData: any = {
         client_name: updates.clientName,
         environment: updates.environment,
@@ -719,12 +721,17 @@ const Financeiro = () => {
       };
 
       const { error } = await supabase.from('service_expenses').update(updateData).eq('id', id);
-      if (error) throw error;
-      setServiceExpenses(serviceExpenses.map(e => e.id === id ? { ...e, ...updates } : e));
-      toast.success("Gasto atualizado!");
+
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw error;
+      }
+
+      setServiceExpenses(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+      toast.success("Gasto atualizado com sucesso!");
     } catch (error) {
-      console.error('Update error:', error);
-      toast.error("Erro ao atualizar gasto.");
+      console.error('Erro na função handleUpdateServiceExpense:', error);
+      toast.error("Erro ao atualizar gasto. Verifique sua conexão.");
     }
   };
 

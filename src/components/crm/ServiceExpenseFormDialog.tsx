@@ -116,14 +116,38 @@ const ServiceExpenseFormDialog = ({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Auto-add item if user has filled out the fields but forgot to click the plus button
+        let currentItems = [...items];
+        if (newItem.description && newItem.quantity && newItem.unitValue) {
+            const qty = parseFloat(newItem.quantity) || 0;
+            const unitVal = parseFloat(newItem.unitValue) || 0;
+            const totalVal = qty * unitVal;
+
+            const itemData: ExpenseItem = {
+                description: newItem.description,
+                unit: newItem.unit,
+                quantity: qty,
+                unitValue: unitVal,
+                totalValue: totalVal
+            };
+
+            if (editingItemIndex !== null) {
+                currentItems[editingItemIndex] = itemData;
+            } else {
+                currentItems.push(itemData);
+            }
+        }
+
         const serviceValue = parseFloat(form.serviceValue) || 0;
+        const totalSpentActual = currentItems.reduce((acc, item) => acc + item.totalValue, 0);
 
         const expenseData = {
             clientName: form.clientName,
             environment: form.environment,
             serviceValue,
-            spentValue: totalSpent,
-            items: items,
+            spentValue: totalSpentActual,
+            items: currentItems,
         };
 
         if (editingExpense && onUpdate) {
@@ -132,6 +156,8 @@ const ServiceExpenseFormDialog = ({
             onSubmit(expenseData);
         }
         onOpenChange(false);
+        setEditingItemIndex(null);
+        setNewItem({ description: "", unit: "un", quantity: "1", unitValue: "" });
     };
 
     const update = (field: string, value: string) => {
