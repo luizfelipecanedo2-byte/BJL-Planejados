@@ -182,6 +182,7 @@ const Financeiro = () => {
   const [dateFilterType, setDateFilterType] = useState<"competence" | "due">("due");
   const [osFilter, setOsFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Dashboard State
   const [selectedYear, setSelectedYear] = useState<string>("2026");
@@ -191,6 +192,49 @@ const Financeiro = () => {
   // Conciliation State
   const [selectedAccount, setSelectedAccount] = useState<string>("banco_itau");
   const [currentDateReconciliation, setCurrentDateReconciliation] = useState<Date>(new Date());
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = (ids: string[]) => {
+    setSelectedIds(prev => {
+      const allSelected = ids.every(id => prev.includes(id));
+      if (allSelected) {
+        // Se todos os IDs passados já estão no prev, remove apenas eles
+        return prev.filter(id => !ids.includes(id));
+      } else {
+        // Caso contrário, adiciona os que faltam (sem duplicar)
+        return Array.from(new Set([...prev, ...ids]));
+      }
+    });
+  };
+
+  const handleBulkPay = async () => {
+    if (selectedIds.length === 0) return;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { error } = await supabase
+        .from('transactions')
+        .update({
+          status: 'paid',
+          payment_date: today
+        })
+        .in('id', selectedIds);
+
+      if (error) throw error;
+
+      toast.success(`${selectedIds.length} lançamentos marcados como pagos!`);
+      setSelectedIds([]);
+      fetchTransactions();
+    } catch (error) {
+      console.error('Error in bulk payment:', error);
+      toast.error("Erro ao realizar pagamento em massa.");
+    }
+  };
 
   const reconciliationData = useMemo(() => {
     return transactions.filter(t => {
@@ -868,7 +912,14 @@ const Financeiro = () => {
           </div>
 
           <Card className="rounded-2xl border-none shadow-2xl overflow-hidden bg-card/40 backdrop-blur-md">
-            <TransactionTable transactions={filteredTransactions} onEdit={handleEditTransaction} onDelete={handleDeleteTransaction} />
+            <TransactionTable
+              transactions={filteredTransactions}
+              selectedIds={selectedIds}
+              onSelect={toggleSelect}
+              onSelectAll={toggleSelectAll}
+              onEdit={handleEditTransaction}
+              onDelete={handleDeleteTransaction}
+            />
           </Card>
         </TabsContent>
 
@@ -881,6 +932,65 @@ const Financeiro = () => {
       <TransactionFormDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} onSubmit={handleSubmit} onUpdate={handleUpdate} editingTransaction={editingTransaction} />
       <AssetFormDialog open={isAssetDialogOpen} onOpenChange={setIsAssetDialogOpen} onSubmit={handleAssetSubmit} onUpdate={() => { }} editingAsset={editingAsset} />
       <ServiceExpenseFormDialog open={isServiceExpenseDialogOpen} onOpenChange={setIsServiceExpenseDialogOpen} onSubmit={handleServiceExpenseSubmit} onUpdate={handleUpdateServiceExpense} editingExpense={editingServiceExpense} />
+
+      {/* Sidebar de Ações em Massa */}
+      {selectedIds.length > 0 && (
+        <div className="fixed right-0 top-0 h-full w-80 bg-background/95 backdrop-blur-xl border-l border-border shadow-2xl z-50 animate-in slide-in-from-right duration-300">
+          <div className="p-6 flex flex-col h-full">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="font-black uppercase tracking-widest text-sm flex items-center gap-2">
+                <div className="bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center text-[10px]">
+                  {selectedIds.length}
+                </div>
+                Selecionados
+              </h3>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedIds([])} className="rounded-full">
+                <Plus className="rotate-45 h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="flex-1 space-y-4 overflow-y-auto">
+              {selectedIds.map(id => {
+                const trans = transactions.find(t => t.id === id);
+                return trans ? (
+                  <div key={id} className="p-3 bg-muted/30 rounded-xl border border-border/20 text-xs">
+                    <p className="font-bold truncate">{trans.description}</p>
+                    <p className="text-muted-foreground">{formatCurrency(trans.amount)}</p>
+                  </div>
+                ) : null;
+              })}
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-border/50">
+              <div className="mb-4 flex justify-between items-center">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Valor Total</span>
+                <span className="text-xl font-black">
+                  {formatCurrency(
+                    selectedIds.reduce((acc, id) => {
+                      const trans = transactions.find(t => t.id === id);
+                      return acc + (trans?.amount || 0);
+                    }, 0)
+                  )}
+                </span>
+              </div>
+
+              <Button
+                onClick={handleBulkPay}
+                className="w-full h-12 rounded-xl font-black uppercase tracking-widest text-xs bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20"
+              >
+                Pagar Selecionados
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setSelectedIds([])}
+                className="w-full h-12 rounded-xl font-black uppercase tracking-widest text-xs mt-2 border-border/20"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

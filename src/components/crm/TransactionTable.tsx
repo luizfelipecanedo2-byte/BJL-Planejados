@@ -9,17 +9,28 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, FileImage } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface TransactionTableProps {
     transactions: Transaction[];
+    selectedIds: string[];
+    onSelect: (id: string) => void;
+    onSelectAll: (ids: string[]) => void;
     onEdit: (transaction: Transaction) => void;
     onDelete: (id: string) => void;
 }
 
-const TransactionTable = ({ transactions, onEdit, onDelete }: TransactionTableProps) => {
+const TransactionTable = ({
+    transactions,
+    selectedIds,
+    onSelect,
+    onSelectAll,
+    onEdit,
+    onDelete
+}: TransactionTableProps) => {
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
             style: "currency",
@@ -32,6 +43,12 @@ const TransactionTable = ({ transactions, onEdit, onDelete }: TransactionTablePr
             <Table>
                 <TableHeader>
                     <TableRow>
+                        <TableHead className="w-[40px]">
+                            <Checkbox
+                                checked={transactions.length > 0 && selectedIds.length === transactions.length}
+                                onCheckedChange={() => onSelectAll(transactions.map(t => t.id))}
+                            />
+                        </TableHead>
                         <TableHead>Pagamento / Compra</TableHead>
                         <TableHead>Descrição</TableHead>
                         <TableHead>OS</TableHead>
@@ -48,9 +65,16 @@ const TransactionTable = ({ transactions, onEdit, onDelete }: TransactionTablePr
                     {transactions.map((transaction) => {
                         const isIncome = transaction.type === 'income';
                         const isPaid = transaction.status === 'paid';
+                        const isSelected = selectedIds.includes(transaction.id);
 
                         return (
-                            <TableRow key={transaction.id}>
+                            <TableRow key={transaction.id} className={isSelected ? "bg-muted/50" : ""}>
+                                <TableCell>
+                                    <Checkbox
+                                        checked={isSelected}
+                                        onCheckedChange={() => onSelect(transaction.id)}
+                                    />
+                                </TableCell>
                                 <TableCell>
                                     <div className="flex flex-col">
                                         <span className="font-bold text-primary">{format(new Date(transaction.dueDate), "dd/MM/yyyy", { locale: ptBR })}</span>
