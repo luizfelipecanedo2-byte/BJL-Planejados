@@ -907,6 +907,13 @@ const Financeiro = () => {
                 <span className="text-[8px] font-black uppercase tracking-widest text-rose-500">Total Despesas</span>
                 <span className="text-lg font-black">{formatCurrency(metrics.expense)}</span>
               </div>
+              <div className="w-px h-8 bg-border/20 mx-2" />
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black uppercase tracking-widest text-blue-500">Saldo</span>
+                <span className={`text-lg font-black ${metrics.balance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  {formatCurrency(metrics.balance)}
+                </span>
+              </div>
             </div>
             <Button onClick={handleNewTransaction} className="rounded-xl px-6 font-black uppercase tracking-widest text-xs h-11 shadow-lg shadow-primary/20 transition-transform active:scale-95"><Plus size={16} className="mr-2" /> Novo Fluxo</Button>
           </div>

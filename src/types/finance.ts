@@ -34,15 +34,10 @@ export const CATEGORIES = {
         "Despesa com Serviço",
         "Despesa com Maquinário",
         "Despesa com Pessoal",
-        "Despesas com pessoal",
         "Impostos",
-        "Custo dos serviços",
-        "Maquinario",
         "Despesas administrativas",
-        "Serviços de terceiros",
         "Outras deduções",
-        "Despesas com vendas",
-        "Impostos sobre a receita"
+        "Despesas com vendas"
     ]
 };
 
