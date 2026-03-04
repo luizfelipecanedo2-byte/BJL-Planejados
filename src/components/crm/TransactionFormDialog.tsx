@@ -436,7 +436,7 @@ const TransactionFormDialog = ({
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="competenceDate">Data Competência</Label>
+                                <Label htmlFor="competenceDate">Data da Compra</Label>
                                 <Input
                                     id="competenceDate"
                                     type="date"
@@ -446,16 +446,16 @@ const TransactionFormDialog = ({
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="dueDate">Data Vencimento</Label>
+                                <Label htmlFor="dueDate" className="text-primary font-bold">Data do Pagamento</Label>
                                 <Input
                                     id="dueDate"
                                     type="date"
                                     value={form.dueDate}
                                     onChange={(e) => handleUpdateField("dueDate", e.target.value)}
                                     required
-                                    className={isOverdue ? "border-red-500 text-red-600 focus-visible:ring-red-500" : ""}
+                                    className={`border-primary/50 ${isOverdue ? "border-red-500 text-red-600 focus-visible:ring-red-500 shadow-[0_0_10px_rgba(244,63,94,0.1)]" : "shadow-[0_0_10px_rgba(99,102,241,0.1)]"}`}
                                 />
-                                {isOverdue && <span className="text-[10px] text-red-500 font-bold block mt-1">⚠️ Vencimento atrasado</span>}
+                                {isOverdue && <span className="text-[10px] text-red-500 font-bold block mt-1">⚠️ Atrasado</span>}
                             </div>
                         </div>
                     </div>
@@ -615,6 +615,7 @@ const TransactionFormDialog = ({
                                 <SelectContent>
                                     <SelectItem value="Dinheiro">Dinheiro</SelectItem>
                                     <SelectItem value="Banco Itaú">Banco Itaú</SelectItem>
+                                    <SelectItem value="Mercado Pago">Mercado Pago</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

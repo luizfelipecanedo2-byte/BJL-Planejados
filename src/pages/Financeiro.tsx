@@ -179,7 +179,7 @@ const Financeiro = () => {
   const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending">("all");
   const [monthFilter, setMonthFilter] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM
-  const [dateFilterType, setDateFilterType] = useState<"competence" | "due">("competence");
+  const [dateFilterType, setDateFilterType] = useState<"competence" | "due">("due");
   const [osFilter, setOsFilter] = useState("all");
 
   // Dashboard State
@@ -197,6 +197,8 @@ const Financeiro = () => {
         return t.financialInstitution === 'Dinheiro';
       } else if (selectedAccount === 'banco_itau') {
         return t.financialInstitution === 'Banco Itaú';
+      } else if (selectedAccount === 'mercado_pago') {
+        return t.financialInstitution === 'Mercado Pago';
       }
       return false;
     });
@@ -374,7 +376,7 @@ const Financeiro = () => {
 
   const dreData = useMemo(() => {
     const yearTransactions = transactions.filter(t => {
-      const date = new Date(t.competenceDate);
+      const date = new Date(t.dueDate);
       return !isNaN(date.getTime()) && (date.getUTCFullYear() === parseInt(selectedDREYear) || date.getFullYear() === parseInt(selectedDREYear));
     });
 
@@ -457,7 +459,7 @@ const Financeiro = () => {
 
     // Pegar todas as categorias únicas do ano, mais as padrão
     const yearTransactions = transactions.filter(t => {
-      const d = new Date(t.competenceDate);
+      const d = new Date(t.dueDate);
       return d.getUTCFullYear() === year || d.getFullYear() === year;
     });
 
@@ -475,7 +477,7 @@ const Financeiro = () => {
         return yearTransactions
           .filter(t => {
             const cat = t.category || "Sem Categoria";
-            const date = new Date(t.competenceDate);
+            const date = new Date(t.dueDate);
             return cat === category && (date.getUTCMonth() === month || date.getMonth() === month);
           })
           .reduce((acc, t) => acc + t.amount, 0);
@@ -491,7 +493,7 @@ const Financeiro = () => {
           return yearTransactions
             .filter(t => {
               const cat = t.category || "Sem Categoria";
-              const date = new Date(t.competenceDate);
+              const date = new Date(t.dueDate);
               return cat === category && t.subcategory === sub && (date.getUTCMonth() === month || date.getMonth() === month);
             })
             .reduce((acc, t) => acc + t.amount, 0);
@@ -529,13 +531,13 @@ const Financeiro = () => {
 
     // Faturamento (Competência)
     const receitaBrutaMes = transactions.filter(t => {
-      const date = new Date(t.competenceDate);
+      const date = new Date(t.dueDate);
       return t.type === 'income' && date.getFullYear() === currentYear && (isAnual || date.getMonth() === currentMonth);
     }).reduce((acc, t) => acc + t.amount, 0);
 
     // Gastos Totais (Competência)
     const gastosMes = transactions.filter(t => {
-      const date = new Date(t.competenceDate);
+      const date = new Date(t.dueDate);
       return t.type === 'expense' && date.getFullYear() === currentYear && (isAnual || date.getMonth() === currentMonth);
     }).reduce((acc, t) => acc + t.amount, 0);
 
@@ -575,7 +577,7 @@ const Financeiro = () => {
     }
 
     const prevTransactions = transactions.filter(t => {
-      const date = new Date(t.competenceDate);
+      const date = new Date(t.dueDate);
       return date.getFullYear() === prevYear && (isAnual || date.getMonth() === prevMonth);
     });
 
@@ -591,7 +593,7 @@ const Financeiro = () => {
     const currentYear = parseInt(selectedYear);
 
     const periodIncome = transactions.filter(t => {
-      const date = new Date(t.competenceDate);
+      const date = new Date(t.dueDate);
       return t.type === 'income' && date.getFullYear() === currentYear && (isAnual || date.getMonth() === currentMonth);
     });
 
@@ -812,7 +814,10 @@ const Financeiro = () => {
                   <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Tipo Data</label>
                   <Select value={dateFilterType} onValueChange={(v: any) => setDateFilterType(v)}>
                     <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20"><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="competence">Competência</SelectItem><SelectItem value="due">Vencimento</SelectItem></SelectContent>
+                    <SelectContent>
+                      <SelectItem value="competence">Data da Compra</SelectItem>
+                      <SelectItem value="due">Data do Pagamento</SelectItem>
+                    </SelectContent>
                   </Select>
                 </div>
                 <div>

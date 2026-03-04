@@ -32,7 +32,7 @@ const TransactionTable = ({ transactions, onEdit, onDelete }: TransactionTablePr
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Vencimento</TableHead>
+                        <TableHead>Pagamento / Compra</TableHead>
                         <TableHead>Descrição</TableHead>
                         <TableHead>OS</TableHead>
                         <TableHead>Classificação</TableHead>
@@ -53,8 +53,8 @@ const TransactionTable = ({ transactions, onEdit, onDelete }: TransactionTablePr
                             <TableRow key={transaction.id}>
                                 <TableCell>
                                     <div className="flex flex-col">
-                                        <span className="font-medium">{format(new Date(transaction.dueDate), "dd/MM/yyyy", { locale: ptBR })}</span>
-                                        <span className="text-xs text-muted-foreground">{transaction.competenceDate ? `Comp: ${format(new Date(transaction.competenceDate), "dd/MM", { locale: ptBR })}` : '-'}</span>
+                                        <span className="font-bold text-primary">{format(new Date(transaction.dueDate), "dd/MM/yyyy", { locale: ptBR })}</span>
+                                        <span className="text-xs text-muted-foreground">{transaction.competenceDate ? `Compra: ${format(new Date(transaction.competenceDate), "dd/MM", { locale: ptBR })}` : '-'}</span>
                                     </div>
                                 </TableCell>
                                 <TableCell>

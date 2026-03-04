@@ -185,7 +185,7 @@ const ServiceExpensesTab = ({
                                         <th className="px-6 text-left font-black uppercase tracking-widest text-[10px]">OS / Descrição</th>
                                         <th className="px-6 text-left font-black uppercase tracking-widest text-[10px]">Categoria</th>
                                         <th className="px-6 text-left font-black uppercase tracking-widest text-[10px]">Contato</th>
-                                        <th className="px-6 text-right font-black uppercase tracking-widest text-[10px]">Vencimento</th>
+                                        <th className="px-6 text-right font-black uppercase tracking-widest text-[10px]">Data do Pagamento</th>
                                         <th className="px-6 text-right font-black uppercase tracking-widest text-[10px]">Status</th>
                                         <th className="px-6 text-right font-black uppercase tracking-widest text-[10px]">Valor</th>
                                     </tr>

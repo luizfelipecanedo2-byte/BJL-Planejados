@@ -135,7 +135,7 @@ const DashboardTab = ({
                         </div>
                         <div>
                             <h4 className="text-red-500 font-bold uppercase tracking-widest text-sm">Atenção: Existem Lançamentos Atrasados!</h4>
-                            <p className="text-red-500/70 text-xs font-medium mt-0.5">Visite a aba "Lançamentos" e filtre por status pendente e data de vencimento no passado.</p>
+                            <p className="text-red-500/70 text-xs font-medium mt-0.5">Visite a aba "Lançamentos" e filtre por status pendente e data do pagamento no passado.</p>
                         </div>
                     </div>
                     <div className="bg-red-500 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-[0_0_15px_rgba(239,68,68,0.3)]">
@@ -194,7 +194,7 @@ const DashboardTab = ({
                 {/* Income Detail (Vertical Card) */}
                 <Card className="md:col-span-3 lg:col-span-3 bg-card/40 border-l-4 border-l-primary shadow-xl backdrop-blur-md border hover:border-primary/40 transition-all">
                     <CardHeader className="pb-2 relative">
-                        <span className="text-[10px] font-black text-secondary-foreground/60 uppercase tracking-[0.2em] mb-1">Competência</span>
+                        <span className="text-[10px] font-black text-secondary-foreground/60 uppercase tracking-[0.2em] mb-1">Data do Pagamento</span>
                         <CardTitle className="text-xl font-black text-primary uppercase tracking-tight">Faturamento</CardTitle>
                         <div className="text-3xl font-black tracking-tighter text-primary/80 mt-1">{formatCurrency(currentSummary.receitaBrutaMes)}</div>
 
@@ -238,7 +238,7 @@ const DashboardTab = ({
                 {/* Expenses Detail (Vertical Card) */}
                 <Card className="md:col-span-3 lg:col-span-3 bg-card/40 border-l-4 border-l-rose-500 shadow-xl backdrop-blur-md border hover:border-rose-500/40 transition-all">
                     <CardHeader className="pb-2 relative">
-                        <span className="text-[10px] font-black text-secondary-foreground/60 uppercase tracking-[0.2em] mb-1">Competência</span>
+                        <span className="text-[10px] font-black text-secondary-foreground/60 uppercase tracking-[0.2em] mb-1">Data do Pagamento</span>
                         <CardTitle className="text-xl font-black text-rose-500 uppercase tracking-tight">Custos Totais</CardTitle>
                         <div className="text-3xl font-black tracking-tighter text-rose-500/80 mt-1">{formatCurrency(currentSummary.gastosMes)}</div>
 

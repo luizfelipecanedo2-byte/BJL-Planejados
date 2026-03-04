@@ -100,5 +100,6 @@ export const PAYMENT_METHODS = [
     "Boleto",
     "Cartão C6",
     "Cartão Nubank",
-    "Cartão Inter"
+    "Cartão Inter",
+    "Cartão Mercado Pago"
 ];

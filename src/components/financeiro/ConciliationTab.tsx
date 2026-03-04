@@ -66,6 +66,7 @@ const ConciliationTab = ({
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-white">
                                     <SelectItem value="banco_itau" className="focus:bg-primary/20 focus:text-white">Banco Itaú</SelectItem>
+                                    <SelectItem value="mercado_pago" className="focus:bg-primary/20 focus:text-white">Mercado Pago</SelectItem>
                                     <SelectItem value="dinheiro" className="focus:bg-primary/20 focus:text-white">Dinheiro (Caixa)</SelectItem>
                                 </SelectContent>
                             </Select>
