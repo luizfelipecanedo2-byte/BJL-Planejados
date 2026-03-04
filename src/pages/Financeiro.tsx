@@ -13,7 +13,7 @@ import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, Chevro
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Transaction, CATEGORIES, SUBCATEGORIES } from "@/types/finance";
+import { Transaction, CATEGORIES, SUBCATEGORIES, PAYMENT_METHODS } from "@/types/finance";
 import TransactionTable from "@/components/crm/TransactionTable";
 import TransactionFormDialog from "@/components/crm/TransactionFormDialog";
 import AssetFormDialog from "@/components/crm/AssetFormDialog";
@@ -181,6 +181,7 @@ const Financeiro = () => {
   const [monthFilter, setMonthFilter] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [dateFilterType, setDateFilterType] = useState<"competence" | "due">("due");
   const [osFilter, setOsFilter] = useState("all");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
 
   // Dashboard State
   const [selectedYear, setSelectedYear] = useState<string>("2026");
@@ -280,10 +281,11 @@ const Financeiro = () => {
       const dateToCheck = dateFilterType === 'competence' ? t.competenceDate : t.dueDate;
       const matchesMonth = !monthFilter || new Date(dateToCheck).toISOString().slice(0, 7) === monthFilter;
       const matchesOS = osFilter === "all" || (t.orderService === osFilter);
+      const matchesPaymentMethod = paymentMethodFilter === "all" || t.paymentMethod === paymentMethodFilter;
 
-      return matchesSearch && matchesType && matchesStatus && matchesMonth && matchesOS;
+      return matchesSearch && matchesType && matchesStatus && matchesMonth && matchesOS && matchesPaymentMethod;
     });
-  }, [transactions, searchTerm, typeFilter, statusFilter, monthFilter, dateFilterType, osFilter]);
+  }, [transactions, searchTerm, typeFilter, statusFilter, monthFilter, dateFilterType, osFilter, paymentMethodFilter]);
 
   const metrics = useMemo(() => {
     const income = filteredTransactions
@@ -798,7 +800,7 @@ const Financeiro = () => {
         <TabsContent value="lancamentos" className="space-y-6">
           <Card className="bg-card/40 backdrop-blur-md border-border/40 shadow-xl rounded-2xl overflow-hidden">
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4">
                 <div className="lg:col-span-2">
                   <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Filtrar por Termo</label>
                   <div className="relative group">
@@ -832,6 +834,18 @@ const Financeiro = () => {
                   <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
                     <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20"><SelectValue /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="paid">Pagos</SelectItem><SelectItem value="pending">Pendentes</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Forma</label>
+                  <Select value={paymentMethodFilter} onValueChange={(v: any) => setPaymentMethodFilter(v)}>
+                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      {PAYMENT_METHODS.map(method => (
+                        <SelectItem key={method} value={method}>{method}</SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 </div>
               </div>
