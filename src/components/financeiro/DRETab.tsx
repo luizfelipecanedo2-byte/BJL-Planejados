@@ -114,7 +114,61 @@ const DRETab = ({
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto min-h-[500px]">
+                        {/* Mobile View: Category Cards */}
+                        <div className="md:hidden p-4 space-y-4">
+                            {detailedExpenses.map((cat) => (
+                                <div key={cat.category} className={cn(
+                                    "rounded-xl border p-4 shadow-sm",
+                                    cat.type === 'income' ? "bg-emerald-500/[0.03] border-emerald-500/20" : "bg-card border-border/50"
+                                )}>
+                                    <div className="flex justify-between items-start mb-3 border-b border-border/30 pb-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className={cn(
+                                                "w-1.5 h-6 rounded-full",
+                                                cat.type === 'income' ? "bg-emerald-500" : "bg-primary"
+                                            )} />
+                                            <h4 className={cn(
+                                                "font-black text-xs uppercase tracking-tight",
+                                                cat.type === 'income' ? "text-emerald-600" : "text-primary"
+                                            )}>{cat.category}</h4>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Total Anual</span>
+                                            <span className={cn(
+                                                "font-black text-sm",
+                                                cat.type === 'income' ? "text-emerald-600" : "text-primary"
+                                            )}>{formatCurrency(cat.total)}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {cat.subcategories.map((sub: any) => (
+                                            <div key={sub.name} className="flex justify-between items-center group">
+                                                <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-2">
+                                                    <span className="w-1 h-1 rounded-full bg-border" />
+                                                    {sub.name}
+                                                </span>
+                                                <span className="text-xs font-black text-foreground/80">{formatCurrency(sub.total)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="mt-4 pt-3 border-t border-border/30 flex overflow-x-auto gap-3 no-scrollbar pb-1">
+                                        {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"].map((m, idx) => (
+                                            <div key={m} className="flex flex-col items-center min-w-[35px]">
+                                                <span className="text-[8px] font-black text-muted-foreground uppercase">{m}</span>
+                                                <span className="text-[10px] font-bold text-foreground">
+                                                    {cat.monthly[idx] > 0 ? (cat.monthly[idx] / 1000).toFixed(1) + 'k' : '—'}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop View: Table */}
+                        <div className="hidden md:block overflow-x-auto min-h-[500px]">
                             <Table>
                                 <TableHeader>
                                     <TableRow className="bg-muted/50 border-b-2 border-primary/10">

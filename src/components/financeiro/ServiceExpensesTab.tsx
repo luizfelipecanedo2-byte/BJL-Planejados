@@ -82,7 +82,81 @@ const ServiceExpensesTab = ({
                     </Card>
                 </div>
 
-                <Card className="rounded-2xl border-none shadow-2xl bg-card overflow-hidden">
+                <div className="md:hidden space-y-4">
+                    {serviceExpenses.length === 0 ? (
+                        <div className="text-center py-10 bg-muted/20 rounded-xl border-2 border-dashed text-muted-foreground italic text-xs">
+                            Nenhum gasto por serviço cadastrado para análise.
+                        </div>
+                    ) : (
+                        serviceExpenses.map((expense) => {
+                            const grossProfit = expense.serviceValue - expense.spentValue;
+                            const margin = expense.serviceValue > 0 ? (grossProfit / expense.serviceValue) * 100 : 0;
+                            return (
+                                <div key={expense.id} className="bg-card border rounded-xl p-5 shadow-sm space-y-4 relative overflow-hidden group">
+                                    <div className={cn(
+                                        "absolute top-0 left-0 w-1 h-full",
+                                        margin >= 30 ? "bg-emerald-500" : margin >= 15 ? "bg-amber-500" : "bg-rose-500"
+                                    )} />
+
+                                    <div className="flex justify-between items-start pl-2">
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-black text-base uppercase tracking-tight truncate leading-tight">{expense.clientName}</h3>
+                                            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-0.5">{expense.environment}</p>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-9 w-9 border-primary/20"
+                                                onClick={() => handleEditServiceExpense(expense)}
+                                            >
+                                                <Pencil className="h-4 w-4 text-primary" />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-9 w-9 border-rose-100"
+                                                onClick={() => handleDeleteServiceExpense(expense.id)}
+                                            >
+                                                <Trash2 className="h-4 w-4 text-rose-500" />
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 py-3 border-y border-border/50 pl-2">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Receita</span>
+                                            <span className="font-bold text-sm text-emerald-600">{formatCurrency(expense.serviceValue)}</span>
+                                        </div>
+                                        <div className="flex flex-col text-right">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Custos</span>
+                                            <span className="font-bold text-sm text-rose-500">{formatCurrency(expense.spentValue)}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between pt-1 pl-2">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Lucro Bruto</span>
+                                            <span className="font-black text-base text-primary">{formatCurrency(grossProfit)}</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <Badge variant="outline" className={cn(
+                                                "font-black text-[11px] px-3 py-1 rounded-lg",
+                                                margin >= 30 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
+                                                    margin >= 15 ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+                                                        "bg-rose-500/10 text-rose-500 border-rose-500/20"
+                                            )}>
+                                                MARGEM: {margin.toFixed(1)}%
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
+                <Card className="hidden md:block rounded-2xl border-none shadow-2xl bg-card overflow-hidden">
                     <CardContent className="p-0">
                         <div className="relative w-full overflow-auto">
                             <table className="w-full text-xs border-collapse">
@@ -176,7 +250,47 @@ const ServiceExpensesTab = ({
                     </div>
                 </div>
 
-                <Card className="rounded-2xl border-none shadow-2xl bg-card overflow-hidden">
+                <div className="md:hidden space-y-4">
+                    {transactions.filter(t => t.orderService && t.orderService !== "all" && t.orderService !== "").length === 0 ? (
+                        <div className="text-center py-10 bg-muted/20 rounded-xl border-2 border-dashed text-muted-foreground italic text-xs">
+                            Nenhum lançamento financeiro vinculado a OS encontrado.
+                        </div>
+                    ) : (
+                        transactions
+                            .filter(t => t.orderService && t.orderService !== "all" && t.orderService !== "")
+                            .map((t) => (
+                                <div key={t.id} className="bg-card border rounded-xl p-4 shadow-sm space-y-3">
+                                    <div className="flex justify-between items-start">
+                                        <div className="min-w-0 flex-1">
+                                            <span className="font-black text-primary text-[10px] uppercase tracking-tighter block mb-0.5">OS: {t.orderService}</span>
+                                            <h4 className="font-bold text-sm text-foreground truncate">{t.description}</h4>
+                                            <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-bold uppercase mt-1 inline-block">{t.category}</span>
+                                        </div>
+                                        <div className="text-right flex flex-col items-end">
+                                            <span className={cn(
+                                                "font-black text-sm",
+                                                t.type === 'income' ? "text-emerald-500" : "text-rose-500"
+                                            )}>
+                                                {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                                            </span>
+                                            <span className={cn(
+                                                "px-1.5 py-0.5 rounded-full font-black text-[8px] uppercase border mt-1",
+                                                t.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border-rose-500/20"
+                                            )}>
+                                                {t.status === 'paid' ? 'Pago' : 'Pendente'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                                        <span className="text-[10px] text-muted-foreground font-medium uppercase">{t.contact}</span>
+                                        <span className="font-mono text-[10px] text-muted-foreground">{new Date(t.dueDate).toLocaleDateString('pt-BR')}</span>
+                                    </div>
+                                </div>
+                            ))
+                    )}
+                </div>
+
+                <Card className="hidden md:block rounded-2xl border-none shadow-2xl bg-card overflow-hidden">
                     <CardContent className="p-0">
                         <div className="relative w-full overflow-auto">
                             <table className="w-full text-xs border-collapse">

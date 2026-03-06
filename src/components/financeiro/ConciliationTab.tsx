@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ConciliationTabProps {
     selectedAccount: string;
@@ -111,7 +112,67 @@ const ConciliationTab = ({
                 </div>
             </div>
 
-            <Card className="rounded-2xl border-none shadow-2xl bg-slate-950 overflow-hidden">
+            <div className="md:hidden space-y-4">
+                {reconciliationDailyData.days.map((day, index) => (
+                    <div
+                        key={index}
+                        className={cn(
+                            "bg-slate-900/50 border border-slate-800 rounded-xl p-4 shadow-lg space-y-4 relative overflow-hidden",
+                            day.dailyBalance !== 0 ? "border-slate-700" : "opacity-70"
+                        )}
+                    >
+                        <div className="flex justify-between items-center border-b border-slate-800/50 pb-2">
+                            <span className="font-black text-xs text-slate-400 uppercase tracking-widest bg-slate-800 px-2 py-1 rounded">
+                                {day.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                            </span>
+                            <div className="flex items-center gap-2">
+                                {day.dailyBalance > 0 && <span className="text-[10px] font-black text-emerald-500 uppercase">Superávit</span>}
+                                {day.dailyBalance < 0 && <span className="text-[10px] font-black text-rose-500 uppercase">Déficit</span>}
+                                <div className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-800 border border-slate-700">
+                                    {day.dailyBalance > 0 && <TrendingUp className="h-3 w-3 text-emerald-500" />}
+                                    {day.dailyBalance < 0 && <TrendingDown className="h-3 w-3 text-rose-500" />}
+                                    {day.dailyBalance === 0 && <div className="h-0.5 w-2 bg-slate-600 rounded-full" />}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Entradas</span>
+                                <span className={cn("font-bold text-sm", day.income > 0 ? "text-emerald-400" : "text-slate-600")}>
+                                    {day.income > 0 ? formatCurrency(day.income) : '—'}
+                                </span>
+                            </div>
+                            <div className="flex flex-col text-right">
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Saídas</span>
+                                <span className={cn("font-bold text-sm", day.expense > 0 ? "text-rose-400" : "text-slate-600")}>
+                                    {day.expense > 0 ? formatCurrency(day.expense) : '—'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between items-end pt-2 border-t border-slate-800/50">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Fluxo do Dia</span>
+                                <span className={cn(
+                                    "font-black text-base tracking-tight",
+                                    day.dailyBalance > 0 ? "text-emerald-500" : day.dailyBalance < 0 ? "text-rose-500" : "text-slate-500"
+                                )}>
+                                    {day.dailyBalance !== 0 ? (day.dailyBalance > 0 ? '+' : '') + formatCurrency(day.dailyBalance) : '—'}
+                                </span>
+                            </div>
+                            <div className="flex flex-col text-right bg-primary/5 px-3 py-2 rounded-lg border border-primary/10">
+                                <span className="text-[9px] font-black text-primary uppercase tracking-widest mb-0.5">Saldo Acumulado</span>
+                                <span className="font-black text-lg text-white tracking-tighter leading-none">
+                                    {formatCurrency(day.accumulatedBalance)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <Card className="hidden md:block rounded-2xl border-none shadow-2xl bg-slate-950 overflow-hidden">
                 <CardContent className="p-0">
                     <div className="relative w-full overflow-auto">
                         <table className="w-full text-xs border-collapse">
