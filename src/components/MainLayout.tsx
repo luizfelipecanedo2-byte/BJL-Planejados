@@ -80,22 +80,9 @@ const MainLayout = () => {
     });
 
     return (
-        <div className="min-h-screen bg-background flex">
-            {/* Mobile Sidebar Overlay */}
-            {isSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-                    onClick={() => setIsSidebarOpen(false)}
-                />
-            )}
-
-            {/* Sidebar */}
-            <aside
-                className={cn(
-                    "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card border-r transform transition-transform duration-200 ease-in-out lg:transform-none flex flex-col",
-                    isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-                )}
-            >
+        <div className="min-h-[100dvh] bg-background flex pb-[72px] lg:pb-0">
+            {/* Sidebar (Desktop Only) */}
+            <aside className="hidden lg:flex fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card border-r flex-col">
                 <div className="h-32 flex items-center px-6 border-b border-border/10 justify-between shrink-0 bg-primary/5">
                     <div className="flex items-center gap-3 w-full justify-center">
                         <img src="/logo-bjl.png" alt="BJL Planejados" className="h-24 w-auto object-contain drop-shadow-md" onError={(e) => {
@@ -103,16 +90,8 @@ const MainLayout = () => {
                             target.style.display = 'none';
                             target.nextElementSibling?.classList.remove('hidden');
                         }} />
-                        <span className="hidden text-xl font-bold tracking-tight text-primary">BJL Planejados</span>
+                        <span className="hidden text-xl font-bold tracking-tight text-primary">BJL</span>
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="lg:hidden absolute right-4"
-                        onClick={() => setIsSidebarOpen(false)}
-                    >
-                        <X className="h-5 w-5" />
-                    </Button>
                 </div>
 
                 <div className="p-4 border-b border-border/10 flex items-center gap-3">
@@ -130,7 +109,6 @@ const MainLayout = () => {
                         <Link
                             key={item.path}
                             to={item.path}
-                            onClick={() => setIsSidebarOpen(false)}
                             className={cn(
                                 "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200",
                                 location.pathname === item.path
@@ -143,30 +121,20 @@ const MainLayout = () => {
                         </Link>
                     ))}
                 </nav>
-
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0">
-                {/* Mobile Header */}
+            <div className="flex-1 flex flex-col min-w-0 h-[100dvh] lg:h-screen">
                 {/* Header */}
                 <header className="h-16 border-b bg-card/80 backdrop-blur-md flex items-center justify-between px-4 sticky top-0 z-30">
                     <div className="flex items-center">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="lg:hidden"
-                            onClick={() => setIsSidebarOpen(true)}
-                        >
-                            <Menu className="h-6 w-6" />
-                        </Button>
                         <div className="lg:hidden flex items-center">
-                            <img src="/logo-bjl.png" alt="BJL Planejados" className="h-10 ml-4 w-auto object-contain" onError={(e) => {
+                            <img src="/logo-bjl.png" alt="BJL" className="h-10 w-auto object-contain" onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
                                 target.nextElementSibling?.classList.remove('hidden');
                             }} />
-                            <h1 className="ml-4 text-lg font-bold text-primary italic">BJL</h1>
+                            <h1 className="ml-3 text-lg font-bold text-primary italic">BJL</h1>
                         </div>
                     </div>
 
@@ -189,10 +157,29 @@ const MainLayout = () => {
                     </div>
                 </header>
 
-                <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto bg-slate-50/30">
+                <main className="flex-1 p-3 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden bg-slate-50/30">
                     <Outlet />
                 </main>
             </div>
+
+            {/* Mobile Bottom Navigation */}
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border/20 flex flex-row items-center justify-between h-[72px] px-2 shadow-lg overflow-x-auto hide-scrollbar sm:justify-around safe-area-bottom">
+                {menuItems.map((item) => (
+                    <Link
+                        key={item.path}
+                        to={item.path}
+                        className={cn(
+                            "flex flex-col items-center justify-center min-w-[72px] flex-shrink-0 h-full space-y-1 transition-all rounded-xl",
+                            location.pathname === item.path
+                                ? "text-primary font-bold bg-primary/10"
+                                : "text-muted-foreground hover:text-foreground active:scale-95"
+                        )}
+                    >
+                        <item.icon className={cn("h-[22px] w-[22px]", location.pathname === item.path ? "scale-110 drop-shadow-sm" : "")} />
+                        <span className="text-[10px] text-center leading-tight truncate px-1 w-full">{item.label}</span>
+                    </Link>
+                ))}
+            </nav>
         </div>
     );
 };

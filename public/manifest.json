@@ -1,0 +1,21 @@
+{
+    "name": "BJL Planejados",
+    "short_name": "BJL CRM",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#ffffff",
+    "description": "Sistema de CRM e Gestão",
+    "icons": [
+        {
+            "src": "/logo-bjl.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/logo-bjl.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
