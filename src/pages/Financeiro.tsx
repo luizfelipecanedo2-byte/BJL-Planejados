@@ -998,6 +998,16 @@ const Financeiro = () => {
           </div>
         </div>
       )}
+      {/* Floating Action Button for Mobile */}
+      {activeTab === 'lancamentos' && (
+        <Button
+          onClick={handleNewTransaction}
+          className="lg:hidden fixed bottom-24 right-6 h-14 w-14 rounded-full shadow-2xl z-40 gap-0 p-0 flex items-center justify-center animate-in fade-in zoom-in duration-300"
+          size="icon"
+        >
+          <Plus className="h-7 w-7" />
+        </Button>
+      )}
     </div>
   );
 };
