@@ -30,14 +30,15 @@ const ProductTable = ({ products, onEdit, onDelete }: ProductTableProps) => {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>ID</TableHead>
+                        <TableHead className="w-[80px]">Editar</TableHead>
+                        <TableHead>Cod.</TableHead>
                         <TableHead>Nome</TableHead>
-                        <TableHead>Preço Unitário</TableHead>
+                        <TableHead>Preço</TableHead>
                         <TableHead>Qtd. Estoque</TableHead>
                         <TableHead>Valor Total</TableHead>
-                        <TableHead>Nível de Estoque</TableHead>
-                        <TableHead>Encomendar</TableHead>
-                        <TableHead className="w-[50px]">Ações</TableHead>
+                        <TableHead>Nível</TableHead>
+                        <TableHead>Pedir</TableHead>
+                        <TableHead className="w-[50px] text-right">Ação</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -48,6 +49,11 @@ const ProductTable = ({ products, onEdit, onDelete }: ProductTableProps) => {
 
                         return (
                             <TableRow key={product.id}>
+                                <TableCell>
+                                    <Button variant="ghost" size="icon" onClick={() => onEdit(product)}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                </TableCell>
                                 <TableCell className="font-medium">{product.idEstoque || "-"}</TableCell>
                                 <TableCell>{product.name}</TableCell>
                                 <TableCell>{formatCurrency(product.unitPrice)}</TableCell>
@@ -55,20 +61,17 @@ const ProductTable = ({ products, onEdit, onDelete }: ProductTableProps) => {
                                 <TableCell>{formatCurrency(totalValue)}</TableCell>
                                 <TableCell>
                                     <Badge variant={isLowStock ? "destructive" : "default"} className={!isLowStock ? "bg-green-600 hover:bg-green-700" : ""}>
-                                        {isLowStock ? "Abaixo do Mínimo" : "Adequado"}
+                                        {isLowStock ? "Abaixo" : "OK"}
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
                                     {orderQuantity > 0 ? (
-                                        <span className="font-bold text-red-600">{orderQuantity} un</span>
+                                        <span className="font-bold text-red-600">{orderQuantity}</span>
                                     ) : (
                                         <span className="text-muted-foreground">-</span>
                                     )}
                                 </TableCell>
-                                <TableCell className="flex items-center gap-1">
-                                    <Button variant="ghost" size="icon" onClick={() => onEdit(product)}>
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
+                                <TableCell className="text-right">
                                     <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => onDelete(product.id)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -78,7 +81,7 @@ const ProductTable = ({ products, onEdit, onDelete }: ProductTableProps) => {
                     })}
                     {products.length === 0 && (
                         <TableRow>
-                            <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                            <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                                 Nenhum produto encontrado no estoque.
                             </TableCell>
                         </TableRow>
