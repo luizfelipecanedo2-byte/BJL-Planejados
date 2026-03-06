@@ -6,6 +6,7 @@ import { ServiceExpense } from "@/types/serviceExpense";
 import { Transaction } from "@/types/finance";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
+import { Badge } from "@/components/ui/badge";
 
 interface ServiceExpensesTabProps {
     transactions: Transaction[];
