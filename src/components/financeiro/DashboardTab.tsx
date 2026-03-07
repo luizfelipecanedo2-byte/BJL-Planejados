@@ -151,19 +151,23 @@ const DashboardTab = ({
 
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {/* Main KPI Card: Projected Finish */}
-                <Card className="col-span-1 md:col-span-2 lg:col-span-2 overflow-hidden border-none bg-gradient-to-br from-emerald-600/95 to-emerald-900 shadow-2xl relative group animate-glow">
+                <Card className="col-span-1 md:col-span-2 lg:col-span-2 overflow-hidden border-none bg-gradient-to-br from-emerald-600/95 to-emerald-900 shadow-2xl relative group animate-glow border-beam-container">
+                    {/* Linha girando em volta (Border Beam) */}
+                    <div className="absolute inset-0 border-2 border-primary/20 rounded-2xl pointer-events-none" />
+                    <div className="border-beam" style={{ width: '200%', height: '200%', top: '-50%', left: '-50%' }} />
+
                     <div className="absolute inset-0 animate-shimmer pointer-events-none opacity-30" />
                     <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform duration-500 animate-float">
                         <DollarSign className="h-32 w-32 text-white" />
                     </div>
-                    <CardHeader className="pb-2">
+                    <CardHeader className="pb-2 relative z-10">
                         <CardTitle className="text-white/80 text-sm font-bold uppercase tracking-widest">
                             Resultado Projetado Final do {selectedDashMonth === 'anual' ? 'Ano' : 'Mês'}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="relative z-10">
                         <div className="flex flex-col gap-1">
-                            <span className="text-5xl font-black text-white tracking-tighter">
+                            <span className="text-5xl font-black text-white tracking-tighter animate-neon-pulse">
                                 {formatCurrency(currentSummary.projectedBalance)}
                             </span>
 
