@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, DollarSign, Users, Calendar, AlertTriangle, Trophy } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Users, Calendar, AlertTriangle, Trophy, Rocket, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     ComposedChart,
@@ -43,6 +43,11 @@ interface DashboardTabProps {
     previousSummary?: {
         receitaBrutaMes: number;
         gastosMes: number;
+        resultadoMes: number;
+        entradaMes: number;
+        saidaMes: number;
+        saldoMes: number;
+        ticketMedio: number;
     };
     topClients?: { name: string; value: number }[];
     overdueTransactions?: any[];
@@ -318,6 +323,155 @@ const DashboardTab = ({
                                     <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
                                 </PieChart>
                             </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* SEÇÃO DE INSIGHTS E COMPARATIVO MÊS A MÊS */}
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-12 mt-6">
+                {/* Insights de IA (Financial Intelligence) */}
+                <Card className="lg:col-span-12 xl:col-span-8 bg-gradient-to-br from-indigo-500/10 via-primary/5 to-transparent border-primary/20 shadow-2xl overflow-hidden group">
+                    <CardHeader className="pb-2 border-b border-primary/10">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/20 rounded-lg">
+                                <Rocket className="h-5 w-5 text-primary animate-pulse" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-xl font-black text-primary uppercase tracking-tight">Intelligence Hub</CardTitle>
+                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Insights automáticos para sua gestão</p>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Insight 1: Performance de Vendas */}
+                            <div className="p-4 rounded-2xl bg-background/40 backdrop-blur-xl border border-primary/10 hover:border-primary/30 transition-all group/insight">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Trophy className="h-4 w-4 text-yellow-500" />
+                                    <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Meta & Performance</span>
+                                </div>
+                                <p className="text-sm font-bold text-foreground/90 leading-tight">
+                                    {RevenueGrowth > 0
+                                        ? `Seu faturamento está voando! 🚀 Crescimento de ${RevenueGrowth.toFixed(1)}% em relação ao período anterior.`
+                                        : RevenueGrowth < 0
+                                            ? `Atenção: Queda de ${Math.abs(RevenueGrowth).toFixed(1)}% no faturamento. Hora de revisar estratégias de vendas.`
+                                            : "Seu faturamento está estável. Que tal uma campanha para impulsionar os números?"
+                                    }
+                                </p>
+                            </div>
+
+                            {/* Insight 2: Saúde do Caixa */}
+                            <div className="p-4 rounded-2xl bg-background/40 backdrop-blur-xl border border-primary/10 hover:border-primary/30 transition-all group/insight">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <DollarSign className="h-4 w-4 text-emerald-500" />
+                                    <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Saúde Financeira</span>
+                                </div>
+                                <p className="text-sm font-bold text-foreground/90 leading-tight">
+                                    {currentSummary.projectedBalance > 0
+                                        ? `Projeção positiva! 🟢 Você deve fechar com ${formatCurrency(currentSummary.projectedBalance)} de saldo livre.`
+                                        : `Alerta crítico! 🔴 A projeção aponta um déficit de ${formatCurrency(currentSummary.projectedBalance)}. Revise as contas a pagar.`
+                                    }
+                                </p>
+                            </div>
+
+                            {/* Insight 3: Dica do Gestor */}
+                            <div className="p-4 rounded-2xl bg-primary/5 backdrop-blur-xl border border-primary/20 hover:border-primary/40 transition-all group/insight">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Lightbulb className="h-4 w-4 text-primary" />
+                                    <span className="text-[10px] font-black uppercase text-primary/80 tracking-widest">Estratégia do Dia</span>
+                                </div>
+                                <p className="text-sm font-bold text-foreground/90 leading-tight">
+                                    {currentSummary.ticketMedio > (previousSummary?.ticketMedio || 0)
+                                        ? "Seu ticket médio subiu! 📈 Indica que você está vendendo serviços de maior valor agregado."
+                                        : "Tente aumentar seu ticket médio oferecendo pacotes complementares (upsell) aos seus clientes atuais."
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Tabela de Comparativo Mês a Mês */}
+                <Card className="lg:col-span-12 xl:col-span-4 shadow-2xl bg-card/40 backdrop-blur-md border border-border/40 overflow-hidden">
+                    <CardHeader className="bg-muted/20 pb-4 border-b">
+                        <CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground">Comparativo de Performance</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="divide-y divide-border/30">
+                            {/* KPI: RECEITA BRUTA */}
+                            <div className="p-4 flex justify-between items-center hover:bg-muted/10 transition-colors">
+                                <div className="space-y-1">
+                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Receita Bruta</span>
+                                    <div className="text-lg font-black text-foreground">{formatCurrency(currentSummary.receitaBrutaMes)}</div>
+                                </div>
+                                <div className={cn(
+                                    "flex flex-col items-end",
+                                    RevenueGrowth >= 0 ? "text-emerald-500" : "text-rose-500"
+                                )}>
+                                    <div className="flex items-center gap-1 font-black text-sm">
+                                        {RevenueGrowth >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                        {Math.abs(RevenueGrowth).toFixed(1)}%
+                                    </div>
+                                    <span className="text-[8px] font-bold uppercase tracking-tighter opacity-60">vs período anterior</span>
+                                </div>
+                            </div>
+
+                            {/* KPI: GASTOS TOTAIS */}
+                            <div className="p-4 flex justify-between items-center hover:bg-muted/10 transition-colors">
+                                <div className="space-y-1">
+                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Gastos Totais</span>
+                                    <div className="text-lg font-black text-foreground">{formatCurrency(currentSummary.gastosMes)}</div>
+                                </div>
+                                <div className={cn(
+                                    "flex flex-col items-end",
+                                    ExpenseGrowth <= 0 ? "text-emerald-500" : "text-rose-500"
+                                )}>
+                                    <div className="flex items-center gap-1 font-black text-sm">
+                                        {ExpenseGrowth <= 0 ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
+                                        {Math.abs(ExpenseGrowth).toFixed(1)}%
+                                    </div>
+                                    <span className="text-[8px] font-bold uppercase tracking-tighter opacity-60">vs período anterior</span>
+                                </div>
+                            </div>
+
+                            {/* KPI: TICKET MÉDIO */}
+                            <div className="p-4 flex justify-between items-center hover:bg-muted/10 transition-colors">
+                                <div className="space-y-1">
+                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Ticket Médio</span>
+                                    <div className="text-lg font-black text-foreground">{formatCurrency(currentSummary.ticketMedio)}</div>
+                                </div>
+                                {previousSummary && (
+                                    <div className={cn(
+                                        "flex flex-col items-end",
+                                        currentSummary.ticketMedio >= previousSummary.ticketMedio ? "text-emerald-500" : "text-rose-500"
+                                    )}>
+                                        <div className="flex items-center gap-1 font-black text-sm">
+                                            {currentSummary.ticketMedio >= previousSummary.ticketMedio ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                            {calcGrowth(currentSummary.ticketMedio, previousSummary.ticketMedio).toFixed(1)}%
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* KPI: SALDO LÍQUIDO */}
+                            <div className="p-4 flex justify-between items-center bg-primary/5">
+                                <div className="space-y-1">
+                                    <span className="text-[9px] font-black text-primary uppercase tracking-widest">Resultado do Período</span>
+                                    <div className="text-lg font-black text-primary">{formatCurrency(currentSummary.resultadoMes)}</div>
+                                </div>
+                                {previousSummary && (
+                                    <div className={cn(
+                                        "flex flex-col items-end",
+                                        currentSummary.resultadoMes >= (previousSummary.resultadoMes || 0) ? "text-emerald-500" : "text-rose-500"
+                                    )}>
+                                        <div className="flex items-center gap-1 font-black text-sm">
+                                            {currentSummary.resultadoMes >= (previousSummary.resultadoMes || 0) ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                            {calcGrowth(currentSummary.resultadoMes, previousSummary.resultadoMes || 0).toFixed(1)}%
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

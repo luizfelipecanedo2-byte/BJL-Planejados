@@ -631,14 +631,33 @@ const Financeiro = () => {
       prevYear = currentYear - 1;
     }
 
-    const prevTransactions = transactions.filter(t => {
+    // Filtragem por Competência (DRE/Vendas)
+    const prevTransactionsCompetence = transactions.filter(t => {
       const date = new Date(t.dueDate);
       return date.getFullYear() === prevYear && (isAnual || date.getMonth() === prevMonth);
     });
 
+    // Filtragem por Caixa (Pagamentos Realizados)
+    const prevTransactionsCash = transactions.filter(t => {
+      const date = new Date(t.paymentDate || t.dueDate);
+      return date.getFullYear() === prevYear && (isAnual || date.getMonth() === prevMonth);
+    });
+
+    const receitaBrutaMes = prevTransactionsCompetence.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const gastosMes = prevTransactionsCompetence.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const entradaMes = prevTransactionsCash.filter(t => t.type === 'income' && t.status === 'paid').reduce((acc, t) => acc + t.amount, 0);
+    const saidaMes = prevTransactionsCash.filter(t => t.type === 'expense' && t.status === 'paid').reduce((acc, t) => acc + t.amount, 0);
+
     return {
-      receitaBrutaMes: prevTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0),
-      gastosMes: prevTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0),
+      receitaBrutaMes,
+      gastosMes,
+      resultadoMes: receitaBrutaMes - gastosMes,
+      entradaMes,
+      saidaMes,
+      saldoMes: entradaMes - saidaMes,
+      ticketMedio: prevTransactionsCompetence.filter(t => t.type === 'income').length > 0
+        ? receitaBrutaMes / prevTransactionsCompetence.filter(t => t.type === 'income').length
+        : 0,
     };
   }, [transactions, selectedDashMonth, selectedYear]);
 
