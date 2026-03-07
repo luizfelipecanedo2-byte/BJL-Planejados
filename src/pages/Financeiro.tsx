@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, AlertTriangle } from "lucide-react";
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -183,6 +183,7 @@ const Financeiro = () => {
   const [osFilter, setOsFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showOverdueOnly, setShowOverdueOnly] = useState(false);
 
   // Dashboard State
   const [selectedYear, setSelectedYear] = useState<string>("2026");
@@ -327,9 +328,17 @@ const Financeiro = () => {
       const matchesOS = osFilter === "all" || (t.orderService === osFilter);
       const matchesPaymentMethod = paymentMethodFilter === "all" || t.paymentMethod === paymentMethodFilter;
 
+      if (showOverdueOnly) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(t.dueDate);
+        const isOverdue = t.status === 'pending' && dueDate < today;
+        return matchesSearch && isOverdue;
+      }
+
       return matchesSearch && matchesType && matchesStatus && matchesMonth && matchesOS && matchesPaymentMethod;
     });
-  }, [transactions, searchTerm, typeFilter, statusFilter, monthFilter, dateFilterType, osFilter, paymentMethodFilter]);
+  }, [transactions, searchTerm, typeFilter, statusFilter, monthFilter, dateFilterType, osFilter, paymentMethodFilter, showOverdueOnly]);
 
   const metrics = useMemo(() => {
     const income = filteredTransactions
@@ -915,7 +924,20 @@ const Financeiro = () => {
                 </span>
               </div>
             </div>
-            <Button onClick={handleNewTransaction} className="rounded-xl px-6 font-black uppercase tracking-widest text-xs h-11 shadow-lg shadow-primary/20 transition-transform active:scale-95"><Plus size={16} className="mr-2" /> Novo Fluxo</Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowOverdueOnly(!showOverdueOnly)}
+                variant={showOverdueOnly ? "destructive" : "outline"}
+                className={cn(
+                  "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
+                  showOverdueOnly && "animate-pulse shadow-lg shadow-destructive/20 border-none"
+                )}
+              >
+                <AlertTriangle size={16} className={cn("mr-2", showOverdueOnly ? "text-white" : "text-rose-500")} />
+                {showOverdueOnly ? "Ver Todos" : `Atrasados (${overdueTransactions.length})`}
+              </Button>
+              <Button onClick={handleNewTransaction} className="rounded-xl px-6 font-black uppercase tracking-widest text-xs h-11 shadow-lg shadow-primary/20 transition-transform active:scale-95"><Plus size={16} className="mr-2" /> Novo Fluxo</Button>
+            </div>
           </div>
 
           <Card className="rounded-2xl border-none shadow-2xl overflow-hidden bg-card/40 backdrop-blur-md">
