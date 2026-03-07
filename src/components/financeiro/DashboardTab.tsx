@@ -151,8 +151,9 @@ const DashboardTab = ({
 
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {/* Main KPI Card: Projected Finish */}
-                <Card className="col-span-1 md:col-span-2 lg:col-span-2 overflow-hidden border-none bg-gradient-to-br from-emerald-600/95 to-emerald-900 shadow-2xl relative group">
-                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform duration-500">
+                <Card className="col-span-1 md:col-span-2 lg:col-span-2 overflow-hidden border-none bg-gradient-to-br from-emerald-600/95 to-emerald-900 shadow-2xl relative group animate-glow">
+                    <div className="absolute inset-0 animate-shimmer pointer-events-none opacity-30" />
+                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform duration-500 animate-float">
                         <DollarSign className="h-32 w-32 text-white" />
                     </div>
                     <CardHeader className="pb-2">
@@ -185,7 +186,7 @@ const DashboardTab = ({
                             <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest group-hover:text-orange-500 transition-colors">Inadimplência</CardTitle>
                             <p className="text-2xl font-black text-orange-500 group-hover:scale-110 transition-transform origin-left">{formatCurrency(currentSummary.inadimplenciaTotal)}</p>
                         </div>
-                        <Users className="h-5 w-5 text-orange-500" />
+                        <Users className="h-5 w-5 text-orange-500 animate-pulse" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-[9px] text-orange-500/70 mb-2 font-bold uppercase tracking-widest bg-orange-500/10 w-fit px-2 py-0.5 rounded border border-orange-500/20">Atrasos Críticos</div>
@@ -219,9 +220,9 @@ const DashboardTab = ({
                             <div className="flex justify-between items-center group/item hover:bg-primary/5 p-2 rounded-lg transition-colors">
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Já Recebido</span>
-                                    <span className="text-lg font-black text-emerald-500">{formatCurrency(currentSummary.entradaMes)}</span>
+                                    <span className="text-lg font-black text-emerald-500 animate-pulse">{formatCurrency(currentSummary.entradaMes)}</span>
                                 </div>
-                                <TrendingUp className="h-5 w-5 text-emerald-500" />
+                                <TrendingUp className="h-5 w-5 text-emerald-500 animate-bounce" />
                             </div>
                             <div className="flex justify-between items-center group/item hover:bg-primary/5 p-2 rounded-lg transition-colors border-t border-primary/5 pt-4">
                                 <div className="flex flex-col">
@@ -270,9 +271,9 @@ const DashboardTab = ({
                             <div className="flex justify-between items-center group/item hover:bg-rose-500/5 p-2 rounded-lg transition-colors border-t border-rose-500/5 pt-4">
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">A Pagar</span>
-                                    <span className="text-lg font-black text-rose-600 font-black">{formatCurrency(currentSummary.accountsPayable)}</span>
+                                    <span className="text-lg font-black text-rose-600 font-black animate-pulse">{formatCurrency(currentSummary.accountsPayable)}</span>
                                 </div>
-                                <TrendingDown className="h-5 w-5 text-rose-600" />
+                                <TrendingDown className="h-5 w-5 text-rose-600 animate-bounce" />
                             </div>
                         </div>
                         <div className="pt-4 border-t border-rose-500/10 bg-rose-500/5 -mx-4 px-4 pb-2">
