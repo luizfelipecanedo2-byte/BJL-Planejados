@@ -68,6 +68,8 @@ const DashboardTab = ({
     chartData,
     accumulatedData,
     formatCurrency,
+    upcomingTransactions = [],
+    handleEditTransaction,
 }: DashboardTabProps) => {
 
     // Preparation for "Evolução Caixa Inicial" (Horizontal Bars)
@@ -234,6 +236,42 @@ const DashboardTab = ({
                     <p className="text-[9px] font-black text-[#14b8a6] uppercase tracking-widest mb-1">Lucro Líquido</p>
                     <p className="text-2xl font-black text-white">{formatCurrency(currentSummary.resultadoMes)}</p>
                 </Card>
+            </div>
+
+            {/* RADAR FINANCEIRO - PRÓXIMOS VENCIMENTOS */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-6 bg-orange-500 rounded-full" />
+                    <h3 className="text-sm font-black uppercase text-white tracking-widest">Radar Financeiro - Próximas Contas</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    {upcomingTransactions.slice(0, 5).map((t, idx) => (
+                        <Card
+                            key={t.id || idx}
+                            className="bg-[#111111] border-none p-3 hover:bg-[#1a1a1a] transition-all cursor-pointer group relative overflow-hidden"
+                            onClick={() => handleEditTransaction?.(t)}
+                        >
+                            <div className={`absolute left-0 top-0 h-full w-1 ${t.type === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[8px] font-black text-muted-foreground uppercase opacity-70">
+                                    {new Date(t.dueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).toUpperCase()}
+                                </span>
+                                <p className="text-[10px] font-bold text-white truncate uppercase" title={t.description}>
+                                    {t.description}
+                                </p>
+                                <span className={`text-sm font-black mt-1 ${t.type === 'income' ? 'text-emerald-500' : 'text-white'}`}>
+                                    {formatCurrency(t.amount)}
+                                </span>
+                            </div>
+                        </Card>
+                    ))}
+                    {upcomingTransactions.length === 0 && (
+                        <div className="col-span-1 md:col-span-5 bg-[#111111] border-none p-6 rounded-2xl text-center text-muted-foreground text-[10px] font-bold uppercase tracking-widest border border-dashed border-white/5">
+                            Nenhum compromisso pendente para os próximos dias.
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* BOTTOM CHARTS */}
