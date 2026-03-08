@@ -14,7 +14,8 @@ import {
     PieChart,
     Pie,
     Cell,
-    BarChart
+    BarChart,
+    LabelList
 } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -243,7 +244,14 @@ const DashboardTab = ({
                                 <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
                                 <YAxis fontSize={10} axisLine={false} tickLine={false} />
                                 <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
-                                <Bar dataKey="Saldo" fill="#14b8a6" radius={[2, 2, 0, 0]} />
+                                <Bar dataKey="Saldo" fill="#14b8a6" radius={[2, 2, 0, 0]}>
+                                    <LabelList
+                                        dataKey="Saldo"
+                                        position="top"
+                                        formatter={(val: number) => Math.floor(val)}
+                                        style={{ fill: '#fff', fontSize: '10px', fontWeight: 'bold' }}
+                                    />
+                                </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
