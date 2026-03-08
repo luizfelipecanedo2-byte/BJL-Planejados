@@ -181,7 +181,10 @@ const DashboardTab = ({
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
                                 <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#555' }} />
                                 <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#555' }} />
-                                <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
+                                    formatter={(val: number) => formatCurrency(val)}
+                                />
                                 <Bar dataKey="Despesas" fill="#f97316" radius={[4, 4, 0, 0]} barSize={20} />
                                 <Line type="monotone" dataKey="Receitas" stroke="#14b8a6" strokeWidth={3} dot={{ r: 4, fill: '#14b8a6', strokeWidth: 2, stroke: '#111' }} />
                             </ComposedChart>
@@ -243,7 +246,10 @@ const DashboardTab = ({
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
                                 <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
                                 <YAxis fontSize={10} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }}
+                                    formatter={(val: number) => formatCurrency(val)}
+                                />
                                 <Bar dataKey="Saldo" fill="#14b8a6" radius={[2, 2, 0, 0]}>
                                     <LabelList
                                         dataKey="Saldo"
@@ -272,7 +278,10 @@ const DashboardTab = ({
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
                                 <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
                                 <YAxis fontSize={10} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }}
+                                    formatter={(val: number) => formatCurrency(val)}
+                                />
                                 <Area type="monotone" dataKey="Acumulado" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorProfit)" />
                             </AreaChart>
                         </ResponsiveContainer>
