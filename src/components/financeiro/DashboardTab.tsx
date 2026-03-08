@@ -1,6 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, DollarSign, Users, Calendar, AlertTriangle, Trophy, Rocket, Lightbulb } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
+import { DollarSign, Calendar, Rocket } from "lucide-react";
 import {
     ComposedChart,
     Line,
@@ -9,16 +8,15 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    Legend,
     ResponsiveContainer,
     AreaChart,
     Area,
     PieChart,
     Pie,
     Cell,
+    BarChart
 } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface DashboardTabProps {
     selectedYear: string;
@@ -66,639 +64,211 @@ const DashboardTab = ({
     setSelectedDashMonth,
     currentSummary,
     previousSummary,
-    topClients = [],
-    overdueTransactions = [],
-    upcomingTransactions,
     chartData,
-    dashboardChartData,
     accumulatedData,
     formatCurrency,
-    handleEditTransaction,
 }: DashboardTabProps) => {
 
-    // Calcula crescimento % 
-    const calcGrowth = (current: number, previous: number) => {
-        if (!previous || previous === 0) return current > 0 ? 100 : 0;
-        return ((current - previous) / previous) * 100;
-    };
-
-    const RevenueGrowth = previousSummary ? calcGrowth(currentSummary.receitaBrutaMes, previousSummary.receitaBrutaMes) : 0;
-    const ExpenseGrowth = previousSummary ? calcGrowth(currentSummary.gastosMes, previousSummary.gastosMes) : 0;
-
-    const profitMargin = currentSummary.receitaBrutaMes > 0
-        ? ((currentSummary.receitaBrutaMes - currentSummary.gastosMes) / currentSummary.receitaBrutaMes * 100).toFixed(1)
-        : 0;
+    // Preparation for "Evolução Caixa Inicial" (Horizontal Bars)
+    const initialCashData = chartData.map(d => ({
+        name: d.name,
+        value: d.Saldo // Simplification for demo
+    }));
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-6 bg-gradient-to-br from-muted/30 to-background p-6 rounded-2xl border border-border/40 shadow-sm">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                    <div className="space-y-1">
-                        <h3 className="text-3xl font-black tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Visão Geral</h3>
-                        <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest opacity-70">Inteligência Financeira</p>
+        <div className="space-y-6 text-foreground bg-[#0a0a0a] p-2 rounded-3xl min-h-screen">
+            {/* TOP HEADER SECTION */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center mb-2">
+                <div className="md:col-span-3 flex items-center gap-3">
+                    <div className="bg-primary/20 p-2 rounded-xl">
+                        <Rocket className="h-6 w-6 text-primary" />
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Select value={selectedYear} onValueChange={setSelectedYear}>
-                            <SelectTrigger className="w-[140px] bg-background/50 backdrop-blur-sm border-primary/20 hover:border-primary/50 transition-all font-bold">
-                                <SelectValue placeholder="Ano" />
+                    <div>
+                        <h1 className="text-xl font-black tracking-tighter uppercase text-white">ORGANIZADA</h1>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none">Venda Empresa</p>
+                    </div>
+                </div>
+
+                <div className="md:col-span-9 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Card className="bg-[#1a1a1a] border-none shadow-none p-3 h-16 flex flex-col justify-center">
+                        <span className="text-[10px] font-bold text-cyan-400 uppercase">A receber</span>
+                        <span className="text-lg font-black text-white">{formatCurrency(currentSummary.accountsReceivable)}</span>
+                    </Card>
+                    <Card className="bg-[#1a1a1a] border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-primary">
+                        <span className="text-[10px] font-bold text-primary uppercase">Hoje</span>
+                        <span className="text-lg font-black text-white">R$ 0</span>
+                    </Card>
+                    <Card className="bg-rose-500/10 border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-rose-500">
+                        <span className="text-[10px] font-bold text-rose-500 uppercase">A pagar</span>
+                        <span className="text-lg font-black text-white">{formatCurrency(currentSummary.accountsPayable)}</span>
+                    </Card>
+                    <Card className="bg-orange-500/10 border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-orange-500">
+                        <span className="text-[10px] font-bold text-orange-500 uppercase">Vencidos</span>
+                        <span className="text-lg font-black text-white">{formatCurrency(currentSummary.inadimplenciaTotal)}</span>
+                    </Card>
+                </div>
+            </div>
+
+            {/* MAIN ROW: Analysis of Month, Evolution, and Initial Cash */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+                {/* 1. ANÁLISE DO MÊS */}
+                <Card className="lg:col-span-3 bg-[#111111] border-none p-4 rounded-2xl relative overflow-hidden">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest">Análise do Mês</h3>
+                        <Select value={String(selectedDashMonth)} onValueChange={(v) => setSelectedDashMonth(v === 'anual' ? 'anual' : parseInt(v))}>
+                            <SelectTrigger className="w-[80px] h-7 text-[10px] bg-black/40 border-white/10 uppercase font-black">
+                                <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="2024">2024</SelectItem>
-                                <SelectItem value="2025">2025</SelectItem>
-                                <SelectItem value="2026">2026</SelectItem>
+                            <SelectContent className="bg-[#111111] border-white/10">
+                                <SelectItem value="anual">ANUAL</SelectItem>
+                                {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"].map((m, i) => (
+                                    <SelectItem key={m} value={String(i)}>{m.toUpperCase()}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
-                </div>
 
-                <Tabs
-                    value={String(selectedDashMonth)}
-                    onValueChange={(v) => setSelectedDashMonth(v === 'anual' ? 'anual' : parseInt(v))}
-                    className="w-full"
-                >
-                    <TabsList className="w-full justify-start overflow-x-auto h-12 bg-muted/20 p-1.5 backdrop-blur-md rounded-xl border border-border/30">
-                        <TabsTrigger value="anual" className="flex-1 sm:flex-none min-w-[80px] rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-black text-xs uppercase tracking-widest mr-2 border border-primary/20 bg-primary/5 text-primary">Anual</TabsTrigger>
-                        {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"].map((month, index) => (
-                            <TabsTrigger
-                                key={month}
-                                value={String(index)}
-                                className="flex-1 sm:flex-none min-w-[70px] rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-semibold text-xs"
-                            >
-                                {month}
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
-                </Tabs>
-            </div>
-
-            {/* OVERDUE ALERTS (Inadimplência Real e Contas Atrasadas) */}
-            {overdueTransactions.length > 0 && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-red-500/20 p-2 rounded-full animate-pulse">
-                            <AlertTriangle className="h-6 w-6 text-red-500" />
-                        </div>
-                        <div>
-                            <h4 className="text-red-500 font-bold uppercase tracking-widest text-sm">Atenção: Existem Lançamentos Atrasados!</h4>
-                            <p className="text-red-500/70 text-xs font-medium mt-0.5">Visite a aba "Lançamentos" e filtre por status pendente e data do pagamento no passado.</p>
-                        </div>
-                    </div>
-                    <div className="bg-red-500 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-[0_0_15px_rgba(239,68,68,0.3)]">
-                        {overdueTransactions.length} Pendências
-                    </div>
-                </div>
-            )}
-
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {/* Main KPI Card: Projected Finish */}
-                <Card className="col-span-1 md:col-span-2 lg:col-span-2 overflow-hidden border-none bg-gradient-to-br from-emerald-600/95 to-emerald-900 shadow-2xl relative group animate-glow border-beam-container">
-                    {/* Linha girando em volta (Border Beam) */}
-                    <div className="absolute inset-0 border-2 border-primary/20 rounded-2xl pointer-events-none" />
-                    <div className="border-beam" style={{ width: '200%', height: '200%', top: '-50%', left: '-50%' }} />
-
-                    <div className="absolute inset-0 animate-shimmer pointer-events-none opacity-30" />
-                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform duration-500 animate-float">
-                        <DollarSign className="h-32 w-32 text-white" />
-                    </div>
-                    <CardHeader className="pb-2 relative z-10">
-                        <CardTitle className="text-white/80 text-sm font-bold uppercase tracking-widest">
-                            Resultado Projetado Final do {selectedDashMonth === 'anual' ? 'Ano' : 'Mês'}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative z-10">
-                        <div className="flex flex-col gap-1">
-                            <span className="text-5xl font-black text-white tracking-tighter animate-neon-pulse">
-                                {formatCurrency(currentSummary.projectedBalance)}
-                            </span>
-
-                            <div className="flex flex-wrap items-center gap-2 mt-4">
-                                <span className="px-3 py-1 rounded-full bg-white/20 text-white text-[10px] font-black uppercase tracking-tighter backdrop-blur-md border border-white/10">
-                                    Fluxo de Caixa Final
-                                </span>
-                                <span className="px-3 py-1 rounded-full bg-emerald-500/80 text-white text-[10px] font-black uppercase tracking-tighter backdrop-blur-md border border-white/10 flex items-center gap-1">
-                                    LUCRO: {profitMargin}%
-                                </span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Secondary KPIs */}
-                <Card className="bg-card/40 border-l-4 border-l-orange-500 shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] border group">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <div className="space-y-1">
-                            <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest group-hover:text-orange-500 transition-colors">Inadimplência</CardTitle>
-                            <p className="text-2xl font-black text-orange-500 group-hover:scale-110 transition-transform origin-left">{formatCurrency(currentSummary.inadimplenciaTotal)}</p>
-                        </div>
-                        <Users className="h-5 w-5 text-orange-500 animate-pulse" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-[9px] text-orange-500/70 mb-2 font-bold uppercase tracking-widest bg-orange-500/10 w-fit px-2 py-0.5 rounded border border-orange-500/20">Atrasos Críticos</div>
-                        <p className="text-[10px] text-muted-foreground leading-tight italic">Total histórico que deveria ter sido recebido até hoje</p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Bento Grid Analytics Section */}
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-6 lg:grid-cols-12">
-                {/* Income Detail (Vertical Card) */}
-                <Card className="md:col-span-3 lg:col-span-3 bg-card/40 border-l-4 border-l-primary shadow-xl backdrop-blur-md border hover:border-primary/40 transition-all">
-                    <CardHeader className="pb-2 relative">
-                        <span className="text-[10px] font-black text-secondary-foreground/60 uppercase tracking-[0.2em] mb-1">Data do Pagamento</span>
-                        <CardTitle className="text-xl font-black text-primary uppercase tracking-tight">Faturamento</CardTitle>
-                        <div className="text-3xl font-black tracking-tighter text-primary/80 mt-1">{formatCurrency(currentSummary.receitaBrutaMes)}</div>
-
-                        {/* Indicador Crescimento */}
-                        {previousSummary && (
-                            <div className={cn(
-                                "absolute top-4 right-4 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest border flex items-center gap-1",
-                                RevenueGrowth >= 0 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border-rose-500/20"
-                            )}>
-                                {RevenueGrowth >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                {Math.abs(RevenueGrowth).toFixed(1)}% vs anterior
-                            </div>
-                        )}
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center group/item hover:bg-primary/5 p-2 rounded-lg transition-colors">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Já Recebido</span>
-                                    <span className="text-lg font-black text-emerald-500 animate-pulse">{formatCurrency(currentSummary.entradaMes)}</span>
-                                </div>
-                                <TrendingUp className="h-5 w-5 text-emerald-500 animate-bounce" />
-                            </div>
-                            <div className="flex justify-between items-center group/item hover:bg-primary/5 p-2 rounded-lg transition-colors border-t border-primary/5 pt-4">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">A Receber</span>
-                                    <span className="text-lg font-black text-primary">{formatCurrency(currentSummary.accountsReceivable)}</span>
-                                </div>
-                                <Calendar className="h-5 w-5 text-primary" />
-                            </div>
-                        </div>
-                        <div className="pt-4 border-t border-primary/10 bg-primary/5 -mx-4 px-4 pb-2">
-                            <div className="flex justify-between items-center">
-                                <span className="text-[9px] font-black text-primary/70 uppercase tracking-widest">Ticket Médio</span>
-                                <span className="text-sm font-black text-primary">{formatCurrency(currentSummary.ticketMedio)}</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Expenses Detail (Vertical Card) */}
-                <Card className="md:col-span-3 lg:col-span-3 bg-card/40 border-l-4 border-l-rose-500 shadow-xl backdrop-blur-md border hover:border-rose-500/40 transition-all">
-                    <CardHeader className="pb-2 relative">
-                        <span className="text-[10px] font-black text-secondary-foreground/60 uppercase tracking-[0.2em] mb-1">Data do Pagamento</span>
-                        <CardTitle className="text-xl font-black text-rose-500 uppercase tracking-tight">Custos Totais</CardTitle>
-                        <div className="text-3xl font-black tracking-tighter text-rose-500/80 mt-1">{formatCurrency(currentSummary.gastosMes)}</div>
-
-                        {/* Indicador Crescimento/Queda de despesas */}
-                        {previousSummary && (
-                            <div className={cn(
-                                "absolute top-4 right-4 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest border flex items-center gap-1",
-                                ExpenseGrowth <= 0 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border-rose-500/20"
-                            )}>
-                                {ExpenseGrowth <= 0 ? <TrendingDown size={10} /> : <TrendingUp size={10} />}
-                                {Math.abs(ExpenseGrowth).toFixed(1)}% vs anterior
-                            </div>
-                        )}
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center group/item hover:bg-rose-500/5 p-2 rounded-lg transition-colors">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Já Pago</span>
-                                    <span className="text-lg font-black text-rose-400">{formatCurrency(currentSummary.saidaMes)}</span>
-                                </div>
-                                <TrendingDown className="h-5 w-5 text-rose-400" />
-                            </div>
-                            <div className="flex justify-between items-center group/item hover:bg-rose-500/5 p-2 rounded-lg transition-colors border-t border-rose-500/5 pt-4">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">A Pagar</span>
-                                    <span className="text-lg font-black text-rose-600 font-black animate-pulse">{formatCurrency(currentSummary.accountsPayable)}</span>
-                                </div>
-                                <TrendingDown className="h-5 w-5 text-rose-600 animate-bounce" />
-                            </div>
-                        </div>
-                        <div className="pt-4 border-t border-rose-500/10 bg-rose-500/5 -mx-4 px-4 pb-2">
-                            <div className="flex justify-between items-center">
-                                <span className="text-[9px] font-black text-rose-500/70 uppercase tracking-widest">Margem Resultante</span>
-                                <span className="text-sm font-black text-rose-500">
-                                    {currentSummary.receitaBrutaMes > 0 ? ((currentSummary.receitaBrutaMes - currentSummary.gastosMes) / currentSummary.receitaBrutaMes * 100).toFixed(1) : 0}%
-                                </span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Expenses Chart (Large Card) */}
-                <Card className="md:col-span-6 lg:col-span-6 shadow-xl bg-card/40 backdrop-blur-md border border-border/40 overflow-hidden relative group">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 bg-muted/20 border-b border-border/50">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-6 bg-rose-500 rounded-full" />
-                            <CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground">Distribuição de Gastos</CardTitle>
-                        </div>
-                        <TrendingDown className="h-4 w-4 text-rose-500 group-hover:animate-bounce" />
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                        <div className="h-[320px] w-full">
+                    <div className="flex flex-col items-center">
+                        <div className="h-40 w-full relative mb-6">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
-                                        data={currentSummary.expensesByCategory}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={80}
-                                        outerRadius={120}
-                                        paddingAngle={5}
+                                        data={[
+                                            { name: 'Used', value: currentSummary.saidaMes },
+                                            { name: 'Remaining', value: Math.max(0, currentSummary.receitaBrutaMes - currentSummary.saidaMes) }
+                                        ]}
+                                        cx="50%" cy="50%"
+                                        innerRadius={55} outerRadius={70}
+                                        startAngle={180} endAngle={0}
                                         dataKey="value"
                                     >
-                                        {currentSummary.expensesByCategory.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={[
-                                                '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#06b6d4', '#ec4899'
-                                            ][index % 7]} className="stroke-background hover:opacity-80 transition-opacity" strokeWidth={2} />
-                                        ))}
+                                        <Cell fill="#14b8a6" />
+                                        <Cell fill="#333" />
                                     </Pie>
-                                    <Tooltip
-                                        formatter={(value: number) => formatCurrency(value)}
-                                        contentStyle={{ backgroundColor: '#020617', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '12px', padding: '12px' }}
-                                        itemStyle={{ color: 'white' }}
-                                        labelStyle={{ color: 'white' }}
-                                    />
-                                    <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
                                 </PieChart>
                             </ResponsiveContainer>
+                            <div className="absolute inset-x-0 bottom-4 flex flex-col items-center">
+                                <span className="text-2xl font-black text-white tracking-tighter">{formatCurrency(currentSummary.saldoMes)}</span>
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Saldo do mês</span>
+                            </div>
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
 
-            {/* SEÇÃO DE INSIGHTS E COMPARATIVO MÊS A MÊS */}
-            <div className="grid gap-6 grid-cols-1 lg:grid-cols-12 mt-6">
-                {/* Insights de IA (Financial Intelligence) */}
-                <Card className="lg:col-span-12 xl:col-span-8 bg-gradient-to-br from-indigo-500/10 via-primary/5 to-transparent border-primary/20 shadow-2xl overflow-hidden group">
-                    <CardHeader className="pb-2 border-b border-primary/10">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/20 rounded-lg">
-                                <Rocket className="h-5 w-5 text-primary animate-pulse" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-xl font-black text-primary uppercase tracking-tight">Intelligence Hub</CardTitle>
-                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Insights automáticos para sua gestão</p>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* Insight 1: Performance de Vendas */}
-                            <div className="p-4 rounded-2xl bg-background/40 backdrop-blur-xl border border-primary/10 hover:border-primary/30 transition-all group/insight">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <Trophy className="h-4 w-4 text-yellow-500" />
-                                    <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Meta & Performance</span>
-                                </div>
-                                <p className="text-sm font-bold text-foreground/90 leading-tight">
-                                    {RevenueGrowth > 0
-                                        ? `Seu faturamento está voando! 🚀 Crescimento de ${RevenueGrowth.toFixed(1)}% em relação ao período anterior.`
-                                        : RevenueGrowth < 0
-                                            ? `Atenção: Queda de ${Math.abs(RevenueGrowth).toFixed(1)}% no faturamento. Hora de revisar estratégias de vendas.`
-                                            : "Seu faturamento está estável. Que tal uma campanha para impulsionar os números?"
-                                    }
+                        <div className="w-full space-y-3">
+                            <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                                <p className="text-[9px] font-bold text-muted-foreground uppercase flex justify-between">
+                                    Planejado/Receber <span>{formatCurrency(currentSummary.receitaBrutaMes)}</span>
                                 </p>
+                                <div className="mt-2 text-primary font-black text-xl leading-none">23% <span className="text-[10px] text-muted-foreground font-medium ml-2">Recebido: {formatCurrency(currentSummary.entradaMes)}</span></div>
                             </div>
-
-                            {/* Insight 2: Saúde do Caixa */}
-                            <div className="p-4 rounded-2xl bg-background/40 backdrop-blur-xl border border-primary/10 hover:border-primary/30 transition-all group/insight">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <DollarSign className="h-4 w-4 text-emerald-500" />
-                                    <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Saúde Financeira</span>
-                                </div>
-                                <p className="text-sm font-bold text-foreground/90 leading-tight">
-                                    {currentSummary.projectedBalance > 0
-                                        ? `Projeção positiva! 🟢 Você deve fechar com ${formatCurrency(currentSummary.projectedBalance)} de saldo livre.`
-                                        : `Alerta crítico! 🔴 A projeção aponta um déficit de ${formatCurrency(currentSummary.projectedBalance)}. Revise as contas a pagar.`
-                                    }
+                            <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                                <p className="text-[9px] font-bold text-muted-foreground uppercase flex justify-between">
+                                    Planejado/Gastar <span>{formatCurrency(currentSummary.gastosMes)}</span>
                                 </p>
-                            </div>
-
-                            {/* Insight 3: Dica do Gestor */}
-                            <div className="p-4 rounded-2xl bg-primary/5 backdrop-blur-xl border border-primary/20 hover:border-primary/40 transition-all group/insight">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <Lightbulb className="h-4 w-4 text-primary" />
-                                    <span className="text-[10px] font-black uppercase text-primary/80 tracking-widest">Estratégia do Dia</span>
-                                </div>
-                                <p className="text-sm font-bold text-foreground/90 leading-tight">
-                                    {currentSummary.ticketMedio > (previousSummary?.ticketMedio || 0)
-                                        ? "Seu ticket médio subiu! 📈 Indica que você está vendendo serviços de maior valor agregado."
-                                        : "Tente aumentar seu ticket médio oferecendo pacotes complementares (upsell) aos seus clientes atuais."
-                                    }
-                                </p>
+                                <div className="mt-2 text-orange-500 font-black text-xl leading-none">9% <span className="text-[10px] text-muted-foreground font-medium ml-2">Gasto: {formatCurrency(currentSummary.saidaMes)}</span></div>
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
-
-                {/* Tabela de Comparativo Mês a Mês */}
-                <Card className="lg:col-span-12 xl:col-span-4 shadow-2xl bg-card/40 backdrop-blur-md border border-border/40 overflow-hidden">
-                    <CardHeader className="bg-muted/20 pb-4 border-b">
-                        <CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground">Comparativo de Performance</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="divide-y divide-border/30">
-                            {/* KPI: RECEITA BRUTA */}
-                            <div className="p-4 flex justify-between items-center hover:bg-muted/10 transition-colors">
-                                <div className="space-y-1">
-                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Receita Bruta</span>
-                                    <div className="text-lg font-black text-foreground">{formatCurrency(currentSummary.receitaBrutaMes)}</div>
-                                </div>
-                                <div className={cn(
-                                    "flex flex-col items-end",
-                                    RevenueGrowth >= 0 ? "text-emerald-500" : "text-rose-500"
-                                )}>
-                                    <div className="flex items-center gap-1 font-black text-sm">
-                                        {RevenueGrowth >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                        {Math.abs(RevenueGrowth).toFixed(1)}%
-                                    </div>
-                                    <span className="text-[8px] font-bold uppercase tracking-tighter opacity-60">vs período anterior</span>
-                                </div>
-                            </div>
-
-                            {/* KPI: GASTOS TOTAIS */}
-                            <div className="p-4 flex justify-between items-center hover:bg-muted/10 transition-colors">
-                                <div className="space-y-1">
-                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Gastos Totais</span>
-                                    <div className="text-lg font-black text-foreground">{formatCurrency(currentSummary.gastosMes)}</div>
-                                </div>
-                                <div className={cn(
-                                    "flex flex-col items-end",
-                                    ExpenseGrowth <= 0 ? "text-emerald-500" : "text-rose-500"
-                                )}>
-                                    <div className="flex items-center gap-1 font-black text-sm">
-                                        {ExpenseGrowth <= 0 ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
-                                        {Math.abs(ExpenseGrowth).toFixed(1)}%
-                                    </div>
-                                    <span className="text-[8px] font-bold uppercase tracking-tighter opacity-60">vs período anterior</span>
-                                </div>
-                            </div>
-
-                            {/* KPI: TICKET MÉDIO */}
-                            <div className="p-4 flex justify-between items-center hover:bg-muted/10 transition-colors">
-                                <div className="space-y-1">
-                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Ticket Médio</span>
-                                    <div className="text-lg font-black text-foreground">{formatCurrency(currentSummary.ticketMedio)}</div>
-                                </div>
-                                {previousSummary && (
-                                    <div className={cn(
-                                        "flex flex-col items-end",
-                                        currentSummary.ticketMedio >= previousSummary.ticketMedio ? "text-emerald-500" : "text-rose-500"
-                                    )}>
-                                        <div className="flex items-center gap-1 font-black text-sm">
-                                            {currentSummary.ticketMedio >= previousSummary.ticketMedio ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                            {calcGrowth(currentSummary.ticketMedio, previousSummary.ticketMedio).toFixed(1)}%
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* KPI: SALDO LÍQUIDO */}
-                            <div className="p-4 flex justify-between items-center bg-primary/5">
-                                <div className="space-y-1">
-                                    <span className="text-[9px] font-black text-primary uppercase tracking-widest">Resultado do Período</span>
-                                    <div className="text-lg font-black text-primary">{formatCurrency(currentSummary.resultadoMes)}</div>
-                                </div>
-                                {previousSummary && (
-                                    <div className={cn(
-                                        "flex flex-col items-end",
-                                        currentSummary.resultadoMes >= (previousSummary.resultadoMes || 0) ? "text-emerald-500" : "text-rose-500"
-                                    )}>
-                                        <div className="flex items-center gap-1 font-black text-sm">
-                                            {currentSummary.resultadoMes >= (previousSummary.resultadoMes || 0) ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                            {calcGrowth(currentSummary.resultadoMes, previousSummary.resultadoMes || 0).toFixed(1)}%
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* CURVA ABC E RADAR DE AÇÕES */}
-            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 mt-2">
-
-                {/* Ranking de Melhores Clientes (Curva ABC) */}
-                <Card className="shadow-2xl border-border/40 bg-card/40 backdrop-blur-md overflow-hidden border">
-                    <CardHeader className="bg-muted/20 border-b border-border/50 pb-4">
-                        <CardTitle className="flex items-center gap-3 text-sm font-black uppercase tracking-widest text-primary">
-                            <div className="w-1.5 h-6 bg-primary rounded-full" />
-                            <Trophy className="h-5 w-5" />
-                            Top Clientes (Curva ABC)
-                        </CardTitle>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1 ml-[34px]">Os {topClients.length} Maiores Geradores de Faturamento no Período</p>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                        {topClients.length === 0 ? (
-                            <div className="py-8 text-center text-muted-foreground text-sm font-medium">Nenhum dado de receita no período selecionado.</div>
-                        ) : (
-                            <div className="space-y-4">
-                                {topClients.map((client, index) => {
-                                    const percentage = currentSummary.receitaBrutaMes > 0 ? (client.value / currentSummary.receitaBrutaMes) * 100 : 0;
-                                    return (
-                                        <div key={index} className="flex items-center justify-between group p-3 hover:bg-primary/5 rounded-xl border border-transparent hover:border-primary/10 transition-colors">
-                                            <div className="flex items-center gap-4">
-                                                <div className={cn(
-                                                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0",
-                                                    index === 0 ? "bg-yellow-500 text-yellow-950 shadow-[0_0_15px_rgba(234,179,8,0.4)]" :
-                                                        index === 1 ? "bg-slate-300 text-slate-800" :
-                                                            index === 2 ? "bg-amber-700 text-orange-100" : "bg-muted text-muted-foreground"
-                                                )}>
-                                                    {index + 1}º
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-foreground capitalize">{client.name || 'Cliente Não Informado'}</span>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
-                                                            <div className="h-full bg-primary" style={{ width: `${percentage}%` }} />
-                                                        </div>
-                                                        <span className="text-[10px] font-black text-muted-foreground">{percentage.toFixed(1)}%</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <span className="font-black text-base text-primary tracking-tighter">{formatCurrency(client.value)}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Cash Schedule (Agenda de Caixa) Moved next to ABC Curve */}
-                <div className="flex flex-col">
-                    <div className="flex items-center gap-3 mb-4 bg-primary/5 w-fit px-4 py-2 rounded-xl border border-primary/10">
-                        <Calendar className="h-5 w-5 text-primary" />
-                        <h3 className="text-xl font-black text-primary tracking-tight uppercase tracking-widest">Radar Financeiro <span className="text-[10px] font-normal text-muted-foreground ml-2">(Próximos 7 Dias)</span></h3>
                     </div>
-                    {upcomingTransactions.length === 0 ? (
-                        <Card className="bg-card/40 border-dashed border-2 border-primary/20 backdrop-blur-md rounded-2xl overflow-hidden h-full flex items-center justify-center">
-                            <CardContent className="py-12 text-center group cursor-default">
-                                <div className="mb-4 flex justify-center">
-                                    <div className="p-4 bg-emerald-500/10 rounded-full text-emerald-500 group-hover:scale-110 transition-transform duration-500 border border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
-                                        <DollarSign className="h-10 w-10" />
-                                    </div>
+                </Card>
+
+                {/* 2. ANÁLISE EVOLUTIVA */}
+                <Card className="lg:col-span-6 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden">
+                    <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-4">Análise Evolutiva</h3>
+                    <div className="h-[320px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
+                                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#555' }} />
+                                <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#555' }} />
+                                <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }} />
+                                <Bar dataKey="Despesas" fill="#f97316" radius={[4, 4, 0, 0]} barSize={20} />
+                                <Line type="monotone" dataKey="Receitas" stroke="#14b8a6" strokeWidth={3} dot={{ r: 4, fill: '#14b8a6', strokeWidth: 2, stroke: '#111' }} />
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="flex gap-4 mt-2 justify-center">
+                        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-orange-500 rounded-full" /> <span className="text-[10px] font-black uppercase text-muted-foreground">Despesas</span></div>
+                        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-primary rounded-full" /> <span className="text-[10px] font-black uppercase text-muted-foreground">Receitas</span></div>
+                    </div>
+                </Card>
+
+                {/* 3. EVOLUÇÃO CAIXA INICIAL (Horizontal Bar Chart) */}
+                <Card className="lg:col-span-3 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden">
+                    <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-4">Evolução Caixa Inicial</h3>
+                    <div className="h-[320px] w-full overflow-y-auto pr-2">
+                        {initialCashData.slice(0, 12).reverse().map((item, idx) => (
+                            <div key={idx} className="flex items-center gap-3 mb-3 last:mb-0 group">
+                                <span className="text-[10px] font-black w-8 text-muted-foreground group-hover:text-primary transition-colors">{item.name}</span>
+                                <div className="flex-1 h-2.5 bg-white/5 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-orange-500 rounded-full"
+                                        style={{ width: `${Math.min(100, (Math.abs(item.value) / 10000) * 100)}%` }}
+                                    />
                                 </div>
-                                <p className="text-lg font-black text-muted-foreground tracking-tight">Tudo em conformidade!</p>
-                                <p className="text-xs text-muted-foreground font-medium uppercase mt-1 opacity-60">Nenhum compromisso pendente para a semana.</p>
-                            </CardContent>
-                        </Card>
-                    ) : (
-                        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-                            {upcomingTransactions.slice(0, 4).map((t) => (
-                                <Card
-                                    key={t.id}
-                                    className={cn(
-                                        "bg-card/40 backdrop-blur-md border shadow-lg transition-all hover:scale-[1.02] cursor-pointer hover:shadow-2xl hover:border-primary/40 relative overflow-hidden group",
-                                        t.type === 'income' ? "border-l-4 border-l-emerald-500" : "border-l-4 border-l-rose-500"
-                                    )}
-                                    onClick={() => handleEditTransaction(t)}
-                                >
-                                    <div className={cn(
-                                        "absolute top-0 right-0 w-16 h-16 opacity-[0.03] -mr-4 -mt-4 transition-transform group-hover:scale-150 duration-500",
-                                        t.type === 'income' ? "text-emerald-500" : "text-rose-500"
-                                    )}>
-                                        {t.type === 'income' ? <TrendingUp size={64} /> : <TrendingDown size={64} />}
-                                    </div>
-                                    <CardContent className="p-4">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground bg-muted/40 px-2 py-0.5 rounded-md">
-                                                {new Date(t.dueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                                            </span>
-                                        </div>
-                                        <h4 className="font-bold text-xs truncate mb-1 text-foreground/90 uppercase tracking-tight" title={t.description}>{t.description}</h4>
-                                        <div className="flex justify-between items-end mt-2">
-                                            <span className="text-xs text-muted-foreground font-medium truncate max-w-[100px]">{t.contact}</span>
-                                            <span className="text-lg font-black text-foreground tracking-tighter">{formatCurrency(t.amount)}</span>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                                <span className="text-[10px] font-black text-white w-16 text-right font-mono">{formatCurrency(item.value)}</span>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+
             </div>
 
-            {/* Main Charts Area */}
-            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 mt-8">
-                <Card className="shadow-2xl border-border/40 bg-card/20 backdrop-blur-sm overflow-hidden border">
-                    <CardHeader className="bg-muted/30 border-b border-border/40">
-                        <CardTitle className="flex items-center gap-3 text-lg font-black uppercase tracking-widest text-primary">
-                            <div className="w-1 h-6 bg-primary rounded-full" />
-                            Balanço Anual Histórico
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-8">
-                        <div className="h-[350px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted opacity-30" vertical={false} />
-                                    <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" dy={10} />
-                                    <YAxis
-                                        fontSize={10}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        fontWeight="bold"
-                                        tickFormatter={(value) => `R$${value >= 1000 ? (value / 1000) + 'k' : value}`}
-                                    />
-                                    <Tooltip
-                                        formatter={(value: number) => formatCurrency(value)}
-                                        contentStyle={{ borderRadius: '14px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.5)', backgroundColor: '#020617' }}
-                                        itemStyle={{ color: 'white' }}
-                                        labelStyle={{ color: 'white' }}
-                                    />
-                                    <Legend verticalAlign="top" height={40} iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase' }} />
-                                    <Bar dataKey="Receitas" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={25} />
-                                    <Bar dataKey="Despesas" fill="#f43f5e" radius={[6, 6, 0, 0]} maxBarSize={25} />
-                                    <Line type="monotone" dataKey="Saldo" stroke="#34d399" strokeWidth={4} dot={{ r: 5, fill: "#34d399", strokeWidth: 2, stroke: "#fff" }} activeDot={{ r: 8, stroke: "#fff", strokeWidth: 3 }} />
-                                </ComposedChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
+            {/* VISÃO ECONÔMICA BAR */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+                <div className="md:col-span-3 bg-primary/10 rounded-2xl flex items-center p-4 border border-primary/20">
+                    <h2 className="text-xs font-black uppercase text-primary tracking-widest leading-tight">Visão Econômica<br />do Negócio</h2>
+                </div>
+                <Card className="md:col-span-3 bg-[#111111] border-none p-4 flex flex-col justify-center">
+                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Receita Bruta</p>
+                    <p className="text-2xl font-black text-white">{formatCurrency(currentSummary.receitaBrutaMes)}</p>
+                </Card>
+                <Card className="md:col-span-3 bg-orange-500/10 border-none p-4 flex flex-col justify-center border-l-4 border-orange-500">
+                    <p className="text-[9px] font-black text-orange-500 uppercase tracking-widest mb-1">Custos e Despesas</p>
+                    <p className="text-2xl font-black text-white">{formatCurrency(currentSummary.gastosMes)}</p>
+                </Card>
+                <Card className="md:col-span-3 bg-[#14b8a6]/20 border-none p-4 flex flex-col justify-center border-l-4 border-[#14b8a6]">
+                    <p className="text-[9px] font-black text-[#14b8a6] uppercase tracking-widest mb-1">Lucro Líquido</p>
+                    <p className="text-2xl font-black text-white">{formatCurrency(currentSummary.resultadoMes)}</p>
+                </Card>
+            </div>
+
+            {/* BOTTOM CHARTS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl">
+                    <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Resultados Mensais (Real x Previsto)</h3>
+                    <div className="h-[250px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
+                                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                                <YAxis fontSize={10} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                                <Bar dataKey="Saldo" fill="#14b8a6" radius={[2, 2, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </Card>
 
-                <Card className="shadow-2xl border-border/40 bg-card/20 backdrop-blur-sm overflow-hidden border">
-                    <CardHeader className="bg-muted/30 border-b border-border/40">
-                        <CardTitle className="flex items-center gap-3 text-lg font-black uppercase tracking-widest text-orange-500">
-                            <div className="w-1 h-6 bg-orange-500 rounded-full" />
-                            Previsão Provedora de Caixa
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-8">
-                        <div className="h-[350px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={dashboardChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted opacity-30" vertical={false} />
-                                    <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" dy={10} />
-                                    <YAxis
-                                        fontSize={10}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        fontWeight="bold"
-                                        tickFormatter={(value) => `R$${value >= 1000 ? (value / 1000) + 'k' : value}`}
-                                    />
-                                    <Tooltip
-                                        formatter={(value: number) => formatCurrency(value)}
-                                        contentStyle={{ borderRadius: '14px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.5)', backgroundColor: '#020617' }}
-                                        itemStyle={{ color: 'white' }}
-                                        labelStyle={{ color: 'white' }}
-                                    />
-                                    <Legend verticalAlign="top" height={40} iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase' }} />
-                                    <Bar dataKey="A Receber" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={25} />
-                                    <Bar dataKey="A Pagar" fill="#f43f5e" radius={[6, 6, 0, 0]} maxBarSize={25} />
-                                    <Line type="monotone" dataKey="Saldo" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
-                                </ComposedChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="lg:col-span-2 shadow-2xl border-border/40 bg-card/20 backdrop-blur-sm overflow-hidden border mt-2">
-                    <CardHeader className="bg-muted/30 border-b border-border/40">
-                        <CardTitle className="flex items-center gap-3 text-lg font-black uppercase tracking-widest text-blue-500 text-center mx-auto">
-                            <div className="w-6 h-1 bg-blue-500 rounded-full" />
-                            Acumulado Evolutivo Financeiro
-                            <div className="w-6 h-1 bg-blue-500 rounded-full" />
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-8 px-0">
-                        <div className="h-[300px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={accumulatedData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="colorAcumulado" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <XAxis dataKey="name" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
-                                    <YAxis
-                                        stroke="#888888"
-                                        fontSize={10}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        fontWeight="bold"
-                                        tickFormatter={(value) => `R$${value >= 1000 ? (value / 1000) + 'k' : value}`}
-                                    />
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted opacity-20" vertical={false} />
-                                    <Tooltip
-                                        formatter={(value: number) => formatCurrency(value)}
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', backgroundColor: '#020617' }}
-                                        itemStyle={{ color: 'white' }}
-                                        labelStyle={{ color: 'white' }}
-                                    />
-                                    <Area type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={5} fillOpacity={1} fill="url(#colorAcumulado)" activeDot={{ r: 8, strokeWidth: 3, stroke: '#fff' }} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
+                <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl overflow-hidden relative">
+                    <div className="absolute top-4 right-4 bg-orange-500 text-[10px] font-black px-2 py-0.5 rounded text-white uppercase">Acumulado</div>
+                    <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Evolução Lucro Acumulado</h3>
+                    <div className="h-[250px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={accumulatedData}>
+                                <defs>
+                                    <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
+                                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                                <YAxis fontSize={10} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                                <Area type="monotone" dataKey="Acumulado" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorProfit)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </Card>
             </div>
         </div>
