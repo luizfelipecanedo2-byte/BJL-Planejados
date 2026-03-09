@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { DollarSign, Calendar, Rocket } from "lucide-react";
+import { DollarSign, Calendar, Rocket, Users } from "lucide-react";
 import {
     ComposedChart,
     Line,
@@ -322,7 +322,7 @@ const DashboardTab = ({
             </div>
 
             {/* BOTTOM CHARTS AND CATEGORIES */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl flex flex-col">
                     <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Gastos por Categoria</h3>
                     <div className="h-[250px] w-full flex-1">
@@ -347,13 +347,38 @@ const DashboardTab = ({
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 mt-4">
-                        {currentSummary.expensesByCategory.slice(0, 4).map((item, index) => (
-                            <div key={item.name} className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                                <span className="text-[9px] font-bold text-muted-foreground uppercase truncate w-full">{item.name}</span>
+                </Card>
+
+                <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl flex flex-col">
+                    <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Top 5 Clientes</h3>
+                    <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+                        {topClients?.map((client, idx) => (
+                            <div key={idx} className="group cursor-default">
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary transition-colors">
+                                            <Users size={12} className="text-primary group-hover:text-black" />
+                                        </div>
+                                        <span className="text-[10px] font-black text-white uppercase truncate max-w-[120px]" title={client.name}>
+                                            {client.name}
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] font-black text-primary font-mono">{formatCurrency(client.value)}</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-primary to-cyan-400 rounded-full transition-all duration-1000"
+                                        style={{ width: `${Math.min(100, (client.value / (topClients[0]?.value || 1)) * 100)}%` }}
+                                    />
+                                </div>
                             </div>
                         ))}
+                        {(!topClients || topClients.length === 0) && (
+                            <div className="h-full flex flex-col items-center justify-center opacity-30">
+                                <Users size={32} className="mb-2" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest">Sem dados no período</p>
+                            </div>
+                        )}
                     </div>
                 </Card>
 
