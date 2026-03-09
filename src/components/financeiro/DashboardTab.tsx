@@ -35,6 +35,8 @@ interface DashboardTabProps {
         accountsPayable: number;
         accountsReceivable: number;
         projectedBalance: number;
+        entradaHoje: number;
+        saidaHoje: number;
         inadimplenciaTotal: number;
         ticketMedio: number;
         expensesByCategory: { name: string; value: number }[];
@@ -72,11 +74,30 @@ const DashboardTab = ({
     handleEditTransaction,
 }: DashboardTabProps) => {
 
+    // Helper to calculate percentage growth
+    const calculateGrowth = (current: number, previous: number) => {
+        if (!previous || previous === 0) return null;
+        const growth = ((current - previous) / previous) * 100;
+        return growth;
+    };
+
+    const GrowthIndicator = ({ value }: { value: number | null }) => {
+        if (value === null) return null;
+        const isPositive = value >= 0;
+        return (
+            <span className={`text-[10px] font-black ml-2 ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                {isPositive ? '↑' : '↓'} {Math.abs(value).toFixed(1)}%
+            </span>
+        );
+    };
+
     // Preparation for "Evolução Caixa Inicial" (Horizontal Bars)
     const initialCashData = chartData.map(d => ({
         name: d.name,
         value: d.Saldo // Simplification for demo
     }));
+
+    const COLORS = ['#14b8a6', '#f97316', '#06b6d4', '#8b5cf6', '#ec4899', '#eab308'];
 
     return (
         <div className="space-y-6 text-foreground bg-[#0a0a0a] p-2 rounded-3xl min-h-screen">
@@ -105,14 +126,17 @@ const DashboardTab = ({
                     </div>
                 </div>
 
-                <div className="md:col-span-9 grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="md:col-span-9 grid grid-cols-2 lg:grid-cols-5 gap-3">
                     <Card className="bg-[#1a1a1a] border-none shadow-none p-3 h-16 flex flex-col justify-center">
                         <span className="text-[10px] font-bold text-cyan-400 uppercase">A receber</span>
                         <span className="text-lg font-black text-white">{formatCurrency(currentSummary.accountsReceivable)}</span>
                     </Card>
                     <Card className="bg-[#1a1a1a] border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-primary">
-                        <span className="text-[10px] font-bold text-primary uppercase">Hoje</span>
-                        <span className="text-lg font-black text-white">R$ 0</span>
+                        <span className="text-[10px] font-bold text-primary uppercase">Hoje (Entra/Sai)</span>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-sm font-black text-emerald-500">+{formatCurrency(currentSummary.entradaHoje).replace('R$', '')}</span>
+                            <span className="text-sm font-black text-rose-500">-{formatCurrency(currentSummary.saidaHoje).replace('R$', '')}</span>
+                        </div>
                     </Card>
                     <Card className="bg-rose-500/10 border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-rose-500">
                         <span className="text-[10px] font-bold text-rose-500 uppercase">A pagar</span>
@@ -121,6 +145,10 @@ const DashboardTab = ({
                     <Card className="bg-orange-500/10 border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-orange-500">
                         <span className="text-[10px] font-bold text-orange-500 uppercase">Vencidos</span>
                         <span className="text-lg font-black text-white">{formatCurrency(currentSummary.inadimplenciaTotal)}</span>
+                    </Card>
+                    <Card className="bg-emerald-500/10 border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-emerald-500">
+                        <span className="text-[10px] font-bold text-emerald-500 uppercase">Saldo Projetado</span>
+                        <span className="text-lg font-black text-white">{formatCurrency(currentSummary.projectedBalance)}</span>
                     </Card>
                 </div>
             </div>
@@ -238,15 +266,21 @@ const DashboardTab = ({
                     <h2 className="text-xs font-black uppercase text-primary tracking-widest leading-tight">Visão Econômica<br />do Negócio</h2>
                 </div>
                 <Card className="md:col-span-3 bg-[#111111] border-none p-4 flex flex-col justify-center">
-                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Receita Bruta</p>
+                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">
+                        Receita Bruta <GrowthIndicator value={calculateGrowth(currentSummary.receitaBrutaMes, previousSummary?.receitaBrutaMes || 0)} />
+                    </p>
                     <p className="text-2xl font-black text-white">{formatCurrency(currentSummary.receitaBrutaMes)}</p>
                 </Card>
                 <Card className="md:col-span-3 bg-orange-500/10 border-none p-4 flex flex-col justify-center border-l-4 border-orange-500">
-                    <p className="text-[9px] font-black text-orange-500 uppercase tracking-widest mb-1">Custos e Despesas</p>
+                    <p className="text-[9px] font-black text-orange-500 uppercase tracking-widest mb-1">
+                        Custos e Despesas <GrowthIndicator value={calculateGrowth(currentSummary.gastosMes, previousSummary?.gastosMes || 0)} />
+                    </p>
                     <p className="text-2xl font-black text-white">{formatCurrency(currentSummary.gastosMes)}</p>
                 </Card>
                 <Card className="md:col-span-3 bg-[#14b8a6]/20 border-none p-4 flex flex-col justify-center border-l-4 border-[#14b8a6]">
-                    <p className="text-[9px] font-black text-[#14b8a6] uppercase tracking-widest mb-1">Lucro Líquido</p>
+                    <p className="text-[9px] font-black text-[#14b8a6] uppercase tracking-widest mb-1">
+                        Lucro Líquido <GrowthIndicator value={calculateGrowth(currentSummary.resultadoMes, previousSummary?.resultadoMes || 0)} />
+                    </p>
                     <p className="text-2xl font-black text-white">{formatCurrency(currentSummary.resultadoMes)}</p>
                 </Card>
             </div>
@@ -287,9 +321,43 @@ const DashboardTab = ({
                 </div>
             </div>
 
-            {/* BOTTOM CHARTS */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl">
+            {/* BOTTOM CHARTS AND CATEGORIES */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl flex flex-col">
+                    <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Gastos por Categoria</h3>
+                    <div className="h-[250px] w-full flex-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={currentSummary.expensesByCategory}
+                                    cx="50%" cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {currentSummary.expensesByCategory.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
+                                    formatter={(value: number) => formatCurrency(value)}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                        {currentSummary.expensesByCategory.slice(0, 4).map((item, index) => (
+                            <div key={item.name} className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase truncate w-full">{item.name}</span>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+
+                <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl lg:col-span-2">
                     <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Resultados Mensais (Real x Previsto)</h3>
                     <div className="h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -313,32 +381,32 @@ const DashboardTab = ({
                         </ResponsiveContainer>
                     </div>
                 </Card>
-
-                <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl overflow-hidden relative">
-                    <div className="absolute top-4 right-4 bg-orange-500 text-[10px] font-black px-2 py-0.5 rounded text-white uppercase">Acumulado</div>
-                    <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Evolução Lucro Acumulado</h3>
-                    <div className="h-[250px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={accumulatedData}>
-                                <defs>
-                                    <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
-                                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
-                                <YAxis fontSize={10} axisLine={false} tickLine={false} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }}
-                                    formatter={(val: number) => formatCurrency(val)}
-                                />
-                                <Area type="monotone" dataKey="Acumulado" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorProfit)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </Card>
             </div>
+
+            <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl overflow-hidden relative">
+                <div className="absolute top-4 right-4 bg-orange-500 text-[10px] font-black px-2 py-0.5 rounded text-white uppercase">Acumulado</div>
+                <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Evolução Lucro Acumulado</h3>
+                <div className="h-[250px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={accumulatedData}>
+                            <defs>
+                                <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
+                            <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                            <YAxis fontSize={10} axisLine={false} tickLine={false} />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }}
+                                formatter={(val: number) => formatCurrency(val)}
+                            />
+                            <Area type="monotone" dataKey="Acumulado" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorProfit)" />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </Card>
         </div>
     );
 };

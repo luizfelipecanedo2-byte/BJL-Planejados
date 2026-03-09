@@ -604,17 +604,26 @@ const Financeiro = () => {
     const accountsReceivable = currentMonthTransactions.filter(t => t.type === 'income' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0);
     const projectedBalance = (entradaMes + accountsReceivable) - (saidaMes + accountsPayable);
 
+    // Fluxo do Dia de Hoje
+    const todayStr = new Date().toISOString().split('T')[0];
+    const entradaHoje = transactions
+      .filter(t => t.type === 'income' && t.status === 'paid' && t.paymentDate && new Date(t.paymentDate).toISOString().split('T')[0] === todayStr)
+      .reduce((acc, t) => acc + t.amount, 0);
+    const saidaHoje = transactions
+      .filter(t => t.type === 'expense' && (t.status === 'paid' && t.paymentDate && new Date(t.paymentDate).toISOString().split('T')[0] === todayStr) || (t.status === 'pending' && t.dueDate && new Date(t.dueDate).toISOString().split('T')[0] === todayStr))
+      .reduce((acc, t) => acc + t.amount, 0);
+
     const expenseCategories = CATEGORIES.expense;
 
     return {
       entradaMes, saidaMes, saldoMes, saldoAtual, receitaBrutaMes, gastosMes, resultadoMes,
-      accountsPayable, accountsReceivable, projectedBalance,
+      accountsPayable, accountsReceivable, projectedBalance, entradaHoje, saidaHoje,
       inadimplenciaTotal: transactions.filter(t => t.type === 'income' && t.status === 'pending' && new Date(t.dueDate) < new Date()).reduce((acc, t) => acc + t.amount, 0),
       ticketMedio: currentMonthTransactions.filter(t => t.type === 'income').length > 0 ? receitaBrutaMes / currentMonthTransactions.filter(t => t.type === 'income').length : 0,
       expensesByCategory: expenseCategories.map(cat => ({
         name: cat,
         value: currentMonthTransactions.filter(t => t.type === 'expense' && t.category === cat).reduce((acc, t) => acc + t.amount, 0)
-      })).filter(item => item.value > 0)
+      })).filter(item => item.value > 0).sort((a, b) => b.value - a.value)
     };
   }, [transactions, selectedDashMonth, selectedYear]);
 
