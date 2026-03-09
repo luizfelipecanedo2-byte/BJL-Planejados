@@ -178,7 +178,7 @@ const Financeiro = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending">("all");
-  const [monthFilter, setMonthFilter] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [selectedFilterMonth, setSelectedFilterMonth] = useState<string>(new Date().getMonth().toString());
   const [dateFilterType, setDateFilterType] = useState<"competence" | "due">("due");
   const [osFilter, setOsFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
@@ -324,7 +324,9 @@ const Financeiro = () => {
       const matchesType = typeFilter === "all" || t.type === typeFilter;
       const matchesStatus = statusFilter === "all" || t.status === statusFilter;
       const dateToCheck = dateFilterType === 'competence' ? t.competenceDate : t.dueDate;
-      const matchesMonth = !monthFilter || new Date(dateToCheck).toISOString().slice(0, 7) === monthFilter;
+      const tDate = new Date(dateToCheck);
+      const matchesYear = tDate.getFullYear().toString() === selectedYear;
+      const matchesMonth = selectedFilterMonth === "all" || tDate.getMonth().toString() === selectedFilterMonth;
       const matchesOS = osFilter === "all" || (t.orderService === osFilter);
       const matchesPaymentMethod = paymentMethodFilter === "all" || t.paymentMethod === paymentMethodFilter;
 
@@ -336,9 +338,9 @@ const Financeiro = () => {
         return matchesSearch && isOverdue;
       }
 
-      return matchesSearch && matchesType && matchesStatus && matchesMonth && matchesOS && matchesPaymentMethod;
+      return matchesSearch && matchesType && matchesStatus && matchesYear && matchesMonth && matchesOS && matchesPaymentMethod;
     });
-  }, [transactions, searchTerm, typeFilter, statusFilter, monthFilter, dateFilterType, osFilter, paymentMethodFilter, showOverdueOnly]);
+  }, [transactions, searchTerm, typeFilter, statusFilter, selectedYear, selectedFilterMonth, dateFilterType, osFilter, paymentMethodFilter, showOverdueOnly]);
 
   const metrics = useMemo(() => {
     const income = filteredTransactions
@@ -882,7 +884,29 @@ const Financeiro = () => {
                 </div>
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Referência</label>
-                  <Input type="month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} className="rounded-xl h-10 bg-muted/30" />
+                  <div className="flex gap-1">
+                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                      <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 text-[10px] font-bold w-[75px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="2024">2024</SelectItem>
+                        <SelectItem value="2025">2025</SelectItem>
+                        <SelectItem value="2026">2026</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={selectedFilterMonth} onValueChange={setSelectedFilterMonth}>
+                      <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 flex-1 text-[10px] font-bold uppercase">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">TODOS</SelectItem>
+                        {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"].map((month, idx) => (
+                          <SelectItem key={idx} value={idx.toString()}>{month.toUpperCase()}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Tipo Data</label>
