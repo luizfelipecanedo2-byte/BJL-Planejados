@@ -67,6 +67,7 @@ const DashboardTab = ({
     setSelectedDashMonth,
     currentSummary,
     previousSummary,
+    topClients,
     chartData,
     accumulatedData,
     formatCurrency,
