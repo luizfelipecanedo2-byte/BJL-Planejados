@@ -160,7 +160,9 @@ const DashboardTab = ({
                 {/* 1. ANÁLISE DO MÊS */}
                 <Card className="lg:col-span-3 bg-[#111111] border-none p-4 rounded-2xl relative overflow-hidden">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest">Análise do Mês</h3>
+                        <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest">
+                            {selectedDashMonth === 'anual' ? 'Análise do Ano' : 'Análise do Mês'}
+                        </h3>
                         <Select value={String(selectedDashMonth)} onValueChange={(v) => setSelectedDashMonth(v === 'anual' ? 'anual' : parseInt(v))}>
                             <SelectTrigger className="w-[80px] h-7 text-[10px] bg-black/40 border-white/10 uppercase font-black">
                                 <SelectValue />
@@ -195,7 +197,9 @@ const DashboardTab = ({
                             </ResponsiveContainer>
                             <div className="absolute inset-x-0 bottom-4 flex flex-col items-center">
                                 <span className="text-2xl font-black text-white tracking-tighter">{formatCurrency(currentSummary.saldoMes)}</span>
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Saldo do mês</span>
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                    {selectedDashMonth === 'anual' ? 'Saldo do ano' : 'Saldo do mês'}
+                                </span>
                             </div>
                         </div>
 
