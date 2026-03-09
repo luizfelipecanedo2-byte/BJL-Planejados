@@ -88,7 +88,20 @@ const DashboardTab = ({
                     </div>
                     <div>
                         <h1 className="text-xl font-black tracking-tighter uppercase text-white">ORGANIZADA</h1>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none">Venda Empresa</p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none">Venda Empresa</p>
+                            <Select value={selectedYear} onValueChange={setSelectedYear}>
+                                <SelectTrigger className="w-[70px] h-5 text-[9px] bg-white/5 border-white/10 uppercase font-black py-0 px-2 rounded-lg">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#111111] border-white/10">
+                                    <SelectItem value="2024">2024</SelectItem>
+                                    <SelectItem value="2025">2025</SelectItem>
+                                    <SelectItem value="2026">2026</SelectItem>
+                                    <SelectItem value="2027">2027</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </div>
 
