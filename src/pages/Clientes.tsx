@@ -128,17 +128,23 @@ const Clientes = () => {
 
     const handleUpdate = async (id: string, updates: Partial<Client>) => {
         try {
-            const updateData: any = {};
-            if (updates.name) updateData.name = updates.name;
-            if (updates.document) updateData.document = updates.document;
-            if (updates.phone) updateData.phone = updates.phone;
-            if (updates.email) updateData.email = updates.email;
-            if (updates.address) updateData.address = updates.address;
-            if (updates.city) updateData.city = updates.city;
-            if (updates.state) updateData.state = updates.state;
-            if (updates.zipCode) updateData.zip_code = updates.zipCode;
-            if (updates.notes) updateData.notes = updates.notes;
-            if (updates.type) updateData.type = updates.type;
+            const updateData = {
+                name: updates.name,
+                document: updates.document,
+                phone: updates.phone,
+                email: updates.email,
+                address: updates.address,
+                city: updates.city,
+                state: updates.state,
+                zip_code: updates.zipCode,
+                notes: updates.notes,
+                type: updates.type
+            };
+
+            // Remove undefined fields to avoid overwriting with null if unintentional
+            Object.keys(updateData).forEach(key =>
+                (updateData as any)[key] === undefined && delete (updateData as any)[key]
+            );
 
             const { error } = await supabase
                 .from('clients')
