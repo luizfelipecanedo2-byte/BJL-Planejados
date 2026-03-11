@@ -10,5 +10,6 @@ export interface Client {
     zipCode: string;
     document: string; // CPF or CNPJ
     notes?: string;
+    type: 'cliente' | 'fornecedor';
     createdAt: Date;
 }

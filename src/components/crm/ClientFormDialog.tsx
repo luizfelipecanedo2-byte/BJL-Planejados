@@ -10,6 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 interface ClientFormDialogProps {
     open: boolean;
@@ -36,6 +43,7 @@ const ClientFormDialog = ({
         state: "",
         zipCode: "",
         notes: "",
+        type: "cliente" as "cliente" | "fornecedor",
     });
 
     useEffect(() => {
@@ -50,6 +58,7 @@ const ClientFormDialog = ({
                 state: editingClient.state,
                 zipCode: editingClient.zipCode,
                 notes: editingClient.notes || "",
+                type: editingClient.type || "cliente",
             });
         } else {
             setForm({
@@ -62,6 +71,7 @@ const ClientFormDialog = ({
                 state: "",
                 zipCode: "",
                 notes: "",
+                type: "cliente",
             });
         }
     }, [editingClient, open]);
@@ -76,7 +86,7 @@ const ClientFormDialog = ({
         onOpenChange(false);
     };
 
-    const update = (field: string, value: string) => {
+    const update = (field: string, value: any) => {
         setForm((prev) => ({ ...prev, [field]: value }));
     };
 
@@ -99,6 +109,22 @@ const ClientFormDialog = ({
                                 required
                                 placeholder="Ex: João da Silva"
                             />
+                        </div>
+
+                        <div className="col-span-2">
+                            <Label htmlFor="type">Tipo</Label>
+                            <Select
+                                value={form.type}
+                                onValueChange={(value: "cliente" | "fornecedor") => update("type", value)}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Selecione o tipo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="cliente">Cliente</SelectItem>
+                                    <SelectItem value="fornecedor">Fornecedor</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div>

@@ -8,11 +8,14 @@ import { Client } from "@/types/client";
 import ClientTable from "@/components/crm/ClientTable";
 import ClientFormDialog from "@/components/crm/ClientFormDialog";
 import { supabase } from "@/lib/supabase";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Truck } from "lucide-react";
 
 const Clientes = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<Client | null>(null);
+    const [activeTab, setActiveTab] = useState("cliente");
 
     useEffect(() => {
         fetchClients();
@@ -38,6 +41,7 @@ const Clientes = () => {
                 state: item.state || "",
                 zipCode: item.zip_code || "",
                 notes: item.notes || "",
+                type: item.type || "cliente",
                 createdAt: new Date(item.created_at)
             }));
 
@@ -87,7 +91,8 @@ const Clientes = () => {
                 city: clientData.city,
                 state: clientData.state,
                 zip_code: clientData.zipCode,
-                notes: clientData.notes
+                notes: clientData.notes,
+                type: clientData.type || "cliente"
             };
 
             const { data, error } = await supabase
@@ -109,6 +114,7 @@ const Clientes = () => {
                 state: data.state || "",
                 zipCode: data.zip_code || "",
                 notes: data.notes || "",
+                type: data.type || "cliente",
                 createdAt: new Date(data.created_at)
             };
 
@@ -132,6 +138,7 @@ const Clientes = () => {
             if (updates.state) updateData.state = updates.state;
             if (updates.zipCode) updateData.zip_code = updates.zipCode;
             if (updates.notes) updateData.notes = updates.notes;
+            if (updates.type) updateData.type = updates.type;
 
             const { error } = await supabase
                 .from('clients')
@@ -160,18 +167,48 @@ const Clientes = () => {
                 </Button>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Base de Clientes e Fornecedores</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <ClientTable
-                        clients={clients}
-                        onEdit={handleEditClient}
-                        onDelete={handleDeleteClient}
-                    />
-                </CardContent>
-            </Card>
+            <Tabs defaultValue="cliente" className="w-full" onValueChange={setActiveTab}>
+                <TabsList className="mb-4">
+                    <TabsTrigger value="cliente" className="gap-2">
+                        <Users className="h-4 w-4" />
+                        Clientes
+                    </TabsTrigger>
+                    <TabsTrigger value="fornecedor" className="gap-2">
+                        <Truck className="h-4 w-4" />
+                        Fornecedores
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="cliente">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Base de Clientes</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ClientTable
+                                clients={clients.filter(c => c.type === 'cliente')}
+                                onEdit={handleEditClient}
+                                onDelete={handleDeleteClient}
+                            />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="fornecedor">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Base de Fornecedores</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ClientTable
+                                clients={clients.filter(c => c.type === 'fornecedor')}
+                                onEdit={handleEditClient}
+                                onDelete={handleDeleteClient}
+                            />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
 
             <ClientFormDialog
                 open={isDialogOpen}
