@@ -362,11 +362,11 @@ const Financeiro = () => {
       });
 
       const income = monthlyTrans
-        .filter(t => t.type === 'income')
+        .filter(t => t.type === 'income' && t.category !== 'Transferência')
         .reduce((acc, t) => acc + t.amount, 0);
 
       const expense = monthlyTrans
-        .filter(t => t.type === 'expense')
+        .filter(t => t.type === 'expense' && t.category !== 'Transferência')
         .reduce((acc, t) => acc + t.amount, 0);
 
       return {
@@ -386,8 +386,8 @@ const Financeiro = () => {
         const date = new Date(t.dueDate);
         return date.getMonth() === index && date.getFullYear() === parseInt(selectedYear);
       });
-      const income = monthlyTrans.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-      const expense = monthlyTrans.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+      const income = monthlyTrans.filter(t => t.type === 'income' && t.category !== 'Transferência').reduce((acc, t) => acc + t.amount, 0);
+      const expense = monthlyTrans.filter(t => t.type === 'expense' && t.category !== 'Transferência').reduce((acc, t) => acc + t.amount, 0);
       const monthlyBalance = income - expense;
       currentBalance += monthlyBalance;
 
@@ -438,7 +438,7 @@ const Financeiro = () => {
     });
 
     const grossRevenue = yearTransactions
-      .filter(t => t.type === 'income')
+      .filter(t => t.type === 'income' && t.category !== 'Transferência')
       .reduce((acc, t) => acc + t.amount, 0);
 
     const taxes = yearTransactions.filter(t =>
@@ -492,7 +492,7 @@ const Financeiro = () => {
 
     // Capturar gastos que não caíram em nenhuma categoria acima para garantir que o resultado bata com o total real
     const accountedExpenses = taxes + variableCosts + fixedExpenses;
-    const totalExpenses = yearTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const totalExpenses = yearTransactions.filter(t => t.type === 'expense' && t.category !== 'Transferência').reduce((acc, t) => acc + t.amount, 0);
     const otherExpenses = totalExpenses - accountedExpenses;
 
     // Se houver despesas não categorizadas, jogamos em despesas fixas para fins de cálculo do DRE gerencial simplificado, 
@@ -525,6 +525,7 @@ const Financeiro = () => {
     const allCategories = Array.from(new Set([...baseCategories, ...dataCategories]));
 
     return allCategories.map(category => {
+      if (category === 'Transferência') return null;
       const subcategories = SUBCATEGORIES[category] || [];
       const isIncome = CATEGORIES.income.includes(category) ||
         yearTransactions.some(t => t.category === category && t.type === 'income') ||
@@ -580,8 +581,8 @@ const Financeiro = () => {
       return date.getFullYear() === currentYear && (isAnual || date.getMonth() === currentMonth);
     });
 
-    const entradaMes = currentMonthTransactions.filter(t => t.type === 'income' && t.status === 'paid').reduce((acc, t) => acc + t.amount, 0);
-    const saidaMes = currentMonthTransactions.filter(t => t.type === 'expense' && t.status === 'paid').reduce((acc, t) => acc + t.amount, 0);
+    const entradaMes = currentMonthTransactions.filter(t => t.type === 'income' && t.status === 'paid' && t.category !== 'Transferência').reduce((acc, t) => acc + t.amount, 0);
+    const saidaMes = currentMonthTransactions.filter(t => t.type === 'expense' && t.status === 'paid' && t.category !== 'Transferência').reduce((acc, t) => acc + t.amount, 0);
     const saldoMes = entradaMes - saidaMes;
 
     const saldoAtual = transactions.filter(t => t.status === 'paid').reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
@@ -589,28 +590,28 @@ const Financeiro = () => {
     // Faturamento (Competência)
     const receitaBrutaMes = transactions.filter(t => {
       const date = new Date(t.dueDate);
-      return t.type === 'income' && date.getFullYear() === currentYear && (isAnual || date.getMonth() === currentMonth);
+      return t.type === 'income' && t.category !== 'Transferência' && date.getFullYear() === currentYear && (isAnual || date.getMonth() === currentMonth);
     }).reduce((acc, t) => acc + t.amount, 0);
 
     // Gastos Totais (Competência)
     const gastosMes = transactions.filter(t => {
       const date = new Date(t.dueDate);
-      return t.type === 'expense' && date.getFullYear() === currentYear && (isAnual || date.getMonth() === currentMonth);
+      return t.type === 'expense' && t.category !== 'Transferência' && date.getFullYear() === currentYear && (isAnual || date.getMonth() === currentMonth);
     }).reduce((acc, t) => acc + t.amount, 0);
 
     const resultadoMes = receitaBrutaMes - gastosMes;
 
-    const accountsPayable = currentMonthTransactions.filter(t => t.type === 'expense' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0);
-    const accountsReceivable = currentMonthTransactions.filter(t => t.type === 'income' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0);
+    const accountsPayable = currentMonthTransactions.filter(t => t.type === 'expense' && t.status === 'pending' && t.category !== 'Transferência').reduce((acc, t) => acc + t.amount, 0);
+    const accountsReceivable = currentMonthTransactions.filter(t => t.type === 'income' && t.status === 'pending' && t.category !== 'Transferência').reduce((acc, t) => acc + t.amount, 0);
     const projectedBalance = (entradaMes + accountsReceivable) - (saidaMes + accountsPayable);
 
     // Fluxo do Dia de Hoje
     const todayStr = new Date().toISOString().split('T')[0];
     const entradaHoje = transactions
-      .filter(t => t.type === 'income' && t.status === 'paid' && t.paymentDate && new Date(t.paymentDate).toISOString().split('T')[0] === todayStr)
+      .filter(t => t.type === 'income' && t.status === 'paid' && t.category !== 'Transferência' && t.paymentDate && new Date(t.paymentDate).toISOString().split('T')[0] === todayStr)
       .reduce((acc, t) => acc + t.amount, 0);
     const saidaHoje = transactions
-      .filter(t => t.type === 'expense' && (t.status === 'paid' && t.paymentDate && new Date(t.paymentDate).toISOString().split('T')[0] === todayStr) || (t.status === 'pending' && t.dueDate && new Date(t.dueDate).toISOString().split('T')[0] === todayStr))
+      .filter(t => (t.type === 'expense' && t.category !== 'Transferência') && ((t.status === 'paid' && t.paymentDate && new Date(t.paymentDate).toISOString().split('T')[0] === todayStr) || (t.status === 'pending' && t.dueDate && new Date(t.dueDate).toISOString().split('T')[0] === todayStr)))
       .reduce((acc, t) => acc + t.amount, 0);
 
     const expenseCategories = CATEGORIES.expense;
@@ -618,7 +619,7 @@ const Financeiro = () => {
     return {
       entradaMes, saidaMes, saldoMes, saldoAtual, receitaBrutaMes, gastosMes, resultadoMes,
       accountsPayable, accountsReceivable, projectedBalance, entradaHoje, saidaHoje,
-      inadimplenciaTotal: transactions.filter(t => t.type === 'income' && t.status === 'pending' && new Date(t.dueDate) < new Date()).reduce((acc, t) => acc + t.amount, 0),
+      inadimplenciaTotal: transactions.filter(t => t.type === 'income' && t.category !== 'Transferência' && t.status === 'pending' && new Date(t.dueDate) < new Date()).reduce((acc, t) => acc + t.amount, 0),
       ticketMedio: currentMonthTransactions.filter(t => t.type === 'income').length > 0 ? receitaBrutaMes / currentMonthTransactions.filter(t => t.type === 'income').length : 0,
       expensesByCategory: expenseCategories.map(cat => ({
         name: cat,
@@ -654,10 +655,10 @@ const Financeiro = () => {
       return date.getFullYear() === prevYear && (isAnual || date.getMonth() === prevMonth);
     });
 
-    const receitaBrutaMes = prevTransactionsCompetence.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-    const gastosMes = prevTransactionsCompetence.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
-    const entradaMes = prevTransactionsCash.filter(t => t.type === 'income' && t.status === 'paid').reduce((acc, t) => acc + t.amount, 0);
-    const saidaMes = prevTransactionsCash.filter(t => t.type === 'expense' && t.status === 'paid').reduce((acc, t) => acc + t.amount, 0);
+    const receitaBrutaMes = prevTransactionsCompetence.filter(t => t.type === 'income' && t.category !== 'Transferência').reduce((acc, t) => acc + t.amount, 0);
+    const gastosMes = prevTransactionsCompetence.filter(t => t.type === 'expense' && t.category !== 'Transferência').reduce((acc, t) => acc + t.amount, 0);
+    const entradaMes = prevTransactionsCash.filter(t => t.type === 'income' && t.status === 'paid' && t.category !== 'Transferência').reduce((acc, t) => acc + t.amount, 0);
+    const saidaMes = prevTransactionsCash.filter(t => t.type === 'expense' && t.status === 'paid' && t.category !== 'Transferência').reduce((acc, t) => acc + t.amount, 0);
 
     return {
       receitaBrutaMes,

@@ -27,7 +27,8 @@ export const CATEGORIES = {
         "Receita com Serviço",
         "Receita Investimento",
         "Receitas financeiras",
-        "Receita com prestação de serviços"
+        "Receita com prestação de serviços",
+        "Transferência"
     ],
     expense: [
         "Despesa Operacional",
@@ -37,7 +38,8 @@ export const CATEGORIES = {
         "Impostos",
         "Despesas administrativas",
         "Outras deduções",
-        "Despesas com vendas"
+        "Despesas com vendas",
+        "Transferência"
     ]
 };
 
@@ -86,6 +88,11 @@ export const SUBCATEGORIES: Record<string, string[]> = {
         "Parcela",
         "Restante",
         "Valor Total"
+    ],
+    "Transferência": [
+        "Transferência entre Contas",
+        "Retirada para Caixa",
+        "Depósito Bancário"
     ]
 };
 
