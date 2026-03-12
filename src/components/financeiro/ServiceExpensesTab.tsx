@@ -3,13 +3,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, Home, TrendingUp, DollarSign, Briefcase } from "lucide-react";
 import { ServiceExpense } from "@/types/serviceExpense";
-import { Transaction } from "@/types/finance";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 
 interface ServiceExpensesTabProps {
-    transactions: Transaction[];
     serviceExpenses: ServiceExpense[];
     handleNewServiceExpense: () => void;
     handleEditServiceExpense: (expense: ServiceExpense) => void;
@@ -18,15 +16,12 @@ interface ServiceExpensesTabProps {
 }
 
 const ServiceExpensesTab = ({
-    transactions,
     serviceExpenses,
     handleNewServiceExpense,
     handleEditServiceExpense,
     handleDeleteServiceExpense,
     formatCurrency,
 }: ServiceExpensesTabProps) => {
-
-
 
     return (
         <div className="space-y-10">
@@ -38,8 +33,8 @@ const ServiceExpensesTab = ({
                             <Home className="h-6 w-6" />
                         </div>
                         <div className="space-y-1">
-                            <h3 className="text-2xl font-black tracking-tight text-secondary-foreground uppercase tracking-widest">Análise de Margem <span className="text-[10px] font-normal text-muted-foreground ml-2 tracking-normal lowercase italic">(Detalhamento Manual)</span></h3>
-                            <p className="text-xs text-muted-foreground font-medium uppercase opacity-70">Cálculo granular de insumos e mão de obra por ambiente</p>
+                            <h3 className="text-2xl font-black tracking-tight text-secondary-foreground uppercase tracking-widest">Análise de Margem <span className="text-[10px] font-normal text-muted-foreground ml-2 tracking-normal lowercase italic">(Lançamentos Manuais)</span></h3>
+                            <p className="text-xs text-muted-foreground font-medium uppercase opacity-70">Cálculo detalhado de insumos e mão de obra por projeto</p>
                         </div>
                     </div>
                     <Button onClick={handleNewServiceExpense} size="lg" className="bg-secondary hover:bg-secondary/80 text-secondary-foreground font-black uppercase tracking-widest text-xs px-8 rounded-xl shadow-xl shadow-secondary/10 gap-2 transition-transform hover:scale-105">
@@ -51,35 +46,35 @@ const ServiceExpensesTab = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Card className="bg-emerald-500/5 border-emerald-500/20 border-l-4 border-l-emerald-500 p-6 flex flex-col gap-2 shadow-xl shadow-emerald-500/5 transition-all hover:translate-y-[-4px]">
                         <div className="flex justify-between items-start">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/70">Receita Total de Projetos</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/70">Receita Total</span>
                             <TrendingUp size={16} className="text-emerald-500" />
                         </div>
                         <span className="text-2xl font-black text-emerald-600">
                             {formatCurrency(serviceExpenses.reduce((acc, e) => acc + e.serviceValue, 0))}
                         </span>
-                        <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Faturamento total bruto manual</p>
+                        <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Faturamento bruto dos projetos</p>
                     </Card>
 
                     <Card className="bg-rose-500/5 border-rose-500/20 border-l-4 border-l-rose-500 p-6 flex flex-col gap-2 shadow-xl shadow-rose-500/5 transition-all hover:translate-y-[-4px]">
                         <div className="flex justify-between items-start">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-rose-600/70">Custos Integrados</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-rose-600/70">Custos de Produção</span>
                             <TrendingUp size={16} className="text-rose-500 rotate-180" />
                         </div>
                         <span className="text-2xl font-black text-rose-600">
                             {formatCurrency(serviceExpenses.reduce((acc, e) => acc + e.spentValue, 0))}
                         </span>
-                        <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Investimento e gastos fixos</p>
+                        <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Total de insumos e gastos diretos</p>
                     </Card>
 
                     <Card className="bg-primary/5 border-primary/20 border-l-4 border-l-primary p-6 flex flex-col gap-2 shadow-xl shadow-primary/5 transition-all hover:translate-y-[-4px]">
                         <div className="flex justify-between items-start">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">Lucro Bruto Manual</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">Lucro Bruto Total</span>
                             <DollarSign size={16} className="text-primary" />
                         </div>
                         <span className="text-2xl font-black text-primary">
                             {formatCurrency(serviceExpenses.reduce((acc, e) => acc + (e.serviceValue - e.spentValue), 0))}
                         </span>
-                        <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Resultado operacional consolidado</p>
+                        <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Resultado operacional manual</p>
                     </Card>
                 </div>
 
@@ -237,119 +232,6 @@ const ServiceExpensesTab = ({
                     <h4 className="font-black text-amber-700 text-xs uppercase tracking-widest mb-1">Dica de Performance</h4>
                     <p className="text-[11px] text-amber-600/80 font-medium leading-relaxed">Consideramos margens acima de 30% como saudáveis para serviços de marcenaria e design. Ambientes com margens abaixo de 15% devem ser revisados quanto aos custos de material ou tempo de produção.</p>
                 </div>
-            </div>
-
-            {/* Seção de Gastos Automáticos (da Tabela de Transações) */}
-            <div className="space-y-6 pt-10 border-t border-border/40">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary/10 rounded-xl text-primary border border-primary/20 shadow-lg shadow-primary/5">
-                        <Briefcase className="h-6 w-6" />
-                    </div>
-                    <div className="space-y-1">
-                        <h3 className="text-2xl font-black tracking-tight text-primary uppercase tracking-widest">Análise Integrada <span className="text-[10px] font-normal text-muted-foreground ml-2 tracking-normal lowercase italic">(Gastos Automáticos via OS)</span></h3>
-                        <p className="text-xs text-muted-foreground font-medium uppercase opacity-70">Lançamentos financeiros automaticamente vinculados a Ordens de Serviço</p>
-                    </div>
-                </div>
-
-                <div className="md:hidden space-y-4">
-                    {transactions.filter(t => t.orderService && t.orderService !== "all" && t.orderService !== "").length === 0 ? (
-                        <div className="text-center py-10 bg-muted/20 rounded-xl border-2 border-dashed text-muted-foreground italic text-xs">
-                            Nenhum lançamento financeiro vinculado a OS encontrado.
-                        </div>
-                    ) : (
-                        transactions
-                            .filter(t => t.orderService && t.orderService !== "all" && t.orderService !== "")
-                            .map((t) => (
-                                <div key={t.id} className="bg-card border rounded-xl p-4 shadow-sm space-y-3">
-                                    <div className="flex justify-between items-start">
-                                        <div className="min-w-0 flex-1">
-                                            <span className="font-black text-primary text-[10px] uppercase tracking-tighter block mb-0.5">OS: {t.orderService}</span>
-                                            <h4 className="font-bold text-sm text-foreground truncate">{t.description}</h4>
-                                            <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-bold uppercase mt-1 inline-block">{t.category}</span>
-                                        </div>
-                                        <div className="text-right flex flex-col items-end">
-                                            <span className={cn(
-                                                "font-black text-sm",
-                                                t.type === 'income' ? "text-emerald-500" : "text-rose-500"
-                                            )}>
-                                                {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
-                                            </span>
-                                            <span className={cn(
-                                                "px-1.5 py-0.5 rounded-full font-black text-[8px] uppercase border mt-1",
-                                                t.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border-rose-500/20"
-                                            )}>
-                                                {t.status === 'paid' ? 'Pago' : 'Pendente'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-between items-center pt-2 border-t border-border/50">
-                                        <span className="text-[10px] text-muted-foreground font-medium uppercase">{t.contact}</span>
-                                        <span className="font-mono text-[10px] text-muted-foreground">{new Date(t.dueDate).toLocaleDateString('pt-BR')}</span>
-                                    </div>
-                                </div>
-                            ))
-                    )}
-                </div>
-
-                <Card className="hidden md:block rounded-2xl border-none shadow-2xl bg-card overflow-hidden">
-                    <CardContent className="p-0">
-                        <div className="relative w-full overflow-auto">
-                            <table className="w-full text-xs border-collapse">
-                                <thead>
-                                    <tr className="bg-muted/50 text-muted-foreground border-b border-border/50 h-14">
-                                        <th className="px-6 text-left font-black uppercase tracking-widest text-[10px]">OS / Descrição</th>
-                                        <th className="px-6 text-left font-black uppercase tracking-widest text-[10px]">Categoria</th>
-                                        <th className="px-6 text-left font-black uppercase tracking-widest text-[10px]">Contato</th>
-                                        <th className="px-6 text-right font-black uppercase tracking-widest text-[10px]">Data do Pagamento</th>
-                                        <th className="px-6 text-right font-black uppercase tracking-widest text-[10px]">Status</th>
-                                        <th className="px-6 text-right font-black uppercase tracking-widest text-[10px]">Valor</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {transactions.filter(t => t.orderService && t.orderService !== "all" && t.orderService !== "").length === 0 ? (
-                                        <tr className="border-b border-border/30 h-32 text-center text-muted-foreground italic">
-                                            <td colSpan={6}>Nenhum lançamento financeiro vinculado a OS encontrado.</td>
-                                        </tr>
-                                    ) : (
-                                        transactions
-                                            .filter(t => t.orderService && t.orderService !== "all" && t.orderService !== "")
-                                            .map((t) => (
-                                                <tr key={t.id} className="border-b border-border/30 hover:bg-muted/30 transition-all group">
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-black text-primary text-[10px] uppercase tracking-tighter">OS: {t.orderService}</span>
-                                                            <span className="font-bold text-foreground text-sm truncate max-w-[200px]">{t.description}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <span className="px-2 py-0.5 rounded bg-muted text-[9px] font-bold uppercase">{t.category}</span>
-                                                    </td>
-                                                    <td className="px-6 py-4 font-medium text-muted-foreground">{t.contact}</td>
-                                                    <td className="px-6 py-4 text-right font-mono text-[10px]">
-                                                        {new Date(t.dueDate).toLocaleDateString('pt-BR')}
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <span className={cn(
-                                                            "px-2 py-0.5 rounded-full font-black text-[8px] uppercase border",
-                                                            t.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border-rose-500/20"
-                                                        )}>
-                                                            {t.status === 'paid' ? 'Pago' : 'Pendente'}
-                                                        </span>
-                                                    </td>
-                                                    <td className={cn(
-                                                        "px-6 py-4 text-right font-black text-sm",
-                                                        t.type === 'income' ? "text-emerald-500" : "text-rose-500"
-                                                    )}>
-                                                        {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
-                                                    </td>
-                                                </tr>
-                                            ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
             </div>
         </div>
     );
