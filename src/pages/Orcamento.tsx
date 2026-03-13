@@ -1,8 +1,8 @@
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Calculator, FileText, Search, TrendingUp, DollarSign, Package, Trash2, Pencil, CheckCircle2, History, Settings2, Save, X, Layers } from "lucide-react";
+import { Plus, Calculator, FileText, Search, TrendingUp, DollarSign, Package, Trash2, Pencil, CheckCircle2, History, Settings2, Save, X, Layers, ChevronDown, ChevronRight, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBudgets, Material } from "@/hooks/useBudgets";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const Orcamento = () => {
     const { materials, budgets, loading, updateMaterialPrice, saveBudget, refreshBudgets } = useBudgets();
@@ -30,7 +30,8 @@ const Orcamento = () => {
         notes: ""
     });
 
-    const [selectedItems, setSelectedItems] = useState<{ material_id: string, quantity: number }[]>([]);
+    // Checklist state: stores quantities for ALL materials
+    const [quantities, setQuantities] = useState<Record<string, number>>({});
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -51,26 +52,29 @@ const Orcamento = () => {
         }
     };
 
-    const addItem = () => {
-        setSelectedItems([...selectedItems, { material_id: "", quantity: 1 }]);
+    const handleQuantityChange = (materialId: string, value: string) => {
+        const num = parseFloat(value) || 0;
+        setQuantities(prev => ({
+            ...prev,
+            [materialId]: num
+        }));
     };
 
-    const removeItem = (index: number) => {
-        setSelectedItems(selectedItems.filter((_, i) => i !== index));
-    };
-
-    const updateItem = (index: number, field: string, value: any) => {
-        const newItems = [...selectedItems];
-        newItems[index] = { ...newItems[index], [field]: value };
-        setSelectedItems(newItems);
-    };
+    const groupedMaterials = useMemo(() => {
+        const groups: Record<string, Material[]> = {};
+        materials.forEach(m => {
+            if (!groups[m.category]) groups[m.category] = [];
+            groups[m.category].push(m);
+        });
+        return groups;
+    }, [materials]);
 
     const calculateTotals = useMemo(() => {
         let cost = 0;
-        selectedItems.forEach(item => {
-            const material = materials.find(m => m.id === item.material_id);
-            if (material) {
-                cost += material.unit_price * item.quantity;
+        Object.entries(quantities).forEach(([id, qty]) => {
+            const material = materials.find(m => m.id === id);
+            if (material && qty > 0) {
+                cost += material.unit_price * qty;
             }
         });
 
@@ -79,23 +83,30 @@ const Orcamento = () => {
         const cardValue = baseValue / (1 - (formData.card_fee_percent / 100));
 
         return { totalCost, baseValue, cardValue };
-    }, [selectedItems, materials, formData.markup_factor, formData.card_fee_percent]);
+    }, [quantities, materials, formData.markup_factor, formData.card_fee_percent]);
 
     const handleSaveBudget = async () => {
-        if (!formData.client_name || selectedItems.length === 0) {
-            toast.error("Preencha o cliente e adicione pelo menos um material");
+        if (!formData.client_name) {
+            toast.error("Por favor, informe o nome do cliente");
             return;
         }
 
-        const budgetItems = selectedItems.map(item => {
-            const material = materials.find(m => m.id === item.material_id);
-            return {
-                material_id: item.material_id,
-                quantity: item.quantity,
-                unit_price_at_time: material?.unit_price || 0,
-                total_price: (material?.unit_price || 0) * item.quantity
-            };
-        });
+        const budgetItems = Object.entries(quantities)
+            .filter(([_, qty]) => qty > 0)
+            .map(([id, qty]) => {
+                const material = materials.find(m => m.id === id);
+                return {
+                    material_id: id,
+                    quantity: qty,
+                    unit_price_at_time: material?.unit_price || 0,
+                    total_price: (material?.unit_price || 0) * qty
+                };
+            });
+
+        if (budgetItems.length === 0) {
+            toast.error("Adicione quantidades a pelo menos um item");
+            return;
+        }
 
         const success = await saveBudget({
             ...formData,
@@ -107,7 +118,7 @@ const Orcamento = () => {
         if (success) {
             setIsDialogOpen(false);
             setFormData({ client_name: "", project_name: "", days_estimated: 1, markup_factor: 1.5, card_fee_percent: 5, notes: "" });
-            setSelectedItems([]);
+            setQuantities({});
         }
     };
 
@@ -115,17 +126,17 @@ const Orcamento = () => {
         <div className="space-y-8 animate-fade-in pb-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-4xl font-black tracking-tighter text-primary uppercase">Módulo Comercial</h2>
+                    <h2 className="text-4xl font-black tracking-tighter text-primary uppercase">Maré de Orçamentos</h2>
                     <div className="flex items-center gap-2 mt-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                        <p className="text-muted-foreground font-black uppercase text-[10px] tracking-widest opacity-60">Calculadora Técnica e Gestão de Propostas</p>
+                        <p className="text-muted-foreground font-black uppercase text-[10px] tracking-widest opacity-60">Checklist Técnico Completo (Estilo Planilha)</p>
                     </div>
                 </div>
 
                 <div className="flex gap-3">
                     <Button variant="outline" onClick={() => setActiveTab(activeTab === "materiais" ? "orcamentos" : "materiais")} className="rounded-2xl h-14 px-6 font-black uppercase tracking-widest text-[10px] border-primary/20 text-primary hover:bg-primary/5 gap-2">
                         {activeTab === "materiais" ? <History className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
-                        {activeTab === "materiais" ? "Ver Orçamentos" : "Gerenciar Preços"}
+                        {activeTab === "materiais" ? "Histórico" : "Editar Lista de Preços"}
                     </Button>
 
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -135,122 +146,145 @@ const Orcamento = () => {
                                 Novo Orçamento
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[900px] max-h-[90vh] border-none shadow-2xl rounded-[2.5rem] overflow-hidden p-0 flex flex-col">
+                        <DialogContent className="sm:max-w-[1100px] max-h-[95vh] border-none shadow-2xl rounded-[3rem] overflow-hidden p-0 flex flex-col">
                             <div className="bg-primary p-8 text-primary-foreground relative shrink-0">
                                 <div className="absolute top-0 right-0 p-4 opacity-10">
-                                    <Calculator size={120} />
+                                    <Calculator size={140} />
                                 </div>
                                 <div className="relative z-10 flex justify-between items-end">
                                     <div>
-                                        <h3 className="text-2xl font-black uppercase tracking-tighter">Calculadora BJL</h3>
-                                        <p className="text-xs opacity-80 font-bold uppercase tracking-widest mt-1">Gere propostas precisas baseadas em materiais e tempo</p>
+                                        <h3 className="text-3xl font-black uppercase tracking-tighter">Levantamento de Materiais</h3>
+                                        <p className="text-[10px] opacity-80 font-black uppercase tracking-[0.2em] mt-2">Checklist inteligente para não esquecer nenhum detalhe do projeto</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] font-black uppercase opacity-60">Valor Estimado</p>
-                                        <p className="text-3xl font-black tracking-tighter">{formatCurrency(calculateTotals.cardValue)}</p>
+                                        <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">Valor Final Sugerido</p>
+                                        <p className="text-4xl font-black tracking-tighter">{formatCurrency(calculateTotals.cardValue)}</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <ScrollArea className="flex-1 p-8 bg-card">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                    <div className="md:col-span-2 space-y-6">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cliente</Label>
-                                                <Input value={formData.client_name} onChange={e => setFormData({ ...formData, client_name: e.target.value })} placeholder="Nome do cliente" className="rounded-xl h-12" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ambiente</Label>
-                                                <Input value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} placeholder="Ex: Cozinha Planejada" className="rounded-xl h-12" />
-                                            </div>
+                            <div className="flex-1 flex overflow-hidden">
+                                {/* Lateral Esquerda: Dados Gerais */}
+                                <div className="w-80 border-r border-slate-100 p-8 space-y-8 bg-slate-50/50 backdrop-blur-sm">
+                                    <div className="space-y-4">
+                                        <h4 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
+                                            <AlertCircle className="h-3 w-3" /> Identificação
+                                        </h4>
+                                        <div className="space-y-2">
+                                            <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Cliente</Label>
+                                            <Input value={formData.client_name} onChange={e => setFormData({ ...formData, client_name: e.target.value })} placeholder="Nome completo" className="rounded-xl h-12 bg-white border-slate-200" />
                                         </div>
-
-                                        <div className="space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <h4 className="font-black uppercase text-xs tracking-widest text-primary flex items-center gap-2">
-                                                    <Package className="h-4 w-4" /> Lista de Materiais
-                                                </h4>
-                                                <Button onClick={addItem} variant="ghost" size="sm" className="text-[10px] font-black uppercase text-primary hover:bg-primary/5 rounded-lg">
-                                                    + Adicionar Item
-                                                </Button>
-                                            </div>
-
-                                            <div className="space-y-3">
-                                                {selectedItems.map((item, index) => (
-                                                    <div key={index} className="flex gap-3 items-end animate-in fade-in slide-in-from-top-2">
-                                                        <div className="flex-1 space-y-2">
-                                                            <Select value={item.material_id} onValueChange={(v) => updateItem(index, 'material_id', v)}>
-                                                                <SelectTrigger className="h-12 rounded-xl">
-                                                                    <SelectValue placeholder="Selecione o material" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {materials.map(m => (
-                                                                        <SelectItem key={m.id} value={m.id}>
-                                                                            <span className="font-bold">{m.name}</span> <span className="text-muted-foreground text-[10px]">({m.unit}) - {formatCurrency(m.unit_price)}</span>
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                        <div className="w-24 space-y-2">
-                                                            <Input type="number" value={item.quantity} onChange={e => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)} className="h-12 rounded-xl text-center" />
-                                                        </div>
-                                                        <Button onClick={() => removeItem(index)} variant="ghost" size="icon" className="h-12 w-12 text-rose-500 hover:bg-rose-50">
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                ))}
-                                                {selectedItems.length === 0 && (
-                                                    <div className="border-2 border-dashed border-muted rounded-2xl p-8 text-center text-muted-foreground">
-                                                        <p className="text-xs font-bold uppercase tracking-widest opacity-40">Nenhum material adicionado</p>
-                                                    </div>
-                                                )}
-                                            </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Ambiente/Projeto</Label>
+                                            <Input value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} placeholder="Ex: Cozinha Gourmet" className="rounded-xl h-12 bg-white border-slate-200" />
                                         </div>
                                     </div>
 
-                                    <div className="space-y-6">
-                                        <div className="p-6 bg-slate-50 rounded-3xl space-y-4 border border-slate-100">
-                                            <h4 className="font-black uppercase text-[10px] tracking-widest text-slate-400">Parâmetros</h4>
-
+                                    <div className="space-y-4 pt-4">
+                                        <h4 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
+                                            <DollarSign className="h-3 w-3" /> Condições
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Dias de Produção</Label>
-                                                <Input type="number" value={formData.days_estimated} onChange={e => setFormData({ ...formData, days_estimated: parseInt(e.target.value) || 0 })} className="h-10 rounded-xl" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Markup</Label>
+                                                <Input type="number" step="0.1" value={formData.markup_factor} onChange={e => setFormData({ ...formData, markup_factor: parseFloat(e.target.value) || 1 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold" />
                                             </div>
-
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Margem (Markup)</Label>
-                                                <Input type="number" step="0.1" value={formData.markup_factor} onChange={e => setFormData({ ...formData, markup_factor: parseFloat(e.target.value) || 1 })} className="h-10 rounded-xl" />
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Taxa Cartão (%)</Label>
-                                                <Input type="number" value={formData.card_fee_percent} onChange={e => setFormData({ ...formData, card_fee_percent: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Taxa (%)</Label>
+                                                <Input type="number" value={formData.card_fee_percent} onChange={e => setFormData({ ...formData, card_fee_percent: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold" />
                                             </div>
                                         </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Dias para Produção</Label>
+                                            <Input type="number" value={formData.days_estimated} onChange={e => setFormData({ ...formData, days_estimated: parseInt(e.target.value) || 1 })} className="h-10 rounded-xl bg-white border-slate-200" />
+                                        </div>
+                                    </div>
 
-                                        <div className="p-6 bg-primary/5 rounded-3xl space-y-3 border border-primary/10">
-                                            <div className="flex justify-between text-[11px] font-black uppercase tracking-tight text-primary/60">
-                                                <span>Custo Bruto</span>
-                                                <span>{formatCurrency(calculateTotals.totalCost)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-[11px] font-black uppercase tracking-tight text-primary/60">
-                                                <span>Valor Base (À Vista)</span>
-                                                <span>{formatCurrency(calculateTotals.baseValue)}</span>
-                                            </div>
-                                            <div className="pt-2 border-t border-primary/10 flex justify-between items-end">
-                                                <span className="text-[10px] font-black uppercase text-primary">Total Cartão</span>
-                                                <span className="text-xl font-black text-primary leading-none">{formatCurrency(calculateTotals.cardValue)}</span>
-                                            </div>
+                                    <div className="p-6 bg-primary/10 rounded-3xl space-y-3 border border-primary/10 mt-auto">
+                                        <div className="flex justify-between text-[10px] font-black uppercase opacity-60">
+                                            <span>Custo Bruto</span>
+                                            <span>{formatCurrency(calculateTotals.totalCost)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-[10px] font-black uppercase opacity-60">
+                                            <span>À Vista</span>
+                                            <span>{formatCurrency(calculateTotals.baseValue)}</span>
+                                        </div>
+                                        <div className="pt-2 border-t border-primary/20 flex justify-between items-end">
+                                            <span className="text-[10px] font-black uppercase text-primary">Final</span>
+                                            <span className="text-xl font-black text-primary leading-none">{formatCurrency(calculateTotals.cardValue)}</span>
                                         </div>
                                     </div>
                                 </div>
-                            </ScrollArea>
 
-                            <div className="p-8 shrink-0 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="flex-1 h-12 font-black uppercase tracking-widest text-[10px] rounded-xl">Cancelar</Button>
-                                <Button onClick={handleSaveBudget} className="flex-1 bg-primary h-12 font-black uppercase tracking-widest text-[10px] rounded-xl shadow-xl shadow-primary/20">Salvar e Gerar Proposta</Button>
+                                {/* Centro: Checklist de Materiais */}
+                                <ScrollArea className="flex-1 p-8 bg-card">
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-2 mb-6">
+                                            <div className="h-8 w-1 bg-primary rounded-full" />
+                                            <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Lista de Itens (Preenchimento Rápido)</h4>
+                                        </div>
+
+                                        <Accordion type="multiple" defaultValue={Object.keys(groupedMaterials)} className="space-y-4">
+                                            {Object.entries(groupedMaterials).map(([category, items]) => (
+                                                <AccordionItem key={category} value={category} className="border border-slate-100 rounded-3xl px-6 bg-white shadow-sm overflow-hidden">
+                                                    <AccordionTrigger className="hover:no-underline py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <Badge className="bg-primary/5 text-primary border-none font-black text-[9px] uppercase tracking-widest px-3">
+                                                                {items.length} ITENS
+                                                            </Badge>
+                                                            <span className="font-black uppercase text-xs tracking-tighter text-slate-600">{category}</span>
+                                                        </div>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pb-6">
+                                                        <div className="grid grid-cols-1 gap-2">
+                                                            {items.map(item => (
+                                                                <div key={item.id} className={cn(
+                                                                    "flex items-center justify-between p-3 rounded-2xl transition-all group",
+                                                                    quantities[item.id] > 0 ? "bg-primary/5 border-primary/20 border" : "bg-slate-50 hover:bg-slate-100 border border-transparent"
+                                                                )}>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-[11px] font-black uppercase tracking-tight text-slate-700">{item.name}</span>
+                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase">{item.unit} • {formatCurrency(item.unit_price)}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-3">
+                                                                        {quantities[item.id] > 0 && (
+                                                                            <span className="text-[10px] font-black text-primary/60 uppercase mr-2">
+                                                                                = {formatCurrency(item.unit_price * quantities[item.id])}
+                                                                            </span>
+                                                                        )}
+                                                                        <Input
+                                                                            type="number"
+                                                                            placeholder="0"
+                                                                            className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-white"
+                                                                            value={quantities[item.id] || ""}
+                                                                            onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            ))}
+                                        </Accordion>
+                                    </div>
+                                </ScrollArea>
+                            </div>
+
+                            <div className="p-8 shrink-0 bg-slate-50 border-t border-slate-100 flex gap-4 justify-between items-center">
+                                <div className="flex items-center gap-3 text-slate-400">
+                                    <Package className="h-5 w-5" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                        {Object.values(quantities).filter(q => q > 0).length} itens selecionados para o projeto
+                                    </span>
+                                </div>
+                                <div className="flex gap-3">
+                                    <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-14 px-8 font-black uppercase tracking-widest text-[10px] rounded-2xl">Descartar</Button>
+                                    <Button onClick={handleSaveBudget} className="h-14 px-10 bg-primary font-black uppercase tracking-widest text-xs rounded-2xl shadow-2xl shadow-primary/20 group">
+                                        Finalizar e Salvar Projeto
+                                        <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                                    </Button>
+                                </div>
                             </div>
                         </DialogContent>
                     </Dialog>
