@@ -9,7 +9,8 @@ import {
     X,
     Users,
     LogOut,
-    UserCircle
+    UserCircle,
+    Calculator
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -66,6 +67,7 @@ const MainLayout = () => {
 
     const allMenuItems = [
         { icon: TrendingUp, label: "CRM", path: "/", roles: ['admin'] },
+        { icon: Calculator, label: "Orçamento", path: "/orcamento", roles: ['admin', 'colaborador'] },
         { icon: Users, label: "Cliente e Fornecedores", path: "/clientes", roles: ['admin'] },
         { icon: DollarSign, label: "Financeiro", path: "/financeiro", roles: ['admin'] },
         { icon: ClipboardList, label: "Ordem de Serviço", path: "/ordem-servico", roles: ['admin', 'colaborador'] },
