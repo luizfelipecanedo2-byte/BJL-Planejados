@@ -1,52 +1,40 @@
-import { useState } from "react";
+
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Calculator, FileText, Search, TrendingUp, DollarSign, Package, Trash2, Pencil, CheckCircle2 } from "lucide-react";
+import { Plus, Calculator, FileText, Search, TrendingUp, DollarSign, Package, Trash2, Pencil, CheckCircle2, History, Settings2, Save, X, Layers } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useBudgets, Material } from "@/hooks/useBudgets";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Orcamento = () => {
+    const { materials, budgets, loading, updateMaterialPrice, saveBudget, refreshBudgets } = useBudgets();
     const [searchTerm, setSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState("orcamentos");
+
+    // Form State
+    const [formData, setFormData] = useState({
+        client_name: "",
+        project_name: "",
+        days_estimated: 1,
+        markup_factor: 1.5,
+        card_fee_percent: 5,
+        notes: ""
+    });
+
+    const [selectedItems, setSelectedItems] = useState<{ material_id: string, quantity: number }[]>([]);
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
     };
-
-    // Mock data for initial view
-    const [orcamentos, setOrcamentos] = useState([
-        {
-            id: "1",
-            cliente: "João Silva",
-            ambiente: "Cozinha Planejada",
-            valor: 15400,
-            custoEstimado: 8500,
-            status: "em_elaboracao",
-            data: "2024-03-10"
-        },
-        {
-            id: "2",
-            cliente: "Maria Oliveira",
-            ambiente: "Dormitório Casal",
-            valor: 12800,
-            custoEstimado: 6200,
-            status: "enviado",
-            data: "2024-03-12"
-        },
-        {
-            id: "3",
-            cliente: "Pedro Santos",
-            ambiente: "Sala de Estar",
-            valor: 8900,
-            custoEstimado: 4100,
-            status: "aprovado",
-            data: "2024-03-05"
-        }
-    ]);
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -63,223 +51,426 @@ const Orcamento = () => {
         }
     };
 
-    const handleNewOrcamento = (e: React.FormEvent) => {
-        e.preventDefault();
-        toast.success("Funcionalidade de salvar orçamentos será integrada em breve!");
-        setIsDialogOpen(false);
+    const addItem = () => {
+        setSelectedItems([...selectedItems, { material_id: "", quantity: 1 }]);
+    };
+
+    const removeItem = (index: number) => {
+        setSelectedItems(selectedItems.filter((_, i) => i !== index));
+    };
+
+    const updateItem = (index: number, field: string, value: any) => {
+        const newItems = [...selectedItems];
+        newItems[index] = { ...newItems[index], [field]: value };
+        setSelectedItems(newItems);
+    };
+
+    const calculateTotals = useMemo(() => {
+        let cost = 0;
+        selectedItems.forEach(item => {
+            const material = materials.find(m => m.id === item.material_id);
+            if (material) {
+                cost += material.unit_price * item.quantity;
+            }
+        });
+
+        const totalCost = cost;
+        const baseValue = totalCost * formData.markup_factor;
+        const cardValue = baseValue / (1 - (formData.card_fee_percent / 100));
+
+        return { totalCost, baseValue, cardValue };
+    }, [selectedItems, materials, formData.markup_factor, formData.card_fee_percent]);
+
+    const handleSaveBudget = async () => {
+        if (!formData.client_name || selectedItems.length === 0) {
+            toast.error("Preencha o cliente e adicione pelo menos um material");
+            return;
+        }
+
+        const budgetItems = selectedItems.map(item => {
+            const material = materials.find(m => m.id === item.material_id);
+            return {
+                material_id: item.material_id,
+                quantity: item.quantity,
+                unit_price_at_time: material?.unit_price || 0,
+                total_price: (material?.unit_price || 0) * item.quantity
+            };
+        });
+
+        const success = await saveBudget({
+            ...formData,
+            total_cost: calculateTotals.totalCost,
+            total_value: calculateTotals.cardValue,
+            status: 'em_elaboracao'
+        }, budgetItems);
+
+        if (success) {
+            setIsDialogOpen(false);
+            setFormData({ client_name: "", project_name: "", days_estimated: 1, markup_factor: 1.5, card_fee_percent: 5, notes: "" });
+            setSelectedItems([]);
+        }
     };
 
     return (
         <div className="space-y-8 animate-fade-in pb-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-4xl font-black tracking-tighter text-primary uppercase">Orçamentos</h2>
+                    <h2 className="text-4xl font-black tracking-tighter text-primary uppercase">Módulo Comercial</h2>
                     <div className="flex items-center gap-2 mt-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                        <p className="text-muted-foreground font-black uppercase text-[10px] tracking-widest opacity-60">Gestão de propostas técnico-comerciais</p>
+                        <p className="text-muted-foreground font-black uppercase text-[10px] tracking-widest opacity-60">Calculadora Técnica e Gestão de Propostas</p>
                     </div>
                 </div>
 
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-xs px-8 h-14 rounded-2xl shadow-2xl shadow-primary/20 gap-3 transition-all hover:scale-105 active:scale-95 group">
-                            <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
-                            Novo Orçamento
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[600px] border-none shadow-2xl rounded-3xl overflow-hidden p-0">
-                        <div className="bg-primary p-8 text-primary-foreground relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                <Calculator size={120} />
-                            </div>
-                            <div className="relative z-10">
-                                <h3 className="text-2xl font-black uppercase tracking-tighter">Criar Nova Proposta</h3>
-                                <p className="text-xs opacity-80 font-bold uppercase tracking-widest mt-1">Preencha os dados básicos para iniciar o projeto</p>
-                            </div>
-                        </div>
-                        <form onSubmit={handleNewOrcamento} className="p-8 space-y-6 bg-card">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="cliente" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cliente</Label>
-                                    <Input id="cliente" placeholder="Nome completo do cliente" className="rounded-xl border-muted bg-muted/20 focus:ring-primary h-12" required />
+                <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setActiveTab(activeTab === "materiais" ? "orcamentos" : "materiais")} className="rounded-2xl h-14 px-6 font-black uppercase tracking-widest text-[10px] border-primary/20 text-primary hover:bg-primary/5 gap-2">
+                        {activeTab === "materiais" ? <History className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
+                        {activeTab === "materiais" ? "Ver Orçamentos" : "Gerenciar Preços"}
+                    </Button>
+
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-xs px-8 h-14 rounded-2xl shadow-2xl shadow-primary/20 gap-3 transition-all hover:scale-105 active:scale-95 group">
+                                <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
+                                Novo Orçamento
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[900px] max-h-[90vh] border-none shadow-2xl rounded-[2.5rem] overflow-hidden p-0 flex flex-col">
+                            <div className="bg-primary p-8 text-primary-foreground relative shrink-0">
+                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                    <Calculator size={120} />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="ambiente" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ambiente</Label>
-                                    <Input id="ambiente" placeholder="Ex: Cozinha, Dormitório..." className="rounded-xl border-muted bg-muted/20 focus:ring-primary h-12" required />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="valor" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Valor Estimado (R$)</Label>
-                                    <Input id="valor" type="number" placeholder="0,00" className="rounded-xl border-muted bg-muted/20 focus:ring-primary h-12 font-bold" required />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="prazo" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Prazo Estimado (Dias)</Label>
-                                    <Input id="prazo" type="number" placeholder="Ex: 30" className="rounded-xl border-muted bg-muted/20 focus:ring-primary h-12" required />
+                                <div className="relative z-10 flex justify-between items-end">
+                                    <div>
+                                        <h3 className="text-2xl font-black uppercase tracking-tighter">Calculadora BJL</h3>
+                                        <p className="text-xs opacity-80 font-bold uppercase tracking-widest mt-1">Gere propostas precisas baseadas em materiais e tempo</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black uppercase opacity-60">Valor Estimado</p>
+                                        <p className="text-3xl font-black tracking-tighter">{formatCurrency(calculateTotals.cardValue)}</p>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="pt-4 flex gap-3">
-                                <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="flex-1 h-12 font-black uppercase tracking-widest text-[10px] rounded-xl">Cancelar</Button>
-                                <Button type="submit" className="flex-1 bg-primary h-12 font-black uppercase tracking-widest text-[10px] rounded-xl">Gerar Orçamento</Button>
+
+                            <ScrollArea className="flex-1 p-8 bg-card">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    <div className="md:col-span-2 space-y-6">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cliente</Label>
+                                                <Input value={formData.client_name} onChange={e => setFormData({ ...formData, client_name: e.target.value })} placeholder="Nome do cliente" className="rounded-xl h-12" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ambiente</Label>
+                                                <Input value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} placeholder="Ex: Cozinha Planejada" className="rounded-xl h-12" />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="font-black uppercase text-xs tracking-widest text-primary flex items-center gap-2">
+                                                    <Package className="h-4 w-4" /> Lista de Materiais
+                                                </h4>
+                                                <Button onClick={addItem} variant="ghost" size="sm" className="text-[10px] font-black uppercase text-primary hover:bg-primary/5 rounded-lg">
+                                                    + Adicionar Item
+                                                </Button>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                {selectedItems.map((item, index) => (
+                                                    <div key={index} className="flex gap-3 items-end animate-in fade-in slide-in-from-top-2">
+                                                        <div className="flex-1 space-y-2">
+                                                            <Select value={item.material_id} onValueChange={(v) => updateItem(index, 'material_id', v)}>
+                                                                <SelectTrigger className="h-12 rounded-xl">
+                                                                    <SelectValue placeholder="Selecione o material" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {materials.map(m => (
+                                                                        <SelectItem key={m.id} value={m.id}>
+                                                                            <span className="font-bold">{m.name}</span> <span className="text-muted-foreground text-[10px]">({m.unit}) - {formatCurrency(m.unit_price)}</span>
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div className="w-24 space-y-2">
+                                                            <Input type="number" value={item.quantity} onChange={e => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)} className="h-12 rounded-xl text-center" />
+                                                        </div>
+                                                        <Button onClick={() => removeItem(index)} variant="ghost" size="icon" className="h-12 w-12 text-rose-500 hover:bg-rose-50">
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                                {selectedItems.length === 0 && (
+                                                    <div className="border-2 border-dashed border-muted rounded-2xl p-8 text-center text-muted-foreground">
+                                                        <p className="text-xs font-bold uppercase tracking-widest opacity-40">Nenhum material adicionado</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="p-6 bg-slate-50 rounded-3xl space-y-4 border border-slate-100">
+                                            <h4 className="font-black uppercase text-[10px] tracking-widest text-slate-400">Parâmetros</h4>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Dias de Produção</Label>
+                                                <Input type="number" value={formData.days_estimated} onChange={e => setFormData({ ...formData, days_estimated: parseInt(e.target.value) || 0 })} className="h-10 rounded-xl" />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Margem (Markup)</Label>
+                                                <Input type="number" step="0.1" value={formData.markup_factor} onChange={e => setFormData({ ...formData, markup_factor: parseFloat(e.target.value) || 1 })} className="h-10 rounded-xl" />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Taxa Cartão (%)</Label>
+                                                <Input type="number" value={formData.card_fee_percent} onChange={e => setFormData({ ...formData, card_fee_percent: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl" />
+                                            </div>
+                                        </div>
+
+                                        <div className="p-6 bg-primary/5 rounded-3xl space-y-3 border border-primary/10">
+                                            <div className="flex justify-between text-[11px] font-black uppercase tracking-tight text-primary/60">
+                                                <span>Custo Bruto</span>
+                                                <span>{formatCurrency(calculateTotals.totalCost)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-[11px] font-black uppercase tracking-tight text-primary/60">
+                                                <span>Valor Base (À Vista)</span>
+                                                <span>{formatCurrency(calculateTotals.baseValue)}</span>
+                                            </div>
+                                            <div className="pt-2 border-t border-primary/10 flex justify-between items-end">
+                                                <span className="text-[10px] font-black uppercase text-primary">Total Cartão</span>
+                                                <span className="text-xl font-black text-primary leading-none">{formatCurrency(calculateTotals.cardValue)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </ScrollArea>
+
+                            <div className="p-8 shrink-0 bg-slate-50 border-t border-slate-100 flex gap-3">
+                                <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="flex-1 h-12 font-black uppercase tracking-widest text-[10px] rounded-xl">Cancelar</Button>
+                                <Button onClick={handleSaveBudget} className="flex-1 bg-primary h-12 font-black uppercase tracking-widest text-[10px] rounded-xl shadow-xl shadow-primary/20">Salvar e Gerar Proposta</Button>
                             </div>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <Card className="bg-blue-500/5 border-blue-500/20 border-l-4 border-l-blue-500 p-6 flex flex-col gap-3 shadow-xl shadow-blue-500/5 transition-all hover:translate-y-[-4px] group">
-                    <div className="flex justify-between items-start">
-                        <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
-                            <Calculator size={18} />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-600/50 group-hover:text-blue-600 transition-colors">Total Aberto</span>
-                    </div>
-                    <div>
-                        <span className="text-3xl font-black text-blue-600 tracking-tighter">{formatCurrency(28200)}</span>
-                        <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Soma de orçamentos pendentes</p>
-                    </div>
-                </Card>
+            {activeTab === "orcamentos" ? (
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <Card className="bg-blue-500/5 border-blue-500/20 border-l-4 border-l-blue-500 p-6 flex flex-col gap-3 shadow-xl shadow-blue-500/5 transition-all hover:translate-y-[-4px] group">
+                            <div className="flex justify-between items-start">
+                                <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
+                                    <Calculator size={18} />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600/50 group-hover:text-blue-600 transition-colors">Em Aberto</span>
+                            </div>
+                            <div>
+                                <span className="text-3xl font-black text-blue-600 tracking-tighter">{formatCurrency(budgets.filter(b => b.status === "em_elaboracao").reduce((acc, curr) => acc + curr.total_value, 0))}</span>
+                                <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Total de propostas pendentes</p>
+                            </div>
+                        </Card>
 
-                <Card className="bg-emerald-500/5 border-emerald-500/20 border-l-4 border-l-emerald-500 p-6 flex flex-col gap-3 shadow-xl shadow-emerald-500/5 transition-all hover:translate-y-[-4px] group">
-                    <div className="flex justify-between items-start">
-                        <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500">
-                            <TrendingUp size={18} />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/50 group-hover:text-emerald-600 transition-colors">Aprovados</span>
-                    </div>
-                    <div>
-                        <span className="text-3xl font-black text-emerald-600 tracking-tighter">{formatCurrency(8900)}</span>
-                        <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Conversão em vendas (mês)</p>
-                    </div>
-                </Card>
+                        <Card className="bg-emerald-500/5 border-emerald-500/20 border-l-4 border-l-emerald-500 p-6 flex flex-col gap-3 shadow-xl shadow-emerald-500/5 transition-all hover:translate-y-[-4px] group">
+                            <div className="flex justify-between items-start">
+                                <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500">
+                                    <TrendingUp size={18} />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/50 group-hover:text-emerald-600 transition-colors">Conversão</span>
+                            </div>
+                            <div>
+                                <span className="text-3xl font-black text-emerald-600 tracking-tighter">
+                                    {budgets.length > 0 ? ((budgets.filter(b => b.status === 'aprovado').length / budgets.length) * 100).toFixed(0) : 0}%
+                                </span>
+                                <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Taxa de fechamento global</p>
+                            </div>
+                        </Card>
 
-                <Card className="bg-amber-500/5 border-amber-500/20 border-l-4 border-l-amber-500 p-6 flex flex-col gap-3 shadow-xl shadow-amber-500/5 transition-all hover:translate-y-[-4px] group">
-                    <div className="flex justify-between items-start">
-                        <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500">
-                            <DollarSign size={18} />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-600/50 group-hover:text-amber-600 transition-colors">Ticket Médio</span>
-                    </div>
-                    <div>
-                        <span className="text-3xl font-black text-amber-600 tracking-tighter">{formatCurrency(12366)}</span>
-                        <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Valor médio por proposta</p>
-                    </div>
-                </Card>
+                        <Card className="bg-amber-500/5 border-amber-500/20 border-l-4 border-l-amber-500 p-6 flex flex-col gap-3 shadow-xl shadow-amber-500/5 transition-all hover:translate-y-[-4px] group">
+                            <div className="flex justify-between items-start">
+                                <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500">
+                                    <DollarSign size={18} />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-amber-600/50 group-hover:text-amber-600 transition-colors">Ticket Médio</span>
+                            </div>
+                            <div>
+                                <span className="text-3xl font-black text-amber-600 tracking-tighter">
+                                    {formatCurrency(budgets.length > 0 ? (budgets.reduce((acc, curr) => acc + curr.total_value, 0) / budgets.length) : 0)}
+                                </span>
+                                <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Valor médio por proposta</p>
+                            </div>
+                        </Card>
 
-                <Card className="bg-primary/5 border-primary/20 border-l-4 border-l-primary p-6 flex flex-col gap-3 shadow-xl shadow-primary/5 transition-all hover:translate-y-[-4px] group">
-                    <div className="flex justify-between items-start">
-                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                            <FileText size={18} />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-primary/50 group-hover:text-primary transition-colors">Eficiência</span>
+                        <Card className="bg-primary/5 border-primary/20 border-l-4 border-l-primary p-6 flex flex-col gap-3 shadow-xl shadow-primary/5 transition-all hover:translate-y-[-4px] group">
+                            <div className="flex justify-between items-start">
+                                <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                    <Layers size={18} />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-primary/50 group-hover:text-primary transition-colors">Catálogo</span>
+                            </div>
+                            <div>
+                                <span className="text-3xl font-black text-primary tracking-tighter">{materials.length}</span>
+                                <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Itens cadastrados na lista</p>
+                            </div>
+                        </Card>
                     </div>
-                    <div>
-                        <span className="text-3xl font-black text-primary tracking-tighter">72%</span>
-                        <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Taxa de aprovação geral</p>
-                    </div>
-                </Card>
-            </div>
 
-            <Card className="border-none shadow-2xl bg-card overflow-hidden rounded-[2.5rem]">
-                <CardHeader className="p-8 border-b border-border/10 flex flex-col sm:flex-row items-center justify-between gap-6 bg-slate-50/50">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-white rounded-2xl text-primary border border-border shadow-sm">
-                            <Package className="h-6 w-6" />
+                    <Card className="border-none shadow-2xl bg-card overflow-hidden rounded-[2.5rem]">
+                        <CardHeader className="p-8 border-b border-border/10 flex flex-col sm:flex-row items-center justify-between gap-6 bg-slate-50/50">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white rounded-2xl text-primary border border-border shadow-sm">
+                                    <History className="h-6 w-6" />
+                                </div>
+                                <div className="space-y-0.5">
+                                    <CardTitle className="text-lg font-black uppercase tracking-tighter text-foreground">Histórico de Propostas</CardTitle>
+                                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-60">Acompanhamento de orçamentos emitidos</p>
+                                </div>
+                            </div>
+                            <div className="relative w-full sm:w-80">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+                                <Input
+                                    placeholder="Pesquisar cliente..."
+                                    className="pl-12 bg-white border-border/50 h-12 rounded-2xl text-xs font-medium shadow-inner focus:ring-2 focus:ring-primary/20"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                    <thead>
+                                        <tr className="bg-slate-50 text-muted-foreground/50 h-16 border-b border-border/10">
+                                            <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Identificação</th>
+                                            <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Projeto</th>
+                                            <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Data</th>
+                                            <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Status</th>
+                                            <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Valor Total</th>
+                                            <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border/5">
+                                        {budgets.filter(b => b.client_name.toLowerCase().includes(searchTerm.toLowerCase())).map((orc) => (
+                                            <tr key={orc.id} className="hover:bg-slate-50/80 transition-all group">
+                                                <td className="px-8 py-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-10 w-10 rounded-xl bg-muted/30 flex items-center justify-center font-black text-xs text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                                            {orc.client_name.charAt(0)}
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-black text-[13px] uppercase text-foreground group-hover:text-primary transition-colors leading-tight">{orc.client_name}</span>
+                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{orc.id.substring(0, 4).toUpperCase()}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-6">
+                                                    <span className="font-bold text-[11px] uppercase text-muted-foreground tracking-tighter bg-muted/20 px-3 py-1.5 rounded-lg border border-border/5">{orc.project_name}</span>
+                                                </td>
+                                                <td className="px-8 py-6">
+                                                    <div className="flex items-center gap-2 text-muted-foreground/70 font-bold text-[11px]">
+                                                        {new Date(orc.created_at).toLocaleDateString('pt-BR')}
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-6 text-right">
+                                                    {getStatusBadge(orc.status)}
+                                                </td>
+                                                <td className="px-8 py-6 text-right">
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="font-black text-sm text-foreground tabular-nums group-hover:text-primary transition-colors">{formatCurrency(orc.total_value)}</span>
+                                                        <span className="text-[9px] font-black text-muted-foreground/50 uppercase">Base: {formatCurrency(orc.total_cost * orc.markup_factor)}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-6 text-right">
+                                                    <div className="flex justify-end gap-2 pr-2">
+                                                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-primary/10 text-slate-400 hover:text-primary transition-all active:scale-95 border border-border/5">
+                                                            <Pencil size={16} />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-500 transition-all active:scale-95 border border-border/5">
+                                                            <FileText size={16} />
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {budgets.length === 0 && !loading && (
+                                            <tr>
+                                                <td colSpan={6} className="py-20 text-center text-muted-foreground italic uppercase text-[10px] font-black tracking-widest opacity-40">
+                                                    Nenhum orçamento encontrado
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </>
+            ) : (
+                <Card className="border-none shadow-2xl bg-card overflow-hidden rounded-[2.5rem]">
+                    <CardHeader className="p-8 border-b border-border/10 flex flex-col sm:flex-row items-center justify-between gap-6 bg-slate-50/50">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-white rounded-2xl text-primary border border-border shadow-sm">
+                                <Package className="h-6 w-6" />
+                            </div>
+                            <div className="space-y-0.5">
+                                <CardTitle className="text-lg font-black uppercase tracking-tighter text-foreground">Catálogo de Materiais</CardTitle>
+                                <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-60">Gerencie os preços base para cálculo automático</p>
+                            </div>
                         </div>
-                        <div className="space-y-0.5">
-                            <CardTitle className="text-lg font-black uppercase tracking-tighter text-foreground">Propostas Recentes</CardTitle>
-                            <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-60">Relatório detalhado de propostas comerciais</p>
-                        </div>
-                    </div>
-                    <div className="relative w-full sm:w-80">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
-                        <Input
-                            placeholder="Filtrar por cliente ou ambiente..."
-                            className="pl-12 bg-white border-border/50 h-12 rounded-2xl text-xs font-medium shadow-inner focus:ring-2 focus:ring-primary/20 appearance-none"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                            <thead>
-                                <tr className="bg-slate-50 text-muted-foreground/50 h-16 border-b border-border/10">
-                                    <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Identificação</th>
-                                    <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Ambiente</th>
-                                    <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Data Criação</th>
-                                    <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Valor Proposta</th>
-                                    <th className="px-8 text-center font-black uppercase tracking-[0.1em] text-[10px]">Status Ativo</th>
-                                    <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border/5">
-                                {orcamentos.map((orc) => (
-                                    <tr key={orc.id} className="hover:bg-slate-50/80 transition-all group">
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-xl bg-muted/30 flex items-center justify-center font-black text-xs text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                                    {orc.cliente.charAt(0)}
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="font-black text-[13px] uppercase text-foreground group-hover:text-primary transition-colors leading-tight">{orc.cliente}</span>
-                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{orc.id.padStart(4, '0')}</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <span className="font-bold text-[11px] uppercase text-muted-foreground tracking-tighter bg-muted/20 px-3 py-1.5 rounded-lg border border-border/5 group-hover:border-primary/10 transition-colors">{orc.ambiente}</span>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-2 text-muted-foreground/70 font-bold text-[11px]">
-                                                <span className="text-muted-foreground/40 font-black">@</span>
-                                                {new Date(orc.data).toLocaleDateString('pt-BR')}
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <span className="font-black text-sm text-foreground tabular-nums group-hover:text-primary transition-colors">{formatCurrency(orc.valor)}</span>
-                                        </td>
-                                        <td className="px-8 py-6 text-center">
-                                            <div className="flex justify-center">
-                                                {getStatusBadge(orc.status)}
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <div className="flex justify-end gap-2 pr-2">
-                                                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-primary/10 text-slate-400 hover:text-primary transition-all active:scale-95 border border-border/5">
-                                                    <Pencil size={16} />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-500 transition-all active:scale-95 border border-border/5">
-                                                    <CheckCircle2 size={16} />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 transition-all active:scale-95 border border-border/5">
-                                                    <Trash2 size={16} />
-                                                </Button>
-                                            </div>
-                                        </td>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="bg-slate-50 text-muted-foreground/50 h-16 border-b border-border/10">
+                                        <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Categoria</th>
+                                        <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Nome do Material</th>
+                                        <th className="px-8 text-center font-black uppercase tracking-[0.1em] text-[10px]">Unidade</th>
+                                        <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Preço Unitário (R$)</th>
+                                        <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Ações</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div className="p-8 bg-slate-50/30 border-t border-border/10 flex justify-between items-center text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">
-                        <span>BJL Planejados - Gerenciador de Performance Comercial</span>
-                        <div className="flex gap-4">
-                            <span className="text-primary/60">Versão 2.4.0</span>
-                            <span>© 2024</span>
+                                </thead>
+                                <tbody className="divide-y divide-border/5">
+                                    {materials.map((mat) => (
+                                        <tr key={mat.id} className="hover:bg-slate-50/80 transition-all group">
+                                            <td className="px-8 py-5">
+                                                <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest">{mat.category}</Badge>
+                                            </td>
+                                            <td className="px-8 py-5 font-black uppercase text-[12px] text-foreground opacity-80">{mat.name}</td>
+                                            <td className="px-8 py-5 text-center font-bold text-muted-foreground">{mat.unit}</td>
+                                            <td className="px-8 py-5 text-right font-black text-sm text-primary">
+                                                <Input
+                                                    type="number"
+                                                    defaultValue={mat.unit_price}
+                                                    onBlur={(e) => updateMaterialPrice(mat.id, parseFloat(e.target.value))}
+                                                    className="w-32 ml-auto h-10 rounded-xl text-right font-black border-transparent bg-transparent hover:border-muted focus:bg-white"
+                                                />
+                                            </td>
+                                            <td className="px-8 py-5 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-300 hover:text-primary"><Save size={16} /></Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
 
+            {/* Dicas de Inteligência */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
                 <Card className="p-8 bg-primary/5 border border-primary/10 rounded-3xl flex items-start gap-4">
                     <div className="p-3 bg-primary/20 rounded-2xl text-primary">
                         <TrendingUp className="h-6 w-6" />
                     </div>
                     <div className="space-y-2">
-                        <h4 className="font-black text-primary text-xs uppercase tracking-[0.2em]">Inteligência Comercial</h4>
-                        <p className="text-[11px] text-primary/80 font-bold leading-relaxed">Seu ticket médio cresceu 12% em relação ao mês anterior. Recomendamos focar em ambientes de Cozinha para maximizar a margem bruta no próximo trimestre.</p>
+                        <h4 className="font-black text-primary text-xs uppercase tracking-[0.2em]">Ponto de Equilíbrio</h4>
+                        <p className="text-[11px] text-primary/80 font-bold leading-relaxed">Considerando seus custos fixos atuais, você precisa aprovar pelo menos R$ 45.000,00 em orçamentos este mês para atingir o ponto de equilíbrio.</p>
                     </div>
                 </Card>
                 <Card className="p-8 bg-emerald-500/5 border border-emerald-500/10 rounded-3xl flex items-start gap-4">
@@ -287,8 +478,8 @@ const Orcamento = () => {
                         <Calculator className="h-6 w-6" />
                     </div>
                     <div className="space-y-2">
-                        <h4 className="font-black text-emerald-700 text-xs uppercase tracking-[0.2em]">Status de Conversão</h4>
-                        <p className="text-[11px] text-emerald-600/80 font-bold leading-relaxed">Você possui 3 orçamentos aguardando aprovação há mais de 5 dias. Sugerimos realizar um acompanhamento (follow-up) para garantir o fechamento.</p>
+                        <h4 className="font-black text-emerald-700 text-xs uppercase tracking-[0.2em]">Dica de Lucratividade</h4>
+                        <p className="text-[11px] text-emerald-600/80 font-bold leading-relaxed">Orçamentos com mais de 10 dias em elaboração têm 60% menos chance de conversão. Tente enviar a proposta nas primeiras 48 horas.</p>
                     </div>
                 </Card>
             </div>
