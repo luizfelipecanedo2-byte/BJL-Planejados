@@ -46,6 +46,7 @@ const OrdemServico = () => {
                 id: o.id,
                 ticketNumber: o.ticket_number || "S/N",
                 openDate: parseDate(o.open_date),
+                clientId: o.client_id, // Adicionado
                 client: o.client || "Não informado",
                 type: o.type as any || "Fabricação",
                 action: o.action || "",
@@ -54,6 +55,7 @@ const OrdemServico = () => {
                 completionDate: o.completion_date ? parseDate(o.completion_date) : undefined,
                 notes: o.notes,
                 attachments: o.attachments || [],
+                amount: o.amount || 0, // Adicionado
                 laborLogs: []
             }));
 
@@ -136,7 +138,9 @@ const OrdemServico = () => {
                 forecast_date: formatDate(orderData.forecastDate),
                 completion_date: formatDate(orderData.completionDate),
                 notes: orderData.notes,
-                attachments: orderData.attachments || []
+                attachments: orderData.attachments || [],
+                client_id: orderData.clientId,
+                amount: orderData.amount
             };
 
             console.log("Enviando nova OS:", newOrder);
@@ -209,6 +213,8 @@ const OrdemServico = () => {
 
             if (updates.notes !== undefined) updateData.notes = updates.notes;
             if (updates.attachments !== undefined) updateData.attachments = updates.attachments;
+            if (updates.clientId !== undefined) updateData.client_id = updates.clientId;
+            if (updates.amount !== undefined) updateData.amount = updates.amount;
 
             const { error } = await supabase
                 .from('service_orders')

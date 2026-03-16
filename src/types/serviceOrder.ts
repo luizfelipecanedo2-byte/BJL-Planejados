@@ -13,6 +13,7 @@ export interface ServiceOrder {
     id: string;
     ticketNumber: string;
     openDate: Date;
+    clientId?: string;
     client: string;
     type: ServiceType;
     action: string;
@@ -22,4 +23,5 @@ export interface ServiceOrder {
     notes?: string;
     attachments?: string[];
     laborLogs?: LaborLog[];
+    amount?: number;
 }

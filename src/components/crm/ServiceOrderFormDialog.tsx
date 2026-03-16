@@ -59,6 +59,7 @@ const ServiceOrderFormDialog = ({
     const [form, setForm] = useState({
         ticketNumber: "",
         client: "",
+        clientId: "",
         type: "Fabricação" as ServiceType,
         action: "",
         status: "Em Andamento" as ServiceStatus,
@@ -67,6 +68,7 @@ const ServiceOrderFormDialog = ({
         completionDate: "",
         notes: "",
         attachments: [] as string[],
+        amount: 0,
         laborLogs: [] as any[],
     });
     const [isUploading, setIsUploading] = useState(false);
@@ -106,6 +108,7 @@ const ServiceOrderFormDialog = ({
             setForm({
                 ticketNumber: editingOrder.ticketNumber,
                 client: editingOrder.client,
+                clientId: editingOrder.clientId || "",
                 type: editingOrder.type,
                 action: editingOrder.action,
                 status: editingOrder.status,
@@ -116,12 +119,14 @@ const ServiceOrderFormDialog = ({
                     : "",
                 notes: editingOrder.notes || "",
                 attachments: editingOrder.attachments || [],
+                amount: editingOrder.amount || 0,
                 laborLogs: editingOrder.laborLogs || [],
             });
         } else {
             setForm({
                 ticketNumber: "",
                 client: "",
+                clientId: "",
                 type: "Fabricação",
                 action: "",
                 status: "Em Andamento",
@@ -130,6 +135,7 @@ const ServiceOrderFormDialog = ({
                 completionDate: "",
                 notes: "",
                 attachments: [],
+                amount: 0,
                 laborLogs: [],
             });
         }
@@ -210,6 +216,9 @@ const ServiceOrderFormDialog = ({
             openDate: new Date(form.openDate),
             forecastDate: new Date(form.forecastDate),
             completionDate: form.completionDate ? new Date(form.completionDate) : undefined,
+            attachments: form.attachments,
+            clientId: form.clientId,
+            amount: form.amount,
             laborLogs: form.laborLogs.map(l => ({
                 ...l,
                 date: new Date(l.date)
@@ -303,6 +312,7 @@ const ServiceOrderFormDialog = ({
                                                                 value={client.name}
                                                                 onSelect={() => {
                                                                     update("client", client.name);
+                                                                    update("clientId", client.id);
                                                                     setOpenClientSelect(false);
                                                                 }}
                                                             >
@@ -378,6 +388,18 @@ const ServiceOrderFormDialog = ({
                                         type="date"
                                         value={form.completionDate}
                                         onChange={(e) => handleDateChange("completionDate", e.target.value)}
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <Label htmlFor="amount">Valor do Serviço (R$)</Label>
+                                    <Input
+                                        id="amount"
+                                        type="number"
+                                        step="0.01"
+                                        value={form.amount}
+                                        onChange={(e) => update("amount", parseFloat(e.target.value) || 0)}
+                                        placeholder="0,00"
+                                        className="font-bold text-green-700"
                                     />
                                 </div>
                             </div>

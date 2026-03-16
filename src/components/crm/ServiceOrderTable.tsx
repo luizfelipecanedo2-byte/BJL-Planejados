@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 interface ServiceOrderTableProps {
     orders: ServiceOrder[];
@@ -119,9 +120,11 @@ const ServiceOrderTable = ({ orders, onEdit, onDelete }: ServiceOrderTableProps)
                         {orders.map((order) => (
                             <TableRow key={order.id} className="hover:bg-muted/10 transition-colors">
                                 <TableCell>
-                                    <Button variant="ghost" size="icon" className="hover:scale-110 active:scale-95 transition-all" onClick={() => onEdit(order)}>
-                                        <Pencil className="h-4 w-4 text-primary" />
-                                    </Button>
+                                    <div className="flex items-center gap-1">
+                                        <Button variant="ghost" size="icon" className="hover:scale-110 active:scale-95 transition-all" onClick={() => onEdit(order)}>
+                                            <Pencil className="h-4 w-4 text-primary" />
+                                        </Button>
+                                    </div>
                                 </TableCell>
                                 <TableCell className="font-medium font-mono text-xs">{order.ticketNumber}</TableCell>
                                 <TableCell>{formatDate(order.openDate)}</TableCell>

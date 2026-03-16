@@ -15,7 +15,22 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const Orcamento = () => {
-    const { materials, budgets, loading, updateMaterialPrice, saveBudget, refreshBudgets } = useBudgets();
+    const { materials: rawMaterials, budgets, loading, updateMaterialPrice, saveBudget, refreshBudgets } = useBudgets();
+    
+    // Sort materials based on custom order
+    const materials = useMemo(() => {
+        const order = ["MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"];
+        return [...rawMaterials].sort((a, b) => {
+            const indexA = order.indexOf(a.category);
+            const indexB = order.indexOf(b.category);
+            if (indexA === -1 && indexB === -1) return a.category.localeCompare(b.category);
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            if (indexA !== indexB) return indexA - indexB;
+            return a.name.localeCompare(b.name);
+        });
+    }, [rawMaterials]);
+
     const [searchTerm, setSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [activeTab, setActiveTab] = useState("orcamentos");
@@ -61,12 +76,42 @@ const Orcamento = () => {
     };
 
     const groupedMaterials = useMemo(() => {
+        const order = [
+            "MDF",
+            "FITAS",
+            "ACABAMENTO",
+            "ACESSORIOS",
+            "FERRAGENS",
+            "FIXACAO",
+            "SUPRIMENTOS",
+            "OUTROS",
+            "SERVICOS"
+        ];
+
         const groups: Record<string, Material[]> = {};
         materials.forEach(m => {
             if (!groups[m.category]) groups[m.category] = [];
             groups[m.category].push(m);
         });
-        return groups;
+
+        // Retorna as categorias ordenadas conforme a lista acima
+        const sortedEntries: [string, Material[]][] = [];
+        
+        // 1. Adiciona as categorias da ordem definida
+        order.forEach(cat => {
+            if (groups[cat]) {
+                sortedEntries.push([cat, groups[cat]]);
+            }
+        });
+
+        // 2. Adiciona qualquer categoria extra que não estava na lista (segurança)
+        Object.entries(groups).forEach(([cat, items]) => {
+            if (!order.includes(cat)) {
+                sortedEntries.push([cat, items]);
+            }
+        });
+
+        return sortedEntries;
     }, [materials]);
 
     const calculateTotals = useMemo(() => {
@@ -224,8 +269,8 @@ const Orcamento = () => {
                                             <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Lista de Itens (Preenchimento Rápido)</h4>
                                         </div>
 
-                                        <Accordion type="multiple" defaultValue={Object.keys(groupedMaterials)} className="space-y-4">
-                                            {Object.entries(groupedMaterials).map(([category, items]) => (
+                                        <Accordion type="multiple" defaultValue={groupedMaterials.map(([cat]) => cat)} className="space-y-4">
+                                            {groupedMaterials.map(([category, items]) => (
                                                 <AccordionItem key={category} value={category} className="border border-slate-100 rounded-3xl px-6 bg-white shadow-sm overflow-hidden">
                                                     <AccordionTrigger className="hover:no-underline py-4">
                                                         <div className="flex items-center gap-3">
