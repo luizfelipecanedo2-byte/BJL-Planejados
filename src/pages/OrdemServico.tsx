@@ -139,8 +139,8 @@ const OrdemServico = () => {
                 completion_date: formatDate(orderData.completionDate),
                 notes: orderData.notes,
                 attachments: orderData.attachments || [],
-                client_id: orderData.clientId,
-                amount: orderData.amount
+                client_id: orderData.clientId || null,
+                amount: orderData.amount || 0
             };
 
             console.log("Enviando nova OS:", newOrder);
@@ -156,12 +156,19 @@ const OrdemServico = () => {
                 const insertedOrder = data[0];
                 // Inserir logs de horas se houver
                 if (orderData.laborLogs && orderData.laborLogs.length > 0) {
-                    const logsToInsert = orderData.laborLogs.map(l => ({
-                        service_order_id: insertedOrder.id,
-                        date: l.date instanceof Date ? l.date.toISOString().split('T')[0] : l.date,
-                        hours: Number(l.hours),
-                        description: l.description || ""
-                    }));
+                    const logsToInsert = orderData.laborLogs.map(l => {
+                        const dateObj = l.date instanceof Date ? l.date : new Date(l.date);
+                        const dateStr = !isNaN(dateObj.getTime()) 
+                            ? dateObj.toISOString().split('T')[0] 
+                            : new Date().toISOString().split('T')[0];
+
+                        return {
+                            service_order_id: insertedOrder.id,
+                            date: dateStr,
+                            hours: isNaN(Number(l.hours)) ? 0 : Number(l.hours),
+                            description: l.description || ""
+                        };
+                    });
 
                     const { error: logsError } = await supabase.from('service_order_labor_logs').insert(logsToInsert);
                     if (logsError) {
@@ -174,6 +181,7 @@ const OrdemServico = () => {
                     id: insertedOrder.id,
                     ticketNumber: insertedOrder.ticket_number,
                     openDate: parseDate(insertedOrder.open_date),
+                    clientId: insertedOrder.client_id,
                     client: insertedOrder.client,
                     type: insertedOrder.type as any,
                     action: insertedOrder.action,
@@ -182,6 +190,7 @@ const OrdemServico = () => {
                     completionDate: insertedOrder.completion_date ? parseDate(insertedOrder.completion_date) : undefined,
                     notes: insertedOrder.notes,
                     attachments: insertedOrder.attachments || [],
+                    amount: insertedOrder.amount || 0,
                     laborLogs: orderData.laborLogs || []
                 };
                 setOrders([createdOrder, ...orders]);
@@ -213,8 +222,8 @@ const OrdemServico = () => {
 
             if (updates.notes !== undefined) updateData.notes = updates.notes;
             if (updates.attachments !== undefined) updateData.attachments = updates.attachments;
-            if (updates.clientId !== undefined) updateData.client_id = updates.clientId;
-            if (updates.amount !== undefined) updateData.amount = updates.amount;
+            if (updates.clientId !== undefined) updateData.client_id = updates.clientId || null;
+            if (updates.amount !== undefined) updateData.amount = updates.amount || 0;
 
             const { error } = await supabase
                 .from('service_orders')

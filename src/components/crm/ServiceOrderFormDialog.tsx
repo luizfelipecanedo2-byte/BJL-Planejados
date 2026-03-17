@@ -92,6 +92,7 @@ const ServiceOrderFormDialog = ({
                         zipCode: item.zip_code || "",
                         document: item.document || "",
                         notes: item.notes || "",
+                        type: item.type || "cliente",
                         createdAt: new Date(item.created_at)
                     }));
                     setClients(mappedClients);
@@ -172,7 +173,11 @@ const ServiceOrderFormDialog = ({
 
     const updateLaborLog = (index: number, field: string, value: any) => {
         const newLogs = [...form.laborLogs];
-        newLogs[index] = { ...newLogs[index], [field]: value };
+        let processedValue = value;
+        if (field === "hours") {
+            processedValue = isNaN(parseFloat(value)) ? 0 : parseFloat(value);
+        }
+        newLogs[index] = { ...newLogs[index], [field]: processedValue };
         update("laborLogs", newLogs);
     };
 
@@ -219,10 +224,14 @@ const ServiceOrderFormDialog = ({
             attachments: form.attachments,
             clientId: form.clientId,
             amount: form.amount,
-            laborLogs: form.laborLogs.map(l => ({
-                ...l,
-                date: new Date(l.date)
-            }))
+            laborLogs: form.laborLogs.map(l => {
+                const dateObj = l.date ? new Date(l.date) : new Date();
+                return {
+                    ...l,
+                    date: isNaN(dateObj.getTime()) ? new Date() : dateObj,
+                    hours: isNaN(Number(l.hours)) ? 0 : Number(l.hours)
+                };
+            })
         };
 
         if (editingOrder && onUpdate) {
@@ -448,14 +457,14 @@ const ServiceOrderFormDialog = ({
                                                     onChange={(e) => updateLaborLog(index, "date", e.target.value)}
                                                     className="h-8 text-xs"
                                                 />
-                                                <Input
-                                                    type="number"
-                                                    step="0.5"
-                                                    value={log.hours}
-                                                    onChange={(e) => updateLaborLog(index, "hours", parseFloat(e.target.value))}
-                                                    className="h-8 text-xs"
-                                                    placeholder="Horas"
-                                                />
+                                                 <Input
+                                                     type="number"
+                                                     step="0.5"
+                                                     value={log.hours}
+                                                     onChange={(e) => updateLaborLog(index, "hours", e.target.value)}
+                                                     className="h-8 text-xs"
+                                                     placeholder="Horas"
+                                                 />
                                             </div>
                                             <Input
                                                 value={log.description}

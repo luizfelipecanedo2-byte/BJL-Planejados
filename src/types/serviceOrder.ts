@@ -3,7 +3,7 @@ export type ServiceType = "Fabricação" | "Assistência";
 export type ServiceStatus = "Em Andamento" | "Encerrado";
 
 export interface LaborLog {
-    id: string;
+    id?: string;
     date: Date;
     hours: number;
     description?: string;
