@@ -358,7 +358,7 @@ const Orcamento = () => {
                                                                         <Input
                                                                             type="number"
                                                                             placeholder="0"
-                                                                            className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-white"
+                                                                            className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-white text-slate-900"
                                                                             value={quantities[item.id] || ""}
                                                                             onChange={(e) => handleQuantityChange(item.id, e.target.value)}
                                                                         />
@@ -644,8 +644,8 @@ const Orcamento = () => {
                                 </DialogHeader>
                                 <div className="grid gap-6 py-6">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Nome do Item</Label>
-                                        <Input value={newMaterial.name} onChange={e => setNewMaterial({ ...newMaterial, name: e.target.value })} placeholder="Ex: Dobradiça Especial" className="rounded-2xl h-12 border-slate-200" />
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nome do Item</Label>
+                                        <Input value={newMaterial.name} onChange={e => setNewMaterial({ ...newMaterial, name: e.target.value })} placeholder="Ex: Dobradiça Especial" className="rounded-2xl h-12 border-slate-200 text-slate-900 font-bold" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
@@ -665,13 +665,13 @@ const Orcamento = () => {
                                             </Select>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Unidade</Label>
-                                            <Input value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })} placeholder="Ex: UNIDADE, M2, PAR" className="rounded-2xl h-12 border-slate-200" />
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Unidade</Label>
+                                            <Input value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })} placeholder="Ex: UNIDADE, M2, PAR" className="rounded-2xl h-12 border-slate-200 text-slate-900 font-bold" />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Preço Unitário (R$)</Label>
-                                        <Input type="number" step="0.01" value={newMaterial.unit_price} onChange={e => setNewMaterial({ ...newMaterial, unit_price: parseFloat(e.target.value) || 0 })} className="rounded-2xl h-12 border-slate-200 font-bold" />
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Preço Unitário (R$)</Label>
+                                        <Input type="number" step="0.01" value={newMaterial.unit_price} onChange={e => setNewMaterial({ ...newMaterial, unit_price: parseFloat(e.target.value) || 0 })} className="rounded-2xl h-12 border-slate-200 font-bold text-slate-900" />
                                     </div>
                                 </div>
                                 <DialogFooter>
@@ -706,7 +706,7 @@ const Orcamento = () => {
                                                     type="number"
                                                     defaultValue={mat.unit_price}
                                                     onBlur={(e) => updateMaterialPrice(mat.id, parseFloat(e.target.value))}
-                                                    className="w-32 ml-auto h-10 rounded-xl text-right font-black border-transparent bg-transparent hover:border-muted focus:bg-white"
+                                                    className="w-32 ml-auto h-10 rounded-xl text-right font-black border-transparent bg-transparent hover:border-muted focus:bg-white text-slate-900"
                                                 />
                                             </td>
                                             <td className="px-8 py-5 text-right">
