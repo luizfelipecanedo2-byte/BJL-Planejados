@@ -255,12 +255,12 @@ const Orcamento = () => {
                                             <AlertCircle className="h-3 w-3" /> Identificação
                                         </h4>
                                         <div className="space-y-2">
-                                            <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Cliente</Label>
-                                            <Input value={formData.client_name} onChange={e => setFormData({ ...formData, client_name: e.target.value })} placeholder="Nome completo" className="rounded-xl h-12 bg-white border-slate-200" />
+                                            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Cliente</Label>
+                                            <Input value={formData.client_name} onChange={e => setFormData({ ...formData, client_name: e.target.value })} placeholder="Nome completo" className="rounded-xl h-12 bg-white border-slate-200 text-slate-900 font-bold" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Ambiente/Projeto</Label>
-                                            <Input value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} placeholder="Ex: Cozinha Gourmet" className="rounded-xl h-12 bg-white border-slate-200" />
+                                            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Ambiente/Projeto</Label>
+                                            <Input value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} placeholder="Ex: Cozinha Gourmet" className="rounded-xl h-12 bg-white border-slate-200 text-slate-900 font-bold" />
                                         </div>
                                     </div>
 
@@ -269,13 +269,13 @@ const Orcamento = () => {
                                             <DollarSign className="h-3 w-3" /> Custos de Produção
                                         </h4>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-2 text-primary">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Dias</Label>
-                                                <Input type="number" value={formData.days_estimated} onChange={e => setFormData({ ...formData, days_estimated: parseInt(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold" />
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Dias</Label>
+                                                <Input type="number" value={formData.days_estimated} onChange={e => setFormData({ ...formData, days_estimated: parseInt(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-slate-900" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Valor/Dia</Label>
-                                                <Input type="number" value={formData.daily_fixed_cost} onChange={e => setFormData({ ...formData, daily_fixed_cost: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Valor/Dia</Label>
+                                                <Input type="number" value={formData.daily_fixed_cost} onChange={e => setFormData({ ...formData, daily_fixed_cost: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-slate-900" />
                                             </div>
                                         </div>
                                         <h4 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
@@ -283,21 +283,21 @@ const Orcamento = () => {
                                         </h4>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Lucro (%)</Label>
-                                                <Input type="number" value={formData.profit_margin} onChange={e => setFormData({ ...formData, profit_margin: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Lucro (%)</Label>
+                                                <Input type="number" value={formData.profit_margin} onChange={e => setFormData({ ...formData, profit_margin: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-slate-900" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Comissão (%)</Label>
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Comissão (%)</Label>
                                                 <Input type="number" value={formData.commission} onChange={e => setFormData({ ...formData, commission: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-amber-600" />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Imposto (%)</Label>
-                                                <Input type="number" value={formData.tax} onChange={e => setFormData({ ...formData, tax: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Imposto (%)</Label>
+                                                <Input type="number" value={formData.tax} onChange={e => setFormData({ ...formData, tax: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-slate-900" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Acrésc. Prazo (%)</Label>
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Acrésc. Prazo (%)</Label>
                                                 <Input type="number" value={formData.installment_fee} onChange={e => setFormData({ ...formData, installment_fee: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-primary" />
                                             </div>
                                         </div>
