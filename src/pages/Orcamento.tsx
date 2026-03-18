@@ -15,7 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const Orcamento = () => {
-    const { materials: rawMaterials, budgets, loading, updateMaterialPrice, saveBudget, refreshBudgets } = useBudgets();
+    const { materials: rawMaterials, budgets, loading, updateMaterialPrice, addMaterial, deleteMaterial, saveBudget, refreshBudgets } = useBudgets();
     
     // Sort materials based on custom order
     const materials = useMemo(() => {
@@ -47,6 +47,26 @@ const Orcamento = () => {
 
     // Checklist state: stores quantities for ALL materials
     const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+    const [isNewMaterialDialogOpen, setIsNewMaterialDialogOpen] = useState(false);
+    const [newMaterial, setNewMaterial] = useState({
+        name: "",
+        category: "OUTROS",
+        unit: "UNIDADE",
+        unit_price: 0
+    });
+
+    const handleAddMaterial = async () => {
+        if (!newMaterial.name) {
+            toast.error("Informe o nome do item");
+            return;
+        }
+        const success = await addMaterial(newMaterial);
+        if (success) {
+            setIsNewMaterialDialogOpen(false);
+            setNewMaterial({ name: "", category: "OUTROS", unit: "UNIDADE", unit_price: 0 });
+        }
+    };
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -498,6 +518,52 @@ const Orcamento = () => {
                                 <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-60">Gerencie os preços base para cálculo automático</p>
                             </div>
                         </div>
+
+                        <Dialog open={isNewMaterialDialogOpen} onOpenChange={setIsNewMaterialDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] px-6 h-12 rounded-xl shadow-lg shadow-primary/10 gap-2">
+                                    <Plus className="h-4 w-4" />
+                                    Novo Item
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px] rounded-[2rem] border-none shadow-2xl">
+                                <DialogHeader>
+                                    <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-primary">Novo Material/Serviço</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid gap-6 py-6">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Nome do Item</Label>
+                                        <Input value={newMaterial.name} onChange={e => setNewMaterial({ ...newMaterial, name: e.target.value })} placeholder="Ex: Dobradiça Especial" className="rounded-2xl h-12 border-slate-200" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Categoria</Label>
+                                            <select 
+                                                className="w-full h-12 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-bold uppercase"
+                                                value={newMaterial.category} 
+                                                onChange={e => setNewMaterial({ ...newMaterial, category: e.target.value })}
+                                            >
+                                                {["MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"].map(cat => (
+                                                    <option key={cat} value={cat}>{cat}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Unidade</Label>
+                                            <Input value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })} placeholder="Ex: UNIDADE, M2, PAR" className="rounded-2xl h-12 border-slate-200" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Preço Unitário (R$)</Label>
+                                        <Input type="number" step="0.01" value={newMaterial.unit_price} onChange={e => setNewMaterial({ ...newMaterial, unit_price: parseFloat(e.target.value) || 0 })} className="rounded-2xl h-12 border-slate-200 font-bold" />
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button variant="ghost" onClick={() => setIsNewMaterialDialogOpen(false)} className="rounded-xl font-black uppercase text-[10px]">Cancelar</Button>
+                                    <Button onClick={handleAddMaterial} className="bg-primary rounded-xl font-black uppercase text-[10px] px-8 h-12">Adicionar ao Catálogo</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
@@ -529,6 +595,18 @@ const Orcamento = () => {
                                             </td>
                                             <td className="px-8 py-5 text-right">
                                                 <div className="flex justify-end gap-2">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-10 w-10 text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                                                        onClick={() => {
+                                                            if (confirm(`Tem certeza que deseja excluir "${mat.name}"?`)) {
+                                                                deleteMaterial(mat.id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </Button>
                                                     <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-300 hover:text-primary"><Save size={16} /></Button>
                                                 </div>
                                             </td>

@@ -87,6 +87,43 @@ export function useBudgets() {
         }
     };
 
+    const addMaterial = async (material: Omit<Material, "id">) => {
+        const { data, error } = await supabase
+            .from('budget_materials')
+            .insert([material])
+            .select()
+            .single();
+
+        if (error) {
+            toast.error("Erro ao adicionar material: " + error.message);
+            return null;
+        } else {
+            setMaterials(prev => [...prev, data]);
+            toast.success("Material adicionado com sucesso");
+            return data;
+        }
+    };
+
+    const deleteMaterial = async (id: string) => {
+        const { error } = await supabase
+            .from('budget_materials')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            if (error.code === '23503') {
+                toast.error("Este item não pode ser excluído pois está sendo usado em orçamentos.");
+            } else {
+                toast.error("Erro ao excluir material: " + error.message);
+            }
+            return false;
+        } else {
+            setMaterials(prev => prev.filter(m => m.id !== id));
+            toast.success("Material excluído com sucesso");
+            return true;
+        }
+    };
+
     const saveBudget = async (budget: Omit<Budget, "id" | "created_at">, items: BudgetItem[]) => {
         try {
             const { data: budgetData, error: budgetError } = await supabase
@@ -122,6 +159,8 @@ export function useBudgets() {
         budgets,
         loading,
         updateMaterialPrice,
+        addMaterial,
+        deleteMaterial,
         saveBudget,
         refreshMaterials: fetchMaterials,
         refreshBudgets: fetchBudgets
