@@ -278,14 +278,27 @@ const Orcamento = () => {
                                                 <Input type="number" value={formData.daily_fixed_cost} onChange={e => setFormData({ ...formData, daily_fixed_cost: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold" />
                                             </div>
                                         </div>
+                                        <h4 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
+                                            <DollarSign className="h-3 w-3" /> Precificação
+                                        </h4>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-2">
                                                 <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Lucro (%)</Label>
                                                 <Input type="number" value={formData.profit_margin} onChange={e => setFormData({ ...formData, profit_margin: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Taxa Prazo (%)</Label>
-                                                <Input type="number" value={formData.installment_fee} onChange={e => setFormData({ ...formData, installment_fee: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Comissão (%)</Label>
+                                                <Input type="number" value={formData.commission} onChange={e => setFormData({ ...formData, commission: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-amber-600" />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Imposto (%)</Label>
+                                                <Input type="number" value={formData.tax} onChange={e => setFormData({ ...formData, tax: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-60">Acrésc. Prazo (%)</Label>
+                                                <Input type="number" value={formData.installment_fee} onChange={e => setFormData({ ...formData, installment_fee: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-primary" />
                                             </div>
                                         </div>
                                     </div>
@@ -398,15 +411,21 @@ const Orcamento = () => {
                                                         <span className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
                                                             <div className="h-1 w-4 bg-primary rounded-full" /> Apuração de Preço
                                                         </span>
-                                                        <div className="space-y-4">
-                                                            <div className="flex justify-between items-end">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-[9px] font-black uppercase text-slate-400">Add-ons ({formData.profit_margin}% + {formData.commission}% + {formData.tax}%)</span>
-                                                                    <span className="text-xs font-black text-slate-600">Margem, Comissão e Imposto</span>
-                                                                </div>
-                                                                <span className="text-sm font-black text-slate-800">{formatCurrency(calculateTotals.baseValue - calculateTotals.totalCostPower)}</span>
+                                                        <div className="space-y-3">
+                                                            <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                                                                <span className="text-[10px] uppercase font-black text-slate-400">Lucro ({formData.profit_margin}%)</span>
+                                                                <span className="text-xs font-black text-slate-600">{formatCurrency(calculateTotals.totalCostPower * (formData.profit_margin / 100))}</span>
                                                             </div>
-                                                            <div className="flex justify-between items-end">
+                                                            <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                                                                <span className="text-[10px] uppercase font-black text-slate-400">Comissão ({formData.commission}%)</span>
+                                                                <span className="text-xs font-black text-amber-600">{formatCurrency(calculateTotals.totalCostPower * (formData.commission / 100))}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                                                                <span className="text-[10px] uppercase font-black text-slate-400">Imposto ({formData.tax}%)</span>
+                                                                <span className="text-xs font-black text-slate-600">{formatCurrency(calculateTotals.totalCostPower * (formData.tax / 100))}</span>
+                                                            </div>
+
+                                                            <div className="flex justify-between items-end pt-2">
                                                                 <div className="flex flex-col">
                                                                     <span className="text-[9px] font-black uppercase text-slate-400">Valor Sugerido À Vista</span>
                                                                     <span className="text-xs font-black text-slate-600 font-bold uppercase tracking-tight">Preço de Tabela</span>
@@ -415,7 +434,7 @@ const Orcamento = () => {
                                                             </div>
                                                             <div className="pt-4 border-t border-primary/20 flex justify-between items-end">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-[9px] font-black uppercase text-primary">Valor a Prazo (+{formData.installment_fee}%)</span>
+                                                                    <span className="text-[9px] font-black uppercase text-primary">Preço com Acréscimo (+{formData.installment_fee}%)</span>
                                                                     <span className="text-base font-black text-primary uppercase tracking-tighter">Total Parcelado</span>
                                                                 </div>
                                                                 <span className="text-2xl font-black text-primary tracking-tighter">{formatCurrency(calculateTotals.cardValue)}</span>
