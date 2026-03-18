@@ -136,11 +136,15 @@ const Orcamento = () => {
     }, [materials]);
 
     const calculateTotals = useMemo(() => {
+        const categoryTotals: Record<string, number> = {};
         let cost = 0;
+        
         Object.entries(quantities).forEach(([id, qty]) => {
             const material = materials.find(m => m.id === id);
             if (material && qty > 0) {
-                cost += material.unit_price * qty;
+                const itemTotal = material.unit_price * qty;
+                cost += itemTotal;
+                categoryTotals[material.category] = (categoryTotals[material.category] || 0) + itemTotal;
             }
         });
 
@@ -148,7 +152,7 @@ const Orcamento = () => {
         const baseValue = totalCost * formData.markup_factor;
         const cardValue = baseValue / (1 - (formData.card_fee_percent / 100));
 
-        return { totalCost, baseValue, cardValue };
+        return { totalCost, baseValue, cardValue, categoryTotals };
     }, [quantities, materials, formData.markup_factor, formData.card_fee_percent]);
 
     const handleSaveBudget = async () => {
@@ -333,6 +337,70 @@ const Orcamento = () => {
                                                 </AccordionItem>
                                             ))}
                                         </Accordion>
+
+                                        {/* Planilha Final: Resumo de Custos por Categoria */}
+                                        {Object.keys(calculateTotals.categoryTotals).length > 0 && (
+                                            <div className="mt-12 p-8 border border-primary/20 bg-slate-50/50 rounded-[2.5rem] shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                                <div className="flex items-center gap-3 mb-6">
+                                                    <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                                                        <Calculator size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Planilha de Fechamento</h4>
+                                                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Resumo consolidado dos custos e precificação</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                    <div className="space-y-4">
+                                                        <span className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                                                            <div className="h-1 w-4 bg-primary rounded-full" /> Custos por Divisão
+                                                        </span>
+                                                        <div className="space-y-2">
+                                                            {Object.entries(calculateTotals.categoryTotals).map(([cat, total]) => (
+                                                                <div key={cat} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0 group">
+                                                                    <span className="text-[10px] font-black uppercase text-slate-500 group-hover:text-primary transition-colors">{cat}</span>
+                                                                    <span className="text-xs font-black text-slate-700">{formatCurrency(total)}</span>
+                                                                </div>
+                                                            ))}
+                                                            <div className="pt-4 flex justify-between items-center text-primary">
+                                                                <span className="text-[11px] font-black uppercase tracking-widest">Total Material/Serviço</span>
+                                                                <span className="text-base font-black tracking-tighter">{formatCurrency(calculateTotals.totalCost)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                                                        <span className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                                                            <div className="h-1 w-4 bg-primary rounded-full" /> Apuração de Preço
+                                                        </span>
+                                                        <div className="space-y-4">
+                                                            <div className="flex justify-between items-end">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[9px] font-black uppercase text-slate-400">Margem e Operacional (x{formData.markup_factor})</span>
+                                                                    <span className="text-xs font-black text-slate-600">Lucro Bruto Sugerido</span>
+                                                                </div>
+                                                                <span className="text-sm font-black text-slate-800">{formatCurrency(calculateTotals.baseValue - calculateTotals.totalCost)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-end">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[9px] font-black uppercase text-slate-400">Valor à Vista</span>
+                                                                    <span className="text-xs font-black text-slate-600 font-bold">Sem taxas de terceiros</span>
+                                                                </div>
+                                                                <span className="text-sm font-black text-slate-800">{formatCurrency(calculateTotals.baseValue)}</span>
+                                                            </div>
+                                                            <div className="pt-4 border-t border-primary/20 flex justify-between items-end">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[9px] font-black uppercase text-primary">Preço com Taxa ({formData.card_fee_percent}%)</span>
+                                                                    <span className="text-base font-black text-primary uppercase tracking-tighter">Valor Final da Proposta</span>
+                                                                </div>
+                                                                <span className="text-2xl font-black text-primary tracking-tighter">{formatCurrency(calculateTotals.cardValue)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </ScrollArea>
                             </div>
