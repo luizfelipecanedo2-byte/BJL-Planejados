@@ -713,7 +713,7 @@ const Orcamento = () => {
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className="h-10 w-10 text-slate-300 hover:text-primary hover:bg-primary/5 transition-all"
+                                                        className="h-10 w-10 text-primary hover:bg-primary/10 transition-all shadow-sm border border-primary/10"
                                                         onClick={() => {
                                                             setEditingMaterial(mat);
                                                             setIsEditMaterialDialogOpen(true);
