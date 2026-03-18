@@ -16,12 +16,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Orcamento = () => {
-    const { materials: rawMaterials, budgets, loading, updateMaterialPrice, addMaterial, deleteMaterial, saveBudget, refreshBudgets } = useBudgets();
+    const { materials: allMaterials, budgets, loading, updateMaterial, addMaterial, deleteMaterial, saveBudget, refreshBudgets } = useBudgets();
     
     // Sort materials based on custom order
-    const materials = useMemo(() => {
+    const sortedMaterials = useMemo(() => {
         const order = ["MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"];
-        return [...rawMaterials].sort((a, b) => {
+        return [...allMaterials].sort((a, b) => {
             const indexA = order.indexOf(a.category);
             const indexB = order.indexOf(b.category);
             if (indexA === -1 && indexB === -1) return a.category.localeCompare(b.category);
@@ -30,7 +30,7 @@ const Orcamento = () => {
             if (indexA !== indexB) return indexA - indexB;
             return a.name.localeCompare(b.name);
         });
-    }, [rawMaterials]);
+    }, [allMaterials]);
 
     const [searchTerm, setSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -41,7 +41,7 @@ const Orcamento = () => {
         client_name: "",
         project_name: "",
         days_estimated: 1,
-        daily_fixed_cost: 350, // Default value based on typical carpentry fixed cost
+        daily_fixed_cost: 350,
         profit_margin: 15,
         commission: 3,
         tax: 4,
@@ -51,6 +51,9 @@ const Orcamento = () => {
 
     // Checklist state: stores quantities for ALL materials
     const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+    const [isEditMaterialDialogOpen, setIsEditMaterialDialogOpen] = useState(false);
+    const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
 
     const [isNewMaterialDialogOpen, setIsNewMaterialDialogOpen] = useState(false);
     const [newMaterial, setNewMaterial] = useState({
@@ -69,6 +72,20 @@ const Orcamento = () => {
         if (success) {
             setIsNewMaterialDialogOpen(false);
             setNewMaterial({ name: "", category: "OUTROS", unit: "UNIDADE", unit_price: 0 });
+        }
+    };
+
+    const handleUpdateMaterial = async () => {
+        if (!editingMaterial || !editingMaterial.name) return;
+        const success = await updateMaterial(editingMaterial.id, {
+            name: editingMaterial.name,
+            category: editingMaterial.category,
+            unit: editingMaterial.unit,
+            unit_price: editingMaterial.unit_price
+        });
+        if (success) {
+            setIsEditMaterialDialogOpen(false);
+            setEditingMaterial(null);
         }
     };
 
@@ -101,34 +118,22 @@ const Orcamento = () => {
 
     const groupedMaterials = useMemo(() => {
         const order = [
-            "MDF",
-            "FITAS",
-            "ACABAMENTO",
-            "ACESSORIOS",
-            "FERRAGENS",
-            "FIXACAO",
-            "SUPRIMENTOS",
-            "OUTROS",
-            "SERVICOS"
+            "MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"
         ];
 
         const groups: Record<string, Material[]> = {};
-        materials.forEach(m => {
+        sortedMaterials.forEach(m => {
             if (!groups[m.category]) groups[m.category] = [];
             groups[m.category].push(m);
         });
 
-        // Retorna as categorias ordenadas conforme a lista acima
         const sortedEntries: [string, Material[]][] = [];
-        
-        // 1. Adiciona as categorias da ordem definida
         order.forEach(cat => {
             if (groups[cat]) {
                 sortedEntries.push([cat, groups[cat]]);
             }
         });
 
-        // 2. Adiciona qualquer categoria extra que não estava na lista (segurança)
         Object.entries(groups).forEach(([cat, items]) => {
             if (!order.includes(cat)) {
                 sortedEntries.push([cat, items]);
@@ -136,14 +141,14 @@ const Orcamento = () => {
         });
 
         return sortedEntries;
-    }, [materials]);
+    }, [sortedMaterials]);
 
     const calculateTotals = useMemo(() => {
         const categoryTotals: Record<string, number> = {};
         let materialCost = 0;
         
         Object.entries(quantities).forEach(([id, qty]) => {
-            const material = materials.find(m => m.id === id);
+            const material = allMaterials.find(m => m.id === id);
             if (material && qty > 0) {
                 const itemTotal = material.unit_price * qty;
                 materialCost += itemTotal;
@@ -154,15 +159,12 @@ const Orcamento = () => {
         const fixedCost = formData.days_estimated * formData.daily_fixed_cost;
         const totalCostPower = materialCost + fixedCost;
         
-        // Aplica 15% lucro + 3% comissão + 4% imposto (Total +22%)
         const totalAddonsPercent = formData.profit_margin + formData.commission + formData.tax;
         const baseValue = totalCostPower * (1 + (totalAddonsPercent / 100));
-        
-        // Valor a prazo (+11% sobre o valor à vista)
         const cardValue = baseValue * (1 + (formData.installment_fee / 100));
 
         return { materialCost, fixedCost, totalCostPower, baseValue, cardValue, categoryTotals };
-    }, [quantities, materials, formData.days_estimated, formData.daily_fixed_cost, formData.profit_margin, formData.commission, formData.tax, formData.installment_fee]);
+    }, [quantities, allMaterials, formData.days_estimated, formData.daily_fixed_cost, formData.profit_margin, formData.commission, formData.tax, formData.installment_fee]);
 
     const handleSaveBudget = async () => {
         if (!formData.client_name) {
@@ -173,7 +175,7 @@ const Orcamento = () => {
         const budgetItems = Object.entries(quantities)
             .filter(([_, qty]) => qty > 0)
             .map(([id, qty]) => {
-                const material = materials.find(m => m.id === id);
+                const material = allMaterials.find(m => m.id === id);
                 return {
                     material_id: id,
                     quantity: qty,
@@ -201,7 +203,7 @@ const Orcamento = () => {
 
         if (success) {
             setIsDialogOpen(false);
-            setFormData({ client_name: "", project_name: "", days_estimated: 1, markup_factor: 1.5, card_fee_percent: 5, notes: "" });
+            setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 350, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, notes: "" });
             setQuantities({});
         }
     };
@@ -248,7 +250,6 @@ const Orcamento = () => {
                             </div>
 
                             <div className="flex-1 flex overflow-hidden">
-                                {/* Lateral Esquerda: Dados Gerais */}
                                 <div className="w-80 border-r border-slate-100 p-8 space-y-8 bg-slate-50/50 backdrop-blur-sm">
                                     <div className="space-y-4">
                                         <h4 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
@@ -319,7 +320,6 @@ const Orcamento = () => {
                                     </div>
                                 </div>
 
-                                {/* Centro: Checklist de Materiais */}
                                 <ScrollArea className="flex-1 p-8 bg-card">
                                     <div className="space-y-6">
                                         <div className="flex items-center gap-2 mb-6">
@@ -371,7 +371,6 @@ const Orcamento = () => {
                                             ))}
                                         </Accordion>
 
-                                        {/* Planilha Final: Resumo de Custos por Categoria */}
                                         {Object.keys(calculateTotals.categoryTotals).length > 0 && (
                                             <div className="mt-12 p-8 border border-primary/20 bg-slate-50/50 rounded-[2.5rem] shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
                                                 <div className="flex items-center gap-3 mb-6">
@@ -522,7 +521,7 @@ const Orcamento = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-primary/50 group-hover:text-primary transition-colors">Catálogo</span>
                             </div>
                             <div>
-                                <span className="text-3xl font-black text-primary tracking-tighter">{materials.length}</span>
+                                <span className="text-3xl font-black text-primary tracking-tighter">{allMaterials.length}</span>
                                 <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Itens cadastrados na lista</p>
                             </div>
                         </Card>
@@ -649,7 +648,7 @@ const Orcamento = () => {
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Categoria</Label>
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Categoria</Label>
                                             <Select 
                                                 value={newMaterial.category} 
                                                 onValueChange={val => setNewMaterial({ ...newMaterial, category: val })}
@@ -694,7 +693,7 @@ const Orcamento = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/5">
-                                    {materials.map((mat) => (
+                                    {allMaterials.map((mat) => (
                                         <tr key={mat.id} className="hover:bg-slate-50/80 transition-all group">
                                             <td className="px-8 py-5">
                                                 <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest">{mat.category}</Badge>
@@ -705,12 +704,23 @@ const Orcamento = () => {
                                                 <Input
                                                     type="number"
                                                     defaultValue={mat.unit_price}
-                                                    onBlur={(e) => updateMaterialPrice(mat.id, parseFloat(e.target.value))}
+                                                    onBlur={(e) => updateMaterial(mat.id, { unit_price: parseFloat(e.target.value) })}
                                                     className="w-32 ml-auto h-10 rounded-xl text-right font-black border-transparent bg-transparent hover:border-muted focus:bg-white text-slate-900"
                                                 />
                                             </td>
                                             <td className="px-8 py-5 text-right">
                                                 <div className="flex justify-end gap-2">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-10 w-10 text-slate-300 hover:text-primary hover:bg-primary/5 transition-all"
+                                                        onClick={() => {
+                                                            setEditingMaterial(mat);
+                                                            setIsEditMaterialDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </Button>
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
@@ -723,7 +733,6 @@ const Orcamento = () => {
                                                     >
                                                         <Trash2 size={16} />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-300 hover:text-primary"><Save size={16} /></Button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -735,7 +744,52 @@ const Orcamento = () => {
                 </Card>
             )}
 
-            {/* Dicas de Inteligência */}
+            <Dialog open={isEditMaterialDialogOpen} onOpenChange={setIsEditMaterialDialogOpen}>
+                <DialogContent className="sm:max-w-[425px] rounded-[2rem] border-none shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-primary">Editar Item</DialogTitle>
+                    </DialogHeader>
+                    {editingMaterial && (
+                        <div className="grid gap-6 py-6">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nome do Item</Label>
+                                <Input value={editingMaterial.name} onChange={e => setEditingMaterial({ ...editingMaterial, name: e.target.value })} className="rounded-2xl h-12 border-slate-200 text-slate-900 font-bold" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Categoria</Label>
+                                    <Select 
+                                        value={editingMaterial.category} 
+                                        onValueChange={val => setEditingMaterial({ ...editingMaterial, category: val })}
+                                    >
+                                        <SelectTrigger className="w-full h-12 rounded-2xl border-slate-200 bg-white px-4 text-xs font-bold uppercase text-slate-900">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                            {["MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"].map(cat => (
+                                                <SelectItem key={cat} value={cat} className="font-black uppercase text-[10px] py-3">{cat}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Unidade</Label>
+                                    <Input value={editingMaterial.unit} onChange={e => setEditingMaterial({ ...editingMaterial, unit: e.target.value })} className="rounded-2xl h-12 border-slate-200 text-slate-900 font-bold" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Preço Unitário (R$)</Label>
+                                <Input type="number" step="0.01" value={editingMaterial.unit_price} onChange={e => setEditingMaterial({ ...editingMaterial, unit_price: parseFloat(e.target.value) || 0 })} className="rounded-2xl h-12 border-slate-200 font-bold text-slate-900" />
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsEditMaterialDialogOpen(false)} className="rounded-xl font-black uppercase text-[10px]">Cancelar</Button>
+                        <Button onClick={handleUpdateMaterial} className="bg-primary rounded-xl font-black uppercase text-[10px] px-8 h-12">Salvar Alterações</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
                 <Card className="p-8 bg-primary/5 border border-primary/10 rounded-3xl flex items-start gap-4">
                     <div className="p-3 bg-primary/20 rounded-2xl text-primary">

@@ -73,17 +73,19 @@ export function useBudgets() {
         setLoading(false);
     };
 
-    const updateMaterialPrice = async (id: string, newPrice: number) => {
+    const updateMaterial = async (id: string, updates: Partial<Material>) => {
         const { error } = await supabase
             .from('budget_materials')
-            .update({ unit_price: newPrice })
+            .update(updates)
             .eq('id', id);
 
         if (error) {
-            toast.error("Erro ao atualizar preço");
+            toast.error("Erro ao atualizar item");
+            return false;
         } else {
-            setMaterials(prev => prev.map(m => m.id === id ? { ...m, unit_price: newPrice } : m));
-            toast.success("Preço atualizado");
+            setMaterials(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+            toast.success("Item atualizado");
+            return true;
         }
     };
 
@@ -158,7 +160,7 @@ export function useBudgets() {
         materials,
         budgets,
         loading,
-        updateMaterialPrice,
+        updateMaterial,
         addMaterial,
         deleteMaterial,
         saveBudget,
