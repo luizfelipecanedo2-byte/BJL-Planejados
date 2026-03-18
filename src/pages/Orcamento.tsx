@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBudgets, Material } from "@/hooks/useBudgets";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Orcamento = () => {
     const { materials: rawMaterials, budgets, loading, updateMaterialPrice, addMaterial, deleteMaterial, saveBudget, refreshBudgets } = useBudgets();
@@ -538,15 +539,19 @@ const Orcamento = () => {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Categoria</Label>
-                                            <select 
-                                                className="w-full h-12 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-bold uppercase"
+                                            <Select 
                                                 value={newMaterial.category} 
-                                                onChange={e => setNewMaterial({ ...newMaterial, category: e.target.value })}
+                                                onValueChange={val => setNewMaterial({ ...newMaterial, category: val })}
                                             >
-                                                {["MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"].map(cat => (
-                                                    <option key={cat} value={cat}>{cat}</option>
-                                                ))}
-                                            </select>
+                                                <SelectTrigger className="w-full h-12 rounded-2xl border-slate-200 bg-white px-4 text-xs font-bold uppercase text-slate-900 shadow-sm focus:ring-2 focus:ring-primary/20">
+                                                    <SelectValue placeholder="Selecione" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                                    {["MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"].map(cat => (
+                                                        <SelectItem key={cat} value={cat} className="font-black uppercase text-[10px] py-3">{cat}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Unidade</Label>
