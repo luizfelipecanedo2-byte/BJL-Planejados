@@ -222,7 +222,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
                     </div>
                 </div>
 
-                <div className="px-12 pb-4 flex-1">
+                <div className="px-12 pb-10 flex-1 flex flex-col">
                     <div className="flex justify-between items-start mt-6 mb-6">
                         <div className="flex-1">
                              <div className="bg-amber-500 text-white px-8 py-3.5 rounded-[1.5rem] shadow-xl shadow-amber-500/10 group relative overflow-hidden text-left">
@@ -314,6 +314,8 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
                             </tbody>
                         </table>
                     </div>
+
+                    <div className="flex-1 min-h-[40px]" />
 
                     {/* Footer and Totals */}
                     <div className="grid grid-cols-5 gap-8 items-start pt-6 border-t border-slate-100">
