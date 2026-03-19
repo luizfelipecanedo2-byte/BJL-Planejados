@@ -13,7 +13,17 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
     const [budget, setBudget] = useState({...initialBudget});
     const [isSaving, setIsSaving] = useState(false);
     
-    // Initialize items
+    const [activeTab, setActiveTab] = useState<'commercial' | 'technical'>('commercial');
+    const [ambientes, setAmbientes] = useState(() => {
+        // Initial environment based on project name or default
+        return [{
+            id: `amb-${Date.now()}`,
+            description: initialBudget.project_name || "Ambiente Geral",
+            value: initialBudget.total_value / (1 + (parseFloat(initialBudget.card_fee_percent) || 11) / 100) // Back to 'à vista'
+        }];
+    });
+
+    // Initialize technical items
     const [items, setItems] = useState(() => {
         const initialItems = initialBudget.budget_items || [];
         if (initialItems.length === 0) {
@@ -80,13 +90,29 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
         setItems(items.filter((item: any) => item.id !== id));
     };
 
+    const handleAmbienteChange = (id: string, field: string, value: any) => {
+        setAmbientes(ambientes.map(amb => amb.id === id ? { ...amb, [field]: value } : amb));
+    };
+
+    const addAmbiente = () => {
+        setAmbientes([...ambientes, { id: `amb-${Date.now()}`, description: "", value: 0 }]);
+    };
+
+    const removeAmbiente = (id: string) => {
+        setAmbientes(ambientes.filter(amb => amb.id !== id));
+    };
+
+    const technicalTotal = items.reduce((acc: number, curr: any) => acc + (parseFloat(curr.total_price) || 0), 0);
+    const commercialTotal = ambientes.reduce((acc: number, curr: any) => acc + (parseFloat(curr.value) || 0), 0);
+    const displayTotal = activeTab === 'commercial' ? commercialTotal : technicalTotal;
+
     const handleSave = async () => {
         if (!onSave) return;
         
         setIsSaving(true);
         try {
-            // Calculate final totals before saving
-            const totalCostAtVista = items.reduce((acc: number, curr: any) => acc + (parseFloat(curr.total_price) || 0), 0);
+            // Calculate final totals before saving - use the currently displayed total
+            const totalCostAtVista = displayTotal;
             const cardFeePercent = parseFloat(budget.card_fee_percent) || 0;
             const totalValueWithCardFee = totalCostAtVista * (1 + cardFeePercent / 100);
             
@@ -94,7 +120,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
             const updatedBudget = {
                 ...budget,
                 total_value: totalValueWithCardFee, 
-                total_cost: totalCostAtVista / budgetMarkupFactor 
+                total_cost: items.reduce((acc: number, curr: any) => acc + (parseFloat(curr.total_price) || 0), 0) / budgetMarkupFactor 
             };
 
             // Filter out empty items
@@ -109,8 +135,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
         }
     };
 
-    const totalValue = items.reduce((acc: number, curr: any) => acc + (parseFloat(curr.total_price) || 0), 0);
-    const cardValue = totalValue * (1 + (parseFloat(budget.card_fee_percent) || 11) / 100);
+    const cardValue = displayTotal * (1 + (parseFloat(budget.card_fee_percent) || 11) / 100);
 
     return (
         <div className="budget-print-overlay fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-sm overflow-y-auto p-4 md:p-10 print:p-0 print:bg-white print:relative print:z-0 print:overflow-visible">
@@ -172,9 +197,17 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
                     .budget-print-container tr { display: table-row !important; }
                     .budget-print-container td, .budget-print-container th { display: table-cell !important; }
 
+                    /* Force page breaks if needed */
+                    .page-break {
+                        page-break-before: always !important;
+                        break-before: page !important;
+                        margin-top: 2cm !important;
+                    }
+
                     /* Hide interactive buttons during print */
                     .print-hidden, 
                     button, 
+                    .print-tabs,
                     .print\:hidden {
                         display: none !important;
                         visibility: hidden !important;
@@ -247,72 +280,147 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
                         </div>
                     </div>
 
-                    {/* Products Table */}
-                    <div className="mb-8 overflow-hidden rounded-[1.5rem] border border-slate-100">
-                        <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center group relative">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-3">
-                                Memorial Descritivo e Detalhamento Técnico
-                            </span>
-                            <button 
-                                onClick={addNewItem}
-                                className="p-1 px-3 bg-white/10 hover:bg-amber-500 hover:text-black rounded-md transition-all text-[9px] font-black uppercase print:hidden"
-                            >
-                                <Plus size={10} className="inline mr-1" /> Novo Item
-                            </button>
+                    {/* Tabs for Web View */}
+                    <div className="flex items-center gap-2 mb-6 print-tabs">
+                        <button 
+                            onClick={() => setActiveTab('commercial')}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'commercial' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                        >
+                            Orçamento Comercial
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('technical')}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'technical' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                        >
+                            Lista Técnica de Materiais
+                        </button>
+                    </div>
+
+                    {/* Commercial View (Proposta) */}
+                    <div className={activeTab === 'commercial' ? 'block' : 'hidden print:block'}>
+                        <div className="mb-8 overflow-hidden rounded-[1.5rem] border border-slate-100">
+                            <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center group relative">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-3">
+                                    Descrição dos Ambientes e Serviços
+                                </span>
+                                <button 
+                                    onClick={addAmbiente}
+                                    className="p-1 px-3 bg-white/10 hover:bg-amber-500 hover:text-black rounded-md transition-all text-[9px] font-black uppercase print:hidden"
+                                >
+                                    <Plus size={10} className="inline mr-1" /> Novo Ambiente
+                                </button>
+                            </div>
+                            <table className="w-full text-left border-collapse bg-white">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-200">
+                                        <th className="pl-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 w-[70%]">Ambiente / Detalhamento</th>
+                                        <th className="pr-6 py-3 text-right text-[9px] font-black uppercase tracking-widest text-slate-400">Investimento (À Vista)</th>
+                                        <th className="w-8 print:hidden"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {ambientes.map((amb) => (
+                                        <tr key={amb.id} className="hover:bg-amber-50/20 group">
+                                            <td className="pl-6 py-4">
+                                                <textarea 
+                                                    value={amb.description}
+                                                    rows={2}
+                                                    onChange={(e) => handleAmbienteChange(amb.id, 'description', e.target.value)}
+                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 font-black text-slate-800 uppercase text-[11px] tracking-tight placeholder:text-slate-200 resize-none"
+                                                    placeholder="Descreva o ambiente e o que será feito..."
+                                                />
+                                            </td>
+                                            <td className="pr-6 py-4 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <span className="text-[9px] font-bold text-slate-300">R$</span>
+                                                    <input 
+                                                        type="number"
+                                                        value={amb.value}
+                                                        onChange={(e) => handleAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
+                                                        className="w-24 bg-transparent border-none focus:ring-0 p-0 text-right font-black text-slate-600 text-xs"
+                                                    />
+                                                </div>
+                                            </td>
+                                            <td className="pr-2 print:hidden">
+                                                <button 
+                                                    onClick={() => removeAmbiente(amb.id)}
+                                                    className="p-1 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                        <table className="w-full text-left border-collapse bg-white">
-                            <thead>
-                                <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="pl-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 w-1/2">Ambiente / Material</th>
-                                    <th className="py-3 text-center text-[9px] font-black uppercase tracking-widest text-slate-400">Qtd</th>
-                                    <th className="py-3 text-right text-[9px] font-black uppercase tracking-widest text-slate-400">Unitário</th>
-                                    <th className="pr-6 py-3 text-right text-[9px] font-black uppercase tracking-widest text-slate-400">Total</th>
-                                    <th className="w-8 print:hidden"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {items.map((item: any) => (
-                                    <tr key={item.id} className="hover:bg-amber-50/20 group">
-                                        <td className="pl-6 py-2.5">
-                                            <input 
-                                                value={item.material_name || ""}
-                                                onChange={(e) => handleItemChange(item.id, 'material_name', e.target.value)}
-                                                className="w-full bg-transparent border-none focus:ring-0 p-0 font-black text-slate-800 uppercase text-[11px] tracking-tight placeholder:text-slate-200"
-                                                placeholder="Descreva..."
-                                            />
-                                        </td>
-                                        <td className="py-2.5 text-center">
-                                            <input 
-                                                type="number"
-                                                value={item.quantity}
-                                                onChange={(e) => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                                                className="w-12 bg-transparent border-none focus:ring-0 p-0 text-center font-black text-slate-500 text-[11px]"
-                                            />
-                                        </td>
-                                        <td className="py-2.5 text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <span className="text-[9px] font-bold text-slate-300">R$</span>
+                    </div>
+
+                    {/* Technical View (Listagem de Materiais) - Page Break on Print */}
+                    <div className={`${activeTab === 'technical' ? 'block' : 'hidden print:block'} ${activeTab === 'commercial' ? 'print:page-break' : ''}`}>
+                        {/* Title only for technical list when printing after commercial */}
+                        <div className="hidden print:block mb-6 mt-10">
+                            <h3 className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-900 border-b-2 border-slate-900 pb-2">Planilha Técnica de Materiais (Interno)</h3>
+                        </div>
+                        
+                        <div className="mb-8 overflow-hidden rounded-[1.5rem] border border-slate-100">
+                            <div className="bg-slate-700 text-white px-6 py-4 flex justify-between items-center group relative">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-3">
+                                    Memorial Técnico - Detalhamento de Insumos
+                                </span>
+                                <button 
+                                    onClick={addNewItem}
+                                    className="p-1 px-3 bg-white/10 hover:bg-amber-500 hover:text-black rounded-md transition-all text-[9px] font-black uppercase print:hidden"
+                                >
+                                    <Plus size={10} className="inline mr-1" /> Novo Material
+                                </button>
+                            </div>
+                            <table className="w-full text-left border-collapse bg-white">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-200">
+                                        <th className="pl-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 w-1/2">Material</th>
+                                        <th className="py-3 text-center text-[9px] font-black uppercase tracking-widest text-slate-400">Qtd</th>
+                                        <th className="py-3 text-right text-[9px] font-black uppercase tracking-widest text-slate-400">Unitário</th>
+                                        <th className="pr-6 py-3 text-right text-[9px] font-black uppercase tracking-widest text-slate-400">Total</th>
+                                        <th className="w-8 print:hidden"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {items.map((item: any) => (
+                                        <tr key={item.id} className="hover:bg-slate-50 group">
+                                            <td className="pl-6 py-2.5">
+                                                <input 
+                                                    value={item.material_name || ""}
+                                                    onChange={(e) => handleItemChange(item.id, 'material_name', e.target.value)}
+                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 font-bold text-slate-600 uppercase text-[10px] tracking-tight placeholder:text-slate-200"
+                                                    placeholder="Descreva..."
+                                                />
+                                            </td>
+                                            <td className="py-2.5 text-center">
                                                 <input 
                                                     type="number"
-                                                    value={item.unit_price_at_time}
-                                                    onChange={(e) => handleItemChange(item.id, 'unit_price_at_time', parseFloat(e.target.value) || 0)}
-                                                    className="w-20 bg-transparent border-none focus:ring-0 p-0 text-right font-bold text-slate-600 text-[11px]"
+                                                    value={item.quantity}
+                                                    onChange={(e) => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                                                    className="w-12 bg-transparent border-none focus:ring-0 p-0 text-center font-bold text-slate-400 text-[10px]"
                                                 />
-                                            </div>
-                                        </td>
-                                        <td className="pr-6 py-2.5 text-right font-black text-slate-900 text-[11px] tabular-nums">{formatCurrency(item.total_price || 0)}</td>
-                                        <td className="pr-2 print:hidden">
-                                            <button 
-                                                onClick={() => removeItem(item.id)}
-                                                className="p-1 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
-                                            >
-                                                <Trash2 size={12} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                            </td>
+                                            <td className="py-2.5 text-right">
+                                                <span className="text-[10px] font-bold text-slate-400 tabular-nums">{formatCurrency(item.unit_price_at_time)}</span>
+                                            </td>
+                                            <td className="pr-6 py-2.5 text-right font-bold text-slate-700 text-[10px] tabular-nums">{formatCurrency(item.total_price || 0)}</td>
+                                            <td className="pr-2 print:hidden">
+                                                <button 
+                                                    onClick={() => removeItem(item.id)}
+                                                    className="p-1 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div className="flex-1 min-h-[40px]" />
@@ -373,7 +481,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
                                 </div>
                                 <div className="relative z-10">
                                     <p className="text-[8px] font-black uppercase tracking-[0.2em] text-amber-500 mb-1">Total À Vista</p>
-                                    <p className="text-3xl font-black text-white tracking-tighter leading-none tabular-nums">{formatCurrency(totalValue)}</p>
+                                    <p className="text-3xl font-black text-white tracking-tighter leading-none tabular-nums">{formatCurrency(displayTotal)}</p>
                                 </div>
                                 <div className="pt-4 border-t border-white/10 relative z-10">
                                     <div className="flex justify-between items-center mb-1.5">
