@@ -349,20 +349,20 @@ const Orcamento = () => {
                                         <p className="text-2xl sm:text-4xl font-black tracking-tighter">{formatCurrency(calculateTotals.cardValue)}</p>
                                     </div>
                                 </div>
-                                                      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                            </div>
+                            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                                 <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-100 p-6 sm:p-8 space-y-6 sm:space-y-8 bg-slate-50/50 backdrop-blur-sm overflow-y-auto max-h-[40vh] md:max-h-full">
                                     <div className="space-y-4">
                                         <h4 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
                                             <AlertCircle className="h-3 w-3" /> Identificação
                                         </h4>
                                         <div className="space-y-2">
-                                            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Cliente</Label>
-                                            <Input value={formData.client_name} onChange={e => setFormData({ ...formData, client_name: e.target.value })} placeholder="Nome completo" className="rounded-xl h-12 bg-white border-slate-200 text-slate-900 font-bold" />
+                                            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Cliente</Label>
+                                            <Input value={formData.client_name} onChange={e => setFormData({ ...formData, client_name: e.target.value })} placeholder="Nome completo" className="rounded-xl h-12 bg-white/5 border-white/10 text-white font-bold focus:bg-white/10 transition-all" />
                                         </div>
-     </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Ambiente/Projeto</Label>
-                                            <Input value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} placeholder="Ex: Cozinha Gourmet" className="rounded-xl h-12 bg-white border-slate-200 text-slate-900 font-bold" />
+                                            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Ambiente/Projeto</Label>
+                                            <Input value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} placeholder="Ex: Cozinha Gourmet" className="rounded-xl h-12 bg-white/5 border-white/10 text-white font-bold focus:bg-white/10 transition-all" />
                                         </div>
                                     </div>
 
@@ -372,12 +372,12 @@ const Orcamento = () => {
                                         </h4>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Dias</Label>
-                                                <Input type="number" value={formData.days_estimated} onChange={e => setFormData({ ...formData, days_estimated: parseInt(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-slate-900" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Dias</Label>
+                                                <Input type="number" value={formData.days_estimated} onChange={e => setFormData({ ...formData, days_estimated: parseInt(e.target.value) || 0 })} className="h-10 rounded-xl bg-white/5 border-white/10 font-bold text-white focus:bg-white/10 transition-all" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Valor/Dia</Label>
-                                                <Input type="number" value={formData.daily_fixed_cost} onChange={e => setFormData({ ...formData, daily_fixed_cost: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-slate-900" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Valor/Dia</Label>
+                                                <Input type="number" value={formData.daily_fixed_cost} onChange={e => setFormData({ ...formData, daily_fixed_cost: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white/5 border-white/10 font-bold text-white focus:bg-white/10 transition-all" />
                                             </div>
                                         </div>
                                         <h4 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
@@ -385,22 +385,22 @@ const Orcamento = () => {
                                         </h4>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Lucro (%)</Label>
-                                                <Input type="number" value={formData.profit_margin} onChange={e => setFormData({ ...formData, profit_margin: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-slate-900" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Lucro (%)</Label>
+                                                <Input type="number" value={formData.profit_margin} onChange={e => setFormData({ ...formData, profit_margin: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white/5 border-white/10 font-bold text-emerald-400 focus:bg-white/10 transition-all" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Comissão (%)</Label>
-                                                <Input type="number" value={formData.commission} onChange={e => setFormData({ ...formData, commission: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-amber-600" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Comissão (%)</Label>
+                                                <Input type="number" value={formData.commission} onChange={e => setFormData({ ...formData, commission: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white/5 border-white/10 font-bold text-amber-400 focus:bg-white/10 transition-all" />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Imposto (%)</Label>
-                                                <Input type="number" value={formData.tax} onChange={e => setFormData({ ...formData, tax: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-slate-900" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Imposto (%)</Label>
+                                                <Input type="number" value={formData.tax} onChange={e => setFormData({ ...formData, tax: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white/5 border-white/10 font-bold text-white focus:bg-white/10 transition-all" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Acrésc. Prazo (%)</Label>
-                                                <Input type="number" value={formData.installment_fee} onChange={e => setFormData({ ...formData, installment_fee: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white border-slate-200 font-bold text-primary" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Acrésc. Prazo (%)</Label>
+                                                <Input type="number" value={formData.installment_fee} onChange={e => setFormData({ ...formData, installment_fee: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white/5 border-white/10 font-bold text-primary focus:bg-white/10 transition-all" />
                                             </div>
                                         </div>
                                     </div>
@@ -439,8 +439,8 @@ const Orcamento = () => {
                                                             return (
                                                                 <div key={`selected-${id}`} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:border-primary/30 transition-all gap-4">
                                                                     <div className="flex flex-col">
-                                                                        <span className="text-[12px] font-black uppercase tracking-tight text-slate-800">{item.name}</span>
-                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{item.category} • {item.unit}</span>
+                                                                        <span className="text-[12px] font-black uppercase tracking-tight text-white">{item.name}</span>
+                                                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{item.category} • {item.unit}</span>
                                                                     </div>
                                                                     <div className="flex flex-wrap items-center gap-4">
                                                                         <div className="flex flex-col gap-1">
@@ -462,8 +462,8 @@ const Orcamento = () => {
                                                                             />
                                                                         </div>
                                                                         <div className="flex flex-col gap-1 items-end min-w-[100px]">
-                                                                            <Label className="text-[8px] font-black uppercase text-slate-400 mr-1">Subtotal</Label>
-                                                                            <span className="text-sm font-black text-slate-800">{formatCurrency(currentPrice * qty)}</span>
+                                                                            <Label className="text-[8px] font-black uppercase text-slate-500 mr-1">Subtotal</Label>
+                                                                            <span className="text-sm font-black text-white">{formatCurrency(currentPrice * qty)}</span>
                                                                         </div>
                                                                         <Button 
                                                                             variant="ghost" 
@@ -488,13 +488,13 @@ const Orcamento = () => {
 
                                         <Accordion type="multiple" defaultValue={groupedMaterials.map(([cat]) => cat)} className="space-y-4">
                                             {groupedMaterials.map(([category, items]) => (
-                                                <AccordionItem key={category} value={category} className="border border-slate-100 rounded-3xl px-6 bg-white shadow-sm overflow-hidden border-b-0">
+                                                <AccordionItem key={category} value={category} className="border border-white/5 rounded-3xl px-6 bg-white/5 shadow-sm overflow-hidden border-b-0 space-y-2">
                                                     <AccordionTrigger className="hover:no-underline py-4 border-none">
                                                         <div className="flex items-center gap-3">
-                                                            <Badge className="bg-primary/5 text-primary border-none font-black text-[9px] uppercase tracking-widest px-3">
+                                                            <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] uppercase tracking-widest px-3">
                                                                 {items.length} ITENS
                                                             </Badge>
-                                                            <span className="font-black uppercase text-xs tracking-tighter text-slate-600">{category}</span>
+                                                            <span className="font-black uppercase text-xs tracking-tighter text-slate-300">{category}</span>
                                                         </div>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pb-6 border-none">
@@ -507,8 +507,8 @@ const Orcamento = () => {
                                                                         quantities[item.id] > 0 ? "bg-primary/5 border-primary/20 border shadow-inner" : "bg-slate-50 hover:bg-slate-100 border border-transparent"
                                                                     )}>
                                                                         <div className="flex flex-col">
-                                                                            <span className="text-[11px] font-black uppercase tracking-tight text-slate-700">{item.name}</span>
-                                                                            <span className="text-[9px] font-bold text-slate-400 uppercase">{item.unit} • {formatCurrency(item.unit_price)}</span>
+                                                                            <span className="text-[11px] font-black uppercase tracking-tight text-slate-200">{item.name}</span>
+                                                                            <span className="text-[9px] font-bold text-slate-500 uppercase">{item.unit} • {formatCurrency(item.unit_price)}</span>
                                                                         </div>
                                                                         <div className="flex items-center gap-3">
                                                                             {quantities[item.id] > 0 && (
@@ -547,12 +547,12 @@ const Orcamento = () => {
                                         {Object.keys(calculateTotals.categoryTotals).length > 0 && (
                                             <div className="mt-12 p-8 border border-primary/20 bg-slate-50/50 rounded-[2.5rem] shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
                                                 <div className="flex items-center gap-3 mb-6">
-                                                    <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                                                    <div className="p-2 bg-primary/20 rounded-xl text-primary">
                                                         <Calculator size={18} />
                                                     </div>
                                                     <div>
-                                                        <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Planilha de Fechamento</h4>
-                                                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Resumo consolidado dos custos e precificação</p>
+                                                        <h4 className="font-black uppercase text-sm tracking-widest text-white">Planilha de Fechamento</h4>
+                                                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest opacity-60">Resumo consolidado dos custos e precificação</p>
                                                     </div>
                                                 </div>
 
@@ -599,10 +599,10 @@ const Orcamento = () => {
 
                                                             <div className="flex justify-between items-end pt-2">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-[9px] font-black uppercase text-slate-400">Valor Sugerido À Vista</span>
-                                                                    <span className="text-xs font-black text-slate-600 font-bold uppercase tracking-tight">Preço de Tabela</span>
+                                                                    <span className="text-[9px] font-black uppercase text-slate-500">Valor Sugerido À Vista</span>
+                                                                    <span className="text-xs font-black text-slate-300 font-bold uppercase tracking-tight">Preço de Tabela</span>
                                                                 </div>
-                                                                <span className="text-sm font-black text-slate-800 underline decoration-primary/30 underline-offset-4">{formatCurrency(calculateTotals.baseValue)}</span>
+                                                                <span className="text-sm font-black text-white underline decoration-primary/30 underline-offset-4">{formatCurrency(calculateTotals.baseValue)}</span>
                                                             </div>
                                                             <div className="pt-4 border-t border-primary/20 flex justify-between items-end">
                                                                 <div className="flex flex-col">
