@@ -14,6 +14,7 @@ import { useBudgets, Material } from "@/hooks/useBudgets";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import BudgetPrintView from "@/components/orcamento/BudgetPrintView";
 
 const Orcamento = () => {
     const { materials: allMaterials, budgets, loading, updateMaterial, addMaterial, deleteMaterial, saveBudget, refreshBudgets } = useBudgets();
@@ -35,6 +36,7 @@ const Orcamento = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [activeTab, setActiveTab] = useState("orcamentos");
+    const [printingBudget, setPrintingBudget] = useState<any>(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -738,7 +740,12 @@ const Orcamento = () => {
                                                          >
                                                              <Pencil size={16} />
                                                          </Button>
-                                                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-500 transition-all active:scale-95 border border-border/5">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-500 transition-all active:scale-95 border border-border/5"
+                                                            onClick={() => setPrintingBudget(orc)}
+                                                        >
                                                             <FileText size={16} />
                                                         </Button>
                                                     </div>
@@ -951,6 +958,13 @@ const Orcamento = () => {
                     </div>
                 </Card>
             </div>
+
+            {printingBudget && (
+                <BudgetPrintView 
+                    budget={printingBudget} 
+                    onClose={() => setPrintingBudget(null)} 
+                />
+            )}
         </div>
     );
 };
