@@ -278,7 +278,7 @@ const Orcamento = () => {
         const fallbackMaterial = othersMaterial?.id || allMaterials[0].id;
         
         const finalItems = updatedItems
-            .filter(item => item.material_name && item.material_name.trim() !== "")
+            .filter(item => item && item.material_name && typeof item.material_name === 'string' && item.material_name.trim() !== "")
             .map(item => ({
                 material_id: item.material_id || fallbackMaterial,
                 quantity: parseFloat(item.quantity) || 0,
