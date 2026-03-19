@@ -113,7 +113,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
     const cardValue = totalValue * (1 + (parseFloat(budget.card_fee_percent) || 11) / 100);
 
     return (
-        <div className="fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-sm overflow-y-auto p-4 md:p-10 print:p-0 print:bg-white print:relative print:z-0 print:overflow-visible">
+        <div className="budget-print-overlay fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-sm overflow-y-auto p-4 md:p-10 print:p-0 print:bg-white print:relative print:z-0 print:overflow-visible">
             {/* Custom Print Styles Injection */}
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
@@ -122,60 +122,62 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
                         margin: 0;
                     }
 
-                    /* Important: Reset body style for print */
+                    /* Reset body style for print */
                     body {
                         background-color: white !important;
                         color: black !important;
                         margin: 0 !important;
                         padding: 0 !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
                     }
 
-                    /* Hide everything by default */
-                    body > * {
-                        display: none !important;
+                    /* Hide ALL elements by default using visibility to avoid breaking parents */
+                    body * {
+                        visibility: hidden !important;
                     }
                     
-                    /* Show ONLY the budget container */
-                    .budget-print-container {
-                        display: flex !important;
-                        visibility: visible !important;
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 100% !important;
-                        height: 100% !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        background: white !important;
-                        box-shadow: none !important;
-                        border-radius: 0 !important;
-                        overflow: visible !important;
-                    }
-
-                    /* Ensure all children of the container are visible and maintain their display type */
+                    /* Show ONLY the budget container and its wrapper */
+                    .budget-print-overlay,
+                    .budget-print-overlay *,
+                    .budget-print-container, 
                     .budget-print-container * {
                         visibility: visible !important;
                     }
 
-                    /* Specifically unhide elements that might be hidden by generic selectors */
+                    /* Position the container at the top left of the print page */
+                    .budget-print-overlay {
+                        position: absolute !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: white !important;
+                        display: block !important;
+                    }
+
+                    .budget-print-container {
+                        position: relative !important;
+                        margin: 0 auto !important;
+                        width: 100% !important;
+                        max-width: none !important;
+                        box-shadow: none !important;
+                        border-radius: 0 !important;
+                        background: white !important;
+                    }
+
+                    /* Specifically ensure table elements display correctly */
                     .budget-print-container table { display: table !important; }
                     .budget-print-container tr { display: table-row !important; }
                     .budget-print-container td, .budget-print-container th { display: table-cell !important; }
-                    .budget-print-container .flex { display: flex !important; }
-                    .budget-print-container .grid { display: grid !important; }
-                    .budget-print-container .hidden { display: none !important; }
 
                     /* Hide interactive buttons during print */
                     .print-hidden, 
                     button, 
                     .print\:hidden {
                         display: none !important;
-                    }
-
-                    /* Ensure colors are printed */
-                    * {
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
+                        visibility: hidden !important;
                     }
                 }
             `}} />
