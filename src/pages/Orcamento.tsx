@@ -263,18 +263,36 @@ const Orcamento = () => {
     };
 
     const handleSaveFromPrintView = async (updatedBudget: any, updatedItems: any[]) => {
-        // Find a fallback material id if necessary (first one found)
-        const fallbackMaterial = allMaterials[0]?.id;
-        
-        const finalItems = updatedItems.map(item => ({
-            material_id: item.material_id || fallbackMaterial,
-            quantity: item.quantity,
-            unit_price_at_time: item.unit_price_at_time,
-            total_price: item.total_price
-        }));
+        if (!allMaterials || allMaterials.length === 0) {
+            toast.error("Capacidade técnica não detectada (Catálogo vazio)");
+            return;
+        }
 
-        const success = await saveBudget(updatedBudget, finalItems);
-        if (success) {
+        // Tenta encontrar um material genérico para itens avulsos da visualização de impressão
+        const othersMaterial = allMaterials.find(m => 
+            m.name.toUpperCase().includes('OUTRO') || 
+            m.category === 'OUTROS' ||
+            m.category === 'SERVICOS'
+        );
+        
+        const fallbackMaterial = othersMaterial?.id || allMaterials[0].id;
+        
+        const finalItems = updatedItems
+            .filter(item => item.material_name && item.material_name.trim() !== "")
+            .map(item => ({
+                material_id: item.material_id || fallbackMaterial,
+                quantity: parseFloat(item.quantity) || 0,
+                unit_price_at_time: parseFloat(item.unit_price_at_time) || 0,
+                total_price: parseFloat(item.total_price) || 0
+            }));
+
+        if (finalItems.length === 0) {
+            toast.error("O orçamento precisa de pelo menos um item com nome");
+            return;
+        }
+
+        const result = await saveBudget(updatedBudget, finalItems);
+        if (result) {
             setPrintingBudget(null);
             refreshBudgets();
         }

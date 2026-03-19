@@ -84,10 +84,11 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
             // Calculate final totals before saving
             const totalCost = items.reduce((acc: number, curr: any) => acc + (parseFloat(curr.total_price) || 0), 0);
             
+            const budgetMarkupFactor = budget.markup_factor || 1;
             const updatedBudget = {
                 ...budget,
                 total_value: totalCost, // In this view, total_value is directly the sum of items
-                total_cost: totalCost / budget.markup_factor // reverse calculation to keep consistency if needed
+                total_cost: totalCost / budgetMarkupFactor // reverse calculation to keep consistency if needed
             };
 
             // Filter out empty items
@@ -195,7 +196,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
                     {/* Logo */}
                     <div className="absolute top-8 left-12 z-20 scale-75 origin-top-left">
                         <div className="h-44 w-44 rounded-full overflow-hidden bg-black flex items-center justify-center border-8 border-white shadow-2xl">
-                            <img src="/logo_bjl.png" alt="BJL Logo" className="w-full h-full object-contain p-2" />
+                            <img src="/logo-bjl.png" alt="BJL Logo" className="w-full h-full object-contain p-2" />
                         </div>
                     </div>
 

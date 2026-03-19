@@ -130,21 +130,24 @@ export function useBudgets() {
         try {
             let budgetData, budgetError;
 
+            // Map fields explicitly to avoid sending extra frontend fields like 'budget_items'
+            const budgetFields = {
+                client_name: budget.client_name,
+                project_name: budget.project_name,
+                days_estimated: budget.days_estimated || 1,
+                markup_factor: budget.markup_factor || 1,
+                card_fee_percent: budget.card_fee_percent || 0,
+                total_cost: budget.total_cost || 0,
+                total_value: budget.total_value || 0,
+                notes: budget.notes || "",
+                status: budget.status || 'em_elaboracao'
+            };
+
             if (budget.id) {
                 // Update existing budget
                 const { data, error } = await supabase
                     .from('budgets')
-                    .update({
-                        client_name: budget.client_name,
-                        project_name: budget.project_name,
-                        days_estimated: budget.days_estimated,
-                        markup_factor: budget.markup_factor,
-                        card_fee_percent: budget.card_fee_percent,
-                        total_cost: budget.total_cost,
-                        total_value: budget.total_value,
-                        notes: budget.notes,
-                        status: budget.status
-                    })
+                    .update(budgetFields)
                     .eq('id', budget.id)
                     .select()
                     .single();
@@ -159,14 +162,19 @@ export function useBudgets() {
                 // Insert new budget
                 const { data, error } = await supabase
                     .from('budgets')
-                    .insert([budget])
+                    .insert([budgetFields])
                     .select()
                     .single();
                 budgetData = data;
                 budgetError = error;
             }
 
-            if (budgetError) throw budgetError;
+            if (budgetError) {
+                console.error("Supabase budget error:", budgetError);
+                throw budgetError;
+            }
+
+            if (!budgetData) throw new Error("Não foi possível obter os dados do orçamento salvo");
 
             const itemsWithId = items.map(item => ({
                 material_id: item.material_id,
@@ -180,7 +188,10 @@ export function useBudgets() {
                 .from('budget_items')
                 .insert(itemsWithId);
 
-            if (itemsError) throw itemsError;
+            if (itemsError) {
+                console.error("Supabase items error:", itemsError);
+                throw itemsError;
+            }
 
             toast.success(budget.id ? "Orçamento atualizado!" : "Orçamento salvo com sucesso!");
             fetchBudgets();
