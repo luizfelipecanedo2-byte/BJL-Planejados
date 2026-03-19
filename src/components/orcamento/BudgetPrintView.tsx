@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Phone, Instagram, MapPin, Printer, X, Pencil, RotateCcw, Plus, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Phone, Instagram, MapPin, Printer, X, Pencil, RotateCcw, Plus, Trash2, Save } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface BudgetPrintViewProps {
     budget: any;
     onClose: () => void;
+    onSave?: (updatedBudget: any, updatedItems: any[]) => Promise<void>;
     budgetNumber?: number;
 }
 
-const BudgetPrintView = ({ budget: initialBudget, onClose, budgetNumber }: BudgetPrintViewProps) => {
-    const [budget, setBudget] = useState(initialBudget);
+const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber }: BudgetPrintViewProps) => {
+    const [budget, setBudget] = useState({...initialBudget});
+    const [isSaving, setIsSaving] = useState(false);
     
     // Initialize items
     const [items, setItems] = useState(() => {
@@ -71,6 +74,32 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, budgetNumber }: Budge
 
     const removeItem = (id: string) => {
         setItems(items.filter((item: any) => item.id !== id));
+    };
+
+    const handleSave = async () => {
+        if (!onSave) return;
+        
+        setIsSaving(true);
+        try {
+            // Calculate final totals before saving
+            const totalCost = items.reduce((acc: number, curr: any) => acc + (parseFloat(curr.total_price) || 0), 0);
+            
+            const updatedBudget = {
+                ...budget,
+                total_value: totalCost, // In this view, total_value is directly the sum of items
+                total_cost: totalCost / budget.markup_factor // reverse calculation to keep consistency if needed
+            };
+
+            // Filter out empty items
+            const filteredItems = items.filter(item => item.material_name.trim() !== "");
+            
+            await onSave(updatedBudget, filteredItems);
+        } catch (error) {
+            console.error("Error saving budget from view:", error);
+            toast.error("Erro ao salvar as alterações");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const totalValue = items.reduce((acc: number, curr: any) => acc + (parseFloat(curr.total_price) || 0), 0);
@@ -153,7 +182,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, budgetNumber }: Budge
                 <div className="px-12 pb-4 flex-1">
                     <div className="flex justify-between items-start mt-6 mb-6">
                         <div className="flex-1">
-                             <div className="bg-amber-500 text-white px-8 py-3.5 rounded-[1.5rem] shadow-xl shadow-amber-500/10 group relative overflow-hidden">
+                             <div className="bg-amber-500 text-white px-8 py-3.5 rounded-[1.5rem] shadow-xl shadow-amber-500/10 group relative overflow-hidden text-left">
                                 <h2 className="text-[9px] font-black uppercase tracking-[0.2em] mb-1 opacity-80 flex items-center gap-2">
                                     Proposta para
                                 </h2>
@@ -163,7 +192,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, budgetNumber }: Budge
                                     className="bg-transparent text-2xl font-black uppercase tracking-tighter leading-none w-full border-none focus:ring-0 focus:outline-none placeholder:text-white/50"
                                     placeholder="NOME DO CLIENTE"
                                 />
-                            </div>
+                             </div>
                         </div>
                         <div className="text-right pl-8 pt-1">
                             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary mb-1">Orçamento Ref.</p>
@@ -253,7 +282,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, budgetNumber }: Budge
                                 </h4>
                                 <div className="space-y-1.5 text-[9px] font-black text-slate-500 uppercase tracking-tight pl-4 border-l-2 border-slate-100">
                                     {paymentTerms.map((term, i) => (
-                                        <div key={`term-${i}`} className="flex items-center gap-2">
+                                        <div key={`term-${i}`} className="flex items-center gap-2 group">
                                             <span className="text-amber-500/30 shrink-0">0{i+1}.</span>
                                             <input 
                                                 value={term}
@@ -275,7 +304,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, budgetNumber }: Budge
                                 </h4>
                                 <div className="grid grid-cols-2 gap-y-1.5 gap-x-6 text-[8px] font-black text-slate-400 uppercase tracking-widest pl-4 border-l-2 border-slate-100">
                                     {techSpecs.map((spec, i) => (
-                                        <div key={`spec-${i}`} className="flex items-center gap-2">
+                                        <div key={`spec-${i}`} className="flex items-center gap-2 group">
                                             <div className="h-0.5 w-2 bg-slate-200 shrink-0" />
                                             <input 
                                                 value={spec}
@@ -333,21 +362,14 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, budgetNumber }: Budge
                     <X size={14} />
                     Sair
                 </button>
+                <div className="w-[1px] h-10 bg-white/10" />
                 <button
-                    onClick={() => {
-                        setBudget(initialBudget);
-                        setItems(initialBudget.budget_items?.length ? initialBudget.budget_items.map((i:any)=>({...i})) : Array(1).fill(null).map((_, i) => ({
-                            id: `new-${Date.now()}-${i}`,
-                            material_name: "",
-                            quantity: 0,
-                            unit_price_at_time: 0,
-                            total_price: 0
-                        })));
-                    }}
-                    className="px-6 h-10 rounded-xl bg-white/5 text-slate-400 hover:text-white font-black uppercase text-[9px] tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-10 h-10 rounded-xl bg-emerald-500 text-white font-black uppercase text-[9px] tracking-widest shadow-xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50 disabled:scale-100"
                 >
-                    <RotateCcw size={14} />
-                    Resetar
+                    <Save size={16} />
+                    {isSaving ? "Salvando..." : "Salvar Alterações"}
                 </button>
                 <button
                     onClick={handlePrint}

@@ -262,6 +262,24 @@ const Orcamento = () => {
         setIsDialogOpen(true);
     };
 
+    const handleSaveFromPrintView = async (updatedBudget: any, updatedItems: any[]) => {
+        // Find a fallback material id if necessary (first one found)
+        const fallbackMaterial = allMaterials[0]?.id;
+        
+        const finalItems = updatedItems.map(item => ({
+            material_id: item.material_id || fallbackMaterial,
+            quantity: item.quantity,
+            unit_price_at_time: item.unit_price_at_time,
+            total_price: item.total_price
+        }));
+
+        const success = await saveBudget(updatedBudget, finalItems);
+        if (success) {
+            setPrintingBudget(null);
+            refreshBudgets();
+        }
+    };
+
     return (
         <div className="space-y-8 animate-fade-in pb-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -964,6 +982,7 @@ const Orcamento = () => {
                     budget={printingBudget} 
                     budgetNumber={501 + [...budgets].reverse().findIndex(b => b.id === printingBudget.id)}
                     onClose={() => setPrintingBudget(null)} 
+                    onSave={handleSaveFromPrintView}
                 />
             )}
         </div>
