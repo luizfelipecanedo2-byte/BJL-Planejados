@@ -14,7 +14,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
     const [budget, setBudget] = useState({...initialBudget});
     const [isSaving, setIsSaving] = useState(false);
     
-    const [activeTab, setActiveTab] = useState<'commercial' | 'technical'>(initialTab);
+    // We only keep the manual ambientes/serviços view
     const [ambientes, setAmbientes] = useState(() => {
         // Initial environment based on project name or default
         return [{
@@ -24,24 +24,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
         }];
     });
 
-    // Initialize technical items
-    const [items, setItems] = useState(() => {
-        const initialItems = initialBudget.budget_items || [];
-        if (initialItems.length === 0) {
-            return Array(4).fill(null).map((_, i) => ({
-                id: `new-${Date.now()}-${i}`,
-                material_name: "",
-                quantity: 0,
-                unit_price_at_time: 0,
-                total_price: 0
-            }));
-        }
-        return initialItems.map((item: any) => ({
-            ...item,
-            // Flatten material name if it's nested in budget_materials
-            material_name: item.material_name || item.budget_materials?.name || ""
-        }));
-    });
+    // We no longer need the items state for the technical list in this view
 
     const [paymentTerms, setPaymentTerms] = useState([
         "Entrada de 50% no fechamento do contrato (TED/PIX).",
@@ -63,34 +46,6 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
         window.print();
     };
 
-    const handleItemChange = (id: string, field: string, value: any) => {
-        const newItems = items.map((item: any) => {
-            if (item.id === id) {
-                const updated = { ...item, [field]: value };
-                if (field === 'quantity' || field === 'unit_price_at_time') {
-                    updated.total_price = (parseFloat(updated.quantity) || 0) * (parseFloat(updated.unit_price_at_time) || 0);
-                }
-                return updated;
-            }
-            return item;
-        });
-        setItems(newItems);
-    };
-
-    const addNewItem = () => {
-        setItems([...items, {
-            id: `new-${Date.now()}`,
-            material_name: "",
-            quantity: 0,
-            unit_price_at_time: 0,
-            total_price: 0
-        }]);
-    };
-
-    const removeItem = (id: string) => {
-        setItems(items.filter((item: any) => item.id !== id));
-    };
-
     const handleAmbienteChange = (id: string, field: string, value: any) => {
         setAmbientes(ambientes.map(amb => amb.id === id ? { ...amb, [field]: value } : amb));
     };
@@ -103,9 +58,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
         setAmbientes(ambientes.filter(amb => amb.id !== id));
     };
 
-    const technicalTotal = items.reduce((acc: number, curr: any) => acc + (parseFloat(curr.total_price) || 0), 0);
-    const commercialTotal = ambientes.reduce((acc: number, curr: any) => acc + (parseFloat(curr.value) || 0), 0);
-    const displayTotal = activeTab === 'commercial' ? commercialTotal : technicalTotal;
+    const displayTotal = ambientes.reduce((acc: number, curr: any) => acc + (parseFloat(curr.value) || 0), 0);
 
     const handleSave = async () => {
         if (!onSave) return;
@@ -121,13 +74,11 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
             const updatedBudget = {
                 ...budget,
                 total_value: totalValueWithCardFee, 
-                total_cost: items.reduce((acc: number, curr: any) => acc + (parseFloat(curr.total_price) || 0), 0) / budgetMarkupFactor 
+                total_cost: totalCostAtVista / budgetMarkupFactor 
             };
 
-            // Filter out empty items
-            const filteredItems = items.filter(item => item.material_name.trim() !== "");
-            
-            await onSave(updatedBudget, filteredItems);
+            // We still pass original items but with updated budget totals
+            await onSave(updatedBudget, initialBudget.budget_items || []);
         } catch (error) {
             console.error("Error saving budget from view:", error);
             toast.error("Erro ao salvar as alterações");
@@ -201,7 +152,6 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     /* Hide interactive buttons during print */
                     .print-hidden, 
                     button, 
-                    .print-tabs,
                     .print\:hidden {
                         display: none !important;
                         visibility: hidden !important;
@@ -274,25 +224,8 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         </div>
                     </div>
 
-                    {/* Tabs for Web View */}
-                    <div className="flex items-center gap-2 mb-6 print-tabs">
-                        <button 
-                            onClick={() => setActiveTab('commercial')}
-                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'commercial' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
-                        >
-                            Orçamento Comercial
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('technical')}
-                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'technical' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
-                        >
-                            Lista Técnica de Materiais
-                        </button>
-                    </div>
-
-                    {/* Commercial View (Proposta) */}
-                    {activeTab === 'commercial' && (
-                        <div className="mb-8 overflow-hidden rounded-[1.5rem] border border-slate-100">
+                    {/* Commercial View (Proposta) is now the only view */}
+                    <div className="mb-8 overflow-hidden rounded-[1.5rem] border border-slate-100">
                             <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center group relative">
                                 <span className="text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-3">
                                     Descrição dos Ambientes e Serviços
@@ -345,77 +278,14 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                             </td>
                                         </tr>
                                     ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-
-                    {/* Technical View (Listagem de Materiais) */}
-                    {activeTab === 'technical' && (
-                        <div className="mb-8 overflow-hidden rounded-[1.5rem] border border-slate-100">
-                            <div className="bg-slate-700 text-white px-6 py-4 flex justify-between items-center group relative">
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-3">
-                                    Memorial Técnico - Detalhamento de Insumos
-                                </span>
-                                <button 
-                                    onClick={addNewItem}
-                                    className="p-1 px-3 bg-white/10 hover:bg-amber-500 hover:text-black rounded-md transition-all text-[9px] font-black uppercase print:hidden"
-                                >
-                                    <Plus size={10} className="inline mr-1" /> Novo Material
-                                </button>
-                            </div>
-                            <table className="w-full text-left border-collapse bg-white">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-200">
-                                        <th className="pl-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 w-1/2">Material</th>
-                                        <th className="py-3 text-center text-[9px] font-black uppercase tracking-widest text-slate-400">Qtd</th>
-                                        <th className="py-3 text-right text-[9px] font-black uppercase tracking-widest text-slate-400">Unitário</th>
-                                        <th className="pr-6 py-3 text-right text-[9px] font-black uppercase tracking-widest text-slate-400">Total</th>
-                                        <th className="w-8 print:hidden"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {items.map((item: any) => (
-                                        <tr key={item.id} className="hover:bg-slate-50 group">
-                                            <td className="pl-6 py-2.5">
-                                                <input 
-                                                    value={item.material_name || ""}
-                                                    onChange={(e) => handleItemChange(item.id, 'material_name', e.target.value)}
-                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 font-bold text-slate-600 uppercase text-[10px] tracking-tight placeholder:text-slate-200"
-                                                    placeholder="Descreva..."
-                                                />
-                                            </td>
-                                            <td className="py-2.5 text-center">
-                                                <input 
-                                                    type="number"
-                                                    value={item.quantity}
-                                                    onChange={(e) => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                                                    className="w-12 bg-transparent border-none focus:ring-0 p-0 text-center font-bold text-slate-400 text-[10px]"
-                                                />
-                                            </td>
-                                            <td className="py-2.5 text-right">
-                                                <span className="text-[10px] font-bold text-slate-400 tabular-nums">{formatCurrency(item.unit_price_at_time)}</span>
-                                            </td>
-                                            <td className="pr-6 py-2.5 text-right font-bold text-slate-700 text-[10px] tabular-nums">{formatCurrency(item.total_price || 0)}</td>
-                                            <td className="pr-2 print:hidden">
-                                                <button 
-                                                    onClick={() => removeItem(item.id)}
-                                                    className="p-1 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
-                                                >
-                                                    <Trash2 size={12} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                            </tbody>
+                        </table>
+                    </div>
 
                     <div className="flex-1 min-h-[40px]" />
 
-                    {/* Footer and Totals (Mainly for Commercial) */}
-                    <div className={`grid grid-cols-5 gap-8 items-start pt-6 border-t border-slate-100 ${activeTab === 'technical' ? 'print:hidden' : ''}`}>
+                    {/* Footer and Totals */}
+                    <div className="grid grid-cols-5 gap-8 items-start pt-6 border-t border-slate-100">
                         <div className="col-span-3 space-y-6">
                             <div>
                                 <h4 className="flex items-center gap-2 text-[9px] font-black uppercase text-amber-600 tracking-widest mb-3">
@@ -514,7 +384,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     {isSaving ? "Salvando..." : "Salvar Alterações"}
                 </button>
                 <button
-                    onClick={handlePrint}
+                    onClick={() => window.print()}
                     className="px-10 h-10 rounded-xl bg-amber-500 text-black font-black uppercase text-[9px] tracking-widest shadow-xl shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
                 >
                     <Printer size={16} />

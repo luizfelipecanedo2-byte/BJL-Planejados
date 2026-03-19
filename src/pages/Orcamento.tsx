@@ -777,18 +777,6 @@ const Orcamento = () => {
                                                          >
                                                              <Pencil size={16} />
                                                          </Button>
-                                                         <Button 
-                                                             variant="ghost" 
-                                                             size="icon" 
-                                                             className="h-10 w-10 rounded-xl hover:bg-slate-900/10 text-slate-400 hover:text-slate-900 transition-all active:scale-95 border border-border/5"
-                                                             onClick={() => {
-                                                                 setPrintingBudget(orc);
-                                                                 setPrintingTab('technical');
-                                                             }}
-                                                             title="Lista Técnica de Materiais"
-                                                         >
-                                                             <Layers size={16} />
-                                                         </Button>
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon" 
@@ -844,17 +832,6 @@ const Orcamento = () => {
                                                     onClick={() => handleEditBudget(orc)}
                                                 >
                                                     <Pencil size={16} />
-                                                </Button>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-10 w-10 rounded-xl border border-border/50 text-slate-400"
-                                                    onClick={() => {
-                                                        setPrintingBudget(orc);
-                                                        setPrintingTab('technical');
-                                                    }}
-                                                >
-                                                    <Layers size={16} />
                                                 </Button>
                                                 <Button 
                                                     variant="ghost" 
