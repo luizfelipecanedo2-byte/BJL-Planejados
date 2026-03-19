@@ -177,7 +177,7 @@ const Orcamento = () => {
         const cardValue = baseValue * (1 + (formData.installment_fee / 100));
 
         return { materialCost, fixedCost, totalCostPower, baseValue, cardValue, categoryTotals };
-    }, [quantities, allMaterials, formData.days_estimated, formData.daily_fixed_cost, formData.profit_margin, formData.commission, formData.tax, formData.installment_fee]);
+    }, [quantities, allMaterials, customPrices, formData.days_estimated, formData.daily_fixed_cost, formData.profit_margin, formData.commission, formData.tax, formData.installment_fee]);
 
     const handleSaveBudget = async () => {
         if (!formData.client_name) {
