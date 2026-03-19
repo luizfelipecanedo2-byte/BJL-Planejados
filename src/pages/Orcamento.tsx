@@ -312,29 +312,27 @@ const Orcamento = () => {
                                 Novo Orçamento
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[1100px] max-h-[95vh] border-none shadow-2xl rounded-[3rem] overflow-hidden p-0 flex flex-col">
+                        <DialogContent className="w-[95vw] sm:max-w-[1100px] max-h-[95vh] border-none shadow-2xl rounded-[1.5rem] sm:rounded-[3rem] overflow-hidden p-0 flex flex-col">
                             <div className="bg-primary p-8 text-primary-foreground relative shrink-0">
                                 <div className="absolute top-0 right-0 p-4 opacity-10">
                                     <Calculator size={140} />
                                 </div>
                                 <div className="relative z-10 flex justify-between items-end">
                                     <div>
-                                        <h3 className="text-3xl font-black uppercase tracking-tighter">
+                                        <h3 className="text-xl sm:text-3xl font-black uppercase tracking-tighter">
                                             {editingBudgetId ? "Ajustar Orçamento" : "Levantamento de Materiais"}
                                         </h3>
                                         <p className="text-[10px] opacity-80 font-black uppercase tracking-[0.2em] mt-2">
                                             {editingBudgetId ? "Refinando os valores para o fechamento" : "Checklist inteligente para não esquecer nenhum detalhe do projeto"}
                                         </p>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-right mt-4 sm:mt-0">
                                         <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">Valor Final Sugerido</p>
-                                        <p className="text-4xl font-black tracking-tighter">{formatCurrency(calculateTotals.cardValue)}</p>
+                                        <p className="text-2xl sm:text-4xl font-black tracking-tighter">{formatCurrency(calculateTotals.cardValue)}</p>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div className="flex-1 flex overflow-hidden">
-                                <div className="w-80 border-r border-slate-100 p-8 space-y-8 bg-slate-50/50 backdrop-blur-sm">
+                                                      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                                <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-100 p-6 sm:p-8 space-y-6 sm:space-y-8 bg-slate-50/50 backdrop-blur-sm overflow-y-auto max-h-[40vh] md:max-h-full">
                                     <div className="space-y-4">
                                         <h4 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
                                             <AlertCircle className="h-3 w-3" /> Identificação
@@ -343,6 +341,7 @@ const Orcamento = () => {
                                             <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Cliente</Label>
                                             <Input value={formData.client_name} onChange={e => setFormData({ ...formData, client_name: e.target.value })} placeholder="Nome completo" className="rounded-xl h-12 bg-white border-slate-200 text-slate-900 font-bold" />
                                         </div>
+     </div>
                                         <div className="space-y-2">
                                             <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Ambiente/Projeto</Label>
                                             <Input value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} placeholder="Ex: Cozinha Gourmet" className="rounded-xl h-12 bg-white border-slate-200 text-slate-900 font-bold" />
@@ -603,18 +602,18 @@ const Orcamento = () => {
                                 </ScrollArea>
                             </div>
 
-                            <div className="p-8 shrink-0 bg-slate-50 border-t border-slate-100 flex gap-4 justify-between items-center">
+                            <div className="p-4 sm:p-8 shrink-0 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-4 justify-between items-center">
                                 <div className="flex items-center gap-3 text-slate-400">
                                     <Package className="h-5 w-5" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">
-                                        {Object.values(quantities).filter(q => q > 0).length} itens selecionados para o projeto
+                                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
+                                        {Object.values(quantities).filter(q => q > 0).length} itens selecionados
                                     </span>
                                 </div>
-                                <div className="flex gap-3">
-                                    <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-14 px-8 font-black uppercase tracking-widest text-[10px] rounded-2xl">Descartar</Button>
-                                    <Button onClick={handleSaveBudget} className="h-14 px-10 bg-primary font-black uppercase tracking-widest text-xs rounded-2xl shadow-2xl shadow-primary/20 group">
-                                        Finalizar e Salvar Projeto
-                                        <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                                <div className="flex gap-2 w-full sm:w-auto">
+                                    <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="flex-1 sm:flex-none h-12 sm:h-14 px-4 sm:px-8 font-black uppercase tracking-widest text-[10px] rounded-xl sm:rounded-2xl">Descartar</Button>
+                                    <Button onClick={handleSaveBudget} className="flex-[2] sm:flex-none h-12 sm:h-14 px-6 sm:px-10 bg-primary font-black uppercase tracking-widest text-[10px] sm:text-xs rounded-xl sm:rounded-2xl shadow-2xl shadow-primary/20 group">
+                                        Finalizar e Salvar
+                                        <ChevronRight className="h-4 w-4 ml-1 sm:ml-2 group-hover:translate-x-1 transition-transform" />
                                     </Button>
                                 </div>
                             </div>
@@ -704,8 +703,9 @@ const Orcamento = () => {
                                 />
                             </div>
                         </CardHeader>
-                        <CardContent className="p-0">
-                            <div className="overflow-x-auto">
+                         <CardContent className="p-0">
+                            {/* Table view for md and up */}
+                            <div className="hidden md:block overflow-x-auto">
                                 <table className="w-full text-xs">
                                     <thead>
                                         <tr className="bg-slate-50 text-muted-foreground/50 h-16 border-b border-border/10">
@@ -770,16 +770,65 @@ const Orcamento = () => {
                                                 </td>
                                             </tr>
                                         ))}
-                                        {budgets.length === 0 && !loading && (
-                                            <tr>
-                                                <td colSpan={6} className="py-20 text-center text-muted-foreground italic uppercase text-[10px] font-black tracking-widest opacity-40">
-                                                    Nenhum orçamento encontrado
-                                                </td>
-                                            </tr>
-                                        )}
                                     </tbody>
                                 </table>
                             </div>
+
+                            {/* Card view for mobile */}
+                            <div className="md:hidden divide-y divide-border/5">
+                                {budgets.filter(b => b.client_name.toLowerCase().includes(searchTerm.toLowerCase())).map((orc) => (
+                                    <div key={orc.id} className="p-6 space-y-4">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-xl bg-muted/30 flex items-center justify-center font-black text-xs text-muted-foreground">
+                                                    {orc.client_name.charAt(0)}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="font-black text-[13px] uppercase text-foreground leading-tight">{orc.client_name}</span>
+                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{501 + [...budgets].reverse().findIndex(b => b.id === orc.id)}</span>
+                                                </div>
+                                            </div>
+                                            {getStatusBadge(orc.status)}
+                                        </div>
+                                        
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Projeto</span>
+                                            <span className="font-bold text-[11px] uppercase text-muted-foreground tracking-tighter bg-muted/20 px-3 py-1.5 rounded-lg border border-border/5 w-fit">{orc.project_name}</span>
+                                        </div>
+
+                                        <div className="flex justify-between items-end pt-2">
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor</span>
+                                                <span className="font-black text-lg text-primary tabular-nums">{formatCurrency(orc.total_value)}</span>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className="rounded-xl border-border/50 text-slate-400"
+                                                    onClick={() => handleEditBudget(orc)}
+                                                >
+                                                    <Pencil size={14} className="mr-2" /> Editar
+                                                </Button>
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className="rounded-xl border-border/50 text-slate-400"
+                                                    onClick={() => setPrintingBudget(orc)}
+                                                >
+                                                    <FileText size={14} className="mr-2" /> PDF
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {budgets.length === 0 && !loading && (
+                                <div className="py-20 text-center text-muted-foreground italic uppercase text-[10px] font-black tracking-widest opacity-40">
+                                    Nenhum orçamento encontrado
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </>

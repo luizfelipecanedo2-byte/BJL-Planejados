@@ -110,31 +110,69 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber 
             {/* Custom Print Styles Injection */}
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
+                    /* Hide everything by default */
                     body * {
-                        visibility: hidden;
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
+                        display: none !important;
                     }
-                    .budget-print-container, .budget-print-container * {
-                        visibility: visible;
+                    
+                    /* Show the budget container and its children */
+                    .budget-print-container, 
+                    .budget-print-container * {
+                        display: block !important;
+                        visibility: visible !important;
                     }
+
+                    /* Specific overrides for layout elements inside the container */
+                    .budget-print-container table {
+                        display: table !important;
+                    }
+                    .budget-print-container thead {
+                        display: table-header-group !important;
+                    }
+                    .budget-print-container tbody {
+                        display: table-row-group !important;
+                    }
+                    .budget-print-container tr {
+                        display: table-row !important;
+                    }
+                    .budget-print-container td, 
+                    .budget-print-container th {
+                        display: table-cell !important;
+                    }
+                    .budget-print-container .flex {
+                        display: flex !important;
+                    }
+                    .budget-print-container .grid {
+                        display: grid !important;
+                    }
+
                     .budget-print-container {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 210mm;
-                        height: 297mm;
-                        margin: 0;
-                        padding: 0;
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
                         background: white !important;
-                        overflow: visible;
+                        box-shadow: none !important;
                     }
+
                     @page {
                         size: A4;
                         margin: 0;
                     }
-                    input::placeholder {
-                        color: transparent !important;
+
+                    /* Hide interactive buttons during print */
+                    .print-hidden, 
+                    button, 
+                    .print\:hidden {
+                        display: none !important;
+                    }
+
+                    /* Ensure colors are printed */
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
                     }
                 }
             `}} />
