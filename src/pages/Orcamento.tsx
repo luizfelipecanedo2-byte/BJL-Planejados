@@ -37,6 +37,7 @@ const Orcamento = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [activeTab, setActiveTab] = useState("orcamentos");
     const [printingBudget, setPrintingBudget] = useState<any>(null);
+    const [printingTab, setPrintingTab] = useState<'commercial' | 'technical'>('commercial');
 
     // Form State
     const [formData, setFormData] = useState({
@@ -776,11 +777,27 @@ const Orcamento = () => {
                                                          >
                                                              <Pencil size={16} />
                                                          </Button>
+                                                         <Button 
+                                                             variant="ghost" 
+                                                             size="icon" 
+                                                             className="h-10 w-10 rounded-xl hover:bg-slate-900/10 text-slate-400 hover:text-slate-900 transition-all active:scale-95 border border-border/5"
+                                                             onClick={() => {
+                                                                 setPrintingBudget(orc);
+                                                                 setPrintingTab('technical');
+                                                             }}
+                                                             title="Lista Técnica de Materiais"
+                                                         >
+                                                             <Layers size={16} />
+                                                         </Button>
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon" 
                                                             className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-500 transition-all active:scale-95 border border-border/5"
-                                                            onClick={() => setPrintingBudget(orc)}
+                                                            onClick={() => {
+                                                                setPrintingBudget(orc);
+                                                                setPrintingTab('commercial');
+                                                            }}
+                                                            title="Orçamento Comercial"
                                                         >
                                                             <FileText size={16} />
                                                         </Button>
@@ -1047,9 +1064,10 @@ const Orcamento = () => {
             {printingBudget && (
                 <BudgetPrintView 
                     budget={printingBudget} 
-                    budgetNumber={501 + [...budgets].reverse().findIndex(b => b.id === printingBudget.id)}
+                    initialTab={printingTab}
                     onClose={() => setPrintingBudget(null)} 
                     onSave={handleSaveFromPrintView}
+                    budgetNumber={501 + [...budgets].reverse().findIndex(b => b.id === printingBudget.id)}
                 />
             )}
         </div>

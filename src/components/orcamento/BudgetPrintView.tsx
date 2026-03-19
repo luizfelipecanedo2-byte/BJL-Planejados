@@ -7,13 +7,14 @@ interface BudgetPrintViewProps {
     onClose: () => void;
     onSave?: (updatedBudget: any, updatedItems: any[]) => Promise<void>;
     budgetNumber?: number;
+    initialTab?: 'commercial' | 'technical';
 }
 
-const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber }: BudgetPrintViewProps) => {
+const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber, initialTab = 'commercial' }: BudgetPrintViewProps) => {
     const [budget, setBudget] = useState({...initialBudget});
     const [isSaving, setIsSaving] = useState(false);
     
-    const [activeTab, setActiveTab] = useState<'commercial' | 'technical'>('commercial');
+    const [activeTab, setActiveTab] = useState<'commercial' | 'technical'>(initialTab);
     const [ambientes, setAmbientes] = useState(() => {
         // Initial environment based on project name or default
         return [{
