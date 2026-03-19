@@ -49,8 +49,12 @@ const Orcamento = () => {
         notes: ""
     });
 
+    const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
+
     // Checklist state: stores quantities for ALL materials
     const [quantities, setQuantities] = useState<Record<string, number>>({});
+    // Custom prices state: stores price overrides for this specific budget
+    const [customPrices, setCustomPrices] = useState<Record<string, number>>({});
 
     const [isEditMaterialDialogOpen, setIsEditMaterialDialogOpen] = useState(false);
     const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
@@ -116,6 +120,14 @@ const Orcamento = () => {
         }));
     };
 
+    const handlePriceChange = (materialId: string, value: string) => {
+        const num = parseFloat(value) || 0;
+        setCustomPrices(prev => ({
+            ...prev,
+            [materialId]: num
+        }));
+    };
+
     const groupedMaterials = useMemo(() => {
         const order = [
             "MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"
@@ -150,7 +162,8 @@ const Orcamento = () => {
         Object.entries(quantities).forEach(([id, qty]) => {
             const material = allMaterials.find(m => m.id === id);
             if (material && qty > 0) {
-                const itemTotal = material.unit_price * qty;
+                const unitPrice = customPrices[id] !== undefined ? customPrices[id] : material.unit_price;
+                const itemTotal = unitPrice * qty;
                 materialCost += itemTotal;
                 categoryTotals[material.category] = (categoryTotals[material.category] || 0) + itemTotal;
             }
@@ -176,11 +189,12 @@ const Orcamento = () => {
             .filter(([_, qty]) => qty > 0)
             .map(([id, qty]) => {
                 const material = allMaterials.find(m => m.id === id);
+                const unitPrice = customPrices[id] !== undefined ? customPrices[id] : (material?.unit_price || 0);
                 return {
                     material_id: id,
                     quantity: qty,
-                    unit_price_at_time: material?.unit_price || 0,
-                    total_price: (material?.unit_price || 0) * qty
+                    unit_price_at_time: unitPrice,
+                    total_price: unitPrice * qty
                 };
             });
 
@@ -189,7 +203,7 @@ const Orcamento = () => {
             return;
         }
 
-        const success = await saveBudget({
+        const budgetData: any = {
             client_name: formData.client_name,
             project_name: formData.project_name,
             days_estimated: formData.days_estimated,
@@ -199,13 +213,51 @@ const Orcamento = () => {
             total_value: calculateTotals.cardValue,
             notes: formData.notes,
             status: 'em_elaboracao'
-        }, budgetItems);
+        };
+
+        if (editingBudgetId) {
+            budgetData.id = editingBudgetId;
+        }
+
+        const success = await saveBudget(budgetData, budgetItems);
 
         if (success) {
             setIsDialogOpen(false);
+            setEditingBudgetId(null);
             setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 350, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, notes: "" });
             setQuantities({});
+            setCustomPrices({});
         }
+    };
+
+    const handleEditBudget = (budget: any) => {
+        setEditingBudgetId(budget.id);
+        setFormData({
+            client_name: budget.client_name,
+            project_name: budget.project_name,
+            days_estimated: budget.days_estimated,
+            daily_fixed_cost: 350, // This could be stored in DB if needed, but for now 350
+            profit_margin: (budget.markup_factor - 1) * 100 - 7, // Approximate reverse (assuming commission 3% and tax 4%)
+            commission: 3,
+            tax: 4,
+            installment_fee: budget.card_fee_percent,
+            notes: budget.notes || ""
+        });
+
+        // Load quantities and custom prices from budget_items
+        const newQuantities: Record<string, number> = {};
+        const newCustomPrices: Record<string, number> = {};
+        
+        if (budget.budget_items) {
+            budget.budget_items.forEach((item: any) => {
+                newQuantities[item.material_id] = item.quantity;
+                newCustomPrices[item.material_id] = item.unit_price_at_time;
+            });
+        }
+
+        setQuantities(newQuantities);
+        setCustomPrices(newCustomPrices);
+        setIsDialogOpen(true);
     };
 
     return (
@@ -225,7 +277,15 @@ const Orcamento = () => {
                         {activeTab === "materiais" ? "Histórico" : "Editar Lista de Preços"}
                     </Button>
 
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                        setIsDialogOpen(open);
+                        if (!open) {
+                            setEditingBudgetId(null);
+                            setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 350, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, notes: "" });
+                            setQuantities({});
+                            setCustomPrices({});
+                        }
+                    }}>
                         <DialogTrigger asChild>
                             <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-xs px-8 h-14 rounded-2xl shadow-2xl shadow-primary/20 gap-3 transition-all hover:scale-105 active:scale-95 group">
                                 <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
@@ -239,8 +299,12 @@ const Orcamento = () => {
                                 </div>
                                 <div className="relative z-10 flex justify-between items-end">
                                     <div>
-                                        <h3 className="text-3xl font-black uppercase tracking-tighter">Levantamento de Materiais</h3>
-                                        <p className="text-[10px] opacity-80 font-black uppercase tracking-[0.2em] mt-2">Checklist inteligente para não esquecer nenhum detalhe do projeto</p>
+                                        <h3 className="text-3xl font-black uppercase tracking-tighter">
+                                            {editingBudgetId ? "Ajustar Orçamento" : "Levantamento de Materiais"}
+                                        </h3>
+                                        <p className="text-[10px] opacity-80 font-black uppercase tracking-[0.2em] mt-2">
+                                            {editingBudgetId ? "Refinando os valores para o fechamento" : "Checklist inteligente para não esquecer nenhum detalhe do projeto"}
+                                        </p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">Valor Final Sugerido</p>
@@ -322,15 +386,73 @@ const Orcamento = () => {
 
                                 <ScrollArea className="flex-1 p-8 bg-card">
                                     <div className="space-y-6">
+                                        {Object.values(quantities).some(q => q > 0) && (
+                                            <div className="mb-8 p-6 bg-primary/5 border-2 border-primary/20 rounded-[2rem] shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+                                                <div className="flex items-center gap-3 mb-6">
+                                                    <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
+                                                    <h4 className="font-black uppercase text-sm tracking-widest text-primary">Preenchimento (Itens do Projeto)</h4>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    {Object.entries(quantities)
+                                                        .filter(([_, qty]) => qty > 0)
+                                                        .map(([id, qty]) => {
+                                                            const item = allMaterials.find(m => m.id === id);
+                                                            if (!item) return null;
+                                                            const currentPrice = customPrices[id] !== undefined ? customPrices[id] : item.unit_price;
+                                                            return (
+                                                                <div key={`selected-${id}`} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:border-primary/30 transition-all gap-4">
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-[12px] font-black uppercase tracking-tight text-slate-800">{item.name}</span>
+                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{item.category} • {item.unit}</span>
+                                                                    </div>
+                                                                    <div className="flex flex-wrap items-center gap-4">
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <Label className="text-[8px] font-black uppercase text-slate-400 ml-1">Quantidade</Label>
+                                                                            <Input
+                                                                                type="number"
+                                                                                className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:ring-primary/20"
+                                                                                value={qty || ""}
+                                                                                onChange={(e) => handleQuantityChange(id, e.target.value)}
+                                                                            />
+                                                                        </div>
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <Label className="text-[8px] font-black uppercase text-slate-400 ml-1">Preço Unitário (R$)</Label>
+                                                                            <Input
+                                                                                type="number"
+                                                                                className="w-28 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:ring-primary/20 text-primary"
+                                                                                value={currentPrice || ""}
+                                                                                onChange={(e) => handlePriceChange(id, e.target.value)}
+                                                                            />
+                                                                        </div>
+                                                                        <div className="flex flex-col gap-1 items-end min-w-[100px]">
+                                                                            <Label className="text-[8px] font-black uppercase text-slate-400 mr-1">Subtotal</Label>
+                                                                            <span className="text-sm font-black text-slate-800">{formatCurrency(currentPrice * qty)}</span>
+                                                                        </div>
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="icon" 
+                                                                            className="h-10 w-10 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl"
+                                                                            onClick={() => handleQuantityChange(id, "0")}
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div className="flex items-center gap-2 mb-6">
                                             <div className="h-8 w-1 bg-primary rounded-full" />
-                                            <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Lista de Itens (Preenchimento Rápido)</h4>
+                                            <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Catálogo Geral (Explorar)</h4>
                                         </div>
 
                                         <Accordion type="multiple" defaultValue={groupedMaterials.map(([cat]) => cat)} className="space-y-4">
                                             {groupedMaterials.map(([category, items]) => (
-                                                <AccordionItem key={category} value={category} className="border border-slate-100 rounded-3xl px-6 bg-white shadow-sm overflow-hidden">
-                                                    <AccordionTrigger className="hover:no-underline py-4">
+                                                <AccordionItem key={category} value={category} className="border border-slate-100 rounded-3xl px-6 bg-white shadow-sm overflow-hidden border-b-0">
+                                                    <AccordionTrigger className="hover:no-underline py-4 border-none">
                                                         <div className="flex items-center gap-3">
                                                             <Badge className="bg-primary/5 text-primary border-none font-black text-[9px] uppercase tracking-widest px-3">
                                                                 {items.length} ITENS
@@ -338,33 +460,47 @@ const Orcamento = () => {
                                                             <span className="font-black uppercase text-xs tracking-tighter text-slate-600">{category}</span>
                                                         </div>
                                                     </AccordionTrigger>
-                                                    <AccordionContent className="pb-6">
+                                                    <AccordionContent className="pb-6 border-none">
                                                         <div className="grid grid-cols-1 gap-2">
-                                                            {items.map(item => (
-                                                                <div key={item.id} className={cn(
-                                                                    "flex items-center justify-between p-3 rounded-2xl transition-all group",
-                                                                    quantities[item.id] > 0 ? "bg-primary/5 border-primary/20 border" : "bg-slate-50 hover:bg-slate-100 border border-transparent"
-                                                                )}>
-                                                                    <div className="flex flex-col">
-                                                                        <span className="text-[11px] font-black uppercase tracking-tight text-slate-700">{item.name}</span>
-                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase">{item.unit} • {formatCurrency(item.unit_price)}</span>
+                                                            {items.map(item => {
+                                                                const currentPrice = customPrices[item.id] !== undefined ? customPrices[item.id] : item.unit_price;
+                                                                return (
+                                                                    <div key={item.id} className={cn(
+                                                                        "flex items-center justify-between p-3 rounded-2xl transition-all group",
+                                                                        quantities[item.id] > 0 ? "bg-primary/5 border-primary/20 border shadow-inner" : "bg-slate-50 hover:bg-slate-100 border border-transparent"
+                                                                    )}>
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[11px] font-black uppercase tracking-tight text-slate-700">{item.name}</span>
+                                                                            <span className="text-[9px] font-bold text-slate-400 uppercase">{item.unit} • {formatCurrency(item.unit_price)}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-3">
+                                                                            {quantities[item.id] > 0 && (
+                                                                                <div className="flex flex-col items-end mr-4">
+                                                                                    <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Preço Unit.</span>
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        className="w-24 h-8 rounded-lg text-right font-black text-[10px] border-slate-200 focus:bg-white text-primary bg-white"
+                                                                                        value={currentPrice || ""}
+                                                                                        onChange={(e) => handlePriceChange(item.id, e.target.value)}
+                                                                                    />
+                                                                                </div>
+                                                                            )}
+                                                                            <div className="flex flex-col items-end">
+                                                                                {quantities[item.id] > 0 && (
+                                                                                    <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Qtd.</span>
+                                                                                )}
+                                                                                <Input
+                                                                                    type="number"
+                                                                                    placeholder="0"
+                                                                                    className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-white text-slate-900"
+                                                                                    value={quantities[item.id] || ""}
+                                                                                    onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                                                                />
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="flex items-center gap-3">
-                                                                        {quantities[item.id] > 0 && (
-                                                                            <span className="text-[10px] font-black text-primary/60 uppercase mr-2">
-                                                                                = {formatCurrency(item.unit_price * quantities[item.id])}
-                                                                            </span>
-                                                                        )}
-                                                                        <Input
-                                                                            type="number"
-                                                                            placeholder="0"
-                                                                            className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-white text-slate-900"
-                                                                            value={quantities[item.id] || ""}
-                                                                            onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            ))}
+                                                                );
+                                                            })}
                                                         </div>
                                                     </AccordionContent>
                                                 </AccordionItem>
@@ -594,9 +730,14 @@ const Orcamento = () => {
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
                                                     <div className="flex justify-end gap-2 pr-2">
-                                                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-primary/10 text-slate-400 hover:text-primary transition-all active:scale-95 border border-border/5">
-                                                            <Pencil size={16} />
-                                                        </Button>
+                                                         <Button 
+                                                             variant="ghost" 
+                                                             size="icon" 
+                                                             className="h-10 w-10 rounded-xl hover:bg-primary/10 text-slate-400 hover:text-primary transition-all active:scale-95 border border-border/5"
+                                                             onClick={() => handleEditBudget(orc)}
+                                                         >
+                                                             <Pencil size={16} />
+                                                         </Button>
                                                         <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-500 transition-all active:scale-95 border border-border/5">
                                                             <FileText size={16} />
                                                         </Button>

@@ -126,18 +126,53 @@ export function useBudgets() {
         }
     };
 
-    const saveBudget = async (budget: Omit<Budget, "id" | "created_at">, items: BudgetItem[]) => {
+    const saveBudget = async (budget: Partial<Budget>, items: BudgetItem[]) => {
         try {
-            const { data: budgetData, error: budgetError } = await supabase
-                .from('budgets')
-                .insert([budget])
-                .select()
-                .single();
+            let budgetData, budgetError;
+
+            if (budget.id) {
+                // Update existing budget
+                const { data, error } = await supabase
+                    .from('budgets')
+                    .update({
+                        client_name: budget.client_name,
+                        project_name: budget.project_name,
+                        days_estimated: budget.days_estimated,
+                        markup_factor: budget.markup_factor,
+                        card_fee_percent: budget.card_fee_percent,
+                        total_cost: budget.total_cost,
+                        total_value: budget.total_value,
+                        notes: budget.notes,
+                        status: budget.status
+                    })
+                    .eq('id', budget.id)
+                    .select()
+                    .single();
+                budgetData = data;
+                budgetError = error;
+
+                if (!budgetError) {
+                    // Delete old items and insert new ones
+                    await supabase.from('budget_items').delete().eq('budget_id', budget.id);
+                }
+            } else {
+                // Insert new budget
+                const { data, error } = await supabase
+                    .from('budgets')
+                    .insert([budget])
+                    .select()
+                    .single();
+                budgetData = data;
+                budgetError = error;
+            }
 
             if (budgetError) throw budgetError;
 
             const itemsWithId = items.map(item => ({
-                ...item,
+                material_id: item.material_id,
+                quantity: item.quantity,
+                unit_price_at_time: item.unit_price_at_time,
+                total_price: item.total_price,
                 budget_id: budgetData.id
             }));
 
@@ -147,7 +182,7 @@ export function useBudgets() {
 
             if (itemsError) throw itemsError;
 
-            toast.success("Orçamento salvo com sucesso!");
+            toast.success(budget.id ? "Orçamento atualizado!" : "Orçamento salvo com sucesso!");
             fetchBudgets();
             return budgetData;
         } catch (error: any) {
