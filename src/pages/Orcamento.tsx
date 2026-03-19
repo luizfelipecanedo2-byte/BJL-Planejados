@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import BudgetPrintView from "@/components/orcamento/BudgetPrintView";
 
 const Orcamento = () => {
-    const { materials: allMaterials, budgets, loading, updateMaterial, addMaterial, deleteMaterial, saveBudget, refreshBudgets } = useBudgets();
+    const { materials: allMaterials, budgets, loading, updateMaterial, addMaterial, deleteMaterial, deleteBudget, saveBudget, refreshBudgets } = useBudgets();
     
     // Sort materials based on custom order
     const sortedMaterials = useMemo(() => {
@@ -785,9 +785,22 @@ const Orcamento = () => {
                                                                 setPrintingBudget(orc);
                                                                 setPrintingTab('commercial');
                                                             }}
-                                                            title="Orçamento Comercial"
+                                                            title="Imprimir Orçamento"
                                                         >
                                                             <FileText size={16} />
+                                                        </Button>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-10 w-10 text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors border border-border/5 rounded-xl ml-1"
+                                                            onClick={() => {
+                                                                if (confirm(`Tem certeza que deseja excluir o orçamento para "${orc.client_name}"?`)) {
+                                                                    deleteBudget(orc.id);
+                                                                }
+                                                            }}
+                                                            title="Excluir Orçamento"
+                                                        >
+                                                            <Trash2 size={16} />
                                                         </Button>
                                                     </div>
                                                 </td>
@@ -843,6 +856,18 @@ const Orcamento = () => {
                                                     }}
                                                 >
                                                     <FileText size={16} />
+                                                </Button>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-10 w-10 rounded-xl border border-border/50 text-rose-400"
+                                                    onClick={() => {
+                                                        if (confirm(`Excluir orçamento para "${orc.client_name}"?`)) {
+                                                            deleteBudget(orc.id);
+                                                        }
+                                                    }}
+                                                >
+                                                    <Trash2 size={16} />
                                                 </Button>
                                             </div>
                                         </div>

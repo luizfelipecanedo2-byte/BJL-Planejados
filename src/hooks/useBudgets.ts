@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -126,11 +125,36 @@ export function useBudgets() {
         }
     };
 
+    const deleteBudget = async (id: string) => {
+        const { error: itemsError } = await supabase
+            .from('budget_items')
+            .delete()
+            .eq('budget_id', id);
+
+        if (itemsError) {
+            toast.error("Erro ao excluir itens do orçamento");
+            return false;
+        }
+
+        const { error: budgetError } = await supabase
+            .from('budgets')
+            .delete()
+            .eq('id', id);
+
+        if (budgetError) {
+            toast.error("Erro ao excluir orçamento");
+            return false;
+        }
+
+        setBudgets(prev => prev.filter(b => b.id !== id));
+        toast.success("Orçamento excluído com sucesso");
+        return true;
+    };
+
     const saveBudget = async (budget: Partial<Budget>, items: BudgetItem[]) => {
         try {
             let budgetData, budgetError;
 
-            // Map fields explicitly to avoid sending extra frontend fields like 'budget_items'
             const budgetFields = {
                 client_name: budget.client_name,
                 project_name: budget.project_name,
@@ -144,7 +168,6 @@ export function useBudgets() {
             };
 
             if (budget.id) {
-                // Update existing budget
                 const { data, error } = await supabase
                     .from('budgets')
                     .update(budgetFields)
@@ -155,11 +178,9 @@ export function useBudgets() {
                 budgetError = error;
 
                 if (!budgetError) {
-                    // Delete old items and insert new ones
                     await supabase.from('budget_items').delete().eq('budget_id', budget.id);
                 }
             } else {
-                // Insert new budget
                 const { data, error } = await supabase
                     .from('budgets')
                     .insert([budgetFields])
@@ -169,11 +190,7 @@ export function useBudgets() {
                 budgetError = error;
             }
 
-            if (budgetError) {
-                console.error("Supabase budget error:", budgetError);
-                throw budgetError;
-            }
-
+            if (budgetError) throw budgetError;
             if (!budgetData) throw new Error("Não foi possível obter os dados do orçamento salvo");
 
             const itemsWithId = items.map(item => ({
@@ -188,10 +205,7 @@ export function useBudgets() {
                 .from('budget_items')
                 .insert(itemsWithId);
 
-            if (itemsError) {
-                console.error("Supabase items error:", itemsError);
-                throw itemsError;
-            }
+            if (itemsError) throw itemsError;
 
             toast.success(budget.id ? "Orçamento atualizado!" : "Orçamento salvo com sucesso!");
             fetchBudgets();
@@ -209,6 +223,7 @@ export function useBudgets() {
         updateMaterial,
         addMaterial,
         deleteMaterial,
+        deleteBudget,
         saveBudget,
         refreshMaterials: fetchMaterials,
         refreshBudgets: fetchBudgets
