@@ -43,7 +43,7 @@ const Orcamento = () => {
         client_name: "",
         project_name: "",
         days_estimated: 1,
-        daily_fixed_cost: 350,
+        daily_fixed_cost: 420,
         profit_margin: 15,
         commission: 3,
         tax: 4,
@@ -238,7 +238,7 @@ const Orcamento = () => {
             client_name: budget.client_name,
             project_name: budget.project_name,
             days_estimated: budget.days_estimated,
-            daily_fixed_cost: 350, // This could be stored in DB if needed, but for now 350
+            daily_fixed_cost: 420, // This could be stored in DB if needed, but for now 420
             profit_margin: (budget.markup_factor - 1) * 100 - 7, // Approximate reverse (assuming commission 3% and tax 4%)
             commission: 3,
             tax: 4,
@@ -301,7 +301,7 @@ const Orcamento = () => {
                         setIsDialogOpen(open);
                         if (!open) {
                             setEditingBudgetId(null);
-                            setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 350, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, notes: "" });
+                            setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 420, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, notes: "" });
                             setQuantities({});
                             setCustomPrices({});
                         }
