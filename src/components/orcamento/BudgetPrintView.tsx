@@ -1,14 +1,32 @@
-import React, { useState } from 'react';
-import { Phone, Instagram, MapPin, Printer, X, Pencil, RotateCcw } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Phone, Instagram, MapPin, Printer, X, Pencil, RotateCcw, Plus, Trash2 } from 'lucide-react';
 
 interface BudgetPrintViewProps {
     budget: any;
     onClose: () => void;
+    budgetNumber?: number; // Added to receive the 501+ number
 }
 
-const BudgetPrintView = ({ budget: initialBudget, onClose }: BudgetPrintViewProps) => {
+const BudgetPrintView = ({ budget: initialBudget, onClose, budgetNumber }: BudgetPrintViewProps) => {
     const [budget, setBudget] = useState(initialBudget);
-    const [items, setItems] = useState(initialBudget.budget_items || []);
+    
+    // Initialize with 4 items if empty, otherwise use existing
+    const [items, setItems] = useState(() => {
+        const initialItems = initialBudget.budget_items || [];
+        if (initialItems.length === 0) {
+            return Array(4).fill(null).map((_, i) => ({
+                id: `new-${Date.now()}-${i}`,
+                material_name: "",
+                quantity: 0,
+                unit_price_at_time: 0,
+                total_price: 0
+            }));
+        }
+        // If has items but less than 4, we can keep as is or pad. User said "place only 4 items", 
+        // which usually means they want a cleaner look. 
+        return initialItems.map((item: any) => ({...item}));
+    });
+
     const [paymentTerms, setPaymentTerms] = useState([
         "Entrada de 50% no fechamento do contrato (TED/PIX).",
         "Saldo restante de 50% na data da entrega técnica.",
@@ -41,6 +59,20 @@ const BudgetPrintView = ({ budget: initialBudget, onClose }: BudgetPrintViewProp
             return item;
         });
         setItems(newItems);
+    };
+
+    const addNewItem = () => {
+        setItems([...items, {
+            id: `new-${Date.now()}`,
+            material_name: "",
+            quantity: 0,
+            unit_price_at_time: 0,
+            total_price: 0
+        }]);
+    };
+
+    const removeItem = (id: string) => {
+        setItems(items.filter((item: any) => item.id !== id));
     };
 
     const totalValue = items.reduce((acc: number, curr: any) => acc + (parseFloat(curr.total_price) || 0), 0);
@@ -107,7 +139,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose }: BudgetPrintViewProp
                         </div>
                         <div className="text-right pl-8 pt-2">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-1">Orçamento Ref.</p>
-                            <p className="text-2xl font-black text-slate-900 tracking-tighter leading-none">#{budget.id.substring(0, 6).toUpperCase()}</p>
+                            <p className="text-2xl font-black text-slate-900 tracking-tighter leading-none">#{budgetNumber || budget.id.substring(0, 6).toUpperCase()}</p>
                             <div className="mt-4">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Emitido em</p>
                                 <p className="text-sm font-black text-slate-900 tracking-tight opacity-60">{new Date(budget.created_at || new Date()).toLocaleDateString('pt-BR')}</p>
@@ -123,7 +155,16 @@ const BudgetPrintView = ({ budget: initialBudget, onClose }: BudgetPrintViewProp
                                 <div className="h-2 w-2 bg-amber-500 rounded-full animate-pulse" />
                                 Memorial Descritivo e Detalhamento Técnico
                             </span>
-                            <div className="h-1 w-24 bg-amber-500 rounded-full relative z-10" />
+                            <div className="flex items-center gap-3 relative z-10 print:hidden">
+                                <button 
+                                    onClick={addNewItem}
+                                    className="p-2 bg-white/10 hover:bg-amber-500 hover:text-black rounded-lg transition-all"
+                                    title="Adicionar Item"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                                <div className="h-1 w-12 bg-amber-500 rounded-full" />
+                            </div>
                         </div>
                         <table className="w-full text-left border-collapse bg-white">
                             <thead>
@@ -132,6 +173,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose }: BudgetPrintViewProp
                                     <th className="py-5 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Qtd</th>
                                     <th className="py-5 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Unitário</th>
                                     <th className="pr-8 py-5 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Total</th>
+                                    <th className="w-10 print:hidden"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 border-x border-slate-100">
@@ -139,9 +181,10 @@ const BudgetPrintView = ({ budget: initialBudget, onClose }: BudgetPrintViewProp
                                     <tr key={item.id} className="hover:bg-amber-50/20 transition-colors group">
                                         <td className="pl-8 py-6">
                                             <input 
-                                                value={item.material_name || "Item Personalizado"}
+                                                value={item.material_name || ""}
                                                 onChange={(e) => handleItemChange(item.id, 'material_name', e.target.value)}
                                                 className="w-full bg-transparent border-none focus:ring-0 p-0 font-black text-slate-800 uppercase text-xs tracking-tight placeholder:text-slate-300"
+                                                placeholder="Descreva o ambiente ou material..."
                                             />
                                         </td>
                                         <td className="py-6 text-center">
@@ -164,6 +207,14 @@ const BudgetPrintView = ({ budget: initialBudget, onClose }: BudgetPrintViewProp
                                             </div>
                                         </td>
                                         <td className="pr-8 py-6 text-right font-black text-slate-900 text-sm tabular-nums">{formatCurrency(item.total_price || 0)}</td>
+                                        <td className="pr-4 print:hidden">
+                                            <button 
+                                                onClick={() => removeItem(item.id)}
+                                                className="p-2 text-slate-200 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -268,7 +319,13 @@ const BudgetPrintView = ({ budget: initialBudget, onClose }: BudgetPrintViewProp
                 <button
                     onClick={() => {
                         setBudget(initialBudget);
-                        setItems(initialBudget.budget_items || []);
+                        setItems(initialBudget.budget_items?.length ? initialBudget.budget_items.map((i:any)=>({...i})) : Array(4).fill(null).map((_, i) => ({
+                            id: `new-${Date.now()}-${i}`,
+                            material_name: "",
+                            quantity: 0,
+                            unit_price_at_time: 0,
+                            total_price: 0
+                        })));
                     }}
                     className="px-6 h-12 rounded-2xl bg-white/5 text-slate-400 hover:text-white font-black uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all border border-white/5 flex items-center gap-2"
                 >

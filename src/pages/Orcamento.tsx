@@ -709,7 +709,7 @@ const Orcamento = () => {
                                                         </div>
                                                         <div className="flex flex-col">
                                                             <span className="font-black text-[13px] uppercase text-foreground group-hover:text-primary transition-colors leading-tight">{orc.client_name}</span>
-                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{orc.id.substring(0, 4).toUpperCase()}</span>
+                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{501 + [...budgets].reverse().findIndex(b => b.id === orc.id)}</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -962,6 +962,7 @@ const Orcamento = () => {
             {printingBudget && (
                 <BudgetPrintView 
                     budget={printingBudget} 
+                    budgetNumber={501 + [...budgets].reverse().findIndex(b => b.id === printingBudget.id)}
                     onClose={() => setPrintingBudget(null)} 
                 />
             )}
