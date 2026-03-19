@@ -198,13 +198,6 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     .budget-print-container tr { display: table-row !important; }
                     .budget-print-container td, .budget-print-container th { display: table-cell !important; }
 
-                    /* Force page breaks if needed */
-                    .page-break {
-                        page-break-before: always !important;
-                        break-before: page !important;
-                        margin-top: 2cm !important;
-                    }
-
                     /* Hide interactive buttons during print */
                     .print-hidden, 
                     button, 
@@ -298,7 +291,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     </div>
 
                     {/* Commercial View (Proposta) */}
-                    <div className={activeTab === 'commercial' ? 'block' : 'hidden print:block'}>
+                    {activeTab === 'commercial' && (
                         <div className="mb-8 overflow-hidden rounded-[1.5rem] border border-slate-100">
                             <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center group relative">
                                 <span className="text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-3">
@@ -355,15 +348,10 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Technical View (Listagem de Materiais) - Page Break on Print */}
-                    <div className={`${activeTab === 'technical' ? 'block' : 'hidden print:block'} ${activeTab === 'commercial' ? 'print:page-break' : ''}`}>
-                        {/* Title only for technical list when printing after commercial */}
-                        <div className="hidden print:block mb-6 mt-10">
-                            <h3 className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-900 border-b-2 border-slate-900 pb-2">Planilha Técnica de Materiais (Interno)</h3>
-                        </div>
-                        
+                    {/* Technical View (Listagem de Materiais) */}
+                    {activeTab === 'technical' && (
                         <div className="mb-8 overflow-hidden rounded-[1.5rem] border border-slate-100">
                             <div className="bg-slate-700 text-white px-6 py-4 flex justify-between items-center group relative">
                                 <span className="text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-3">
@@ -422,12 +410,12 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    )}
 
                     <div className="flex-1 min-h-[40px]" />
 
-                    {/* Footer and Totals */}
-                    <div className="grid grid-cols-5 gap-8 items-start pt-6 border-t border-slate-100">
+                    {/* Footer and Totals (Mainly for Commercial) */}
+                    <div className={`grid grid-cols-5 gap-8 items-start pt-6 border-t border-slate-100 ${activeTab === 'technical' ? 'print:hidden' : ''}`}>
                         <div className="col-span-3 space-y-6">
                             <div>
                                 <h4 className="flex items-center gap-2 text-[9px] font-black uppercase text-amber-600 tracking-widest mb-3">

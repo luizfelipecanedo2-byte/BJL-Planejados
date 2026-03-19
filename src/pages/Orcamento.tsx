@@ -838,20 +838,34 @@ const Orcamento = () => {
                                             </div>
                                             <div className="flex gap-2">
                                                 <Button 
-                                                    variant="outline" 
-                                                    size="sm" 
-                                                    className="rounded-xl border-border/50 text-slate-400"
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-10 w-10 rounded-xl border border-border/50 text-slate-400"
                                                     onClick={() => handleEditBudget(orc)}
                                                 >
-                                                    <Pencil size={14} className="mr-2" /> Editar
+                                                    <Pencil size={16} />
                                                 </Button>
                                                 <Button 
-                                                    variant="outline" 
-                                                    size="sm" 
-                                                    className="rounded-xl border-border/50 text-slate-400"
-                                                    onClick={() => setPrintingBudget(orc)}
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-10 w-10 rounded-xl border border-border/50 text-slate-400"
+                                                    onClick={() => {
+                                                        setPrintingBudget(orc);
+                                                        setPrintingTab('technical');
+                                                    }}
                                                 >
-                                                    <FileText size={14} className="mr-2" /> PDF
+                                                    <Layers size={16} />
+                                                </Button>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-10 w-10 rounded-xl border border-border/50 text-slate-400"
+                                                    onClick={() => {
+                                                        setPrintingBudget(orc);
+                                                        setPrintingTab('commercial');
+                                                    }}
+                                                >
+                                                    <FileText size={16} />
                                                 </Button>
                                             </div>
                                         </div>
