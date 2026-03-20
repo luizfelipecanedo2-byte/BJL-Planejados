@@ -749,7 +749,7 @@ const Orcamento = () => {
                                                         </div>
                                                         <div className="flex flex-col">
                                                             <span className="font-black text-[13px] uppercase text-foreground group-hover:text-primary transition-colors leading-tight">{orc.client_name}</span>
-                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{501 + [...budgets].reverse().findIndex(b => b.id === orc.id)}</span>
+                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{600 + [...budgets].reverse().findIndex(b => b.id === orc.id)}</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -824,7 +824,7 @@ const Orcamento = () => {
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="font-black text-[13px] uppercase text-foreground leading-tight">{orc.client_name}</span>
-                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{501 + [...budgets].reverse().findIndex(b => b.id === orc.id)}</span>
+                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{600 + [...budgets].reverse().findIndex(b => b.id === orc.id)}</span>
                                                 </div>
                                             </div>
                                             {getStatusBadge(orc.status)}
@@ -1086,7 +1086,7 @@ const Orcamento = () => {
                     initialTab={printingTab}
                     onClose={() => setPrintingBudget(null)} 
                     onSave={handleSaveFromPrintView}
-                    budgetNumber={501 + [...budgets].reverse().findIndex(b => b.id === printingBudget.id)}
+                    budgetNumber={600 + [...budgets].reverse().findIndex(b => b.id === printingBudget.id)}
                 />
             )}
         </div>
