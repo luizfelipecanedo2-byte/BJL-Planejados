@@ -188,7 +188,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                 }
             `}} />
 
-            <div className="budget-print-container bg-white min-h-[1123px] w-full max-w-[800px] mx-auto shadow-2xl relative print:shadow-none print:m-0 print:max-w-none rounded-[3rem] overflow-hidden print:rounded-none flex flex-col">
+            <div className="budget-print-container bg-white min-h-[1123px] print:min-h-0 w-full max-w-[800px] mx-auto shadow-2xl relative print:shadow-none print:m-0 print:max-w-none rounded-[3rem] overflow-hidden print:rounded-none flex flex-col">
                 
                 {/* Header with Black Bar and Gold Wave */}
                 <div className="relative h-48 shrink-0">
