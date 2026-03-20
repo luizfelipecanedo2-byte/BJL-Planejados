@@ -373,8 +373,11 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                 </div>
                                 <div className="pt-4 border-t border-white/10 relative z-10">
                                     <div className="flex justify-between items-center mb-1.5">
-                                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Total Parcelado</p>
-                                        <div className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded-md">
+                                        <div className="flex flex-col">
+                                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Total Parcelado</p>
+                                            <p className="text-[6.5px] font-black uppercase tracking-[0.1em] text-slate-500 mt-0.5">Em até 10x no cartão</p>
+                                        </div>
+                                        <div className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded-md print:hidden">
                                             <input 
                                                 type="number"
                                                 value={budget.card_fee_percent || 11}
