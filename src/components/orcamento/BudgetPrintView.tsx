@@ -16,27 +16,50 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
     
     // We only keep the manual ambientes/serviços view
     const [ambientes, setAmbientes] = useState(() => {
-        // Initial environment based on project name or default
+        try {
+            if (initialBudget.notes) {
+                const parsed = JSON.parse(initialBudget.notes);
+                if (parsed.ambientes && Array.isArray(parsed.ambientes)) {
+                    return parsed.ambientes;
+                }
+            }
+        } catch (e) {}
+        
         return [{
             id: `amb-${Date.now()}`,
             description: initialBudget.project_name || "Ambiente Geral",
-            value: initialBudget.total_value / (1 + (parseFloat(initialBudget.card_fee_percent) || 11) / 100) // Back to 'à vista'
+            value: initialBudget.total_value / (1 + (parseFloat(initialBudget.card_fee_percent) || 11) / 100)
         }];
     });
 
-    // We no longer need the items state for the technical list in this view
+    const [paymentTerms, setPaymentTerms] = useState(() => {
+        try {
+            if (initialBudget.notes) {
+                const parsed = JSON.parse(initialBudget.notes);
+                if (parsed.paymentTerms && Array.isArray(parsed.paymentTerms)) return parsed.paymentTerms;
+            }
+        } catch (e) {}
+        return [
+            "Entrada de 50% no fechamento do contrato (TED/PIX).",
+            "Saldo restante de 50% na data da entrega técnica.",
+            "Prazo de entrega: A definir conforme cronograma."
+        ];
+    });
 
-    const [paymentTerms, setPaymentTerms] = useState([
-        "Entrada de 50% no fechamento do contrato (TED/PIX).",
-        "Saldo restante de 50% na data da entrega técnica.",
-        "Prazo de entrega: A definir conforme cronograma."
-    ]);
-    const [techSpecs, setTechSpecs] = useState([
-        "MDF Branco TX (Interno)",
-        "Dobradiças Amortecedor",
-        "Corrediças Telespópicas",
-        "Puxadores Perfil/Embutir"
-    ]);
+    const [techSpecs, setTechSpecs] = useState(() => {
+        try {
+            if (initialBudget.notes) {
+                const parsed = JSON.parse(initialBudget.notes);
+                if (parsed.techSpecs && Array.isArray(parsed.techSpecs)) return parsed.techSpecs;
+            }
+        } catch (e) {}
+        return [
+            "MDF Branco TX (Interno)",
+            "Dobradiças Amortecedor",
+            "Corrediças Telespópicas",
+            "Puxadores Perfil/Embutir"
+        ];
+    });
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -65,19 +88,25 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
         
         setIsSaving(true);
         try {
-            // Calculate final totals before saving - use the currently displayed total
             const totalCostAtVista = displayTotal;
             const cardFeePercent = parseFloat(budget.card_fee_percent) || 0;
             const totalValueWithCardFee = totalCostAtVista * (1 + cardFeePercent / 100);
             
             const budgetMarkupFactor = budget.markup_factor || 1;
+            
+            const notesObj = {
+                ambientes,
+                paymentTerms,
+                techSpecs
+            };
+
             const updatedBudget = {
                 ...budget,
+                notes: JSON.stringify(notesObj),
                 total_value: totalValueWithCardFee, 
                 total_cost: totalCostAtVista / budgetMarkupFactor 
             };
 
-            // We still pass original items but with updated budget totals
             await onSave(updatedBudget, initialBudget.budget_items || []);
         } catch (error) {
             console.error("Error saving budget from view:", error);
@@ -251,9 +280,9 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                             <td className="pl-6 py-4">
                                                 <textarea 
                                                     value={amb.description}
-                                                    rows={2}
+                                                    rows={1}
                                                     onChange={(e) => handleAmbienteChange(amb.id, 'description', e.target.value)}
-                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 font-black text-slate-800 uppercase text-[11px] tracking-tight placeholder:text-slate-200 resize-none"
+                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 font-black text-slate-800 uppercase text-[11px] tracking-tight placeholder:text-slate-200 resize-y min-h-[24px]"
                                                     placeholder="Descreva o ambiente e o que será feito..."
                                                 />
                                             </td>

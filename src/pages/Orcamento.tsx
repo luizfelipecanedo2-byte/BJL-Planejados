@@ -279,7 +279,10 @@ const Orcamento = () => {
         const fallbackMaterial = othersMaterial?.id || allMaterials[0].id;
         
         const finalItems = updatedItems
-            .filter(item => item && item.material_name && typeof item.material_name === 'string' && item.material_name.trim() !== "")
+            .filter(item => {
+                if (item.material_id) return true;
+                return item && item.material_name && typeof item.material_name === 'string' && item.material_name.trim() !== "";
+            })
             .map(item => ({
                 material_id: item.material_id || fallbackMaterial,
                 quantity: parseFloat(item.quantity) || 0,
@@ -288,7 +291,7 @@ const Orcamento = () => {
             }));
 
         if (finalItems.length === 0) {
-            toast.error("O orçamento precisa de pelo menos um item com nome");
+            toast.error("O orçamento não possui nenhum item válido.");
             return;
         }
 
