@@ -329,9 +329,9 @@ const Dashboard = ({ sales }: DashboardProps) => {
           {cards.map((card) => (
             <Card
               key={card.title}
-              className="border-none shadow-sm hover:shadow-md transition-all group overflow-hidden"
+              className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:border-white/20 group overflow-hidden rounded-3xl"
             >
-              <CardContent className="p-4 relative">
+              <CardContent className="p-5 relative">
                 <div className={`absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 ${card.color}`}>
                   <card.icon size={80} />
                 </div>
@@ -353,7 +353,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
           ))}
         </div>
 
-        <Card className="border-none shadow-sm">
+        <Card className="border border-white/10 backdrop-blur-xl bg-card/60 shadow-xl rounded-[2.5rem]">
           <CardContent className="p-6">
             <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
               {isDaily ? "Vendas por Dia" : "Vendas por Mês"} ({titleSuffix})
@@ -390,7 +390,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="border-none shadow-sm">
+          <Card className="border border-white/10 backdrop-blur-xl bg-card/60 shadow-xl rounded-[2.5rem]">
             <CardContent className="p-6">
               <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
                 Eficiência por Canal ({titleSuffix})
@@ -427,7 +427,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm">
+          <Card className="border border-white/10 backdrop-blur-xl bg-card/60 shadow-xl rounded-[2.5rem]">
             <CardContent className="p-6">
               <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
                 Total de Orçamentos por Canal ({titleSuffix})

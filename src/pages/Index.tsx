@@ -34,26 +34,29 @@ const Index = () => {
   return (
 
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Vendas</h2>
-        <MagicButton onClick={handleNewSale} className="gap-1.5 h-9 px-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">Vendas</h2>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Gestão de Negociações</p>
+        </div>
+        <MagicButton onClick={handleNewSale} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
           <Plus className="h-4 w-4" />
           Nova Venda
         </MagicButton>
       </div>
 
       <Tabs defaultValue="dashboard" className="space-y-6">
-        <TabsList className="bg-muted/60">
-          <TabsTrigger value="dashboard" className="gap-1.5">
-            <LayoutDashboard className="h-3.5 w-3.5" />
+        <TabsList className="bg-white/50 backdrop-blur-xl border border-white/40 p-1.5 rounded-full h-auto shadow-sm inline-flex">
+          <TabsTrigger value="dashboard" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
+            <LayoutDashboard className="h-4 w-4" />
             Dashboard
           </TabsTrigger>
-          <TabsTrigger value="table" className="gap-1.5">
-            <Table2 className="h-3.5 w-3.5" />
+          <TabsTrigger value="table" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
+            <Table2 className="h-4 w-4" />
             Tabela
           </TabsTrigger>
-          <TabsTrigger value="kanban" className="gap-1.5">
-            <Columns3 className="h-3.5 w-3.5" />
+          <TabsTrigger value="kanban" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
+            <Columns3 className="h-4 w-4" />
             Kanban
           </TabsTrigger>
         </TabsList>
