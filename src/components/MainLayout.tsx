@@ -97,12 +97,20 @@ const MainLayout = () => {
                 </div>
 
                 <div className="p-4 border-b border-border/10 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <UserCircle className="w-6 h-6 text-primary" />
+                    <div className="w-12 h-12 rounded-full border-2 border-primary/30 p-0.5 overflow-hidden shadow-lg shadow-primary/10">
+                        {role === 'admin' ? (
+                            <img src="/luiz-felipe.png" className="w-full h-full object-cover rounded-full" alt="Luiz Felipe Canedo" />
+                        ) : (
+                            <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
+                                <UserCircle className="w-6 h-6 text-primary" />
+                            </div>
+                        )}
                     </div>
                     <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-semibold truncate">{userEmail?.split('@')[0]}</span>
-                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{role === 'admin' ? 'Administrador' : 'Colaborador'}</span>
+                        <span className="text-sm font-bold truncate tracking-tight text-foreground">
+                            {role === 'admin' ? 'Luiz Felipe Canedo' : userEmail?.split('@')[0]}
+                        </span>
+                        <span className="text-[10px] uppercase font-black text-primary/80 tracking-widest">{role === 'admin' ? 'Administrador' : 'Colaborador'}</span>
                     </div>
                 </div>
 
@@ -148,12 +156,19 @@ const MainLayout = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                         <div className="hidden sm:flex flex-col items-end">
-                            <span className="text-sm font-semibold truncate max-w-[150px]">{userEmail?.split('@')[0]}</span>
-                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                            <span className="text-sm font-bold truncate max-w-[170px]">
+                                {role === 'admin' ? 'Luiz Felipe Canedo' : userEmail?.split('@')[0]}
+                            </span>
+                            <span className="text-[10px] uppercase font-bold text-primary/70 tracking-widest">
                                 {role === 'admin' ? 'Administrador' : 'Colaborador'}
                             </span>
                         </div>
+                        {role === 'admin' && (
+                            <img src="/luiz-felipe.png" alt="Luiz Felipe" className="h-9 w-9 rounded-full border border-primary/20 object-cover" />
+                        )}
+                    </div>
                         <Button
                             variant="ghost"
                             size="sm"
