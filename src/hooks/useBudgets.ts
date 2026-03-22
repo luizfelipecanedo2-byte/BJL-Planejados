@@ -217,6 +217,56 @@ export function useBudgets() {
         }
     };
 
+    const convertToWeeklyOrders = async (budget: any) => {
+        try {
+            // First update the budget status to approved
+            const { error: updateError } = await supabase
+                .from('budgets')
+                .update({ status: 'aprovado' })
+                .eq('id', budget.id);
+
+            if (updateError) throw updateError;
+
+            // Use budget_items if mapped by Supabase query
+            const itemsToConvert = budget.budget_items || budget.items || [];
+            
+            if (itemsToConvert.length === 0) {
+                toast.info("Este orçamento não tem materiais para pedir.");
+                fetchBudgets();
+                return true;
+            }
+
+            const weeklyOrders = itemsToConvert.map((item: any) => {
+                // Handle different naming from supabase nesting
+                const material = item.budget_materials || item.material;
+                return {
+                    product: material?.name || "Material não identificado",
+                    quantity: item.quantity,
+                    unit_price: item.unit_price_at_time,
+                    total_value: item.total_price,
+                    client: budget.client_name,
+                    supplier: "A DEFINIR", // Always start as "A DEFINIR"
+                    order_date: new Date().toISOString().split('T')[0],
+                    status: 'pendente'
+                };
+            });
+
+            const { error: insertError } = await supabase
+                .from('weekly_orders')
+                .insert(weeklyOrders);
+
+            if (insertError) throw insertError;
+
+            toast.success("Orçamento aprovado e materiais enviados para Pedidos da Semana!");
+            fetchBudgets();
+            return true;
+        } catch (error: any) {
+            console.error("Error converting to weekly orders:", error);
+            toast.error("Erro ao converter para pedidos: " + error.message);
+            return false;
+        }
+    };
+
     return {
         materials,
         budgets,
@@ -226,6 +276,7 @@ export function useBudgets() {
         deleteMaterial,
         deleteBudget,
         saveBudget,
+        convertToWeeklyOrders,
         refreshMaterials: fetchMaterials,
         refreshBudgets: fetchBudgets
     };

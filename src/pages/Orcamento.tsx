@@ -19,7 +19,7 @@ import BudgetPrintView from "@/components/orcamento/BudgetPrintView";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 const Orcamento = () => {
-    const { materials: allMaterials, budgets, loading, updateMaterial, addMaterial, deleteMaterial, deleteBudget, saveBudget, refreshBudgets } = useBudgets();
+    const { materials: allMaterials, budgets, loading, updateMaterial, addMaterial, deleteMaterial, deleteBudget, saveBudget, refreshBudgets, convertToWeeklyOrders } = useBudgets();
     
     // Sort materials based on custom order
     const sortedMaterials = useMemo(() => {
@@ -908,7 +908,22 @@ const Orcamento = () => {
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
-                                                    <div className="flex justify-end gap-2 pr-2">
+                                                     <div className="flex justify-end gap-2 pr-2">
+                                                         {orc.status !== 'aprovado' && (
+                                                             <Button 
+                                                                 variant="ghost" 
+                                                                 size="icon" 
+                                                                 className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-600 transition-all active:scale-95 border border-emerald-500/10"
+                                                                 onClick={() => {
+                                                                     if (confirm(`Aprovar projeto e lançar materiais no pedido da semana para "${orc.client_name}"?`)) {
+                                                                         convertToWeeklyOrders(orc);
+                                                                     }
+                                                                 }}
+                                                                 title="Aprovar e Pedir Materiais"
+                                                             >
+                                                                 <CheckCircle2 size={18} />
+                                                             </Button>
+                                                         )}
                                                          <Button 
                                                              variant="ghost" 
                                                              size="icon" 
@@ -978,6 +993,20 @@ const Orcamento = () => {
                                                 <span className="font-black text-lg text-primary tabular-nums">{formatCurrency(orc.total_value)}</span>
                                             </div>
                                             <div className="flex gap-2">
+                                                {orc.status !== 'aprovado' && (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-10 w-10 rounded-xl border border-emerald-500/50 text-emerald-500"
+                                                        onClick={() => {
+                                                            if (confirm(`Aprovar projeto e lançar materiais?`)) {
+                                                                convertToWeeklyOrders(orc);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <CheckCircle2 size={16} />
+                                                    </Button>
+                                                )}
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 

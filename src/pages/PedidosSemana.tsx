@@ -192,21 +192,30 @@ const PedidosSemana = () => {
         return isWithinInterval(orderDate, { start: weekStart, end: weekEnd });
     });
 
-    const isCHM = (sup: string) => {
+    const isCHM = (sup: string | undefined) => {
+        if (!sup) return false;
         const up = sup.toUpperCase();
         return up.includes("CHM") || up.includes("C HM") || up.includes("MORAIS") || up.includes("CED");
     };
 
-    const isBRUTA = (sup: string) => {
+    const isBRUTA = (sup: string | undefined) => {
+        if (!sup) return false;
         const up = sup.toUpperCase();
         return up.includes("BRUTA");
     };
 
-    const OrderSection = ({ title, type, colorClass, bgColorClass, borderClass }: { title: string, type: 'CHM' | 'BRUTA' | 'OTHER', colorClass: string, bgColorClass: string, borderClass: string }) => {
+    const isDefinir = (sup: string | undefined) => {
+        if (!sup) return true;
+        const up = sup.toUpperCase();
+        return up === "A DEFINIR" || up === "DEFINIR" || up === "NULL" || up === "";
+    };
+
+    const OrderSection = ({ title, type, colorClass, bgColorClass, borderClass }: { title: string, type: 'CHM' | 'BRUTA' | 'OTHER' | 'DEFINIR', colorClass: string, bgColorClass: string, borderClass: string }) => {
         const filtered = orders.filter(o => {
-            if (type === 'CHM') return isCHM(o.supplier);
-            if (type === 'BRUTA') return isBRUTA(o.supplier);
-            return !isCHM(o.supplier) && !isBRUTA(o.supplier);
+            if (type === 'DEFINIR') return isDefinir(o.supplier);
+            if (type === 'CHM') return isCHM(o.supplier) && !isDefinir(o.supplier);
+            if (type === 'BRUTA') return isBRUTA(o.supplier) && !isDefinir(o.supplier);
+            return !isCHM(o.supplier) && !isBRUTA(o.supplier) && !isDefinir(o.supplier);
         });
 
         if (filtered.length === 0) return null;
@@ -286,7 +295,29 @@ const PedidosSemana = () => {
                                     <div className="col-span-1 text-center font-black text-[11px]">
                                         {order.quantity}
                                     </div>
-                                    <div className={cn("col-span-2 text-right font-black text-xs tabular-nums", supText)}>
+                                    <div className={cn("col-span-2 text-right font-black text-xs tabular-nums items-center flex justify-end gap-2", supText)}>
+                                        {type === 'DEFINIR' && (
+                                            <div className="flex gap-1 mr-2 opacity-100 animate-in fade-in zoom-in duration-300">
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    title="Mover para CHM"
+                                                    className="h-8 px-2 text-[8px] border-emerald-500/50 hover:bg-emerald-500 hover:text-white"
+                                                    onClick={() => handleUpdateOrder(order.id, { supplier: "CHM Morais" })}
+                                                >
+                                                    CHM
+                                                </Button>
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    title="Mover para BRUTA"
+                                                    className="h-8 px-2 text-[8px] border-orange-500/50 hover:bg-orange-500 hover:text-white"
+                                                    onClick={() => handleUpdateOrder(order.id, { supplier: "BRUTA" })}
+                                                >
+                                                    BRUTA
+                                                </Button>
+                                            </div>
+                                        )}
                                         {formatCurrency(order.totalValue)}
                                     </div>
 
@@ -388,6 +419,16 @@ const PedidosSemana = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="lg:col-span-2">
+                    <OrderSection 
+                        title="Pedidos para Definir Fornecedor" 
+                        type="DEFINIR" 
+                        colorClass="text-blue-400" 
+                        bgColorClass="bg-blue-500/5" 
+                        borderClass="border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)] border-dashed"
+                    />
+                </div>
+
                 <OrderSection 
                     title="CHM Morais / CED" 
                     type="CHM" 
