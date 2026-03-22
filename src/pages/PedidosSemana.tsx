@@ -181,14 +181,16 @@ const PedidosSemana = () => {
         if (filtered.length === 0) return null;
 
         const getSupplierStyles = (sup: string) => {
-            if (sup === "CHM Morais") return "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
-            if (sup === "BRUTA") return "border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.2)]";
-            return "border-white/10";
+            const upSup = sup.toUpperCase();
+            if (upSup.includes("CHM MORAIS")) return "border-emerald-500 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
+            if (upSup.includes("BRUTA")) return "border-orange-500 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.1)]";
+            return "border-white/10 bg-black/20";
         };
 
         const getSupplierTextColor = (sup: string) => {
-            if (sup === "CHM Morais") return "text-emerald-500";
-            if (sup === "BRUTA") return "text-orange-500";
+            const upSup = sup.toUpperCase();
+            if (upSup.includes("CHM MORAIS")) return "text-emerald-500";
+            if (upSup.includes("BRUTA")) return "text-orange-500";
             return "text-white";
         };
 
@@ -219,7 +221,7 @@ const PedidosSemana = () => {
                                     className={cn(
                                         "grid grid-cols-12 gap-4 items-center px-6 py-4 rounded-xl border-2 transition-all group relative",
                                         supStyle,
-                                        "bg-black/20 hover:bg-black/40"
+                                        "hover:bg-black/40"
                                     )}
                                 >
                                     <div className="col-span-1 text-[10px] font-bold text-muted-foreground/80">
