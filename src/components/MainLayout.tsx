@@ -185,8 +185,8 @@ const MainLayout = () => {
                     {/* Animated Vintage Brand Watermark */}
                     <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none z-0 mt-32 overflow-hidden select-none">
                         <div className="text-border-beam">
-                            <h1 className="text-5xl md:text-7xl lg:text-8xl font-normal text-primary/30 font-['Pacifico',cursive] drop-shadow-[5px_5px_0px_rgba(0,0,0,0.2)]">
-                                BJL Planejados
+                            <h1 className="text-5xl md:text-7xl lg:text-8xl font-normal text-primary/30 font-['Pacifico',cursive] drop-shadow-[5px_5px_0px_rgba(0,0,0,0.2)] uppercase">
+                                BJL PLANEJADOS
                             </h1>
                         </div>
                     </div>
