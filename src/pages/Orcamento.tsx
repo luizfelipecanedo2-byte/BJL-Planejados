@@ -49,9 +49,13 @@ const Orcamento = () => {
                 if (!isNaN(parseInt(year))) years.add(year);
             }
         });
-        // Ensure 2026 and 2027 are always options
-        years.add("2026");
-        years.add("2027");
+        
+        // Add current year and the next 5 years
+        const currentYear = new Date().getFullYear();
+        for (let i = 0; i <= 5; i++) {
+            years.add((currentYear + i).toString());
+        }
+        
         return Array.from(years).sort();
     }, [budgets]);
 
