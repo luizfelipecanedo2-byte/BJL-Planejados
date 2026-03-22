@@ -209,19 +209,24 @@
     100% { background-position: -200% 0; }
   }
 
-  /* Animated circling line for text */
+  /* Animated traveling border beam for text */
+  @keyframes beamMove {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
   .text-border-beam {
-    @apply relative inline-block p-4;
-  }
-  .text-border-beam::before {
-    content: "";
-    @apply absolute inset-0 border-2 border-primary/20 rounded-[2rem];
-    mask-image: linear-gradient(to right, transparent, black, transparent);
-    animation: rotate 4s linear infinite;
-  }
-  @keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    @apply relative inline-block p-6 rounded-3xl border border-primary/20 overflow-hidden;
+    background: linear-gradient(
+      90deg, 
+      transparent, 
+      transparent, 
+      hsl(var(--primary) / 0.4), 
+      transparent, 
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: beamMove 3s linear infinite;
   }
 
   /* 3D Tilt Utility */
