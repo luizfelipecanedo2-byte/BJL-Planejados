@@ -243,8 +243,8 @@ const Financeiro = () => {
         return t.financialInstitution === 'Dinheiro';
       } else if (selectedAccount === 'banco_itau') {
         return t.financialInstitution === 'Banco Itaú';
-      } else if (selectedAccount === 'mercado_pago') {
-        return t.financialInstitution === 'Mercado Pago';
+      } else if (selectedAccount === 'nubank') {
+        return t.financialInstitution === 'Nubank';
       }
       return false;
     });

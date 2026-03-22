@@ -281,56 +281,64 @@ const Dashboard = ({ sales }: DashboardProps) => {
     const cards = [
       {
         title: "Valor Total de Orçamentos",
-        value: formatCurrency(totalBudget),
+        value: totalBudget,
+        isCurrency: true,
         icon: DollarSign,
         color: "text-amber-500",
         bgColor: "bg-amber-500/10",
       },
       {
         title: "Receita (Fechado + Pós-Venda)",
-        value: formatCurrency(totalRevenue),
+        value: totalRevenue,
+        isCurrency: true,
         icon: Target,
         color: "text-primary",
         bgColor: "bg-primary/10",
       },
       {
         title: "Dinheiro na Mesa (Perdidos)",
-        value: formatCurrency(lostSalesValue),
+        value: lostSalesValue,
+        isCurrency: true,
         icon: TrendingDown,
         color: "text-rose-500",
         bgColor: "bg-rose-500/10",
       },
       {
         title: "Pipeline Atual (Andamento)",
-        value: formatCurrency(pipelineValue),
+        value: pipelineValue,
+        isCurrency: true,
         icon: TrendingUp,
         color: "text-amber-400",
         bgColor: "bg-amber-400/10",
       },
       {
         title: "Ticket Médio (Fechadas)",
-        value: formatCurrency(avgTicketClosed),
+        value: avgTicketClosed,
+        isCurrency: true,
         icon: Receipt,
         color: "text-primary",
         bgColor: "bg-primary/10",
       },
       {
         title: "Ticket Médio (Geral)",
-        value: formatCurrency(avgTicketAll),
+        value: avgTicketAll,
+        isCurrency: true,
         icon: Receipt,
         color: "text-amber-500",
         bgColor: "bg-amber-500/10",
       },
       {
         title: "Conversão Geral",
-        value: `${numClosed}/${numBudgets} (${conversionRate}%)`,
+        value: conversionRate,
+        isPercentage: true,
+        label: `${numClosed}/${numBudgets}`,
         icon: BarChart3,
         color: "text-amber-300",
         bgColor: "bg-amber-300/10",
       },
       {
         title: "Leads Perdidos",
-        value: numLost.toString(),
+        value: numLost,
         icon: XCircle,
         color: "text-rose-500",
         bgColor: "bg-rose-500/10",
@@ -357,17 +365,16 @@ const Dashboard = ({ sales }: DashboardProps) => {
                     <p className="text-[11px] text-muted-foreground uppercase font-black tracking-tighter truncate opacity-80 mb-0.5">
                       {card.title}
                     </p>
-                    <p className={`text-xl font-black tracking-tighter ${card.color}`}>
+                    <div className={cn("text-xl font-black tracking-tighter", card.color)}>
                       <AnimatedCounter 
-                        value={parseFloat(card.value.replace(/[^0-9.-]+/g,"")) || 0} 
-                        formatter={(v) => card.value.includes('R$') 
-                          ? formatCurrency(v) 
-                          : card.value.includes('%') 
-                            ? `${v.toFixed(0)}%` 
-                            : v.toFixed(0)
-                        } 
+                        value={card.value} 
+                        formatter={(v) => {
+                          if (card.isCurrency) return formatCurrency(v);
+                          if (card.isPercentage) return `${card.label} (${v.toFixed(0)}%)`;
+                          return v.toFixed(0);
+                        }} 
                       />
-                    </p>
+                    </div>
                   </div>
                 </div>
               </CardContent>
