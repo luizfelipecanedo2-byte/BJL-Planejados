@@ -20,9 +20,15 @@ export default function WeeklyOrderPrintView({ orders, onClose }: WeeklyOrderPri
         return up.includes("BRUTA");
     };
 
+    const isCED = (sup: string) => {
+        const up = sup.toUpperCase();
+        return up.includes("CED");
+    };
+
     const chmOrders = orders.filter(o => isCHM(o.supplier));
     const brutaOrders = orders.filter(o => isBRUTA(o.supplier));
-    const otherOrders = orders.filter(o => !isCHM(o.supplier) && !isBRUTA(o.supplier));
+    const cedOrders = orders.filter(o => isCED(o.supplier));
+    const otherOrders = orders.filter(o => !isCHM(o.supplier) && !isBRUTA(o.supplier) && !isCED(o.supplier));
     
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
@@ -110,6 +116,13 @@ export default function WeeklyOrderPrintView({ orders, onClose }: WeeklyOrderPri
                     items={brutaOrders} 
                     colorClass="border-orange-500" 
                     textColorClass="text-orange-600"
+                />
+
+                <OrderTable 
+                    title="CED" 
+                    items={cedOrders} 
+                    colorClass="border-cyan-500" 
+                    textColorClass="text-cyan-600"
                 />
 
                 {otherOrders.length > 0 && (

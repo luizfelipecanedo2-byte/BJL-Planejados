@@ -186,6 +186,8 @@ const PedidosSemana = () => {
                 return "border-emerald-500 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
             if (upSup.includes("BRUTA")) 
                 return "border-orange-500 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.1)]";
+            if (upSup.includes("CED")) 
+                return "border-cyan-500 bg-cyan-500/10 shadow-[0_0_15px_rgba(6,182,212,0.1)]";
             return "border-white/10 bg-black/20";
         };
 
@@ -195,6 +197,8 @@ const PedidosSemana = () => {
                 return "text-emerald-500";
             if (upSup.includes("BRUTA")) 
                 return "text-orange-500";
+            if (upSup.includes("CED")) 
+                return "text-cyan-500";
             return "text-white";
         };
 
@@ -344,11 +348,11 @@ const PedidosSemana = () => {
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <OrderSection 
                     title="CHM Morais" 
                     supplierName="CHM Morais" 
-                    colorClass="text-emerald-500" 
+                    colorClass="text-emerald-400" 
                     bgColorClass="bg-emerald-500/5" 
                     borderClass="border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
                 />
@@ -356,15 +360,23 @@ const PedidosSemana = () => {
                 <OrderSection 
                     title="BRUTA" 
                     supplierName="BRUTA" 
-                    colorClass="text-orange-500" 
+                    colorClass="text-orange-400" 
                     bgColorClass="bg-orange-500/5" 
                     borderClass="border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.1)]"
                 />
 
-                <div className="lg:col-span-2">
+                <OrderSection 
+                    title="CED" 
+                    supplierName="CED" 
+                    colorClass="text-cyan-400" 
+                    bgColorClass="bg-cyan-500/5" 
+                    borderClass="border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)]"
+                />
+
+                <div className="lg:col-span-3">
                     <OrderSection 
                         title="Demais Fornecedores" 
-                        supplierName={["CHM Morais", "BRUTA"]} 
+                        supplierName={["CHM Morais", "BRUTA", "CED"]} 
                         colorClass="text-primary" 
                         bgColorClass="bg-card/40" 
                         borderClass="border-white/10"
