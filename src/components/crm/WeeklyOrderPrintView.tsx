@@ -43,8 +43,8 @@ export default function WeeklyOrderPrintView({ orders, onClose }: WeeklyOrderPri
                 <thead>
                     <tr className="border-b-2 border-slate-900/10 bg-slate-50">
                         <th className="px-4 py-3 font-black uppercase text-[10px] tracking-widest text-slate-500">Produto</th>
-                        <th className="px-4 py-3 font-black uppercase text-[10px] tracking-widest text-slate-500">Cliente</th>
                         <th className="px-4 py-3 font-black uppercase text-[10px] tracking-widest text-slate-500 text-center">Qtd</th>
+                        <th className="px-4 py-3 font-black uppercase text-[10px] tracking-widest text-slate-500">Cliente</th>
                         <th className="px-4 py-3 font-black uppercase text-[10px] tracking-widest text-slate-500 text-right">Valor Unit.</th>
                         <th className="px-4 py-3 font-black uppercase text-[10px] tracking-widest text-slate-500 text-right">Total</th>
                     </tr>
@@ -58,8 +58,8 @@ export default function WeeklyOrderPrintView({ orders, onClose }: WeeklyOrderPri
                         items.map((order) => (
                             <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
                                 <td className="px-4 py-4 font-black text-slate-800 text-sm uppercase tracking-tight">{order.product}</td>
-                                <td className="px-4 py-4 text-slate-500 font-bold text-xs uppercase tracking-tighter truncate max-w-[200px]">{order.client}</td>
                                 <td className="px-4 py-4 text-center font-black text-slate-900">{order.quantity}</td>
+                                <td className="px-4 py-4 text-slate-500 font-bold text-xs uppercase tracking-tighter truncate max-w-[200px]">{order.client}</td>
                                 <td className="px-4 py-4 text-right font-bold text-slate-500 text-xs">{formatCurrency(order.unitPrice)}</td>
                                 <td className={`px-4 py-4 text-right font-black text-[15px] ${textColorClass} tracking-tighter`}>{formatCurrency(order.totalValue)}</td>
                             </tr>
