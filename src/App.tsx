@@ -65,8 +65,22 @@ const App = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-black relative overflow-hidden">
+        <div className="absolute inset-0 aurora-bg opacity-20"></div>
+        <div className="absolute inset-0 stardust opacity-30"></div>
+        
+        <div className="relative group">
+            <div className="absolute -inset-8 bg-primary/20 rounded-full blur-2xl animate-pulse" />
+            <img src="/logo-bjl.png" alt="Loading..." className="h-32 w-auto object-contain relative z-10 animate-bounce transition-all duration-1000" />
+        </div>
+        
+        <div className="mt-8 space-y-4 flex flex-col items-center relative z-10">
+            <h2 className="text-xl font-black tracking-[0.5em] shimmer-gold uppercase">Iniciando Sistema</h2>
+            <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                <div className="h-full bg-gradient-to-r from-primary via-amber-400 to-primary w-2/3 animate-[shimmer_2s_infinite] rounded-full" />
+            </div>
+            <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">BJL Planejados • Luxo & Tecnologia</p>
+        </div>
       </div>
     );
   }

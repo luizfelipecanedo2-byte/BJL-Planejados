@@ -30,63 +30,92 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 bg-[url('/login-bg.jpg')] bg-cover bg-center">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
-            <Card className="w-full max-w-md relative shadow-2xl border-none">
-                <CardHeader className="space-y-1 flex flex-col items-center">
-                    <div className="mb-6">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-black relative overflow-hidden">
+            {/* Ambient Background Layer */}
+            <div className="absolute inset-0 aurora-bg opacity-30"></div>
+            <div className="absolute inset-0 stardust opacity-50"></div>
+            
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black"></div>
+
+            <Card className="w-full max-w-md relative shadow-2xl border border-white/10 backdrop-blur-3xl bg-black/40 rounded-[2.5rem] p-4 overflow-hidden spotlight-card tilt-card border-beam-card">
+                <div className="absolute -top-24 -left-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
+                <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl" />
+
+                <CardHeader className="space-y-4 flex flex-col items-center pt-8 pb-4 relative z-10">
+                    <div className="relative group">
+                        <div className="absolute -inset-4 bg-primary/20 rounded-full blur-xl group-hover:bg-primary/30 transition-all duration-700 opacity-50" />
                         <img
                             src="/logo-bjl.png"
                             alt="BJL Planejados"
-                            className="h-32 w-auto object-contain"
+                            className="h-32 w-auto object-contain relative z-10 drop-shadow-[0_0_25px_rgba(255,215,0,0.3)] hover:scale-105 transition-transform duration-500"
                         />
                     </div>
-                    <CardTitle className="text-3xl font-bold tracking-tight">BJL Planejados</CardTitle>
-                    <CardDescription className="text-base">
-                        Entre com suas credenciais para acessar o sistema
-                    </CardDescription>
+                    
+                    <div className="text-center space-y-2">
+                        <h1 className="text-4xl font-black tracking-tighter shimmer-gold">
+                            BJL PLANEJADOS
+                        </h1>
+                        <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-muted-foreground/60 leading-none">
+                            High-End Management System
+                        </p>
+                    </div>
                 </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <div className="space-y-2">
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+
+                <CardContent className="px-6 pb-8 relative z-10">
+                    <form onSubmit={handleLogin} className="space-y-5">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Acesso Seguro</label>
+                            <div className="relative group/input">
+                                <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-md group-focus-within/input:bg-primary/10 transition-all" />
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within/input:text-primary transition-colors" />
                                 <Input
                                     type="email"
-                                    placeholder="Seu e-mail"
-                                    className="pl-10 h-12"
+                                    placeholder="seu@email.com"
+                                    className="pl-12 h-14 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all text-base font-medium"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
                                 />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Credencial Secreta</label>
+                            <div className="relative group/input">
+                                <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-md group-focus-within/input:bg-primary/10 transition-all" />
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within/input:text-primary transition-colors" />
                                 <Input
                                     type="password"
-                                    placeholder="Sua senha"
-                                    className="pl-10 h-12"
+                                    placeholder="••••••••"
+                                    className="pl-12 h-14 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all text-base font-medium"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                 />
                             </div>
                         </div>
-                        <Button className="w-full h-12 text-lg font-semibold" type="submit" disabled={loading}>
+
+                        <Button 
+                            className="w-full h-14 text-base font-black uppercase tracking-widest bg-primary hover:bg-primary/80 text-primary-foreground rounded-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all relative overflow-hidden group" 
+                            type="submit" 
+                            disabled={loading}
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite] transition-transform" />
                             {loading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                    Entrando...
-                                </>
+                                <div className="flex items-center gap-3">
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    <span>Verificando...</span>
+                                </div>
                             ) : (
-                                "Entrar no Sistema"
+                                "Desbloquear Sistema"
                             )}
                         </Button>
                     </form>
-                    <div className="mt-6 text-center text-sm text-muted-foreground">
-                        Esqueceu sua senha? Entre em contato com o administrador.
+                    
+                    <div className="mt-10 text-center">
+                        <p className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-[0.2em]">
+                            BJL Planejados &copy; {new Date().getFullYear()} • Edição de Luxo
+                        </p>
                     </div>
                 </CardContent>
             </Card>

@@ -3,6 +3,7 @@ import { formatCurrency } from "@/lib/salesUtils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Phone, Flame, Clock } from "lucide-react";
 import { differenceInDays } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface KanbanBoardProps {
   sales: Sale[];
@@ -110,28 +111,34 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit }: KanbanBoardProps) => {
         return (
           <div
             key={status}
-            className={`flex-shrink-0 w-64 bg-muted/40 rounded-lg border-t-[3px] ${columnColors[status]}`}
+            className={cn(
+                "flex-shrink-0 w-72 bg-white/5 backdrop-blur-xl rounded-[2rem] border border-white/10 flex flex-col h-[calc(100vh-280px)] shadow-2xl relative overflow-hidden group/column",
+                columnColors[status]
+            )}
             onDrop={(e) => handleDrop(e, status)}
             onDragOver={handleDragOver}
           >
-            <div className="p-3 border-b border-border/50">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-2 h-2 rounded-full ${dotColors[status]}`}
-                />
-                <h3 className="text-sm font-semibold">
+            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
+            
+            <div className="p-4 border-b border-white/5 relative z-10">
+              <div className="flex items-center gap-2 mb-2">
+                <div className={cn("w-2 h-2 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]", dotColors[status])} />
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-white/90">
                   {STATUS_LABELS[status]}
                 </h3>
-                <span className="ml-auto text-xs bg-muted rounded-full px-2 py-0.5 text-muted-foreground font-medium">
+                <span className="ml-auto text-[10px] bg-white/10 text-white/60 rounded-full px-2.5 py-0.5 font-black">
                   {columnSales.length}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1 font-mono">
-                {formatCurrency(totalValue)}
-              </p>
+              <div className="flex justify-between items-end">
+                  <p className="text-lg font-black text-white tracking-tighter shimmer-gold">
+                    {formatCurrency(totalValue)}
+                  </p>
+                  <p className="text-[8px] font-bold text-white/30 uppercase tracking-tighter">Volume Total</p>
+              </div>
             </div>
 
-            <div className="p-2 space-y-2 min-h-[200px]">
+            <div className="p-3 space-y-3 overflow-y-auto custom-scrollbar flex-1 relative z-10">
               {columnSales.map((sale) => {
                 const hot = isHotLead(sale);
                 const lostDays = getDaysWithoutContact(sale);
@@ -143,38 +150,48 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit }: KanbanBoardProps) => {
                     draggable
                     onDragStart={(e) => handleDragStart(e, sale.id)}
                     onClick={() => onEdit(sale)}
-                    className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow shadow-sm relative overflow-hidden group
-                        ${hot ? 'border-l-4 border-l-orange-500 bg-orange-50/30' : 'border-none'}
-                    `}
+                    className={cn(
+                        "cursor-grab active:cursor-grabbing hover:shadow-2xl transition-all duration-300 shadow-lg relative overflow-hidden group spotlight-card tilt-card border-beam-card rounded-2xl border-white/5 bg-white/[0.03] backdrop-blur-md",
+                        hot ? 'border-orange-500/50 bg-orange-500/5' : ''
+                    )}
                   >
                     {hot && (
-                      <div className="absolute top-0 right-0 p-1.5 bg-orange-500 text-white rounded-bl-lg shrink-0">
+                      <div className="absolute top-0 right-0 p-2 bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-bl-xl shadow-lg z-20">
                         <Flame size={14} className="animate-pulse" />
                       </div>
                     )}
-                    <CardContent className="p-3 pt-4">
+                    <CardContent className="p-4 relative z-10">
                       {showWarning && (
-                        <div className="flex items-center gap-1.5 text-red-500 bg-red-50 px-2 py-1 rounded-md mb-2 w-fit border border-red-100">
+                        <div className="flex items-center gap-1.5 text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full mb-3 w-fit border border-rose-500/20 backdrop-blur-sm">
                           <Clock size={12} className="animate-pulse" />
-                          <span className="text-[10px] uppercase font-bold tracking-tighter">
-                            {lostDays} dias sem contato
+                          <span className="text-[9px] uppercase font-black tracking-widest">
+                            {lostDays} DIAS EM HIATO
                           </span>
                         </div>
                       )}
-                      <p className="font-bold text-sm mb-0.5 leading-tight truncate pr-4 text-foreground/90">
-                        {sale.clientName || 'Sem nome'}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mb-2 font-medium">
-                        {sale.product}{" "}
-                        {sale.quantity > 1 && `(×${sale.quantity})`}
-                      </p>
-                      <p className="text-sm font-black text-primary tracking-tighter bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10 w-fit mb-2">
-                        {formatCurrency(sale.totalValue || 0)}
-                      </p>
-                      <div className="flex items-center gap-3 text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          <span className="text-[10px]">{sale.clientPhone || '-'}</span>
+                      
+                      <div className="space-y-1 mb-4">
+                        <p className="font-black text-sm tracking-tight text-white group-hover:text-primary transition-colors truncate pr-4 uppercase">
+                            {sale.clientName || 'CLIENTE S/ NOME'}
+                        </p>
+                        <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest truncate">
+                            {sale.product} {sale.quantity > 1 && `[×${sale.quantity}]`}
+                        </p>
+                      </div>
+
+                      <div className="flex items-end justify-between gap-2 mt-auto">
+                        <div className="space-y-1">
+                            <p className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Proposta</p>
+                            <p className="text-base font-black text-primary tracking-tighter">
+                                {formatCurrency(sale.totalValue || 0)}
+                            </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity">
+                            <Phone className="h-3 w-3 text-white/40" />
+                            <span className="text-[9px] font-black text-white/60 tracking-tighter">
+                                {sale.clientPhone ? sale.clientPhone.split(' ').pop() : '---'}
+                            </span>
                         </div>
                       </div>
                     </CardContent>
