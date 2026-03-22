@@ -185,7 +185,7 @@ const MainLayout = () => {
                     {/* Premium Luxury Serif Watermark */}
                     <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none z-0 mt-32 overflow-hidden select-none">
                         <div className="text-border-beam px-10 py-4">
-                            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black italic text-primary/30 font-['Playfair_Display',serif] tracking-wider uppercase drop-shadow-2xl">
+                            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-primary/30 font-['Cinzel',serif] tracking-[0.2em] uppercase drop-shadow-2xl">
                                 BJL PLANEJADOS
                             </h1>
                         </div>
