@@ -178,46 +178,88 @@ const PedidosSemana = () => {
             ? orders.filter(o => !supplierName.includes(o.supplier))
             : orders.filter(o => o.supplier === supplierName);
 
-        if (filtered.length === 0 && Array.isArray(supplierName)) return null;
-        if (filtered.length === 0 && !Array.isArray(supplierName)) return null;
+        if (filtered.length === 0) return null;
+
+        const getSupplierStyles = (sup: string) => {
+            if (sup === "CHM Morais") return "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+            if (sup === "BRUTA") return "border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.2)]";
+            return "border-white/10";
+        };
+
+        const getSupplierTextColor = (sup: string) => {
+            if (sup === "CHM Morais") return "text-emerald-500";
+            if (sup === "BRUTA") return "text-orange-500";
+            return "text-white";
+        };
 
         return (
             <Card className={cn("border backdrop-blur-2xl transition-all duration-300 overflow-hidden", borderClass, bgColorClass)}>
-                <CardHeader className="pb-2">
-                    <CardTitle className={cn("text-sm font-black uppercase tracking-widest", colorClass)}>{title}</CardTitle>
+                <CardHeader className="pb-4 border-b border-white/5 bg-white/5">
+                    <CardTitle className={cn("text-[10px] font-black uppercase tracking-[0.3em]", colorClass)}>{title}</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="border-b border-border/20">
-                                <TableHead className="text-[10px] font-black uppercase">Data</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase">Produto</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase">Cliente</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase">Qtd</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase text-right">Total</TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filtered.map((order) => (
-                                <TableRow key={order.id} className="border-b border-border/10 hover:bg-white/5 transition-colors group">
-                                    <TableCell className="py-3 text-[11px] font-medium text-muted-foreground">{format(new Date(order.date), "dd/MM/yyyy")}</TableCell>
-                                    <TableCell className="py-3 text-[11px] font-bold text-foreground">{order.product}</TableCell>
-                                    <TableCell className="py-3 text-[11px] text-muted-foreground">{order.client}</TableCell>
-                                    <TableCell className="py-3 text-[11px] font-mono">{order.quantity}</TableCell>
-                                    <TableCell className={cn("py-3 text-[11px] font-black text-right", colorClass)}>{formatCurrency(order.totalValue)}</TableCell>
-                                    <TableCell className="py-3 flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditOrder(order)}>
+                <CardContent className="p-6">
+                    <div className="space-y-3">
+                        {/* Header mimic */}
+                        <div className="grid grid-cols-12 gap-4 px-6 py-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50">
+                            <div className="col-span-2">Data</div>
+                            <div className="col-span-4">Produto</div>
+                            <div className="col-span-3">Cliente</div>
+                            <div className="col-span-1 text-center">Qtd</div>
+                            <div className="col-span-2 text-right">Total</div>
+                        </div>
+
+                        {filtered.map((order) => {
+                            const supStyle = getSupplierStyles(order.supplier);
+                            const supText = getSupplierTextColor(order.supplier);
+                            
+                            return (
+                                <div 
+                                    key={order.id} 
+                                    className={cn(
+                                        "grid grid-cols-12 gap-4 items-center px-6 py-4 rounded-xl border-2 transition-all group relative",
+                                        supStyle,
+                                        "bg-black/20 hover:bg-black/40"
+                                    )}
+                                >
+                                    <div className="col-span-2 text-[11px] font-bold text-muted-foreground/80">
+                                        {format(new Date(order.date), "dd/MM/yyyy")}
+                                    </div>
+                                    <div className="col-span-4 text-[12px] font-black uppercase tracking-tight text-white group-hover:text-primary transition-colors">
+                                        {order.product}
+                                    </div>
+                                    <div className="col-span-3 text-[11px] font-bold text-muted-foreground/60 uppercase tracking-tighter truncate">
+                                        {order.client}
+                                    </div>
+                                    <div className="col-span-1 text-center font-black text-xs">
+                                        {order.quantity}
+                                    </div>
+                                    <div className={cn("col-span-2 text-right font-black text-sm tabular-nums", supText)}>
+                                        {formatCurrency(order.totalValue)}
+                                    </div>
+
+                                    {/* Action buttons overlay */}
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10"
+                                            onClick={() => handleEditOrder(order)}
+                                        >
                                             <Pencil className="h-3.5 w-3.5" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-500/20" onClick={() => handleDeleteOrder(order.id)}>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-8 w-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500"
+                                            onClick={() => handleDeleteOrder(order.id)}
+                                        >
                                             <Trash2 className="h-3.5 w-3.5" />
                                         </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </CardContent>
             </Card>
         );
