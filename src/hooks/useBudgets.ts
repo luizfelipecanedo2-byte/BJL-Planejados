@@ -247,7 +247,8 @@ export function useBudgets() {
                     client: budget.client_name,
                     supplier: "A DEFINIR", // Always start as "A DEFINIR"
                     order_date: new Date().toISOString().split('T')[0],
-                    status: 'pendente'
+                    status: 'pendente',
+                    budget_id: budget.id // Link each order to the budget ID
                 };
             });
 
@@ -267,6 +268,34 @@ export function useBudgets() {
         }
     };
 
+    const cancelBudgetApproval = async (budget: Budget) => {
+        try {
+            // Revert budget status
+            const { error: updateError } = await supabase
+                .from('budgets')
+                .update({ status: 'em_elaboracao' })
+                .eq('id', budget.id);
+
+            if (updateError) throw updateError;
+
+            // Remove all weekly_orders linked to this budget
+            const { error: deleteError } = await supabase
+                .from('weekly_orders')
+                .delete()
+                .eq('budget_id', budget.id);
+
+            if (deleteError) throw deleteError;
+
+            toast.success("Aprovação removida e materiais retirados da lista de compras!");
+            fetchBudgets();
+            return true;
+        } catch (error: any) {
+            console.error("Error cancelling budget approval:", error);
+            toast.error("Erro ao cancelar aprovação: " + error.message);
+            return false;
+        }
+    };
+
     return {
         materials,
         budgets,
@@ -277,6 +306,7 @@ export function useBudgets() {
         deleteBudget,
         saveBudget,
         convertToWeeklyOrders,
+        cancelBudgetApproval,
         refreshMaterials: fetchMaterials,
         refreshBudgets: fetchBudgets
     };

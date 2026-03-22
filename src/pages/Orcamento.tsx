@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
-import { Plus, Calculator, FileText, Search, TrendingUp, DollarSign, Package, Trash2, Pencil, CheckCircle2, History, Settings2, Save, X, Layers, ChevronDown, ChevronRight, AlertCircle } from "lucide-react";
+import { Plus, Calculator, FileText, Search, TrendingUp, DollarSign, Package, Trash2, Pencil, CheckCircle2, History as HistoryIcon, Settings2, Save, X, Layers, ChevronDown, ChevronRight, AlertCircle, XCircle, Printer, Filter, LayoutGrid, List, RotateCcw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ import BudgetPrintView from "@/components/orcamento/BudgetPrintView";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 const Orcamento = () => {
-    const { materials: allMaterials, budgets, loading, updateMaterial, addMaterial, deleteMaterial, deleteBudget, saveBudget, refreshBudgets, convertToWeeklyOrders } = useBudgets();
+    const { materials: allMaterials, budgets, loading, updateMaterial, addMaterial, deleteMaterial, deleteBudget, saveBudget, refreshBudgets, convertToWeeklyOrders, cancelBudgetApproval } = useBudgets();
     
     // Sort materials based on custom order
     const sortedMaterials = useMemo(() => {
@@ -114,7 +114,7 @@ const Orcamento = () => {
         const success = await addMaterial(newMaterial);
         if (success) {
             setIsNewMaterialDialogOpen(false);
-            setNewMaterial({ name: "", category: "OUTROS", unit: "UNIDADE", unit_price: 0 });
+            setNewMaterial({ name: "", category: "OUTROS", supplier: "CHM Morais", unit: "UNIDADE", unit_price: 0 });
         }
     };
 
@@ -123,6 +123,7 @@ const Orcamento = () => {
         const success = await updateMaterial(editingMaterial.id, {
             name: editingMaterial.name,
             category: editingMaterial.category,
+            supplier: editingMaterial.supplier || "CHM Morais",
             unit: editingMaterial.unit,
             unit_price: editingMaterial.unit_price
         });
@@ -354,7 +355,7 @@ const Orcamento = () => {
 
                 <div className="flex gap-3">
                     <Button variant="outline" onClick={() => setActiveTab(activeTab === "materiais" ? "orcamentos" : "materiais")} className="rounded-2xl h-14 px-6 font-black uppercase tracking-widest text-[10px] border-primary/20 text-primary hover:bg-primary/5 gap-2">
-                        {activeTab === "materiais" ? <History className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
+                        {activeTab === "materiais" ? <HistoryIcon className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
                         {activeTab === "materiais" ? "Histórico" : "Editar Lista de Preços"}
                     </Button>
 
@@ -829,7 +830,7 @@ const Orcamento = () => {
                         <CardHeader className="p-8 border-b border-border/10 flex flex-col sm:flex-row items-center justify-between gap-6 bg-slate-50/50">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-white rounded-2xl text-primary border border-border shadow-sm">
-                                    <History className="h-6 w-6" />
+                                    <HistoryIcon className="h-6 w-6" />
                                 </div>
                                 <div className="space-y-0.5">
                                     <CardTitle className="text-lg font-black uppercase tracking-tighter text-foreground">Histórico de Propostas</CardTitle>
@@ -909,7 +910,7 @@ const Orcamento = () => {
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
                                                      <div className="flex justify-end gap-2 pr-2">
-                                                         {orc.status !== 'aprovado' && (
+                                                         {orc.status !== 'aprovado' ? (
                                                              <Button 
                                                                  variant="ghost" 
                                                                  size="icon" 
@@ -922,6 +923,20 @@ const Orcamento = () => {
                                                                  title="Aprovar e Pedir Materiais"
                                                              >
                                                                  <CheckCircle2 size={18} />
+                                                             </Button>
+                                                         ) : (
+                                                             <Button 
+                                                                 variant="ghost" 
+                                                                 size="icon" 
+                                                                 className="h-10 w-10 rounded-xl hover:bg-rose-500/10 text-rose-500 hover:text-rose-600 transition-all active:scale-95 border border-rose-500/10 animate-pulse"
+                                                                 onClick={() => {
+                                                                     if (confirm(`Remover aprovação de "${orc.client_name}"? Isso também excluirá os materiais da lista de pedidos.`)) {
+                                                                         cancelBudgetApproval(orc);
+                                                                     }
+                                                                 }}
+                                                                 title="Remover Aprovação (Voltar para Edição)"
+                                                             >
+                                                                 <RotateCcw size={18} />
                                                              </Button>
                                                          )}
                                                          <Button 
@@ -993,7 +1008,7 @@ const Orcamento = () => {
                                                 <span className="font-black text-lg text-primary tabular-nums">{formatCurrency(orc.total_value)}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                                {orc.status !== 'aprovado' && (
+                                                {orc.status !== 'aprovado' ? (
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
@@ -1005,6 +1020,19 @@ const Orcamento = () => {
                                                         }}
                                                     >
                                                         <CheckCircle2 size={16} />
+                                                    </Button>
+                                                ) : (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-10 w-10 rounded-xl border border-rose-500/50 text-rose-500"
+                                                        onClick={() => {
+                                                            if (confirm(`Remover aprovação?`)) {
+                                                                cancelBudgetApproval(orc);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <RotateCcw size={16} />
                                                     </Button>
                                                 )}
                                                 <Button 
