@@ -550,7 +550,7 @@ const Orcamento = () => {
                                                                                     <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Preço Unit.</span>
                                                                                     <Input
                                                                                         type="number"
-                                                                                        className="w-24 h-8 rounded-lg text-right font-black text-[10px] border-slate-200 focus:bg-white text-primary bg-white"
+                                                                                        className="w-24 h-8 rounded-lg text-right font-black text-[10px] border-slate-200 focus:bg-white/10 text-white bg-white/5"
                                                                                         value={currentPrice || ""}
                                                                                         onChange={(e) => handlePriceChange(item.id, e.target.value)}
                                                                                     />
@@ -563,7 +563,7 @@ const Orcamento = () => {
                                                                                 <Input
                                                                                     type="number"
                                                                                     placeholder="0"
-                                                                                    className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-white text-slate-900"
+                                                                                    className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-white/10 text-white"
                                                                                     value={quantities[item.id] || ""}
                                                                                     onChange={(e) => handleQuantityChange(item.id, e.target.value)}
                                                                                 />
@@ -1020,7 +1020,7 @@ const Orcamento = () => {
                                                     type="number"
                                                     defaultValue={mat.unit_price}
                                                     onBlur={(e) => updateMaterial(mat.id, { unit_price: parseFloat(e.target.value) })}
-                                                    className="w-32 ml-auto h-10 rounded-xl text-right font-black border-transparent bg-transparent hover:border-muted focus:bg-white text-slate-900"
+                                                    className="w-32 ml-auto h-10 rounded-xl text-right font-black border-transparent bg-transparent hover:border-muted focus:bg-white text-white"
                                                 />
                                             </td>
                                             <td className="px-8 py-5 text-right">
