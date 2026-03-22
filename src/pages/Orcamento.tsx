@@ -2,6 +2,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { MagicButton } from "@/components/ui/magic-button";
 import { Plus, Calculator, FileText, Search, TrendingUp, DollarSign, Package, Trash2, Pencil, CheckCircle2, History, Settings2, Save, X, Layers, ChevronDown, ChevronRight, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -329,10 +330,10 @@ const Orcamento = () => {
                         }
                     }}>
                         <DialogTrigger asChild>
-                            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-xs px-8 h-14 rounded-2xl shadow-2xl shadow-primary/20 gap-3 transition-all hover:scale-105 active:scale-95 group">
+                            <MagicButton className="font-black uppercase tracking-widest text-xs h-14 rounded-2xl shadow-2xl shadow-primary/30 group">
                                 <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
                                 Novo Orçamento
-                            </Button>
+                            </MagicButton>
                         </DialogTrigger>
                         <DialogContent className="w-[95vw] sm:max-w-[1100px] max-h-[95vh] border-none shadow-2xl rounded-[1.5rem] sm:rounded-[3rem] overflow-hidden p-0 flex flex-col">
                             <div className="bg-primary p-8 text-primary-foreground relative shrink-0">

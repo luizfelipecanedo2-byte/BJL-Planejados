@@ -6,6 +6,7 @@ import SalesTable from "@/components/crm/SalesTable";
 import KanbanBoard from "@/components/crm/KanbanBoard";
 import SaleFormDialog from "@/components/crm/SaleFormDialog";
 import { Button } from "@/components/ui/button";
+import { MagicButton } from "@/components/ui/magic-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LayoutDashboard,
@@ -35,10 +36,10 @@ const Index = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Vendas</h2>
-        <Button onClick={handleNewSale} size="sm" className="gap-1.5">
+        <MagicButton onClick={handleNewSale} className="gap-1.5 h-9 px-3">
           <Plus className="h-4 w-4" />
           Nova Venda
-        </Button>
+        </MagicButton>
       </div>
 
       <Tabs defaultValue="dashboard" className="space-y-6">

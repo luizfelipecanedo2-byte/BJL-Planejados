@@ -82,9 +82,9 @@ const MainLayout = () => {
     });
 
     return (
-        <div className="min-h-[100dvh] bg-background flex pb-[72px] lg:pb-0">
+        <div className="min-h-[100dvh] bg-background/50 flex pb-[72px] lg:pb-0">
             {/* Sidebar (Desktop Only) */}
-            <aside className="hidden lg:flex fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card border-r flex-col">
+            <aside className="hidden lg:flex fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card/70 backdrop-blur-2xl border-r border-white/10 shadow-lg flex-col">
                 <div className="h-32 flex items-center px-6 border-b border-border/10 justify-between shrink-0 bg-primary/5">
                     <div className="flex items-center gap-3 w-full justify-center">
                         <img src="/logo-bjl.png" alt="BJL Planejados" className="h-24 w-auto object-contain drop-shadow-md" onError={(e) => {
@@ -106,7 +106,7 @@ const MainLayout = () => {
                     </div>
                 </div>
 
-                <nav className="p-4 space-y-3 flex-1 overflow-y-auto min-h-0 bg-card">
+                <nav className="p-4 space-y-3 flex-1 overflow-y-auto min-h-0 bg-transparent">
                     {menuItems.map((item) => (
                         <Link
                             key={item.path}

@@ -5,6 +5,7 @@ import ServiceOrderFormDialog from "@/components/crm/ServiceOrderFormDialog";
 import { ServiceOrder } from "@/types/serviceOrder";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { MagicButton } from "@/components/ui/magic-button";
 import { Plus, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -300,10 +301,10 @@ const OrdemServico = () => {
                         <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
                         Atualizar
                     </Button>
-                    <Button onClick={handleNewOrder} size="sm" className="gap-1.5">
+                    <MagicButton onClick={handleNewOrder} className="gap-1.5 h-9 px-3">
                         <Plus className="h-4 w-4" />
                         Nova OS
-                    </Button>
+                    </MagicButton>
                 </div>
             </div>
 
