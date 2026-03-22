@@ -39,6 +39,35 @@ const Orcamento = () => {
     const [activeTab, setActiveTab] = useState("orcamentos");
     const [printingBudget, setPrintingBudget] = useState<any>(null);
     const [printingTab, setPrintingTab] = useState<'commercial' | 'technical'>('commercial');
+    const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+
+    const availableYears = useMemo(() => {
+        const years = new Set<string>();
+        budgets.forEach(b => {
+            if (b.created_at) {
+                const year = new Date(b.created_at).getFullYear().toString();
+                if (!isNaN(parseInt(year))) years.add(year);
+            }
+        });
+        // Ensure 2026 and 2027 are always options
+        years.add("2026");
+        years.add("2027");
+        return Array.from(years).sort();
+    }, [budgets]);
+
+    const filteredBudgetsByYear = useMemo(() => {
+        return budgets.filter(b => {
+            if (!b.created_at) return selectedYear === "2026"; // Fallback for old data
+            return new Date(b.created_at).getFullYear().toString() === selectedYear;
+        });
+    }, [budgets, selectedYear]);
+
+    const filteredBudgets = useMemo(() => {
+        return filteredBudgetsByYear.filter(b => 
+            b.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            b.project_name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [filteredBudgetsByYear, searchTerm]);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -653,10 +682,10 @@ const Orcamento = () => {
                                 <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
                                     <Calculator size={18} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600/50 group-hover:text-blue-600 transition-colors">Em Aberto</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600/50 group-hover:text-blue-600 transition-colors">Em Aberto ({selectedYear})</span>
                             </div>
                             <div>
-                                <span className="text-3xl font-black text-blue-600 tracking-tighter">{formatCurrency(budgets.filter(b => b.status === "em_elaboracao").reduce((acc, curr) => acc + curr.total_value, 0))}</span>
+                                <span className="text-3xl font-black text-blue-600 tracking-tighter">{formatCurrency(filteredBudgetsByYear.filter(b => b.status === "em_elaboracao").reduce((acc, curr) => acc + curr.total_value, 0))}</span>
                                 <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Total de propostas pendentes</p>
                             </div>
                         </Card>
@@ -666,11 +695,11 @@ const Orcamento = () => {
                                 <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500">
                                     <TrendingUp size={18} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/50 group-hover:text-emerald-600 transition-colors">Conversão</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/50 group-hover:text-emerald-600 transition-colors">Conversão ({selectedYear})</span>
                             </div>
                             <div>
                                 <span className="text-3xl font-black text-emerald-600 tracking-tighter">
-                                    {budgets.length > 0 ? ((budgets.filter(b => b.status === 'aprovado').length / budgets.length) * 100).toFixed(0) : 0}%
+                                    {filteredBudgetsByYear.length > 0 ? ((filteredBudgetsByYear.filter(b => b.status === 'aprovado').length / filteredBudgetsByYear.length) * 100).toFixed(0) : 0}%
                                 </span>
                                 <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Taxa de fechamento global</p>
                             </div>
@@ -681,11 +710,11 @@ const Orcamento = () => {
                                 <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500">
                                     <DollarSign size={18} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-amber-600/50 group-hover:text-amber-600 transition-colors">Ticket Médio</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-amber-600/50 group-hover:text-amber-600 transition-colors">Ticket Médio ({selectedYear})</span>
                             </div>
                             <div>
                                 <span className="text-3xl font-black text-amber-600 tracking-tighter">
-                                    {formatCurrency(budgets.length > 0 ? (budgets.reduce((acc, curr) => acc + curr.total_value, 0) / budgets.length) : 0)}
+                                    {formatCurrency(filteredBudgetsByYear.length > 0 ? (filteredBudgetsByYear.reduce((acc, curr) => acc + curr.total_value, 0) / filteredBudgetsByYear.length) : 0)}
                                 </span>
                                 <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Valor médio por proposta</p>
                             </div>
@@ -716,14 +745,30 @@ const Orcamento = () => {
                                     <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-60">Acompanhamento de orçamentos emitidos</p>
                                 </div>
                             </div>
-                            <div className="relative w-full sm:w-80">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
-                                <Input
-                                    placeholder="Pesquisar cliente..."
-                                    className="pl-12 bg-white border-border/50 h-12 rounded-2xl text-xs font-medium shadow-inner focus:ring-2 focus:ring-primary/20"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
+                            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                                <Tabs value={selectedYear} onValueChange={setSelectedYear} className="bg-white/50 border border-border/50 p-1 rounded-2xl h-12 shadow-sm">
+                                    <TabsList className="bg-transparent h-full">
+                                        {availableYears.map(year => (
+                                            <TabsTrigger 
+                                                key={year} 
+                                                value={year} 
+                                                className="px-6 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest transition-all"
+                                            >
+                                                {year}
+                                            </TabsTrigger>
+                                        ))}
+                                    </TabsList>
+                                </Tabs>
+
+                                <div className="relative w-full sm:w-80">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+                                    <Input
+                                        placeholder="Pesquisar cliente..."
+                                        className="pl-12 bg-white border-border/50 h-12 rounded-2xl text-xs font-medium shadow-inner focus:ring-2 focus:ring-primary/20"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
                             </div>
                         </CardHeader>
                          <CardContent className="p-0">
@@ -741,7 +786,7 @@ const Orcamento = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/5">
-                                        {budgets.filter(b => b.client_name.toLowerCase().includes(searchTerm.toLowerCase())).map((orc) => (
+                                        {filteredBudgets.map((orc) => (
                                             <tr key={orc.id} className="hover:bg-slate-50/80 transition-all group">
                                                 <td className="px-8 py-6">
                                                     <div className="flex items-center gap-3">
