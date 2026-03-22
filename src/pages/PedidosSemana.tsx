@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Order } from "@/types/order";
 import OrderFormDialog from "@/components/crm/OrderFormDialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, TrendingUp } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -15,6 +15,8 @@ import {
 import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { MagicButton } from "@/components/ui/magic-button";
 
 const PedidosSemana = () => {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -154,19 +156,73 @@ const PedidosSemana = () => {
         }).format(value);
     };
 
+    const totalOrders = orders.length;
+    const totalValue = orders.reduce((acc, o) => acc + o.totalValue, 0);
+    const avgOrderValue = totalOrders > 0 ? totalValue / totalOrders : 0;
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold tracking-tight">Pedidos da Semana</h2>
-                <Button onClick={handleNewOrder} className="gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                   <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Pedidos da Semana</h2>
+                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Monitoramento de Compras e Suprimentos</p>
+                </div>
+                <MagicButton onClick={handleNewOrder} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
                     <Plus className="h-4 w-4" />
                     Novo Pedido
-                </Button>
+                </MagicButton>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Pedidos Recentes</CardTitle>
+            {/* WEEKLY ORDERS HUD */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
+                            <Plus className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Volume de Pedidos</p>
+                            <h3 className="text-3xl font-black text-primary tracking-tighter">
+                                <AnimatedCounter value={totalOrders} />
+                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Registros</span>
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
+                             <TrendingUp className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Investimento Total</p>
+                            <h3 className="text-3xl font-black text-amber-500 tracking-tighter">
+                                <AnimatedCounter value={totalValue} formatter={formatCurrency} />
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-blue-500">
+                             <TrendingUp className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Ticket Médio p/ Pedido</p>
+                            <h3 className="text-3xl font-black text-white tracking-tighter">
+                                <AnimatedCounter value={avgOrderValue} formatter={formatCurrency} />
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl rounded-3xl overflow-hidden">
+                <CardHeader className="bg-muted/20 pb-4">
+                    <CardTitle className="text-xl font-black tracking-tighter uppercase">Listagem Semanal</CardTitle>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Controle de Aquisições Recentes</p>
                 </CardHeader>
                 <CardContent>
                     <Table>
