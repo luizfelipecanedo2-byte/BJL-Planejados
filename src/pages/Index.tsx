@@ -36,7 +36,7 @@ const Index = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700">Vendas</h2>
+          <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Vendas</h2>
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Gestão de Negociações High-End</p>
         </div>
         <MagicButton onClick={handleNewSale} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">

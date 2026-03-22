@@ -45,6 +45,19 @@ const Dashboard = ({ sales }: DashboardProps) => {
   const [viewType, setViewType] = useState<"monthly" | "yearly">("monthly");
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
 
+  // Spotlight effect tracker
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const cards = document.getElementsByClassName("spotlight-card");
+    for (const card of cards) {
+      const rect = (card as HTMLElement).getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      (card as HTMLElement).style.setProperty("--mouse-x", `${x}px`);
+      (card as HTMLElement).style.setProperty("--mouse-y", `${y}px`);
+    }
+  };
+
   const years = useMemo(() => {
     const yearsSet = new Set<string>();
     sales.forEach(sale => {
@@ -324,12 +337,12 @@ const Dashboard = ({ sales }: DashboardProps) => {
     ];
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" onMouseMove={handleMouseMove}>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
           {cards.map((card) => (
             <Card
               key={card.title}
-              className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:border-white/20 group overflow-hidden rounded-3xl"
+              className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 group overflow-hidden rounded-3xl spotlight-card"
             >
               <CardContent className="p-5 relative">
                 <div className={`absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 ${card.color}`}>
