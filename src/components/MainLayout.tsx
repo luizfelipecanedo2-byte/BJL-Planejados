@@ -87,7 +87,7 @@ const MainLayout = () => {
             <aside className="hidden lg:flex fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card/70 backdrop-blur-2xl border-r border-white/10 shadow-lg flex-col">
                 <div className="h-32 flex items-center px-6 border-b border-border/10 justify-between shrink-0 bg-primary/5 relative overflow-hidden">
                     <div className="flex items-center gap-3 w-full justify-center relative z-10">
-                        <img src="/logo-bjl.png" alt="BJL Planejados" className="h-24 w-auto object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.4)]" onError={(e) => {
+                        <img src="/logo-bjl.png" alt="BJL Planejados" className="h-24 w-24 object-contain rounded-full border-2 border-primary/30 shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-float p-1 bg-black/20" onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
                             target.nextElementSibling?.classList.remove('hidden');
@@ -138,7 +138,7 @@ const MainLayout = () => {
                 <header className="h-16 border-b bg-card/80 backdrop-blur-md flex items-center justify-between px-4 sticky top-0 z-30 border-white/10 shadow-xl">
                     <div className="flex items-center">
                         <div className="lg:hidden flex items-center">
-                            <img src="/logo-bjl.png" alt="BJL" className="h-10 w-auto object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.4)]" onError={(e) => {
+                            <img src="/logo-bjl.png" alt="BJL" className="h-10 w-10 object-contain rounded-full border border-primary/30 animate-float p-0.5 bg-black/20" onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
                                 target.nextElementSibling?.classList.remove('hidden');
