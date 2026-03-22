@@ -37,37 +37,38 @@ const ConciliationTab = ({
     formatCurrency,
 }: ConciliationTabProps) => {
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-6 bg-gradient-to-br from-slate-900 to-slate-950 p-6 rounded-2xl border border-slate-800 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+        <div className="space-y-6 text-foreground">
+            <div className="flex flex-col gap-6 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-6 rounded-2xl border border-slate-800 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl opacity-50" />
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
                     <div className="flex flex-col gap-1 text-center sm:text-left">
-                        <h3 className="text-2xl font-black tracking-tight text-white uppercase tracking-widest">Conciliação Bancária</h3>
+                        <h3 className="text-2xl font-black tracking-tighter text-white uppercase tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Conciliação Bancária</h3>
                         <div className="flex items-center gap-2 justify-center sm:justify-start">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Monitoramento em Tempo Real</p>
+                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest leading-none">Monitoramento em Tempo Real</p>
                         </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-8">
+                        {/* Account HUD */}
                         <div className="flex flex-col items-center sm:items-end group">
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1 flex items-center gap-2">
-                                {selectedAccount === 'banco_itau' && <Building2 className="h-3 w-3 text-orange-500" />}
-                                {selectedAccount === 'dinheiro' && <Banknote className="h-3 w-3 text-emerald-500" />}
-                                {selectedAccount === 'mercado_pago' && <CreditCard className="h-3 w-3 text-blue-400" />}
+                                {selectedAccount === 'banco_itau' && <img src="https://static.cdnlogo.com/logos/i/14/itau_800.png" className="h-3 w-3 object-contain" alt="Itaú" />}
+                                {selectedAccount === 'dinheiro' && <span className="text-[10px]">💰</span>}
+                                {selectedAccount === 'mercado_pago' && <img src="https://logodownload.org/wp-content/uploads/2019/06/mercado-pago-logo-1.png" className="h-3 w-3 object-contain" alt="MP" />}
                                 Saldo Disponível
                             </span>
                             <div className="text-3xl font-black text-emerald-400 tracking-tighter flex items-center gap-3">
                                 <div className={cn(
-                                    "p-2 rounded-xl border transition-all duration-500",
-                                    selectedAccount === 'banco_itau' ? "bg-orange-500/10 border-orange-500/20 text-orange-500" :
+                                    "p-2 rounded-xl border transition-all duration-500 flex items-center justify-center overflow-hidden w-12 h-12",
+                                    selectedAccount === 'banco_itau' ? "bg-white border-white/20 shadow-lg shadow-orange-500/10" :
                                     selectedAccount === 'dinheiro' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" :
-                                    "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                                    "bg-white border-white/20 shadow-lg shadow-blue-500/10"
                                 )}>
-                                    {selectedAccount === 'banco_itau' && <Building2 className="h-6 w-6" />}
-                                    {selectedAccount === 'dinheiro' && <Coins className="h-6 w-6" />}
-                                    {selectedAccount === 'mercado_pago' && <CreditCard className="h-6 w-6" />}
+                                    {selectedAccount === 'banco_itau' && <img src="https://static.cdnlogo.com/logos/i/14/itau_800.png" className="h-8 w-8 object-contain scale-110" alt="Itaú" />}
+                                    {selectedAccount === 'dinheiro' && <span className="text-3xl">💰</span>}
+                                    {selectedAccount === 'mercado_pago' && <img src="https://logodownload.org/wp-content/uploads/2019/06/mercado-pago-logo-1.png" className="h-8 w-8 object-contain" alt="MP" />}
                                 </div>
                                 <AnimatedCounter value={totalAccountBalance} formatter={formatCurrency} />
                             </div>
@@ -78,26 +79,26 @@ const ConciliationTab = ({
                         <div className="flex items-center gap-3">
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Conta:</span>
                             <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                                <SelectTrigger className="w-[200px] border-slate-700 bg-slate-800/50 text-white font-black uppercase tracking-tighter hover:bg-slate-800 transition-colors">
+                                <SelectTrigger className="w-[200px] border-slate-700 bg-slate-800/50 text-white font-black uppercase tracking-tighter hover:bg-slate-800 transition-colors rounded-xl h-11">
                                     <SelectValue placeholder="Selecione a conta" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                                    <SelectItem value="banco_itau" className="focus:bg-primary/20 focus:text-white">
+                                <SelectContent className="bg-slate-950 border-slate-800 text-white rounded-xl">
+                                    <SelectItem value="banco_itau" className="focus:bg-primary/20 focus:text-white rounded-lg cursor-pointer">
                                         <div className="flex items-center gap-2">
-                                            <Building2 className="h-3 w-3 text-orange-500" />
-                                            <span>Banco Itaú</span>
+                                            <img src="https://static.cdnlogo.com/logos/i/14/itau_800.png" className="h-4 w-4 object-contain" alt="Itaú" />
+                                            <span className="font-bold">Banco Itaú</span>
                                         </div>
                                     </SelectItem>
-                                    <SelectItem value="mercado_pago" className="focus:bg-primary/20 focus:text-white">
+                                    <SelectItem value="mercado_pago" className="focus:bg-primary/20 focus:text-white rounded-lg cursor-pointer">
                                         <div className="flex items-center gap-2">
-                                            <CreditCard className="h-3 w-3 text-blue-400" />
-                                            <span>Mercado Pago</span>
+                                            <img src="https://logodownload.org/wp-content/uploads/2019/06/mercado-pago-logo-1.png" className="h-4 w-4 object-contain" alt="MP" />
+                                            <span className="font-bold">Mercado Pago</span>
                                         </div>
                                     </SelectItem>
-                                    <SelectItem value="dinheiro" className="focus:bg-primary/20 focus:text-white">
+                                    <SelectItem value="dinheiro" className="focus:bg-primary/20 focus:text-white rounded-lg cursor-pointer">
                                         <div className="flex items-center gap-2">
-                                            <Banknote className="h-3 w-3 text-emerald-500" />
-                                            <span>Dinheiro (Caixa)</span>
+                                            <span className="text-sm">💰</span>
+                                            <span className="font-bold">Dinheiro (Caixa)</span>
                                         </div>
                                     </SelectItem>
                                 </SelectContent>
