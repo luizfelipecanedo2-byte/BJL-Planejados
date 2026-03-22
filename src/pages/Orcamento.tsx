@@ -167,15 +167,31 @@ const Orcamento = () => {
         }));
     };
 
+    const isCHM = (sup?: string) => {
+        if (!sup) return false;
+        const up = sup.toUpperCase();
+        return up.includes("CHM") || up.includes("MORAIS") || up.includes("C HM") || up.includes("CED");
+    };
+
+    const isBRUTA = (sup?: string) => {
+        if (!sup) return false;
+        const up = sup.toUpperCase();
+        return up.includes("BRUTA");
+    };
+
+    const [activeSupplierFilter, setActiveSupplierFilter] = useState<"TODOS" | "CHM" | "BRUTA" | "OUTROS">("TODOS");
+
     const groupedBySupplier = useMemo(() => {
-        const suppliers = ["CHM Morais", "BRUTA", "Outros"];
         const data: Record<string, Record<string, Material[]>> = {};
 
         sortedMaterials.forEach(m => {
-            const supplier = m.supplier === "CHM Morais" || m.supplier === "BRUTA" ? m.supplier : "Outros";
-            if (!data[supplier]) data[supplier] = {};
-            if (!data[supplier][m.category]) data[supplier][m.category] = [];
-            data[supplier][m.category].push(m);
+            let supplierGroup = "Outros";
+            if (isCHM(m.supplier)) supplierGroup = "CHM Morais / CED";
+            else if (isBRUTA(m.supplier)) supplierGroup = "BRUTA";
+
+            if (!data[supplierGroup]) data[supplierGroup] = {};
+            if (!data[supplierGroup][m.category]) data[supplierGroup][m.category] = [];
+            data[supplierGroup][m.category].push(m);
         });
 
         return data; 
@@ -508,37 +524,64 @@ const Orcamento = () => {
                                             </div>
                                         )}
 
-                                        <div className="flex items-center gap-2 mb-6">
-                                            <div className="h-8 w-1 bg-primary rounded-full" />
-                                            <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Catálogo Geral (Explorar)</h4>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-8 w-1 bg-primary rounded-full" />
+                                                <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Catálogo Geral (Explorar)</h4>
+                                            </div>
+
+                                            <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/5 gap-1">
+                                                {["TODOS", "CHM", "BRUTA", "OUTROS"].map(filter => (
+                                                    <button
+                                                        key={filter}
+                                                        onClick={() => setActiveSupplierFilter(filter as any)}
+                                                        className={cn(
+                                                            "px-4 py-2 rounded-xl font-black text-[10px] tracking-widest transition-all",
+                                                            activeSupplierFilter === filter 
+                                                                ? "bg-primary text-primary-foreground shadow-lg" 
+                                                                : "text-slate-400 hover:bg-white/5"
+                                                        )}
+                                                    >
+                                                        {filter}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
 
                                         <div className="space-y-12">
-                                            {Object.entries(groupedBySupplier).map(([supplier, categories]) => (
+                                            {Object.entries(groupedBySupplier)
+                                                .filter(([supplier]) => {
+                                                    if (activeSupplierFilter === "TODOS") return true;
+                                                    if (activeSupplierFilter === "CHM") return isCHM(supplier);
+                                                    if (activeSupplierFilter === "BRUTA") return isBRUTA(supplier);
+                                                    if (activeSupplierFilter === "OUTROS") return !isCHM(supplier) && !isBRUTA(supplier);
+                                                    return true;
+                                                })
+                                                .map(([supplier, categories]) => (
                                                 <div key={supplier} className="space-y-6">
                                                     <div className={cn(
                                                         "flex items-center gap-4 px-6 py-4 rounded-3xl border shadow-sm",
-                                                        supplier === "CHM Morais" ? "bg-emerald-500/5 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]" :
-                                                        supplier === "BRUTA" ? "bg-orange-500/5 border-orange-500/20 shadow-[0_0_20px_rgba(249,115,22,0.05)]" :
-                                                        "bg-slate-50 border-slate-200"
+                                                        isCHM(supplier) ? "bg-emerald-500/5 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]" :
+                                                        isBRUTA(supplier) ? "bg-orange-500/5 border-orange-500/20 shadow-[0_0_20px_rgba(249,115,22,0.05)]" :
+                                                        "bg-white/5 border-white/5"
                                                     )}>
                                                         <div className={cn(
                                                             "w-2 h-8 rounded-full",
-                                                            supplier === "CHM Morais" ? "bg-emerald-500" :
-                                                            supplier === "BRUTA" ? "bg-orange-500" :
+                                                            isCHM(supplier) ? "bg-emerald-500" :
+                                                            isBRUTA(supplier) ? "bg-orange-500" :
                                                             "bg-slate-300"
                                                         )} />
                                                         <div>
                                                             <h4 className={cn(
                                                                 "font-black uppercase text-sm tracking-widest",
-                                                                supplier === "CHM Morais" ? "text-emerald-500" :
-                                                                supplier === "BRUTA" ? "text-orange-500" :
+                                                                isCHM(supplier) ? "text-emerald-500" :
+                                                                isBRUTA(supplier) ? "text-orange-500" :
                                                                 "text-slate-500"
                                                             )}>
                                                                 {supplier}
                                                             </h4>
                                                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">
-                                                                Itens para {supplier === "Outros" ? "Demais Fornecedores" : `Pedidos da ${supplier}`}
+                                                                Itens selecionados deste fornecedor
                                                             </p>
                                                         </div>
                                                     </div>
