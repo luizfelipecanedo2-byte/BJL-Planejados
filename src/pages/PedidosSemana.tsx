@@ -173,32 +173,40 @@ const PedidosSemana = () => {
         return isWithinInterval(orderDate, { start: weekStart, end: weekEnd });
     });
 
-    const OrderSection = ({ title, supplierName, colorClass, bgColorClass, borderClass }: { title: string, supplierName?: string | string[], colorClass: string, bgColorClass: string, borderClass: string }) => {
-        const filtered = Array.isArray(supplierName) 
-            ? orders.filter(o => !supplierName.includes(o.supplier))
-            : orders.filter(o => o.supplier === supplierName);
+    const isCHM = (sup: string) => {
+        const up = sup.toUpperCase();
+        return up.includes("CHM") || up.includes("C HM") || up.includes("MORAIS") || up.includes("CED");
+    };
+
+    const isBRUTA = (sup: string) => {
+        const up = sup.toUpperCase();
+        return up.includes("BRUTA");
+    };
+
+    const OrderSection = ({ title, type, colorClass, bgColorClass, borderClass }: { title: string, type: 'CHM' | 'BRUTA' | 'OTHER', colorClass: string, bgColorClass: string, borderClass: string }) => {
+        const filtered = orders.filter(o => {
+            if (type === 'CHM') return isCHM(o.supplier);
+            if (type === 'BRUTA') return isBRUTA(o.supplier);
+            return !isCHM(o.supplier) && !isBRUTA(o.supplier);
+        });
 
         if (filtered.length === 0) return null;
 
         const getSupplierStyles = (sup: string) => {
             const upSup = sup.toUpperCase();
-            if (upSup.includes("CHM") || upSup.includes("MORAIS") || upSup.includes("C HM")) 
+            if (upSup.includes("CHM") || upSup.includes("MORAIS") || upSup.includes("C HM") || upSup.includes("CED")) 
                 return "border-emerald-500 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
             if (upSup.includes("BRUTA")) 
                 return "border-orange-500 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.1)]";
-            if (upSup.includes("CED")) 
-                return "border-cyan-500 bg-cyan-500/10 shadow-[0_0_15px_rgba(6,182,212,0.1)]";
             return "border-white/10 bg-black/20";
         };
 
         const getSupplierTextColor = (sup: string) => {
             const upSup = sup.toUpperCase();
-            if (upSup.includes("CHM") || upSup.includes("MORAIS") || upSup.includes("C HM")) 
+            if (upSup.includes("CHM") || upSup.includes("MORAIS") || upSup.includes("C HM") || upSup.includes("CED")) 
                 return "text-emerald-500";
             if (upSup.includes("BRUTA")) 
                 return "text-orange-500";
-            if (upSup.includes("CED")) 
-                return "text-cyan-500";
             return "text-white";
         };
 
@@ -348,10 +356,10 @@ const PedidosSemana = () => {
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <OrderSection 
-                    title="CHM Morais" 
-                    supplierName="CHM Morais" 
+                    title="CHM Morais / CED" 
+                    type="CHM" 
                     colorClass="text-emerald-400" 
                     bgColorClass="bg-emerald-500/5" 
                     borderClass="border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
@@ -359,24 +367,16 @@ const PedidosSemana = () => {
                 
                 <OrderSection 
                     title="BRUTA" 
-                    supplierName="BRUTA" 
+                    type="BRUTA" 
                     colorClass="text-orange-400" 
                     bgColorClass="bg-orange-500/5" 
                     borderClass="border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.1)]"
                 />
 
-                <OrderSection 
-                    title="CED" 
-                    supplierName="CED" 
-                    colorClass="text-cyan-400" 
-                    bgColorClass="bg-cyan-500/5" 
-                    borderClass="border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)]"
-                />
-
-                <div className="lg:col-span-3">
+                <div className="lg:col-span-2">
                     <OrderSection 
                         title="Demais Fornecedores" 
-                        supplierName={["CHM Morais", "BRUTA", "CED"]} 
+                        type="OTHER" 
                         colorClass="text-primary" 
                         bgColorClass="bg-card/40" 
                         borderClass="border-white/10"
