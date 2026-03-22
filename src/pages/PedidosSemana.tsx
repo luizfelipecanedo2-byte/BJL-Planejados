@@ -201,8 +201,9 @@ const PedidosSemana = () => {
                     <div className="space-y-3">
                         {/* Header mimic */}
                         <div className="grid grid-cols-12 gap-4 px-6 py-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50">
-                            <div className="col-span-2">Data</div>
-                            <div className="col-span-4">Produto</div>
+                            <div className="col-span-1">Data</div>
+                            <div className="col-span-3">Produto</div>
+                            <div className="col-span-2">Fornecedor</div>
                             <div className="col-span-3">Cliente</div>
                             <div className="col-span-1 text-center">Qtd</div>
                             <div className="col-span-2 text-right">Total</div>
@@ -221,19 +222,22 @@ const PedidosSemana = () => {
                                         "bg-black/20 hover:bg-black/40"
                                     )}
                                 >
-                                    <div className="col-span-2 text-[11px] font-bold text-muted-foreground/80">
-                                        {format(new Date(order.date), "dd/MM/yyyy")}
+                                    <div className="col-span-1 text-[10px] font-bold text-muted-foreground/80">
+                                        {format(new Date(order.date), "dd/MM")}
                                     </div>
-                                    <div className="col-span-4 text-[12px] font-black uppercase tracking-tight text-white group-hover:text-primary transition-colors">
+                                    <div className="col-span-3 text-[11px] font-black uppercase tracking-tight text-white group-hover:text-primary transition-colors">
                                         {order.product}
                                     </div>
-                                    <div className="col-span-3 text-[11px] font-bold text-muted-foreground/60 uppercase tracking-tighter truncate">
+                                    <div className={cn("col-span-2 text-[10px] font-black uppercase tracking-widest", supText)}>
+                                        {order.supplier}
+                                    </div>
+                                    <div className="col-span-3 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter truncate">
                                         {order.client}
                                     </div>
-                                    <div className="col-span-1 text-center font-black text-xs">
+                                    <div className="col-span-1 text-center font-black text-[11px]">
                                         {order.quantity}
                                     </div>
-                                    <div className={cn("col-span-2 text-right font-black text-sm tabular-nums", supText)}>
+                                    <div className={cn("col-span-2 text-right font-black text-xs tabular-nums", supText)}>
                                         {formatCurrency(order.totalValue)}
                                     </div>
 
