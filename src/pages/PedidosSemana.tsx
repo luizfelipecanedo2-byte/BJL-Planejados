@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Order } from "@/types/order";
 import OrderFormDialog from "@/components/crm/OrderFormDialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Pencil, TrendingUp, Printer } from "lucide-react";
+import { Plus, Trash2, Pencil, TrendingUp, Printer, CheckCircle2 } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -47,13 +47,31 @@ const PedidosSemana = () => {
                 totalValue: Number(o.total_value),
                 client: o.client,
                 supplier: o.supplier,
-                date: new Date(o.order_date + 'T12:00:00')
+                date: new Date(o.order_date + 'T12:00:00'),
+                status: o.status || 'pendente'
             }));
 
-            setOrders(mappedOrders);
+            setOrders(mappedOrders.filter(o => o.status === 'pendente'));
         } catch (error) {
             console.error('Error fetching orders:', error);
             toast.error("Erro ao carregar pedidos.");
+        }
+    };
+
+    const handleMarkAsOrdered = async (id: string) => {
+        try {
+            const { error } = await supabase
+                .from('weekly_orders')
+                .update({ status: 'comprado' })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            toast.success("Pedido marcado como comprado!");
+            setOrders(prev => prev.filter(o => o.id !== id));
+        } catch (error) {
+            console.error('Error marking order:', error);
+            toast.error("Erro ao atualizar pedido.");
         }
     };
 
@@ -140,7 +158,8 @@ const PedidosSemana = () => {
                     totalValue: Number(data.total_value),
                     client: data.client,
                     supplier: data.supplier,
-                    date: new Date(data.order_date + 'T12:00:00')
+                    date: new Date(data.order_date + 'T12:00:00'),
+                    status: data.status || 'pendente'
                 };
                 setOrders([createdOrder, ...orders]);
             }
@@ -219,10 +238,11 @@ const PedidosSemana = () => {
                     <div className="space-y-3">
                         {/* Header mimic */}
                         <div className="grid grid-cols-12 gap-4 px-6 py-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50">
+                            <div className="col-span-1">Ação</div>
                             <div className="col-span-1">Data</div>
                             <div className="col-span-3">Produto</div>
                             <div className="col-span-2">Fornecedor</div>
-                            <div className="col-span-3">Cliente</div>
+                            <div className="col-span-2">Cliente</div>
                             <div className="col-span-1 text-center">Qtd</div>
                             <div className="col-span-2 text-right">Total</div>
                         </div>
@@ -240,6 +260,17 @@ const PedidosSemana = () => {
                                         "hover:bg-black/40"
                                     )}
                                 >
+                                    <div className="col-span-1">
+                                        <Button
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-8 w-8 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white transition-all shadow-sm"
+                                            onClick={() => handleMarkAsOrdered(order.id)}
+                                            title="Marcar como Pedido"
+                                        >
+                                            <CheckCircle2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                     <div className="col-span-1 text-[10px] font-bold text-muted-foreground/80">
                                         {format(new Date(order.date), "dd/MM")}
                                     </div>
@@ -249,7 +280,7 @@ const PedidosSemana = () => {
                                     <div className={cn("col-span-2 text-[10px] font-black uppercase tracking-widest", supText)}>
                                         {order.supplier}
                                     </div>
-                                    <div className="col-span-3 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter truncate">
+                                    <div className="col-span-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter truncate">
                                         {order.client}
                                     </div>
                                     <div className="col-span-1 text-center font-black text-[11px]">

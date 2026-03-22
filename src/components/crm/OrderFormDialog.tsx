@@ -108,7 +108,7 @@ const OrderFormDialog = ({
         const unitPrice = parseFloat(form.unitPrice) || 0;
         const totalValue = quantity * unitPrice;
 
-        const orderData = {
+        const orderData: Omit<Order, "id"> = {
             product: form.product,
             quantity,
             unitPrice,
@@ -116,6 +116,7 @@ const OrderFormDialog = ({
             client: form.client,
             supplier: form.supplier,
             date: editingOrder ? editingOrder.date : new Date(),
+            status: editingOrder ? editingOrder.status : 'pendente',
         };
 
         if (editingOrder && onUpdate) {

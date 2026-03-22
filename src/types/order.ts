@@ -7,4 +7,5 @@ export interface Order {
     client: string; // Ideally this would be a Client ID referncing the client list, but string for now is fine as requested.
     supplier: string; // Same here.
     date: Date;
+    status: 'pendente' | 'comprado';
 }
