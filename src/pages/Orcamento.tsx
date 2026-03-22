@@ -680,10 +680,19 @@ const Orcamento = () => {
 
             {activeTab === "orcamentos" ? (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <Card className="bg-blue-500/5 border-blue-500/20 border-l-4 border-l-blue-500 p-6 flex flex-col gap-3 shadow-xl shadow-blue-500/5 transition-all hover:translate-y-[-4px] group">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6" onMouseMove={e => {
+                        const cards = e.currentTarget.getElementsByClassName("spotlight-card");
+                        for (const card of cards) {
+                             const rect = (card as HTMLElement).getBoundingClientRect();
+                             const x = e.clientX - rect.left;
+                             const y = e.clientY - rect.top;
+                             (card as HTMLElement).style.setProperty("--mouse-x", `${x}px`);
+                             (card as HTMLElement).style.setProperty("--mouse-y", `${y}px`);
+                        }
+                    }}>
+                        <Card className="spotlight-card tilt-card bg-blue-500/5 border-blue-500/20 border-l-4 border-l-blue-500 p-6 flex flex-col gap-3 shadow-xl shadow-blue-500/5 transition-all group">
                             <div className="flex justify-between items-start">
-                                <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
+                                <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500 animate-pulse">
                                     <Calculator size={18} />
                                 </div>
                                 <span className="text-[10px] font-black uppercase tracking-widest text-blue-600/50 group-hover:text-blue-600 transition-colors">Em Aberto ({selectedYear})</span>
@@ -694,9 +703,9 @@ const Orcamento = () => {
                             </div>
                         </Card>
 
-                        <Card className="bg-emerald-500/5 border-emerald-500/20 border-l-4 border-l-emerald-500 p-6 flex flex-col gap-3 shadow-xl shadow-emerald-500/5 transition-all hover:translate-y-[-4px] group">
+                        <Card className="spotlight-card tilt-card bg-emerald-500/5 border-emerald-500/20 border-l-4 border-l-emerald-500 p-6 flex flex-col gap-3 shadow-xl shadow-emerald-500/5 transition-all group">
                             <div className="flex justify-between items-start">
-                                <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500">
+                                <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500 animate-pulse">
                                     <TrendingUp size={18} />
                                 </div>
                                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/50 group-hover:text-emerald-600 transition-colors">Conversão ({selectedYear})</span>
@@ -709,9 +718,9 @@ const Orcamento = () => {
                             </div>
                         </Card>
 
-                        <Card className="bg-amber-500/5 border-amber-500/20 border-l-4 border-l-amber-500 p-6 flex flex-col gap-3 shadow-xl shadow-amber-500/5 transition-all hover:translate-y-[-4px] group">
+                        <Card className="spotlight-card tilt-card bg-amber-500/5 border-amber-500/20 border-l-4 border-l-amber-500 p-6 flex flex-col gap-3 shadow-xl shadow-amber-500/5 transition-all group">
                             <div className="flex justify-between items-start">
-                                <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500">
+                                <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500 animate-pulse">
                                     <DollarSign size={18} />
                                 </div>
                                 <span className="text-[10px] font-black uppercase tracking-widest text-amber-600/50 group-hover:text-amber-600 transition-colors">Ticket Médio ({selectedYear})</span>
@@ -724,9 +733,9 @@ const Orcamento = () => {
                             </div>
                         </Card>
 
-                        <Card className="bg-primary/5 border-primary/20 border-l-4 border-l-primary p-6 flex flex-col gap-3 shadow-xl shadow-primary/5 transition-all hover:translate-y-[-4px] group">
+                        <Card className="spotlight-card tilt-card bg-primary/5 border-primary/20 border-l-4 border-l-primary p-6 flex flex-col gap-3 shadow-xl shadow-primary/5 transition-all group">
                             <div className="flex justify-between items-start">
-                                <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                <div className="p-2 bg-primary/10 rounded-lg text-primary animate-pulse">
                                     <Layers size={18} />
                                 </div>
                                 <span className="text-[10px] font-black uppercase tracking-widest text-primary/50 group-hover:text-primary transition-colors">Catálogo</span>

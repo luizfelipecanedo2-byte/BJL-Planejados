@@ -183,7 +183,7 @@ const MainLayout = () => {
 
                 <main className="flex-1 p-3 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden bg-black/40 relative">
                     {/* Premium Luxury Serif Watermark */}
-                    <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none z-0 mt-16 overflow-hidden select-none">
+                    <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none z-0 mt-16 overflow-hidden select-none animate-float">
                         <div className="text-border-beam px-10 py-4">
                             <h1 className="text-6xl md:text-8xl lg:text-9xl font-normal text-primary/40 font-['Lobster',cursive] drop-shadow-[8px_8px_0px_rgba(0,0,0,0.5)] rotate-[-3deg]">
                                 BJL Planejados
