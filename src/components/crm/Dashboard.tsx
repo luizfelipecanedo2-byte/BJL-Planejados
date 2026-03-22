@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { cn } from "@/lib/utils";
 
 interface DashboardProps {
   sales: Sale[];

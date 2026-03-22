@@ -24,43 +24,62 @@ const App = () => {
 
   const [role, setRole] = useState<string | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        fetchRole(session.user.id, session.user.email);
-      } else {
-        setLoading(false);
-      }
-    });
+    useEffect(() => {
+        // Fallback safety timeout (max 5 seconds loading)
+        const safetyTimeout = setTimeout(() => {
+            setLoading(false);
+        }, 5000);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session?.user) {
-        fetchRole(session.user.id, session.user.email);
-      } else {
-        setRole(null);
-      }
-    });
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            if (session?.user) {
+                fetchRole(session.user.id, session.user.email);
+            } else {
+                setLoading(false);
+                clearTimeout(safetyTimeout);
+            }
+        });
 
-    return () => subscription.unsubscribe();
-  }, []);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+            if (session?.user) {
+                fetchRole(session.user.id, session.user.email);
+            } else {
+                setRole(null);
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(safetyTimeout);
+        };
+    }, []);
 
   const fetchRole = async (userId: string, email?: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
 
-    if (data) {
-      setRole(data.role);
-    } else if (email === 'luizfelipe.canedo2@gmail.com') {
-      setRole('admin');
-    } else {
+      if (error) {
+        console.error('Error fetching role:', error);
+      }
+
+      if (data) {
+        setRole(data.role);
+      } else if (email === 'luizfelipe.canedo2@gmail.com') {
+        setRole('admin');
+      } else {
+        setRole('colaborador');
+      }
+    } catch (err) {
+      console.error('Crash in fetchRole:', err);
       setRole('colaborador');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (loading) {
@@ -71,7 +90,14 @@ const App = () => {
         
         <div className="relative group">
             <div className="absolute -inset-8 bg-primary/20 rounded-full blur-2xl animate-pulse" />
-            <img src="/logo-bjl.png" alt="Loading..." className="h-32 w-auto object-contain relative z-10 animate-bounce transition-all duration-1000" />
+            <img src="/logo-bjl.png" alt="BJL Planejados" className="h-24 w-24 object-contain rounded-full border-2 border-primary/30 shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-pinball p-1 bg-black/20" onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            if (target.nextElementSibling) {
+                                target.nextElementSibling.classList.remove('hidden');
+                            }
+                        }} />
+                        <span className="hidden text-xl font-bold tracking-tight text-primary">BJL</span>
         </div>
         
         <div className="mt-8 space-y-4 flex flex-col items-center relative z-10">

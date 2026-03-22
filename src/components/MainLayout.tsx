@@ -95,7 +95,10 @@ const MainLayout = () => {
                         <img src="/logo-bjl.png" alt="BJL Planejados" className="h-24 w-24 object-contain rounded-full border-2 border-primary/30 shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-pinball p-1 bg-black/20" onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
-                            target.nextElementSibling?.classList.remove('hidden');
+                            const next = target.nextElementSibling as HTMLElement;
+                            if (next) {
+                                next.classList.remove('hidden');
+                            }
                         }} />
                         <span className="hidden text-xl font-bold tracking-tight text-primary">BJL</span>
                     </div>
