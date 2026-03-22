@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Order } from "@/types/order";
 import OrderFormDialog from "@/components/crm/OrderFormDialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Pencil, TrendingUp } from "lucide-react";
+import { Plus, Trash2, Pencil, TrendingUp, Printer } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -12,16 +12,19 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { format } from "date-fns";
+import { format, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { MagicButton } from "@/components/ui/magic-button";
+import { cn } from "@/lib/utils";
+import WeeklyOrderPrintView from "@/components/crm/WeeklyOrderPrintView";
 
 const PedidosSemana = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+    const [isPrintOpen, setIsPrintOpen] = useState(false);
 
     useEffect(() => {
         fetchOrders();
@@ -160,6 +163,66 @@ const PedidosSemana = () => {
     const totalValue = orders.reduce((acc, o) => acc + o.totalValue, 0);
     const avgOrderValue = totalOrders > 0 ? totalValue / totalOrders : 0;
 
+    // Filters for this week (Monday to Sunday)
+    const now = new Date();
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+
+    const currentWeekOrders = orders.filter(o => {
+        const orderDate = new Date(o.date);
+        return isWithinInterval(orderDate, { start: weekStart, end: weekEnd });
+    });
+
+    const OrderSection = ({ title, supplierName, colorClass, bgColorClass, borderClass }: { title: string, supplierName?: string | string[], colorClass: string, bgColorClass: string, borderClass: string }) => {
+        const filtered = Array.isArray(supplierName) 
+            ? orders.filter(o => !supplierName.includes(o.supplier))
+            : orders.filter(o => o.supplier === supplierName);
+
+        if (filtered.length === 0 && Array.isArray(supplierName)) return null;
+        if (filtered.length === 0 && !Array.isArray(supplierName)) return null;
+
+        return (
+            <Card className={cn("border backdrop-blur-2xl transition-all duration-300 overflow-hidden", borderClass, bgColorClass)}>
+                <CardHeader className="pb-2">
+                    <CardTitle className={cn("text-sm font-black uppercase tracking-widest", colorClass)}>{title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="border-b border-border/20">
+                                <TableHead className="text-[10px] font-black uppercase">Data</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase">Produto</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase">Cliente</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase">Qtd</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase text-right">Total</TableHead>
+                                <TableHead className="w-[50px]"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filtered.map((order) => (
+                                <TableRow key={order.id} className="border-b border-border/10 hover:bg-white/5 transition-colors group">
+                                    <TableCell className="py-3 text-[11px] font-medium text-muted-foreground">{format(new Date(order.date), "dd/MM/yyyy")}</TableCell>
+                                    <TableCell className="py-3 text-[11px] font-bold text-foreground">{order.product}</TableCell>
+                                    <TableCell className="py-3 text-[11px] text-muted-foreground">{order.client}</TableCell>
+                                    <TableCell className="py-3 text-[11px] font-mono">{order.quantity}</TableCell>
+                                    <TableCell className={cn("py-3 text-[11px] font-black text-right", colorClass)}>{formatCurrency(order.totalValue)}</TableCell>
+                                    <TableCell className="py-3 flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditOrder(order)}>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-500/20" onClick={() => handleDeleteOrder(order.id)}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        );
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -167,10 +230,20 @@ const PedidosSemana = () => {
                    <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Pedidos da Semana</h2>
                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Monitoramento de Compras e Suprimentos</p>
                 </div>
-                <MagicButton onClick={handleNewOrder} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
-                    <Plus className="h-4 w-4" />
-                    Novo Pedido
-                </MagicButton>
+                <div className="flex items-center gap-3">
+                    <Button 
+                        onClick={() => setIsPrintOpen(true)} 
+                        variant="outline"
+                        className="gap-2 h-11 px-5 border-white/10 bg-white/5 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-primary hover:text-primary-foreground group transition-all"
+                    >
+                        <Printer className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                        Relatório PDF
+                    </Button>
+                    <MagicButton onClick={handleNewOrder} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
+                        <Plus className="h-4 w-4" />
+                        Novo Pedido
+                    </MagicButton>
+                </div>
             </div>
 
             {/* WEEKLY ORDERS HUD */}
@@ -219,66 +292,33 @@ const PedidosSemana = () => {
                 </Card>
             </div>
 
-            <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl rounded-3xl overflow-hidden">
-                <CardHeader className="bg-muted/20 pb-4">
-                    <CardTitle className="text-xl font-black tracking-tighter uppercase">Listagem Semanal</CardTitle>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Controle de Aquisições Recentes</p>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Data</TableHead>
-                                <TableHead>Produto</TableHead>
-                                <TableHead>Cliente</TableHead>
-                                <TableHead>Fornecedor</TableHead>
-                                <TableHead>Qtd</TableHead>
-                                <TableHead>Valor Unit.</TableHead>
-                                <TableHead>Total</TableHead>
-                                <TableHead className="w-[50px]">Ação</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {orders.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="text-center text-muted-foreground h-24">
-                                        Nenhum pedido registrado nesta semana.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                orders.map((order) => (
-                                    <TableRow key={order.id}>
-                                        <TableCell>{format(new Date(order.date), "dd/MM/yyyy")}</TableCell>
-                                        <TableCell>{order.product}</TableCell>
-                                        <TableCell>{order.client}</TableCell>
-                                        <TableCell>{order.supplier}</TableCell>
-                                        <TableCell>{order.quantity}</TableCell>
-                                        <TableCell>{formatCurrency(order.unitPrice)}</TableCell>
-                                        <TableCell className="font-bold">{formatCurrency(order.totalValue)}</TableCell>
-                                        <TableCell className="flex items-center gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleEditOrder(order)}
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                                onClick={() => handleDeleteOrder(order.id)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <OrderSection 
+                    title="CHM Morais" 
+                    supplierName="CHM Morais" 
+                    colorClass="text-emerald-500" 
+                    bgColorClass="bg-emerald-500/5" 
+                    borderClass="border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+                />
+                
+                <OrderSection 
+                    title="BRUTA" 
+                    supplierName="BRUTA" 
+                    colorClass="text-orange-500" 
+                    bgColorClass="bg-orange-500/5" 
+                    borderClass="border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.1)]"
+                />
+
+                <div className="lg:col-span-2">
+                    <OrderSection 
+                        title="Demais Fornecedores" 
+                        supplierName={["CHM Morais", "BRUTA"]} 
+                        colorClass="text-primary" 
+                        bgColorClass="bg-card/40" 
+                        borderClass="border-white/10"
+                    />
+                </div>
+            </div>
 
             <OrderFormDialog
                 open={isDialogOpen}
@@ -287,6 +327,13 @@ const PedidosSemana = () => {
                 onUpdate={handleUpdateOrder}
                 editingOrder={editingOrder}
             />
+
+            {isPrintOpen && (
+                <WeeklyOrderPrintView 
+                    orders={currentWeekOrders} 
+                    onClose={() => setIsPrintOpen(false)} 
+                />
+            )}
         </div>
     );
 };
