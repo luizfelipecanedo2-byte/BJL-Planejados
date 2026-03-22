@@ -6,83 +6,83 @@
 
 @layer base {
   :root {
-    /* Deep Ocean Blue Background */
-    --background: 222 66% 12%;
-    --foreground: 210 20% 98%;
+    /* Deep Carbon Black Background */
+    --background: 0 0% 4%;
+    --foreground: 43 20% 98%;
 
-    /* Card Backgrounds - Deep Slate Navy */
-    --card: 215 45% 18%;
-    --card-foreground: 210 20% 98%;
+    /* Card Backgrounds - Elegant Anthracite */
+    --card: 0 0% 8%;
+    --card-foreground: 43 20% 98%;
 
-    --popover: 215 45% 18%;
-    --popover-foreground: 210 20% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 43 20% 98%;
 
-    /* Vibrant Sky Blue */
-    --primary: 210 100% 55%;
-    --primary-foreground: 222 60% 12%;
+    /* Premium Gold */
+    --primary: 43 96% 56%;
+    --primary-foreground: 0 0% 5%;
 
-    /* Secondary - Muted Navy */
-    --secondary: 215 40% 28%;
-    --secondary-foreground: 210 100% 85%;
+    /* Secondary - Muted Gold/Brown */
+    --secondary: 43 30% 15%;
+    --secondary-foreground: 43 90% 85%;
 
-    --muted: 215 30% 25%;
-    --muted-foreground: 210 20% 70%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 210 100% 40%;
-    --accent-foreground: 210 100% 95%;
+    --accent: 43 90% 45%;
+    --accent-foreground: 0 0% 10%;
 
-    --destructive: 350 80% 55%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Success - Cyan/Teal to match the chart accents */
-    --success: 180 100% 40%;
-    --success-foreground: 222 60% 12%;
+    /* Success - Forest Green to match Gold */
+    --success: 140 70% 40%;
+    --success-foreground: 0 0% 10%;
 
     --warning: 35 100% 50%;
-    --warning-foreground: 222 60% 12%;
+    --warning-foreground: 0 0% 10%;
 
-    /* Borders - Subtle Blue Glow */
-    --border: 215 45% 25%;
-    --input: 215 45% 25%;
+    /* Borders - Subtle Gold Tint */
+    --border: 43 20% 15%;
+    --input: 43 20% 15%;
 
-    /* Ring - Glowing Blue */
-    --ring: 210 100% 55%;
+    /* Ring - Glowing Gold */
+    --ring: 43 96% 56%;
 
     --radius: 1rem;
 
-    /* Sidebar - Very deep blue */
-    --sidebar-background: 222 70% 10%;
-    --sidebar-foreground: 210 20% 85%;
-    --sidebar-primary: 210 100% 55%;
-    --sidebar-primary-foreground: 222 60% 12%;
-    --sidebar-accent: 215 45% 20%;
-    --sidebar-accent-foreground: 210 100% 90%;
-    --sidebar-border: 215 45% 20%;
-    --sidebar-ring: 210 100% 55%;
+    /* Sidebar - Deep Black */
+    --sidebar-background: 0 0% 3%;
+    --sidebar-foreground: 43 20% 85%;
+    --sidebar-primary: 43 96% 56%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 43 20% 12%;
+    --sidebar-accent-foreground: 43 96% 75%;
+    --sidebar-border: 43 20% 10%;
+    --sidebar-ring: 43 96% 56%;
 
-    /* Kanban columns - Adapting to the blue palette */
-    --kanban-prospecto: 210 100% 55%;
-    --kanban-contato: 210 60% 45%;
-    --kanban-visita: 280 80% 55%;
-    --kanban-projeto: 240 70% 65%;
-    --kanban-negociacao: 310 80% 60%;
-    --kanban-fechado: 180 100% 40%;
+    /* Kanban columns - Adapting to the luxury palette */
+    --kanban-prospecto: 43 96% 60%;
+    --kanban-contato: 30 80% 50%;
+    --kanban-visita: 50 90% 55%;
+    --kanban-projeto: 40 70% 65%;
+    --kanban-negociacao: 35 80% 60%;
+    --kanban-fechado: 140 70% 40%;
     --kanban-nao_fechou: 0 84% 50%;
-    --kanban-congelado: 220 15% 45%;
-    --kanban-pos_venda: 190 90% 50%;
+    --kanban-congelado: 0 0% 30%;
+    --kanban-pos_venda: 160 80% 45%;
   }
 
-  /* Dark mode enhancement with gradient support */
+  /* Dark mode enhancement */
   .dark {
-    --background: 222 66% 12%;
-    --foreground: 210 20% 98%;
-    --card: 215 45% 18%;
-    --card-foreground: 210 20% 98%;
-    --primary: 210 100% 55%;
-    --primary-foreground: 222 60% 12%;
-    --border: 215 45% 25%;
-    --ring: 210 100% 55%;
-    --sidebar-background: 222 70% 10%;
+    --background: 0 0% 4%;
+    --foreground: 43 20% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 43 20% 98%;
+    --primary: 43 96% 56%;
+    --primary-foreground: 0 0% 5%;
+    --border: 43 20% 15%;
+    --ring: 43 96% 56%;
+    --sidebar-background: 0 0% 3%;
   }
 }
 

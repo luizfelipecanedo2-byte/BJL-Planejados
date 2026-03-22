@@ -16,8 +16,8 @@ export const MagicButton = React.forwardRef<HTMLButtonElement, MagicButtonProps>
         )}
         {...props}
       >
-        <span className="absolute inset-[-1000%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#3b82f6_50%,#E2CBFF_100%)]" />
-        <span className="inline-flex h-full w-full cursor-pointer items-center justify-center gap-2 rounded-[calc(var(--radius)-1px)] bg-slate-950 px-4 py-2 text-sm font-medium text-white backdrop-blur-3xl transition-colors hover:bg-slate-900 border border-slate-800">
+        <span className="absolute inset-[-1000%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#FBBF24_0%,#F59E0B_50%,#FBBF24_100%)]" />
+        <span className="inline-flex h-full w-full cursor-pointer items-center justify-center gap-2 rounded-[calc(var(--radius)-1px)] bg-black/80 px-4 py-2 text-sm font-medium text-white backdrop-blur-3xl transition-all hover:bg-black/90 border border-white/10 group-hover:border-primary/50">
           {children}
         </span>
       </button>

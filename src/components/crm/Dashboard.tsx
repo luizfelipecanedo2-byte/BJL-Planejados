@@ -220,7 +220,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
     }));
   };
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+  const COLORS = ['#FFD700', '#F59E0B', '#D4AF37', '#B8860B', '#FCD34D'];
 
   const renderDashboardContent = (
     filteredSales: Sale[],
@@ -269,15 +269,15 @@ const Dashboard = ({ sales }: DashboardProps) => {
         title: "Valor Total de Orçamentos",
         value: formatCurrency(totalBudget),
         icon: DollarSign,
-        color: "text-blue-500",
-        bgColor: "bg-blue-500/10",
+        color: "text-amber-500",
+        bgColor: "bg-amber-500/10",
       },
       {
         title: "Receita (Fechado + Pós-Venda)",
         value: formatCurrency(totalRevenue),
         icon: Target,
-        color: "text-emerald-500",
-        bgColor: "bg-emerald-500/10",
+        color: "text-primary",
+        bgColor: "bg-primary/10",
       },
       {
         title: "Dinheiro na Mesa (Perdidos)",
@@ -290,29 +290,29 @@ const Dashboard = ({ sales }: DashboardProps) => {
         title: "Pipeline Atual (Andamento)",
         value: formatCurrency(pipelineValue),
         icon: TrendingUp,
-        color: "text-primary",
-        bgColor: "bg-primary/10",
+        color: "text-amber-400",
+        bgColor: "bg-amber-400/10",
       },
       {
         title: "Ticket Médio (Fechadas)",
         value: formatCurrency(avgTicketClosed),
         icon: Receipt,
-        color: "text-emerald-500",
-        bgColor: "bg-emerald-500/10",
+        color: "text-primary",
+        bgColor: "bg-primary/10",
       },
       {
         title: "Ticket Médio (Geral)",
         value: formatCurrency(avgTicketAll),
         icon: Receipt,
-        color: "text-blue-500",
-        bgColor: "bg-blue-500/10",
+        color: "text-amber-500",
+        bgColor: "bg-amber-500/10",
       },
       {
         title: "Conversão Geral",
         value: `${numClosed}/${numBudgets} (${conversionRate}%)`,
         icon: BarChart3,
-        color: "text-indigo-500",
-        bgColor: "bg-indigo-500/10",
+        color: "text-amber-300",
+        bgColor: "bg-amber-300/10",
       },
       {
         title: "Leads Perdidos",
