@@ -182,9 +182,9 @@ const MainLayout = () => {
                 </header>
 
                 <main className="flex-1 p-3 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden bg-black/40 relative">
-                    {/* Global Golden Watermark Background */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.1] overflow-hidden select-none">
-                        <h1 className="text-[15vw] font-black tracking-tighter text-primary/10 rotate-[-10deg] whitespace-nowrap uppercase">
+                    {/* Modern Global Golden Watermark Background */}
+                    <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none z-0 mt-32 overflow-hidden select-none">
+                        <h1 className="text-4xl md:text-6xl lg:text-7xl font-extralight tracking-[0.5em] text-primary/20 uppercase whitespace-nowrap opacity-100 select-none">
                             BJL PLANEJADOS
                         </h1>
                     </div>
