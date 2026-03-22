@@ -182,15 +182,19 @@ const PedidosSemana = () => {
 
         const getSupplierStyles = (sup: string) => {
             const upSup = sup.toUpperCase();
-            if (upSup.includes("CHM MORAIS")) return "border-emerald-500 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
-            if (upSup.includes("BRUTA")) return "border-orange-500 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.1)]";
+            if (upSup.includes("CHM") || upSup.includes("MORAIS") || upSup.includes("C HM")) 
+                return "border-emerald-500 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
+            if (upSup.includes("BRUTA")) 
+                return "border-orange-500 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.1)]";
             return "border-white/10 bg-black/20";
         };
 
         const getSupplierTextColor = (sup: string) => {
             const upSup = sup.toUpperCase();
-            if (upSup.includes("CHM MORAIS")) return "text-emerald-500";
-            if (upSup.includes("BRUTA")) return "text-orange-500";
+            if (upSup.includes("CHM") || upSup.includes("MORAIS") || upSup.includes("C HM")) 
+                return "text-emerald-500";
+            if (upSup.includes("BRUTA")) 
+                return "text-orange-500";
             return "text-white";
         };
 
