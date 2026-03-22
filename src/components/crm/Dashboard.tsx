@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 interface DashboardProps {
   sales: Sale[];
@@ -357,7 +358,15 @@ const Dashboard = ({ sales }: DashboardProps) => {
                       {card.title}
                     </p>
                     <p className={`text-xl font-black tracking-tighter ${card.color}`}>
-                      {card.value}
+                      <AnimatedCounter 
+                        value={parseFloat(card.value.replace(/[^0-9.-]+/g,"")) || 0} 
+                        formatter={(v) => card.value.includes('R$') 
+                          ? formatCurrency(v) 
+                          : card.value.includes('%') 
+                            ? `${v.toFixed(0)}%` 
+                            : v.toFixed(0)
+                        } 
+                      />
                     </p>
                   </div>
                 </div>

@@ -9,7 +9,8 @@ import ClientTable from "@/components/crm/ClientTable";
 import ClientFormDialog from "@/components/crm/ClientFormDialog";
 import { supabase } from "@/lib/supabase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Truck } from "lucide-react";
+import { Users, Truck, UserPlus } from "lucide-react";
+import { MagicButton } from "@/components/ui/magic-button";
 
 const Clientes = () => {
     const [clients, setClients] = useState<Client[]>([]);
@@ -165,21 +166,24 @@ const Clientes = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold tracking-tight">Cliente e Fornecedores</h2>
-                <Button onClick={handleNewClient} size="sm" className="gap-1.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                   <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Clientes e Fornecedores</h2>
+                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Gestão de Base High-End</p>
+                </div>
+                <MagicButton onClick={handleNewClient} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
                     <UserPlus className="h-4 w-4" />
-                    Novo Cliente/Fornecedor
-                </Button>
+                    Novo Registro
+                </MagicButton>
             </div>
 
-            <Tabs defaultValue="cliente" className="w-full" onValueChange={setActiveTab}>
-                <TabsList className="mb-4">
-                    <TabsTrigger value="cliente" className="gap-2">
+            <Tabs defaultValue="cliente" className="w-full space-y-6" onValueChange={setActiveTab}>
+                <TabsList className="bg-white/50 backdrop-blur-xl border border-white/40 p-1.5 rounded-full h-auto shadow-sm inline-flex">
+                    <TabsTrigger value="cliente" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
                         <Users className="h-4 w-4" />
                         Clientes
                     </TabsTrigger>
-                    <TabsTrigger value="fornecedor" className="gap-2">
+                    <TabsTrigger value="fornecedor" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
                         <Truck className="h-4 w-4" />
                         Fornecedores
                     </TabsTrigger>

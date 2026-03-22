@@ -16,35 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BudgetPrintView from "@/components/orcamento/BudgetPrintView";
-
-const AnimatedCounter = ({ value, formatter = (v: number) => v.toFixed(0) }: { value: number, formatter?: (v: number) => string }) => {
-    const [displayValue, setDisplayValue] = useState(0);
-
-    useEffect(() => {
-        const start = displayValue;
-        const end = value;
-        const duration = 1200;
-        let startTimestamp: number | null = null;
-
-        const step = (timestamp: number) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            // Easing function: outQuart
-            const easeProgress = 1 - Math.pow(1 - progress, 4);
-            const current = start + (end - start) * easeProgress;
-            setDisplayValue(current);
-            if (progress < 1) {
-                window.requestAnimationFrame(step);
-            } else {
-                setDisplayValue(end);
-            }
-        };
-
-        window.requestAnimationFrame(step);
-    }, [value]);
-
-    return <>{formatter(displayValue)}</>;
-};
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 const Orcamento = () => {
     const { materials: allMaterials, budgets, loading, updateMaterial, addMaterial, deleteMaterial, deleteBudget, saveBudget, refreshBudgets } = useBudgets();

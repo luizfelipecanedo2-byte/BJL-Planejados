@@ -18,6 +18,7 @@ import {
     LabelList
 } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 interface DashboardTabProps {
     selectedYear: string;
@@ -130,7 +131,9 @@ const DashboardTab = ({
                 <div className="md:col-span-9 grid grid-cols-2 lg:grid-cols-5 gap-3">
                     <Card className="bg-[#1a1a1a] border-none shadow-none p-3 h-16 flex flex-col justify-center">
                         <span className="text-[10px] font-bold text-cyan-400 uppercase">A receber</span>
-                        <span className="text-lg font-black text-white">{formatCurrency(currentSummary.accountsReceivable)}</span>
+                        <span className="text-lg font-black text-white">
+                            <AnimatedCounter value={currentSummary.accountsReceivable} formatter={formatCurrency} />
+                        </span>
                     </Card>
                     <Card className="bg-[#1a1a1a] border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-primary">
                         <span className="text-[10px] font-bold text-primary uppercase">Hoje (Entra/Sai)</span>
@@ -145,11 +148,15 @@ const DashboardTab = ({
                     </Card>
                     <Card className="bg-orange-500/10 border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-orange-500">
                         <span className="text-[10px] font-bold text-orange-500 uppercase">Vencidos</span>
-                        <span className="text-lg font-black text-white">{formatCurrency(currentSummary.inadimplenciaTotal)}</span>
+                        <span className="text-lg font-black text-white">
+                            <AnimatedCounter value={currentSummary.inadimplenciaTotal} formatter={formatCurrency} />
+                        </span>
                     </Card>
                     <Card className="bg-emerald-500/10 border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-emerald-500">
                         <span className="text-[10px] font-bold text-emerald-500 uppercase">Saldo Projetado</span>
-                        <span className="text-lg font-black text-white">{formatCurrency(currentSummary.projectedBalance)}</span>
+                        <span className="text-lg font-black text-white">
+                            <AnimatedCounter value={currentSummary.projectedBalance} formatter={formatCurrency} />
+                        </span>
                     </Card>
                 </div>
             </div>
@@ -196,7 +203,9 @@ const DashboardTab = ({
                                 </PieChart>
                             </ResponsiveContainer>
                             <div className="absolute inset-x-0 bottom-4 flex flex-col items-center">
-                                <span className="text-2xl font-black text-white tracking-tighter">{formatCurrency(currentSummary.saldoMes)}</span>
+                                <span className="text-2xl font-black text-white tracking-tighter">
+                                    <AnimatedCounter value={currentSummary.saldoMes} formatter={formatCurrency} />
+                                </span>
                                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                                     {selectedDashMonth === 'anual' ? 'Saldo do ano' : 'Saldo do mês'}
                                 </span>
@@ -274,19 +283,25 @@ const DashboardTab = ({
                     <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">
                         Receita Bruta <GrowthIndicator value={calculateGrowth(currentSummary.receitaBrutaMes, previousSummary?.receitaBrutaMes || 0)} />
                     </p>
-                    <p className="text-2xl font-black text-white">{formatCurrency(currentSummary.receitaBrutaMes)}</p>
+                    <p className="text-2xl font-black text-white">
+                        <AnimatedCounter value={currentSummary.receitaBrutaMes} formatter={formatCurrency} />
+                    </p>
                 </Card>
                 <Card className="md:col-span-3 bg-orange-500/10 border-none p-4 flex flex-col justify-center border-l-4 border-orange-500">
                     <p className="text-[9px] font-black text-orange-500 uppercase tracking-widest mb-1">
                         Custos e Despesas <GrowthIndicator value={calculateGrowth(currentSummary.gastosMes, previousSummary?.gastosMes || 0)} />
                     </p>
-                    <p className="text-2xl font-black text-white">{formatCurrency(currentSummary.gastosMes)}</p>
+                    <p className="text-2xl font-black text-white">
+                        <AnimatedCounter value={currentSummary.gastosMes} formatter={formatCurrency} />
+                    </p>
                 </Card>
                 <Card className="md:col-span-3 bg-[#14b8a6]/20 border-none p-4 flex flex-col justify-center border-l-4 border-[#14b8a6]">
                     <p className="text-[9px] font-black text-[#14b8a6] uppercase tracking-widest mb-1">
                         Lucro Líquido <GrowthIndicator value={calculateGrowth(currentSummary.resultadoMes, previousSummary?.resultadoMes || 0)} />
                     </p>
-                    <p className="text-2xl font-black text-white">{formatCurrency(currentSummary.resultadoMes)}</p>
+                    <p className="text-2xl font-black text-white">
+                        <AnimatedCounter value={currentSummary.resultadoMes} formatter={formatCurrency} />
+                    </p>
                 </Card>
             </div>
 

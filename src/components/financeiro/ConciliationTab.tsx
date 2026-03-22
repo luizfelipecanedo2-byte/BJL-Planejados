@@ -1,7 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Building2, Banknote, CreditCard, Coins } from "lucide-react";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { cn } from "@/lib/utils";
 
 interface ConciliationTabProps {
@@ -50,10 +51,25 @@ const ConciliationTab = ({
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-8">
-                        <div className="flex flex-col items-center sm:items-end">
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Saldo Disponível</span>
-                            <div className="text-3xl font-black text-emerald-400 tracking-tighter">
-                                {formatCurrency(totalAccountBalance)}
+                        <div className="flex flex-col items-center sm:items-end group">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1 flex items-center gap-2">
+                                {selectedAccount === 'banco_itau' && <Building2 className="h-3 w-3 text-orange-500" />}
+                                {selectedAccount === 'dinheiro' && <Banknote className="h-3 w-3 text-emerald-500" />}
+                                {selectedAccount === 'mercado_pago' && <CreditCard className="h-3 w-3 text-blue-400" />}
+                                Saldo Disponível
+                            </span>
+                            <div className="text-3xl font-black text-emerald-400 tracking-tighter flex items-center gap-3">
+                                <div className={cn(
+                                    "p-2 rounded-xl border transition-all duration-500",
+                                    selectedAccount === 'banco_itau' ? "bg-orange-500/10 border-orange-500/20 text-orange-500" :
+                                    selectedAccount === 'dinheiro' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" :
+                                    "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                                )}>
+                                    {selectedAccount === 'banco_itau' && <Building2 className="h-6 w-6" />}
+                                    {selectedAccount === 'dinheiro' && <Coins className="h-6 w-6" />}
+                                    {selectedAccount === 'mercado_pago' && <CreditCard className="h-6 w-6" />}
+                                </div>
+                                <AnimatedCounter value={totalAccountBalance} formatter={formatCurrency} />
                             </div>
                         </div>
 
@@ -66,9 +82,24 @@ const ConciliationTab = ({
                                     <SelectValue placeholder="Selecione a conta" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                                    <SelectItem value="banco_itau" className="focus:bg-primary/20 focus:text-white">Banco Itaú</SelectItem>
-                                    <SelectItem value="mercado_pago" className="focus:bg-primary/20 focus:text-white">Mercado Pago</SelectItem>
-                                    <SelectItem value="dinheiro" className="focus:bg-primary/20 focus:text-white">Dinheiro (Caixa)</SelectItem>
+                                    <SelectItem value="banco_itau" className="focus:bg-primary/20 focus:text-white">
+                                        <div className="flex items-center gap-2">
+                                            <Building2 className="h-3 w-3 text-orange-500" />
+                                            <span>Banco Itaú</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="mercado_pago" className="focus:bg-primary/20 focus:text-white">
+                                        <div className="flex items-center gap-2">
+                                            <CreditCard className="h-3 w-3 text-blue-400" />
+                                            <span>Mercado Pago</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="dinheiro" className="focus:bg-primary/20 focus:text-white">
+                                        <div className="flex items-center gap-2">
+                                            <Banknote className="h-3 w-3 text-emerald-500" />
+                                            <span>Dinheiro (Caixa)</span>
+                                        </div>
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -102,7 +133,7 @@ const ConciliationTab = ({
                         <div className="flex flex-col items-center sm:items-end">
                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Saldo Inicial</span>
                             <span className="font-bold text-white text-lg tracking-tighter">
-                                {formatCurrency(reconciliationDailyData.initialBalance)}
+                                <AnimatedCounter value={reconciliationDailyData.initialBalance} formatter={formatCurrency} />
                             </span>
                         </div>
                         <Button className="bg-primary hover:bg-primary/80 text-primary-foreground font-black uppercase tracking-widest text-[10px] px-6 py-5 rounded-xl shadow-lg shadow-primary/20">
