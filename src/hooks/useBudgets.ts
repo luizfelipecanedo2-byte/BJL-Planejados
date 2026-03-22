@@ -6,6 +6,7 @@ export interface Material {
     id: string;
     name: string;
     category: string;
+    supplier?: string;
     unit: string;
     unit_price: number;
 }

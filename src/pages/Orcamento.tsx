@@ -101,6 +101,7 @@ const Orcamento = () => {
     const [newMaterial, setNewMaterial] = useState({
         name: "",
         category: "OUTROS",
+        supplier: "CHM Morais",
         unit: "UNIDADE",
         unit_price: 0
     });
@@ -166,31 +167,18 @@ const Orcamento = () => {
         }));
     };
 
-    const groupedMaterials = useMemo(() => {
-        const order = [
-            "MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"
-        ];
+    const groupedBySupplier = useMemo(() => {
+        const suppliers = ["CHM Morais", "BRUTA", "Outros"];
+        const data: Record<string, Record<string, Material[]>> = {};
 
-        const groups: Record<string, Material[]> = {};
         sortedMaterials.forEach(m => {
-            if (!groups[m.category]) groups[m.category] = [];
-            groups[m.category].push(m);
+            const supplier = m.supplier === "CHM Morais" || m.supplier === "BRUTA" ? m.supplier : "Outros";
+            if (!data[supplier]) data[supplier] = {};
+            if (!data[supplier][m.category]) data[supplier][m.category] = [];
+            data[supplier][m.category].push(m);
         });
 
-        const sortedEntries: [string, Material[]][] = [];
-        order.forEach(cat => {
-            if (groups[cat]) {
-                sortedEntries.push([cat, groups[cat]]);
-            }
-        });
-
-        Object.entries(groups).forEach(([cat, items]) => {
-            if (!order.includes(cat)) {
-                sortedEntries.push([cat, items]);
-            }
-        });
-
-        return sortedEntries;
+        return data; 
     }, [sortedMaterials]);
 
     const calculateTotals = useMemo(() => {
@@ -525,63 +513,96 @@ const Orcamento = () => {
                                             <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Catálogo Geral (Explorar)</h4>
                                         </div>
 
-                                        <Accordion type="multiple" defaultValue={groupedMaterials.map(([cat]) => cat)} className="space-y-4">
-                                            {groupedMaterials.map(([category, items]) => (
-                                                <AccordionItem key={category} value={category} className="border border-white/5 rounded-3xl px-6 bg-white/5 shadow-sm overflow-hidden border-b-0 space-y-2">
-                                                    <AccordionTrigger className="hover:no-underline py-4 border-none">
-                                                        <div className="flex items-center gap-3">
-                                                            <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] uppercase tracking-widest px-3">
-                                                                {items.length} ITENS
-                                                            </Badge>
-                                                            <span className="font-black uppercase text-xs tracking-tighter text-slate-300">{category}</span>
+                                        <div className="space-y-12">
+                                            {Object.entries(groupedBySupplier).map(([supplier, categories]) => (
+                                                <div key={supplier} className="space-y-6">
+                                                    <div className={cn(
+                                                        "flex items-center gap-4 px-6 py-4 rounded-3xl border shadow-sm",
+                                                        supplier === "CHM Morais" ? "bg-emerald-500/5 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]" :
+                                                        supplier === "BRUTA" ? "bg-orange-500/5 border-orange-500/20 shadow-[0_0_20px_rgba(249,115,22,0.05)]" :
+                                                        "bg-slate-50 border-slate-200"
+                                                    )}>
+                                                        <div className={cn(
+                                                            "w-2 h-8 rounded-full",
+                                                            supplier === "CHM Morais" ? "bg-emerald-500" :
+                                                            supplier === "BRUTA" ? "bg-orange-500" :
+                                                            "bg-slate-300"
+                                                        )} />
+                                                        <div>
+                                                            <h4 className={cn(
+                                                                "font-black uppercase text-sm tracking-widest",
+                                                                supplier === "CHM Morais" ? "text-emerald-500" :
+                                                                supplier === "BRUTA" ? "text-orange-500" :
+                                                                "text-slate-500"
+                                                            )}>
+                                                                {supplier}
+                                                            </h4>
+                                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">
+                                                                Itens para {supplier === "Outros" ? "Demais Fornecedores" : `Pedidos da ${supplier}`}
+                                                            </p>
                                                         </div>
-                                                    </AccordionTrigger>
-                                                    <AccordionContent className="pb-6 border-none">
-                                                        <div className="grid grid-cols-1 gap-2">
-                                                            {items.map(item => {
-                                                                const currentPrice = customPrices[item.id] !== undefined ? customPrices[item.id] : item.unit_price;
-                                                                return (
-                                                                    <div key={item.id} className={cn(
-                                                                        "flex items-center justify-between p-3 rounded-2xl transition-all group",
-                                                                        quantities[item.id] > 0 ? "bg-primary/5 border-primary/20 border shadow-inner" : "bg-slate-50 hover:bg-slate-100 border border-transparent"
-                                                                    )}>
-                                                                        <div className="flex flex-col">
-                                                                            <span className="text-[11px] font-black uppercase tracking-tight text-slate-200">{item.name}</span>
-                                                                            <span className="text-[9px] font-bold text-slate-500 uppercase">{item.unit} • {formatCurrency(item.unit_price)}</span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-3">
-                                                                            {quantities[item.id] > 0 && (
-                                                                                <div className="flex flex-col items-end mr-4">
-                                                                                    <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Preço Unit.</span>
-                                                                                    <Input
-                                                                                        type="number"
-                                                                                        className="w-24 h-8 rounded-lg text-right font-black text-[10px] border-slate-200 focus:bg-white/10 text-white bg-white/5"
-                                                                                        value={currentPrice || ""}
-                                                                                        onChange={(e) => handlePriceChange(item.id, e.target.value)}
-                                                                                    />
-                                                                                </div>
-                                                                            )}
-                                                                            <div className="flex flex-col items-end">
-                                                                                {quantities[item.id] > 0 && (
-                                                                                    <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Qtd.</span>
-                                                                                )}
-                                                                                <Input
-                                                                                    type="number"
-                                                                                    placeholder="0"
-                                                                                    className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-white/10 text-white"
-                                                                                    value={quantities[item.id] || ""}
-                                                                                    onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                                                                                />
-                                                                            </div>
-                                                                        </div>
+                                                    </div>
+
+                                                    <Accordion type="multiple" defaultValue={Object.keys(categories)} className="space-y-4">
+                                                        {Object.entries(categories).map(([category, items]) => (
+                                                            <AccordionItem key={`${supplier}-${category}`} value={category} className="border border-white/5 rounded-3xl px-6 bg-white/5 shadow-sm overflow-hidden border-b-0 space-y-2">
+                                                                <AccordionTrigger className="hover:no-underline py-4 border-none">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] uppercase tracking-widest px-3">
+                                                                            {items.length} ITENS
+                                                                        </Badge>
+                                                                        <span className="font-black uppercase text-xs tracking-tighter text-slate-300">{category}</span>
                                                                     </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </AccordionContent>
-                                                </AccordionItem>
+                                                                </AccordionTrigger>
+                                                                <AccordionContent className="pb-6 border-none">
+                                                                    <div className="grid grid-cols-1 gap-2">
+                                                                        {items.map(item => {
+                                                                            const currentPrice = customPrices[item.id] !== undefined ? customPrices[item.id] : item.unit_price;
+                                                                            return (
+                                                                                <div key={item.id} className={cn(
+                                                                                    "flex items-center justify-between p-3 rounded-2xl transition-all group",
+                                                                                    quantities[item.id] > 0 ? "bg-primary/5 border-primary/20 border shadow-inner" : "bg-slate-50 hover:bg-slate-100 border border-transparent"
+                                                                                )}>
+                                                                                    <div className="flex flex-col">
+                                                                                        <span className="text-[11px] font-black uppercase tracking-tight text-slate-200">{item.name}</span>
+                                                                                        <span className="text-[9px] font-bold text-slate-500 uppercase">{item.unit} • {formatCurrency(item.unit_price)}</span>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-3">
+                                                                                        {quantities[item.id] > 0 && (
+                                                                                            <div className="flex flex-col items-end mr-4">
+                                                                                                <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Preço Unit.</span>
+                                                                                                <Input
+                                                                                                    type="number"
+                                                                                                    className="w-24 h-8 rounded-lg text-right font-black text-[10px] border-slate-200 focus:bg-white/10 text-white bg-white/5"
+                                                                                                    value={currentPrice || ""}
+                                                                                                    onChange={(e) => handlePriceChange(item.id, e.target.value)}
+                                                                                                />
+                                                                                            </div>
+                                                                                        )}
+                                                                                        <div className="flex flex-col items-end">
+                                                                                            {quantities[item.id] > 0 && (
+                                                                                                <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Qtd.</span>
+                                                                                            )}
+                                                                                            <Input
+                                                                                                type="number"
+                                                                                                placeholder="0"
+                                                                                                className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-white/10 text-white"
+                                                                                                value={quantities[item.id] || ""}
+                                                                                                onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                                                                            />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </AccordionContent>
+                                                            </AccordionItem>
+                                                        ))}
+                                                    </Accordion>
+                                                </div>
                                             ))}
-                                        </Accordion>
+                                        </div>
 
                                         {Object.keys(calculateTotals.categoryTotals).length > 0 && (
                                             <div className="mt-12 p-8 border border-primary/20 bg-slate-50/50 rounded-[2.5rem] shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -1007,7 +1028,23 @@ const Orcamento = () => {
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Unidade</Label>
-                                            <Input value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })} placeholder="Ex: UNIDADE, M2, PAR" className="rounded-2xl h-12 border-slate-200 text-slate-900 font-bold" />
+                                            <Input value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })} placeholder="Ex: UNIDADE, M2" className="rounded-2xl h-12 border-slate-200 text-slate-900 font-bold" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Fornecedor</Label>
+                                            <Select 
+                                                value={newMaterial.supplier} 
+                                                onValueChange={val => setNewMaterial({ ...newMaterial, supplier: val })}
+                                            >
+                                                <SelectTrigger className="w-full h-12 rounded-2xl border-slate-200 bg-white px-4 text-xs font-bold uppercase text-slate-900 shadow-sm focus:ring-2 focus:ring-primary/20">
+                                                    <SelectValue placeholder="Selecione" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                                    {["CHM Morais", "BRUTA", "EXTERNO", "OUTROS"].map(sup => (
+                                                        <SelectItem key={sup} value={sup} className="font-black uppercase text-[10px] py-3">{sup}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
                                     <div className="space-y-2">
@@ -1029,6 +1066,7 @@ const Orcamento = () => {
                                     <tr className="bg-slate-50 text-muted-foreground/50 h-16 border-b border-border/10">
                                         <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Categoria</th>
                                         <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Nome do Material</th>
+                                        <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Fornecedor</th>
                                         <th className="px-8 text-center font-black uppercase tracking-[0.1em] text-[10px]">Unidade</th>
                                         <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Preço Unitário (R$)</th>
                                         <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Ações</th>
@@ -1041,6 +1079,15 @@ const Orcamento = () => {
                                                 <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest">{mat.category}</Badge>
                                             </td>
                                             <td className="px-8 py-5 font-black uppercase text-[12px] text-foreground opacity-80">{mat.name}</td>
+                                            <td className="px-8 py-5">
+                                                {mat.supplier === "CHM Morais" ? (
+                                                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200 text-[9px] font-black uppercase tracking-widest">CHM Morais</Badge>
+                                                ) : mat.supplier === "BRUTA" ? (
+                                                    <Badge className="bg-orange-500/10 text-orange-600 border-orange-200 text-[9px] font-black uppercase tracking-widest">BRUTA</Badge>
+                                                ) : (
+                                                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest opacity-40">{mat.supplier || "Outros"}</Badge>
+                                                )}
+                                            </td>
                                             <td className="px-8 py-5 text-center font-bold text-muted-foreground">{mat.unit}</td>
                                             <td className="px-8 py-5 text-right font-black text-sm text-primary">
                                                 <Input
@@ -1110,6 +1157,22 @@ const Orcamento = () => {
                                         <SelectContent className="rounded-2xl border-none shadow-2xl">
                                             {["MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"].map(cat => (
                                                 <SelectItem key={cat} value={cat} className="font-black uppercase text-[10px] py-3">{cat}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Fornecedor</Label>
+                                    <Select 
+                                        value={editingMaterial.supplier} 
+                                        onValueChange={val => setEditingMaterial({ ...editingMaterial, supplier: val })}
+                                    >
+                                        <SelectTrigger className="w-full h-12 rounded-2xl border-slate-200 bg-white px-4 text-xs font-bold uppercase text-slate-900">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                            {["CHM Morais", "BRUTA", "EXTERNO", "OUTROS"].map(sup => (
+                                                <SelectItem key={sup} value={sup} className="font-black uppercase text-[10px] py-3">{sup}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
