@@ -86,7 +86,9 @@ const MainLayout = () => {
 
     return (
         <div className="min-h-[100dvh] bg-background/50 flex pb-[72px] lg:pb-0">
-            {/* Sidebar (Desktop Only) */}
+            {/* Ambient Aurora Glow */}
+            <div className="aurora-bg" />
+
             <aside className="hidden lg:flex fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card/70 backdrop-blur-2xl border-r border-white/10 shadow-lg flex-col">
                 <div className="h-32 flex items-center px-6 border-b border-border/10 justify-between shrink-0 bg-primary/5 relative overflow-hidden">
                     <div className="flex items-center gap-3 w-full justify-center relative z-10">
@@ -199,8 +201,14 @@ const MainLayout = () => {
                         <div className="absolute left-1/4 -top-10 opacity-5 rotate-12">
                              <Ruler size={80} />
                         </div>
-                        <div className="text-border-beam px-10 py-4">
-                            <h1 className="text-6xl md:text-8xl lg:text-9xl font-normal text-primary/40 font-['Lobster',cursive] drop-shadow-[8px_8px_0px_rgba(0,0,0,0.5)] rotate-[-3deg]">
+                        <div className="text-border-beam px-10 py-4 relative group">
+                            {/* Stardust particles around logo */}
+                            <div className="stardust left-0 top-0" />
+                            <div className="stardust right-10 top-5 delay-300" />
+                            <div className="stardust left-20 bottom-0 delay-700" />
+                            <div className="stardust right-0 bottom-10 delay-1000" />
+                            
+                            <h1 className="text-6xl md:text-8xl lg:text-9xl font-normal text-primary/40 font-['Lobster',cursive] drop-shadow-[8px_8px_0px_rgba(0,0,0,0.5)] rotate-[-3deg] shimmer-gold">
                                 BJL Planejados
                             </h1>
                         </div>
