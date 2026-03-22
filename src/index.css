@@ -280,6 +280,19 @@
     animation: float 5s ease-in-out infinite;
   }
 
+  @keyframes pinball {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    20% { transform: translate(12px, -8px) rotate(10deg); }
+    40% { transform: translate(-10px, 10px) rotate(-10deg); }
+    60% { transform: translate(8px, 12px) rotate(5deg); }
+    80% { transform: translate(-12px, -10px) rotate(-5deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+  }
+
+  .animate-pinball {
+    animation: pinball 6s ease-in-out infinite;
+  }
+
   .animate-shimmer {
     background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0) 100%);
     background-size: 200% 100%;
