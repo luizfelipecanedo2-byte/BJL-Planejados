@@ -85,9 +85,9 @@ const MainLayout = () => {
         <div className="min-h-[100dvh] bg-background/50 flex pb-[72px] lg:pb-0">
             {/* Sidebar (Desktop Only) */}
             <aside className="hidden lg:flex fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card/70 backdrop-blur-2xl border-r border-white/10 shadow-lg flex-col">
-                <div className="h-32 flex items-center px-6 border-b border-border/10 justify-between shrink-0 bg-primary/5">
-                    <div className="flex items-center gap-3 w-full justify-center">
-                        <img src="/logo-bjl.png" alt="BJL Planejados" className="h-24 w-auto object-contain drop-shadow-md" onError={(e) => {
+                <div className="h-32 flex items-center px-6 border-b border-border/10 justify-between shrink-0 bg-primary/5 relative overflow-hidden">
+                    <div className="flex items-center gap-3 w-full justify-center relative z-10">
+                        <img src="/logo-bjl.png" alt="BJL Planejados" className="h-24 w-auto object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.4)]" onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
                             target.nextElementSibling?.classList.remove('hidden');
@@ -112,14 +112,21 @@ const MainLayout = () => {
                             key={item.path}
                             to={item.path}
                             className={cn(
-                                "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200",
+                                "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 menu-item-premium group",
                                 location.pathname === item.path
-                                    ? "bg-primary/15 text-primary border-r-4 border-primary shadow-sm font-bold"
-                                    : "hover:bg-muted text-muted-foreground hover:text-foreground active:bg-muted"
+                                    ? "active text-primary font-black scale-[1.02]"
+                                    : "text-muted-foreground hover:text-primary hover:translate-x-1"
                             )}
                         >
-                            <item.icon className={cn("h-6 w-6", location.pathname === item.path ? "text-primary" : "text-muted-foreground")} />
-                            <span className="text-base">{item.label}</span>
+                            <div className={cn(
+                                "p-2 rounded-lg transition-all duration-300",
+                                location.pathname === item.path 
+                                    ? "bg-primary/20 shadow-[0_0_15px_rgba(251,191,36,0.2)]" 
+                                    : "bg-transparent group-hover:bg-primary/10"
+                            )}>
+                                <item.icon className={cn("h-5 w-5 transition-transform duration-300 group-hover:scale-110", location.pathname === item.path ? "text-primary" : "text-muted-foreground")} />
+                            </div>
+                            <span className="text-sm tracking-wide font-medium">{item.label}</span>
                         </Link>
                     ))}
                 </nav>
@@ -128,10 +135,10 @@ const MainLayout = () => {
             {/* Main Content */}
             <div className="flex-1 flex flex-col min-w-0 h-[100dvh] lg:h-screen">
                 {/* Header */}
-                <header className="h-16 border-b bg-card/80 backdrop-blur-md flex items-center justify-between px-4 sticky top-0 z-30">
+                <header className="h-16 border-b bg-card/80 backdrop-blur-md flex items-center justify-between px-4 sticky top-0 z-30 border-white/10 shadow-xl">
                     <div className="flex items-center">
                         <div className="lg:hidden flex items-center">
-                            <img src="/logo-bjl.png" alt="BJL" className="h-10 w-auto object-contain" onError={(e) => {
+                            <img src="/logo-bjl.png" alt="BJL" className="h-10 w-auto object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.4)]" onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
                                 target.nextElementSibling?.classList.remove('hidden');

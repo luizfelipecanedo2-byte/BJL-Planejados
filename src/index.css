@@ -111,10 +111,21 @@
     100% { transform: scale(1.05) translate(-2%, 2%); }
   }
 
+  /* Interactive High-Tech Grid Background */
+  body::before {
+    content: "";
+    @apply fixed inset-0 z-[-2] pointer-events-none;
+    background-image: 
+      linear-gradient(to right, hsl(var(--primary) / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--primary) / 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(circle at 50% 50%, black, transparent 80%);
+  }
+
   /* Grainy detail for that premium high-end feel */
   body::after {
     content: "";
-    @apply fixed inset-0 z-[9999] pointer-events-none opacity-[0.03];
+    @apply fixed inset-0 z-[9999] pointer-events-none opacity-[0.04];
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   }
 
@@ -147,6 +158,68 @@
   }
   .text-glow {
     text-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  /* Luxury Sidebar Menu Items */
+  .menu-item-premium {
+    @apply relative transition-all duration-300 ease-out;
+  }
+  .menu-item-premium::before {
+    content: "";
+    @apply absolute inset-0 bg-primary/0 rounded-xl transition-all duration-300;
+  }
+  .menu-item-premium:hover::before {
+    @apply bg-primary/10 shadow-[0_0_20px_rgba(251,191,36,0.05)];
+  }
+  .menu-item-premium.active {
+    @apply bg-primary/15 shadow-[0_0_25px_rgba(251,191,36,0.1)];
+  }
+  .menu-item-premium.active::after {
+    content: "";
+    @apply absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full shadow-[0_0_15px_hsl(var(--primary))];
+  }
+
+  /* Border Beam Animation - A beam of light circling the card */
+  .border-beam-card {
+    position: relative;
+  }
+  .border-beam-card::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary)), transparent);
+    background-size: 200% 100%;
+    animation: borderBeam 4s linear infinite;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: destination-out;
+    border-radius: inherit;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .border-beam-card:hover::after {
+    opacity: 1;
+  }
+
+  @keyframes borderBeam {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* 3D Tilt Utility */
+  .tilt-card {
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform-style: preserve-3d;
+    perspective: 1000px;
+  }
+  .tilt-card:hover {
+    transform: rotateX(2deg) rotateY(2deg) translateY(-8px);
+  }
+  .tilt-card > * {
+    transform: translateZ(20px);
   }
   .font-mono {
     font-family: 'JetBrains Mono', monospace;

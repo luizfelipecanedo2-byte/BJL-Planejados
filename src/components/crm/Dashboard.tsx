@@ -342,7 +342,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
           {cards.map((card) => (
             <Card
               key={card.title}
-              className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 group overflow-hidden rounded-3xl spotlight-card"
+              className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl transition-all duration-300 hover:border-primary/50 group overflow-hidden rounded-3xl spotlight-card tilt-card border-beam-card"
             >
               <CardContent className="p-5 relative">
                 <div className={`absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 ${card.color}`}>
