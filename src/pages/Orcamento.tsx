@@ -17,6 +17,35 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BudgetPrintView from "@/components/orcamento/BudgetPrintView";
 
+const AnimatedCounter = ({ value, formatter = (v: number) => v.toFixed(0) }: { value: number, formatter?: (v: number) => string }) => {
+    const [displayValue, setDisplayValue] = useState(0);
+
+    useEffect(() => {
+        const start = displayValue;
+        const end = value;
+        const duration = 1200;
+        let startTimestamp: number | null = null;
+
+        const step = (timestamp: number) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            // Easing function: outQuart
+            const easeProgress = 1 - Math.pow(1 - progress, 4);
+            const current = start + (end - start) * easeProgress;
+            setDisplayValue(current);
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            } else {
+                setDisplayValue(end);
+            }
+        };
+
+        window.requestAnimationFrame(step);
+    }, [value]);
+
+    return <>{formatter(displayValue)}</>;
+};
+
 const Orcamento = () => {
     const { materials: allMaterials, budgets, loading, updateMaterial, addMaterial, deleteMaterial, deleteBudget, saveBudget, refreshBudgets } = useBudgets();
     
@@ -698,7 +727,12 @@ const Orcamento = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-blue-600/50 group-hover:text-blue-600 transition-colors">Em Aberto ({selectedYear})</span>
                             </div>
                             <div>
-                                <span className="text-3xl font-black text-blue-600 tracking-tighter">{formatCurrency(filteredBudgetsByYear.filter(b => b.status === "em_elaboracao").reduce((acc, curr) => acc + curr.total_value, 0))}</span>
+                                <span className="text-3xl font-black text-blue-600 tracking-tighter">
+                                    <AnimatedCounter 
+                                        value={filteredBudgetsByYear.filter(b => b.status === "em_elaboracao").reduce((acc, curr) => acc + curr.total_value, 0)} 
+                                        formatter={formatCurrency}
+                                    />
+                                </span>
                                 <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Total de propostas pendentes</p>
                             </div>
                         </Card>
@@ -712,7 +746,10 @@ const Orcamento = () => {
                             </div>
                             <div>
                                 <span className="text-3xl font-black text-emerald-600 tracking-tighter">
-                                    {filteredBudgetsByYear.length > 0 ? ((filteredBudgetsByYear.filter(b => b.status === 'aprovado').length / filteredBudgetsByYear.length) * 100).toFixed(0) : 0}%
+                                    <AnimatedCounter 
+                                        value={filteredBudgetsByYear.length > 0 ? (filteredBudgetsByYear.filter(b => b.status === 'aprovado').length / filteredBudgetsByYear.length) * 100 : 0} 
+                                        formatter={(v) => `${v.toFixed(0)}%`}
+                                    />
                                 </span>
                                 <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Taxa de fechamento global</p>
                             </div>
@@ -727,7 +764,10 @@ const Orcamento = () => {
                             </div>
                             <div>
                                 <span className="text-3xl font-black text-amber-600 tracking-tighter">
-                                    {formatCurrency(filteredBudgetsByYear.length > 0 ? (filteredBudgetsByYear.reduce((acc, curr) => acc + curr.total_value, 0) / filteredBudgetsByYear.length) : 0)}
+                                    <AnimatedCounter 
+                                        value={filteredBudgetsByYear.length > 0 ? (filteredBudgetsByYear.reduce((acc, curr) => acc + curr.total_value, 0) / filteredBudgetsByYear.length) : 0} 
+                                        formatter={formatCurrency}
+                                    />
                                 </span>
                                 <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Valor médio por proposta</p>
                             </div>
@@ -741,7 +781,9 @@ const Orcamento = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-primary/50 group-hover:text-primary transition-colors">Catálogo</span>
                             </div>
                             <div>
-                                <span className="text-3xl font-black text-primary tracking-tighter">{allMaterials.length}</span>
+                                <span className="text-3xl font-black text-primary tracking-tighter">
+                                    <AnimatedCounter value={allMaterials.length} />
+                                </span>
                                 <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Itens cadastrados na lista</p>
                             </div>
                         </Card>
