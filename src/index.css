@@ -375,4 +375,15 @@
   .animate-neon-pulse {
     animation: neon-pulse 1.5s ease-in-out infinite;
   }
+
+  /* 3D Emoji Style */
+  .emoji-3d {
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: inline-block;
+  }
+  .menu-item-premium:hover .emoji-3d {
+    transform: scale(1.3) rotate(10deg);
+    filter: drop-shadow(0 8px 12px rgba(251, 191, 36, 0.3));
+  }
 }

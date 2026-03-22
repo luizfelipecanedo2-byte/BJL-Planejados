@@ -10,7 +10,10 @@ import {
     Users,
     LogOut,
     UserCircle,
-    Calculator
+    Calculator,
+    Armchair,
+    Sofa,
+    Ruler
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -66,13 +69,13 @@ const MainLayout = () => {
     };
 
     const allMenuItems = [
-        { icon: TrendingUp, label: "CRM", path: "/", roles: ['admin'] },
-        { icon: Calculator, label: "Orçamento", path: "/orcamento", roles: ['admin', 'colaborador'] },
-        { icon: Users, label: "Cliente e Fornecedores", path: "/clientes", roles: ['admin'] },
-        { icon: DollarSign, label: "Financeiro", path: "/financeiro", roles: ['admin'] },
-        { icon: ClipboardList, label: "Ordem de Serviço", path: "/ordem-servico", roles: ['admin', 'colaborador'] },
-        { icon: Package, label: "Estoque", path: "/estoque", roles: ['admin', 'colaborador'] },
-        { icon: Calendar, label: "Pedidos da Semana", path: "/pedidos-semana", roles: ['admin', 'colaborador'] },
+        { icon: TrendingUp, label: "CRM", path: "/", roles: ['admin'], emoji: "📊" },
+        { icon: Calculator, label: "Orçamento", path: "/orcamento", roles: ['admin', 'colaborador'], emoji: "💰" },
+        { icon: Users, label: "Cliente e Fornecedores", path: "/clientes", roles: ['admin'], emoji: "👥" },
+        { icon: DollarSign, label: "Financeiro", path: "/financeiro", roles: ['admin'], emoji: "🏦" },
+        { icon: ClipboardList, label: "Ordem de Serviço", path: "/ordem-servico", roles: ['admin', 'colaborador'], emoji: "📋" },
+        { icon: Package, label: "Estoque", path: "/estoque", roles: ['admin', 'colaborador'], emoji: "📦" },
+        { icon: Calendar, label: "Pedidos da Semana", path: "/pedidos-semana", roles: ['admin', 'colaborador'], emoji: "🗓️" },
     ];
 
     // Lógica simplificada e robusta para o menu
@@ -134,7 +137,10 @@ const MainLayout = () => {
                             )}>
                                 <item.icon className={cn("h-5 w-5 transition-transform duration-300 group-hover:scale-110", location.pathname === item.path ? "text-primary" : "text-muted-foreground")} />
                             </div>
-                            <span className="text-sm tracking-wide font-medium">{item.label}</span>
+                            <div className="flex items-center gap-2">
+                                <span className="emoji-3d text-lg">{item.emoji}</span>
+                                <span className="text-sm tracking-wide font-medium">{item.label}</span>
+                            </div>
                         </Link>
                     ))}
                 </nav>
@@ -184,6 +190,15 @@ const MainLayout = () => {
                 <main className="flex-1 p-3 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden bg-black/40 relative">
                     {/* Premium Luxury Serif Watermark */}
                     <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none z-0 mt-16 overflow-hidden select-none animate-float">
+                        <div className="absolute -left-20 top-20 opacity-5 animate-pulse delay-700">
+                             <Armchair size={120} />
+                        </div>
+                        <div className="absolute -right-20 top-40 opacity-5 animate-bounce delay-1000 duration-[10s]">
+                             <Sofa size={150} />
+                        </div>
+                        <div className="absolute left-1/4 -top-10 opacity-5 rotate-12">
+                             <Ruler size={80} />
+                        </div>
                         <div className="text-border-beam px-10 py-4">
                             <h1 className="text-6xl md:text-8xl lg:text-9xl font-normal text-primary/40 font-['Lobster',cursive] drop-shadow-[8px_8px_0px_rgba(0,0,0,0.5)] rotate-[-3deg]">
                                 BJL Planejados
