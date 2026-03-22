@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Pacifico&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -207,6 +207,21 @@
   @keyframes borderBeam {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
+  }
+
+  /* Animated circling line for text */
+  .text-border-beam {
+    @apply relative inline-block p-4;
+  }
+  .text-border-beam::before {
+    content: "";
+    @apply absolute inset-0 border-2 border-primary/20 rounded-[2rem];
+    mask-image: linear-gradient(to right, transparent, black, transparent);
+    animation: rotate 4s linear infinite;
+  }
+  @keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 
   /* 3D Tilt Utility */

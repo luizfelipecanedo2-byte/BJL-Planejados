@@ -182,11 +182,13 @@ const MainLayout = () => {
                 </header>
 
                 <main className="flex-1 p-3 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden bg-black/40 relative">
-                    {/* Modern Global Golden Watermark Background */}
+                    {/* Animated Vintage Brand Watermark */}
                     <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none z-0 mt-32 overflow-hidden select-none">
-                        <h1 className="text-4xl md:text-6xl lg:text-7xl font-extralight tracking-[0.5em] text-primary/20 uppercase whitespace-nowrap opacity-100 select-none">
-                            BJL PLANEJADOS
-                        </h1>
+                        <div className="text-border-beam">
+                            <h1 className="text-5xl md:text-7xl lg:text-8xl font-normal text-primary/30 font-['Pacifico',cursive] drop-shadow-[5px_5px_0px_rgba(0,0,0,0.2)]">
+                                BJL Planejados
+                            </h1>
+                        </div>
                     </div>
                     <div className="relative z-10 w-full h-full">
                         <Outlet />
