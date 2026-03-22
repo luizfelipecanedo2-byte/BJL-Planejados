@@ -33,7 +33,13 @@ const Index = () => {
 
   return (
 
-    <div className="space-y-6">
+    <div className="space-y-6 relative min-h-screen">
+      {/* Golden Watermark Background */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[-1] opacity-[0.03] overflow-hidden select-none translate-y-20">
+        <h1 className="text-[18vw] font-black tracking-tighter text-primary rotate-[-10deg] whitespace-nowrap">
+          BJL PLANEJADOS
+        </h1>
+      </div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Vendas</h2>
