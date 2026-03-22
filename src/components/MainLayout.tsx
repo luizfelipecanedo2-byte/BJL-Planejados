@@ -130,17 +130,17 @@ const MainLayout = () => {
                             )}
                         >
                             <div className={cn(
-                                "p-2 rounded-lg transition-all duration-300",
+                                "flex items-center justify-center p-2 rounded-lg transition-all duration-300 w-10 h-10",
                                 location.pathname === item.path 
-                                    ? "bg-primary/20 shadow-[0_0_15px_rgba(251,191,36,0.2)]" 
+                                    ? "bg-primary/20 scale-110 shadow-[0_0_15px_rgba(251,191,36,0.3)]" 
                                     : "bg-transparent group-hover:bg-primary/10"
                             )}>
-                                <item.icon className={cn("h-5 w-5 transition-transform duration-300 group-hover:scale-110", location.pathname === item.path ? "text-primary" : "text-muted-foreground")} />
+                                <span className="emoji-3d text-xl">{item.emoji}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <span className="emoji-3d text-lg">{item.emoji}</span>
-                                <span className="text-sm tracking-wide font-medium">{item.label}</span>
-                            </div>
+                            <span className={cn(
+                                "text-sm tracking-wide transition-all",
+                                location.pathname === item.path ? "font-black" : "font-medium"
+                            )}>{item.label}</span>
                         </Link>
                     ))}
                 </nav>
