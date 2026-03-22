@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Fragment } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 interface DRETabProps {
     selectedDREYear: string;
@@ -57,39 +58,49 @@ const DRETab = ({
                             {/* Gross Revenue */}
                             <div className="flex justify-between items-center group cursor-default">
                                 <span className="font-bold text-sm text-emerald-500 uppercase tracking-tight">(+) Receita Bruta</span>
-                                <span className="font-black text-lg transition-transform group-hover:scale-110">{formatCurrency(dreData.grossRevenue)}</span>
+                                <span className="font-black text-lg transition-transform group-hover:scale-110">
+                                    <AnimatedCounter value={dreData.grossRevenue} formatter={formatCurrency} />
+                                </span>
                             </div>
 
                             {/* Taxes */}
                             <div className="flex justify-between items-center pl-4 text-xs text-muted-foreground italic border-l border-emerald-500/20 py-1">
                                 <span>(-) Impostos s/ Vendas</span>
-                                <span className="font-bold">{formatCurrency(dreData.taxes)}</span>
+                                <span className="font-bold">
+                                    <AnimatedCounter value={dreData.taxes} formatter={formatCurrency} />
+                                </span>
                             </div>
 
                             {/* Net Revenue */}
                             <div className="flex justify-between items-center py-3 border-t border-b border-border/50 bg-primary/5 px-2 rounded-lg">
                                 <span className="font-black text-xs uppercase tracking-widest text-primary">(=) Receita Líquida</span>
-                                <span className="font-black text-primary">{formatCurrency(dreData.netRevenue)}</span>
+                                <span className="font-black text-primary">
+                                    <AnimatedCounter value={dreData.netRevenue} formatter={formatCurrency} />
+                                </span>
                             </div>
 
                             {/* Variable Costs */}
                             <div className="flex justify-between items-center pl-4 text-xs text-rose-500/60 italic border-l border-rose-500/20 py-1">
                                 <span>(-) Custos Variáveis</span>
-                                <span className="font-bold">{formatCurrency(dreData.variableCosts)}</span>
+                                <span className="font-bold">
+                                    <AnimatedCounter value={dreData.variableCosts} formatter={formatCurrency} />
+                                </span>
                             </div>
 
                             {/* Contribution Margin */}
                             <div className="flex justify-between items-center py-3 border-t border-b border-border/50 bg-blue-500/5 px-2 rounded-lg">
                                 <span className="font-black text-xs uppercase tracking-widest text-blue-500">(=) Margem de Contribuição</span>
                                 <span className={`font-black ${dreData.contributionMargin >= 0 ? 'text-blue-500' : 'text-rose-500'}`}>
-                                    {formatCurrency(dreData.contributionMargin)}
+                                    <AnimatedCounter value={dreData.contributionMargin} formatter={formatCurrency} />
                                 </span>
                             </div>
 
                             {/* Fixed Expenses */}
                             <div className="flex justify-between items-center pl-4 text-xs text-rose-500/60 italic border-l border-rose-500/20 py-1">
                                 <span>(-) Despesas Fixas</span>
-                                <span className="font-bold">{formatCurrency(dreData.fixedExpenses)}</span>
+                                <span className="font-bold">
+                                    <AnimatedCounter value={dreData.fixedExpenses} formatter={formatCurrency} />
+                                </span>
                             </div>
 
                             {/* Net Result */}
@@ -98,7 +109,9 @@ const DRETab = ({
                                 dreData.netResult >= 0 ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'
                             )}>
                                 <span className="font-black text-[10px] text-white/80 uppercase tracking-[0.3em]">Resultado Líquido</span>
-                                <span className="font-black text-3xl text-white tracking-tighter">{formatCurrency(dreData.netResult)}</span>
+                                <span className="font-black text-3xl text-white tracking-tighter">
+                                    <AnimatedCounter value={dreData.netResult} formatter={formatCurrency} />
+                                </span>
                                 <div className="px-3 py-1 bg-white/20 rounded-full text-[8px] font-black text-white uppercase tracking-widest mt-2 border border-white/10">
                                     {dreData.netResult >= 0 ? 'Lucro do Exercício' : 'Prejuízo do Exercício'}
                                 </div>

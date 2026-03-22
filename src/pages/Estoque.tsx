@@ -1,12 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Truck, AlertTriangle, Package } from "lucide-react";
 import { toast } from "sonner";
 import { Product } from "@/types/product";
 import ProductTable from "@/components/crm/ProductTable";
 import ProductFormDialog from "@/components/crm/ProductFormDialog";
 import { supabase } from "@/lib/supabase";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { MagicButton } from "@/components/ui/magic-button";
+import { cn } from "@/lib/utils";
 
 const Estoque = () => {
     const [products, setProducts] = useState<Product[]>([]);
@@ -143,27 +146,91 @@ const Estoque = () => {
         ? products.filter(p => p.quantity < p.minStockLevel)
         : products;
 
+    const totalInventoryValue = products.reduce((acc, p) => acc + (p.quantity * p.unitPrice), 0);
+    const lowStockCount = products.filter(p => p.quantity < p.minStockLevel).length;
+    const totalItems = products.length;
+
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+        }).format(value);
+    };
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold tracking-tight">Estoque</h2>
-                <Button onClick={handleNewProduct} size="sm" className="gap-1.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                   <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Controle de Estoque</h2>
+                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Gestão de Patrimônio e Insumos High-End</p>
+                </div>
+                <MagicButton onClick={handleNewProduct} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
                     <Plus className="h-4 w-4" />
                     Novo Produto
-                </Button>
+                </MagicButton>
             </div>
 
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                    <CardTitle>Controle de Estoque</CardTitle>
+            {/* STOCK HUD */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
+                            <Truck className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Valor Total em Estoque</p>
+                            <h3 className="text-3xl font-black text-primary tracking-tighter">
+                                <AnimatedCounter value={totalInventoryValue} formatter={formatCurrency} />
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-rose-500">
+                            <AlertTriangle className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Alertas de Reposição</p>
+                            <h3 className={cn("text-3xl font-black tracking-tighter", lowStockCount > 0 ? "text-rose-500" : "text-emerald-500")}>
+                                <AnimatedCounter value={lowStockCount} /> 
+                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Itens Baixos</span>
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-blue-500">
+                            <Package className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Total de Itens Cadastrados</p>
+                            <h3 className="text-3xl font-black text-white tracking-tighter">
+                                <AnimatedCounter value={totalItems} />
+                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground text-glow text-primary/50">Produtos</span>
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl rounded-3xl overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-muted/20">
+                    <div>
+                        <CardTitle className="text-xl font-black tracking-tighter uppercase">Itens em Catálogo</CardTitle>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Base de Dados de Insumos</p>
+                    </div>
                     <div className="flex items-center gap-2">
                         <Button
                             variant={showOnlyLowStock ? "destructive" : "outline"}
                             size="sm"
                             onClick={() => setShowOnlyLowStock(!showOnlyLowStock)}
-                            className="text-xs"
+                            className="text-[10px] font-black uppercase tracking-widest h-8 rounded-full"
                         >
-                            {showOnlyLowStock ? "Mostrando: Precisa Pedir" : "Filtrar: Precisa Pedir"}
+                            {showOnlyLowStock ? "Filtro Ativo: Reposição" : "Filtrar Reposição"}
                         </Button>
                     </div>
                 </CardHeader>

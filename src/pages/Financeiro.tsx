@@ -846,8 +846,11 @@ const Financeiro = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <h2 className="text-4xl font-black tracking-tighter bg-gradient-to-r from-primary to-primary/40 bg-clip-text text-transparent uppercase">Financeiro</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+           <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Financeiro</h2>
+           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Gestão de Fluxo e Ativos High-End</p>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

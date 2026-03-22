@@ -6,9 +6,10 @@ import { ServiceOrder } from "@/types/serviceOrder";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
-import { Plus, Loader2, RefreshCw } from "lucide-react";
+import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 const OrdemServico = () => {
     const [orders, setOrders] = useState<ServiceOrder[]>([]);
@@ -286,31 +287,97 @@ const OrdemServico = () => {
         }
     };
 
+    const inProgress = orders.filter(o => o.status === "Em Andamento").length;
+    const totalValueActive = orders.filter(o => o.status === "Em Andamento").reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    const completedThisMonth = orders.filter(o => {
+        const isClosed = o.status === "Encerrado";
+        const date = o.completionDate || o.openDate;
+        return isClosed && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
+    }).length;
+
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+        }).format(value);
+    };
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold tracking-tight">Ordem de Serviço</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                   <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Ordens de Serviço</h2>
+                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Gestão de Produção e Assistência High-End</p>
+                </div>
                 <div className="flex items-center gap-2">
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={fetchOrders}
                         disabled={isLoading}
-                        className="gap-1.5"
+                        className="gap-1.5 h-11 border-white/10 bg-white/5 font-black uppercase tracking-widest text-[10px] rounded-xl"
                     >
                         <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
                         Atualizar
                     </Button>
-                    <MagicButton onClick={handleNewOrder} className="gap-1.5 h-9 px-3">
+                    <MagicButton onClick={handleNewOrder} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
                         <Plus className="h-4 w-4" />
                         Nova OS
                     </MagicButton>
                 </div>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Lista de Ordens de Serviço</CardTitle>
+            {/* OS HUD */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
+                            <RefreshCw className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Ordens em Andamento</p>
+                            <h3 className="text-3xl font-black text-primary tracking-tighter">
+                                <AnimatedCounter value={inProgress} />
+                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Ativas</span>
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
+                            <DollarSign className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Volume em Produção</p>
+                            <h3 className="text-3xl font-black text-amber-500 tracking-tighter">
+                                <AnimatedCounter value={totalValueActive} formatter={formatCurrency} />
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-emerald-500">
+                            <CheckCircle className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Concluídas este Mês</p>
+                            <h3 className="text-3xl font-black text-emerald-500 tracking-tighter">
+                                <AnimatedCounter value={completedThisMonth} />
+                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Finalizadas</span>
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl rounded-3xl overflow-hidden">
+                <CardHeader className="bg-muted/20 pb-4">
+                    <CardTitle className="text-xl font-black tracking-tighter uppercase">Fila de Produção</CardTitle>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Acompanhamento de Processos</p>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
