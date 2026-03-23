@@ -33,6 +33,10 @@ export interface Budget {
     notes: string;
     created_at: string;
     items?: BudgetItem[];
+    production_priority?: number;
+    production_status?: 'aguardando' | 'corte' | 'montagem' | 'acabamento' | 'pronto' | 'entregue';
+    priority_level?: 'baixa' | 'normal' | 'alta' | 'urgente';
+    production_notes?: string;
 }
 
 export function useBudgets() {
@@ -296,6 +300,40 @@ export function useBudgets() {
         }
     };
 
+    const updateProductionStatus = async (budgetId: string, status: string) => {
+        const { error } = await supabase
+            .from('budgets')
+            .update({ production_status: status })
+            .eq('id', budgetId);
+
+        if (error) {
+            toast.error("Erro ao atualizar status de produção");
+            return false;
+        }
+        
+        setBudgets(prev => prev.map(b => b.id === budgetId ? { ...b, production_status: status as any } : b));
+        toast.success("Status de produção atualizado!");
+        return true;
+    };
+
+    const updateProductionPriority = async (budgetId: string, priority: number, level?: string) => {
+        const updates: any = { production_priority: priority };
+        if (level) updates.priority_level = level;
+
+        const { error } = await supabase
+            .from('budgets')
+            .update(updates)
+            .eq('id', budgetId);
+
+        if (error) {
+            toast.error("Erro ao atualizar prioridade");
+            return false;
+        }
+        
+        setBudgets(prev => prev.map(b => b.id === budgetId ? { ...b, ...updates } : b));
+        return true;
+    };
+
     return {
         materials,
         budgets,
@@ -307,6 +345,8 @@ export function useBudgets() {
         saveBudget,
         convertToWeeklyOrders,
         cancelBudgetApproval,
+        updateProductionStatus,
+        updateProductionPriority,
         refreshMaterials: fetchMaterials,
         refreshBudgets: fetchBudgets
     };
