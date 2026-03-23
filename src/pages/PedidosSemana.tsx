@@ -29,13 +29,28 @@ const PedidosSemana = () => {
     useEffect(() => {
         const loadData = async () => {
             await fetchOrders();
-            await syncStockWithOrders();
+            
+            // Sincronização automática apenas na SEGUNDA-FEIRA (1)
+            // Nos outros dias, o usuário tem controle total e o item só volta se ele clicar no botão manualmente
+            const today = new Date().getDay();
+            if (today === 1) {
+                await syncStockWithOrders();
+            }
         };
         loadData();
     }, []);
 
-    const syncStockWithOrders = async () => {
+    const syncStockWithOrders = async (clearFirst = false) => {
         try {
+            if (clearFirst) {
+                const { error: deleteError } = await supabase
+                    .from('weekly_orders')
+                    .delete()
+                    .eq('status', 'pendente');
+                
+                if (deleteError) throw deleteError;
+            }
+
             // 1. Buscar estoque
             const { data: inventoryData, error: inventoryError } = await supabase
                 .from('inventory')
@@ -43,7 +58,7 @@ const PedidosSemana = () => {
             
             if (inventoryError) throw inventoryError;
 
-            // 2. Buscar pedidos pendentes atuais para evitar duplicados
+            // 2. Buscar pedidos pendentes atuais para evitar duplicados (se não foi limpo)
             const { data: pendingOrders, error: ordersError } = await supabase
                 .from('weekly_orders')
                 .select('product')
@@ -51,7 +66,7 @@ const PedidosSemana = () => {
             
             if (ordersError) throw ordersError;
 
-            const pendingProductsSet = new Set((pendingOrders || []).map(o => o.product));
+            const pendingProductsSet = clearFirst ? new Set() : new Set((pendingOrders || []).map(o => o.product));
             
             // 3. Filtrar itens com estoque baixo que não estão nos pedidos
             const lowStockItems = (inventoryData || []).filter(item => 
@@ -419,12 +434,24 @@ const PedidosSemana = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     <Button 
-                        onClick={syncStockWithOrders} 
+                        onClick={() => syncStockWithOrders(false)} 
                         variant="outline"
                         className="gap-2 h-11 px-5 border-blue-500/20 bg-blue-500/5 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-blue-500 hover:text-white group transition-all"
                     >
                         <TrendingUp className="h-4 w-4 group-hover:scale-110 transition-transform text-blue-400" />
-                        Sincronizar Reposição
+                        Sincronizar
+                    </Button>
+                    <Button 
+                        onClick={() => {
+                            if (window.confirm("Isso apagará os pedidos pendentes atuais e criará uma lista nova baseada no estoque contado. Deseja continuar?")) {
+                                syncStockWithOrders(true);
+                            }
+                        }} 
+                        variant="outline"
+                        className="gap-2 h-11 px-5 border-orange-500/20 bg-orange-500/5 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-orange-600 hover:text-white group transition-all"
+                    >
+                        <Trash2 className="h-4 w-4 group-hover:scale-110 transition-transform text-orange-400" />
+                        Reiniciar p/ Sexta
                     </Button>
                     <Button 
                         onClick={() => setIsPrintOpen(true)} 
