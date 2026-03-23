@@ -124,59 +124,87 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
                     @page {
-                        size: A4;
-                        margin: 0;
+                        size: A4 portrait;
+                        margin: 10mm 0; /* Vertical margins to allow browser headers/footers if user wants, or set to 0 for full control */
                     }
 
-                    /* Reset body style for print */
-                    body {
+                    /* General Print Reset */
+                    html, body {
                         background-color: white !important;
                         color: black !important;
                         margin: 0 !important;
                         padding: 0 !important;
+                        width: 210mm !important;
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                     }
 
-                    /* Hide ALL elements by default using visibility to avoid breaking parents */
-                    body * {
-                        visibility: hidden !important;
+                    /* Hide UI elements */
+                    body > *:not(.budget-print-overlay) {
+                        display: none !important;
                     }
                     
-                    /* Show ONLY the budget container and its wrapper */
-                    .budget-print-overlay,
-                    .budget-print-overlay *,
-                    .budget-print-container, 
-                    .budget-print-container * {
-                        visibility: visible !important;
-                    }
-
-                    /* Position the container at the top left of the print page */
                     .budget-print-overlay {
-                        position: absolute !important;
+                        position: static !important;
                         top: 0 !important;
                         left: 0 !important;
-                        width: 100% !important;
+                        width: 210mm !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         background: white !important;
                         display: block !important;
+                        visibility: visible !important;
+                        overflow: visible !important;
                     }
 
                     .budget-print-container {
                         position: relative !important;
-                        margin: 0 auto !important;
+                        margin: 0 !important;
                         width: 100% !important;
-                        max-width: none !important;
+                        max-width: 210mm !important;
+                        min-height: auto !important;
+                        height: auto !important;
                         box-shadow: none !important;
                         border-radius: 0 !important;
                         background: white !important;
+                        border: none !important;
+                        overflow: visible !important;
                     }
 
-                    /* Specifically ensure table elements display correctly */
-                    .budget-print-container table { display: table !important; }
-                    .budget-print-container tr { display: table-row !important; }
-                    .budget-print-container td, .budget-print-container th { display: table-cell !important; }
+                    /* Inner content margins for print safety */
+                    .px-12 {
+                        padding-left: 15mm !important;
+                        padding-right: 15mm !important;
+                    }
+
+                    .relative.h-48 {
+                        height: 160px !important; /* Slightly more compact header for print */
+                    }
+
+                    /* Better table handling */
+                    .budget-print-container table { 
+                        display: table !important; 
+                        width: 100% !important; 
+                        border-collapse: collapse !important;
+                        page-break-inside: auto !important;
+                    }
+                    .budget-print-container tr { 
+                        display: table-row !important; 
+                        page-break-inside: avoid !important;
+                        page-break-after: auto !important;
+                    }
+                    .budget-print-container td, .budget-print-container th { 
+                        display: table-cell !important; 
+                    }
+
+                    thead {
+                        display: table-header-group !important;
+                    }
+
+                    /* Elements that should stay together */
+                    .footer-totals {
+                        page-break-inside: avoid !important;
+                    }
 
                     /* Hide interactive buttons during print */
                     .print-hidden, 
@@ -314,7 +342,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     <div className="flex-1 min-h-[40px]" />
 
                     {/* Footer and Totals */}
-                    <div className="grid grid-cols-5 gap-8 items-start pt-6 border-t border-slate-100">
+                    <div className="grid grid-cols-5 gap-8 items-start pt-6 border-t border-slate-100 footer-totals">
                         <div className="col-span-3 space-y-6">
                             <div>
                                 <h4 className="flex items-center gap-2 text-[9px] font-black uppercase text-amber-600 tracking-widest mb-3">
