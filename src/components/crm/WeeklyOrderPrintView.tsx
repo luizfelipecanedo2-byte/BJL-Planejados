@@ -20,9 +20,16 @@ export default function WeeklyOrderPrintView({ orders, onClose }: WeeklyOrderPri
         return up.includes("BRUTA");
     };
 
-    const chmOrders = orders.filter(o => isCHM(o.supplier));
-    const brutaOrders = orders.filter(o => isBRUTA(o.supplier));
-    const otherOrders = orders.filter(o => !isCHM(o.supplier) && !isBRUTA(o.supplier));
+    const isDefinir = (sup: string | undefined) => {
+        if (!sup) return true;
+        const up = sup.toUpperCase();
+        return up === "A DEFINIR" || up === "DEFINIR" || up === "NULL" || up === "";
+    };
+
+    const definirOrders = orders.filter(o => isDefinir(o.supplier));
+    const chmOrders = orders.filter(o => isCHM(o.supplier) && !isDefinir(o.supplier));
+    const brutaOrders = orders.filter(o => isBRUTA(o.supplier) && !isDefinir(o.supplier));
+    const otherOrders = orders.filter(o => !isCHM(o.supplier) && !isBRUTA(o.supplier) && !isDefinir(o.supplier));
     
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
@@ -31,11 +38,25 @@ export default function WeeklyOrderPrintView({ orders, onClose }: WeeklyOrderPri
         }).format(value);
     };
 
-    const OrderTable = ({ title, items, colorClass, textColorClass }: { title: string, items: Order[], colorClass: string, textColorClass: string }) => (
-        <div className="mb-16 break-inside-avoid">
-            <div className={`border-l-8 ${colorClass} pl-6 mb-8`}>
-                <h2 className={`text-4xl font-black tracking-tighter uppercase ${textColorClass}`}>{title}</h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-1">Pedido de Compra Semanal</p>
+    const OrderTable = ({ title, items, colorClass, textColorClass, isDraft = false }: { title: string, items: Order[], colorClass: string, textColorClass: string, isDraft?: boolean }) => (
+        <div className="mb-12 break-inside-avoid">
+            <div className={`border-l-8 ${colorClass} pl-6 mb-6`}>
+                <div className="flex justify-between items-end">
+                    <div>
+                        <h2 className={`text-4xl font-black tracking-tighter uppercase ${textColorClass}`}>{title}</h2>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-1">
+                            {isDraft ? "Aguardando definição de fornecedor" : "Pedido de Compra Semanal"}
+                        </p>
+                    </div>
+                    {items.length > 0 && (
+                        <div className="text-right">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total da Seção</p>
+                            <p className={`font-black text-2xl ${textColorClass} tracking-tighter`}>
+                                {formatCurrency(items.reduce((acc, curr) => acc + curr.totalValue, 0))}
+                            </p>
+                        </div>
+                    )}
+                </div>
                 <div className="h-px w-full bg-slate-100 mt-4" />
             </div>
             
@@ -52,7 +73,7 @@ export default function WeeklyOrderPrintView({ orders, onClose }: WeeklyOrderPri
                 <tbody className="divide-y divide-slate-100">
                     {items.length === 0 ? (
                         <tr>
-                            <td colSpan={5} className="py-12 text-center text-slate-400 uppercase text-[10px] font-black tracking-widest opacity-40 italic">Nenhum pedido registrado esta semana.</td>
+                            <td colSpan={5} className="py-8 text-center text-slate-400 uppercase text-[10px] font-black tracking-widest opacity-40 italic">Nenhum item nesta seção.</td>
                         </tr>
                     ) : (
                         items.map((order) => (
@@ -66,16 +87,6 @@ export default function WeeklyOrderPrintView({ orders, onClose }: WeeklyOrderPri
                         ))
                     )}
                 </tbody>
-                {items.length > 0 && (
-                    <tfoot>
-                        <tr className="bg-slate-900/5">
-                            <td colSpan={4} className="px-6 py-6 text-right font-black uppercase text-[10px] tracking-[0.3em] text-slate-400">Total Consolidado do Fornecedor:</td>
-                            <td className={`px-6 py-6 text-right font-black text-2xl ${textColorClass} tracking-tighter`}>
-                                {formatCurrency(items.reduce((acc, curr) => acc + curr.totalValue, 0))}
-                            </td>
-                        </tr>
-                    </tfoot>
-                )}
             </table>
         </div>
     );
@@ -98,6 +109,16 @@ export default function WeeklyOrderPrintView({ orders, onClose }: WeeklyOrderPri
                 </div>
 
                 {/* Tables */}
+                {definirOrders.length > 0 && (
+                    <OrderTable 
+                        title="A DEFINIR" 
+                        items={definirOrders} 
+                        colorClass="border-blue-500" 
+                        textColorClass="text-blue-600"
+                        isDraft={true}
+                    />
+                )}
+
                 <OrderTable 
                     title="CHM Morais / CED" 
                     items={chmOrders} 
@@ -120,6 +141,17 @@ export default function WeeklyOrderPrintView({ orders, onClose }: WeeklyOrderPri
                         textColorClass="text-slate-400"
                     />
                 )}
+
+                {/* Summary for entire document */}
+                <div className="bg-slate-900 text-white p-10 rounded-2xl flex justify-between items-center mt-12 break-inside-avoid">
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Total Consolidado da Semana</p>
+                        <p className="text-sm font-bold opacity-60">Soma de todos os fornecedores e itens pendentes</p>
+                    </div>
+                    <p className="text-5xl font-black tracking-tighter">
+                        {formatCurrency(orders.reduce((acc, curr) => acc + curr.totalValue, 0))}
+                    </p>
+                </div>
 
                 {/* Footer */}
                 <div className="mt-32 pt-16 border-t-2 border-slate-100 flex justify-between items-center opacity-40">

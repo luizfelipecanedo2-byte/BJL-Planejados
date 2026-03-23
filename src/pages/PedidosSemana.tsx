@@ -566,7 +566,7 @@ const PedidosSemana = () => {
 
             {isPrintOpen && (
                 <WeeklyOrderPrintView 
-                    orders={currentWeekOrders} 
+                    orders={orders} 
                     onClose={() => setIsPrintOpen(false)} 
                 />
             )}
