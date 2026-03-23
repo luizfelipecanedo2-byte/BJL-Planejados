@@ -105,7 +105,7 @@ const App = () => {
             <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden border border-white/10">
                 <div className="h-full bg-gradient-to-r from-primary via-amber-400 to-primary w-2/3 animate-[shimmer_2s_infinite] rounded-full" />
             </div>
-            <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">BJL Planejados • Luxo & Tecnologia</p>
+            <p className="text-[10px] font-black text-white/30 uppercase tracking-widest whitespace-nowrap">BJL Planejados • Luxo & Tecnologia</p>
         </div>
       </div>
     );

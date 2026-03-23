@@ -211,7 +211,7 @@ const MainLayout = () => {
                             <div className="stardust left-20 bottom-0 delay-700" />
                             <div className="stardust right-0 bottom-10 delay-1000" />
                             
-                            <h1 className="text-6xl md:text-8xl lg:text-9xl font-normal text-primary/40 font-['Lobster',cursive] drop-shadow-[8px_8px_0px_rgba(0,0,0,0.5)] rotate-[-3deg] shimmer-gold">
+                            <h1 className="text-2xl md:text-8xl lg:text-9xl font-normal text-primary/40 font-['Lobster',cursive] drop-shadow-[8px_8px_0px_rgba(0,0,0,0.5)] rotate-[-3deg] shimmer-gold whitespace-nowrap">
                                 BJL Planejados
                             </h1>
                         </div>

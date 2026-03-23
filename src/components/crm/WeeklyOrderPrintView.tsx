@@ -86,7 +86,7 @@ export default function WeeklyOrderPrintView({ orders, onClose }: WeeklyOrderPri
                 {/* Header */}
                 <div className="flex justify-between items-end mb-16 border-b-8 border-slate-900 pb-10">
                     <div>
-                        <div className="h-12 w-24 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter mb-6">BJL</div>
+                        <div className="h-12 w-32 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter mb-6 whitespace-nowrap">BJL</div>
                         <h1 className="text-5xl font-black tracking-tighter uppercase leading-none mb-2">Pedidos <span className="text-slate-400">Semanais</span></h1>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.6em] ml-1">Relatório Oficial de Compras • Procurements List</p>
                     </div>

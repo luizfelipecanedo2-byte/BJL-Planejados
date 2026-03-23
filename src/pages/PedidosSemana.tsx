@@ -27,8 +27,69 @@ const PedidosSemana = () => {
     const [isPrintOpen, setIsPrintOpen] = useState(false);
 
     useEffect(() => {
-        fetchOrders();
+        const loadData = async () => {
+            await fetchOrders();
+            await syncStockWithOrders();
+        };
+        loadData();
     }, []);
+
+    const syncStockWithOrders = async () => {
+        try {
+            // 1. Buscar estoque
+            const { data: inventoryData, error: inventoryError } = await supabase
+                .from('inventory')
+                .select('*');
+            
+            if (inventoryError) throw inventoryError;
+
+            // 2. Buscar pedidos pendentes atuais para evitar duplicados
+            const { data: pendingOrders, error: ordersError } = await supabase
+                .from('weekly_orders')
+                .select('product')
+                .eq('status', 'pendente');
+            
+            if (ordersError) throw ordersError;
+
+            const pendingProductsSet = new Set((pendingOrders || []).map(o => o.product));
+            
+            // 3. Filtrar itens com estoque baixo que não estão nos pedidos
+            const lowStockItems = (inventoryData || []).filter(item => 
+                Number(item.quantity) < Number(item.min_stock_level) && 
+                !pendingProductsSet.has(item.name)
+            );
+
+            if (lowStockItems.length === 0) return;
+
+            // 4. Inserir novos pedidos
+            const newOrders = lowStockItems.map(item => {
+                const quantityToOrder = Math.max(1, Number(item.min_stock_level) - Number(item.quantity));
+                return {
+                    product: item.name,
+                    quantity: quantityToOrder,
+                    unit_price: Number(item.unit_price),
+                    total_value: Number(item.unit_price) * quantityToOrder,
+                    client: 'REPOSIÇÃO ESTOQUE',
+                    supplier: 'A DEFINIR',
+                    order_date: new Date().toISOString().split('T')[0],
+                    status: 'pendente'
+                };
+            });
+
+            const { error: insertError } = await supabase
+                .from('weekly_orders')
+                .insert(newOrders);
+
+            if (insertError) throw insertError;
+
+            toast.info(`${lowStockItems.length} itens de reposição automática adicionados.`);
+            
+            // Recarregar pedidos para mostrar os novos
+            await fetchOrders();
+        } catch (error) {
+            console.error('Erro ao sincronizar estoque:', error);
+        }
+    };
 
     const fetchOrders = async () => {
         try {
@@ -357,6 +418,14 @@ const PedidosSemana = () => {
                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Monitoramento de Compras e Suprimentos</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <Button 
+                        onClick={syncStockWithOrders} 
+                        variant="outline"
+                        className="gap-2 h-11 px-5 border-blue-500/20 bg-blue-500/5 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-blue-500 hover:text-white group transition-all"
+                    >
+                        <TrendingUp className="h-4 w-4 group-hover:scale-110 transition-transform text-blue-400" />
+                        Sincronizar Reposição
+                    </Button>
                     <Button 
                         onClick={() => setIsPrintOpen(true)} 
                         variant="outline"

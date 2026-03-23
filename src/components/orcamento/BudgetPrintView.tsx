@@ -193,9 +193,9 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                 {/* Header with Black Bar and Gold Wave */}
                 <div className="relative h-48 shrink-0">
                     {/* Black Top Bar */}
-                    <div className="bg-slate-950 h-24 w-full flex items-center justify-center px-12 relative z-10">
+                    <div className="bg-slate-950 h-24 w-full flex items-center justify-center px-4 md:px-12 relative z-10">
                          <div className="flex flex-col items-center">
-                            <h1 className="text-xl font-black uppercase tracking-[0.3em] text-white leading-none">BJL PLANEJADOS</h1>
+                            <h1 className="text-sm md:text-xl font-black uppercase tracking-widest md:tracking-[0.3em] text-white leading-none whitespace-nowrap">BJL PLANEJADOS</h1>
                         </div>
                     </div>
 

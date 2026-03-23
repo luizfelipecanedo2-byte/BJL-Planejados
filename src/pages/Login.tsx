@@ -52,7 +52,7 @@ export default function Login() {
                     </div>
                     
                     <div className="text-center space-y-2">
-                        <h1 className="text-4xl font-black tracking-tighter shimmer-gold">
+                        <h1 className="text-xl sm:text-4xl font-black tracking-tighter shimmer-gold whitespace-nowrap">
                             BJL PLANEJADOS
                         </h1>
                         <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-muted-foreground/60 leading-none">
