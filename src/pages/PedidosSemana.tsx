@@ -30,11 +30,15 @@ const PedidosSemana = () => {
         const loadData = async () => {
             await fetchOrders();
             
-            // Sincronização automática apenas na SEGUNDA-FEIRA (1)
-            // Nos outros dias, o usuário tem controle total e o item só volta se ele clicar no botão manualmente
-            const today = new Date().getDay();
-            if (today === 1) {
+            // Sincronização automática apenas na SEGUNDA-FEIRA (1) e apenas UMA VEZ ao dia
+            // Se o usuário apagar um item, ele não voltará ao recarregar a página no mesmo dia
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            const lastSync = localStorage.getItem('last_stock_sync');
+            
+            if (today.getDay() === 1 && lastSync !== todayStr) {
                 await syncStockWithOrders();
+                localStorage.setItem('last_stock_sync', todayStr);
             }
         };
         loadData();
