@@ -6,10 +6,13 @@ import { ServiceOrder } from "@/types/serviceOrder";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
-import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle } from "lucide-react";
+import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const OrdemServico = () => {
     const [orders, setOrders] = useState<ServiceOrder[]>([]);
@@ -48,7 +51,7 @@ const OrdemServico = () => {
                 id: o.id,
                 ticketNumber: o.ticket_number || "S/N",
                 openDate: parseDate(o.open_date),
-                clientId: o.client_id, // Adicionado
+                clientId: o.client_id,
                 client: o.client || "Não informado",
                 type: o.type as any || "Fabricação",
                 action: o.action || "",
@@ -57,8 +60,11 @@ const OrdemServico = () => {
                 completionDate: o.completion_date ? parseDate(o.completion_date) : undefined,
                 notes: o.notes,
                 attachments: o.attachments || [],
-                amount: o.amount || 0, // Adicionado
-                laborLogs: []
+                amount: o.amount || 0,
+                laborLogs: [],
+                priorityLevel: o.priority_level || 'normal',
+                productionPriority: o.production_priority || 0,
+                productionNotes: o.production_notes || ""
             }));
 
             // Mostra o que já tem
@@ -226,6 +232,11 @@ const OrdemServico = () => {
             if (updates.attachments !== undefined) updateData.attachments = updates.attachments;
             if (updates.clientId !== undefined) updateData.client_id = updates.clientId || null;
             if (updates.amount !== undefined) updateData.amount = updates.amount || 0;
+            
+            // Campos de Produção
+            if (updates.priorityLevel !== undefined) updateData.priority_level = updates.priorityLevel;
+            if (updates.productionPriority !== undefined) updateData.production_priority = updates.productionPriority;
+            if (updates.productionNotes !== undefined) updateData.production_notes = updates.productionNotes;
 
             const { error } = await supabase
                 .from('service_orders')
@@ -247,7 +258,6 @@ const OrdemServico = () => {
 
                 if (deleteError) {
                     console.error("Erro ao deletar logs antigos:", deleteError);
-                    // Não travamos o processo aqui, mas avisamos no console
                 }
 
                 // Insert current ones
@@ -287,13 +297,59 @@ const OrdemServico = () => {
         }
     };
 
+    const handleMoveUp = async (order: ServiceOrder) => {
+        const currentPrio = order.productionPriority || 0;
+        const higherItems = orders
+            .filter(o => o.status === "Em Andamento" && (o.productionPriority || 0) > currentPrio)
+            .sort((a, b) => (a.productionPriority || 0) - (b.productionPriority || 0));
+
+        if (higherItems.length > 0) {
+            const nextItem = higherItems[0];
+            const nextPrio = nextItem.productionPriority || (currentPrio + 1);
+            
+            await handleUpdate(order.id, { productionPriority: nextPrio });
+            await handleUpdate(nextItem.id, { productionPriority: currentPrio });
+        } else {
+            await handleUpdate(order.id, { productionPriority: currentPrio + 1 });
+        }
+    };
+
+    const handleMoveDown = async (order: ServiceOrder) => {
+        const currentPrio = order.productionPriority || 0;
+        const lowerItems = orders
+            .filter(o => o.status === "Em Andamento" && (o.productionPriority || 0) < currentPrio)
+            .sort((a, b) => (b.productionPriority || 0) - (a.productionPriority || 0));
+
+        if (lowerItems.length > 0) {
+            const nextItem = lowerItems[0];
+            const nextPrio = nextItem.productionPriority || Math.max(0, currentPrio - 1);
+            
+            await handleUpdate(order.id, { productionPriority: nextPrio });
+            await handleUpdate(nextItem.id, { productionPriority: currentPrio });
+        } else {
+            await handleUpdate(order.id, { productionPriority: Math.max(0, currentPrio - 1) });
+        }
+    };
+
+    const handleStartOrder = async (order: ServiceOrder) => {
+        await handleUpdate(order.id, { status: 'Em Andamento' });
+        toast.success("OS enviada para produção!");
+    };
+
     const inProgress = orders.filter(o => o.status === "Em Andamento").length;
+    const defining = orders.filter(o => o.status === "A Definir").length;
     const totalValueActive = orders.filter(o => o.status === "Em Andamento").reduce((acc, curr) => acc + (curr.amount || 0), 0);
     const completedThisMonth = orders.filter(o => {
         const isClosed = o.status === "Encerrado";
         const date = o.completionDate || o.openDate;
         return isClosed && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
     }).length;
+    
+    const productionQueue = orders
+        .filter(o => o.status === "Em Andamento")
+        .sort((a, b) => (b.productionPriority || 0) - (a.productionPriority || 0));
+
+    const defineList = orders.filter(o => o.status === "A Definir");
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
@@ -328,14 +384,29 @@ const OrdemServico = () => {
             </div>
 
             {/* OS HUD */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card border-beam-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-blue-500">
+                            <Settings2 className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">A Definir</p>
+                            <h3 className="text-3xl font-black text-blue-500 tracking-tighter">
+                                <AnimatedCounter value={defining} />
+                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Pauta</span>
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card border-beam-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
                             <RefreshCw className="h-32 w-32" />
                         </div>
                         <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Ordens em Andamento</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Em Produção</p>
                             <h3 className="text-3xl font-black text-primary tracking-tighter">
                                 <AnimatedCounter value={inProgress} />
                                 <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Ativas</span>
@@ -344,13 +415,13 @@ const OrdemServico = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card border-beam-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
                             <DollarSign className="h-32 w-32" />
                         </div>
                         <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Volume em Produção</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Volume Financeiro</p>
                             <h3 className="text-3xl font-black text-amber-500 tracking-tighter">
                                 <AnimatedCounter value={totalValueActive} formatter={formatCurrency} />
                             </h3>
@@ -358,13 +429,13 @@ const OrdemServico = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card border-beam-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-emerald-500">
                             <CheckCircle className="h-32 w-32" />
                         </div>
                         <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Concluídas este Mês</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Concluídas (Mês)</p>
                             <h3 className="text-3xl font-black text-emerald-500 tracking-tighter">
                                 <AnimatedCounter value={completedThisMonth} />
                                 <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Finalizadas</span>
@@ -374,26 +445,167 @@ const OrdemServico = () => {
                 </Card>
             </div>
 
-            <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl rounded-3xl overflow-hidden">
-                <CardHeader className="bg-muted/20 pb-4">
-                    <CardTitle className="text-xl font-black tracking-tighter uppercase">Fila de Produção</CardTitle>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Acompanhamento de Processos</p>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground italic">
-                            <Loader2 className="h-8 w-8 animate-spin mb-2 text-primary/50" />
-                            Carregando ordens de serviço...
-                        </div>
-                    ) : (
-                        <ServiceOrderTable
-                            orders={orders}
-                            onEdit={handleEditOrder}
-                            onDelete={handleDeleteOrder}
-                        />
-                    )}
-                </CardContent>
-            </Card>
+            <Tabs defaultValue="producao" className="w-full">
+                <TabsList className="bg-white/5 border border-white/10 rounded-2xl p-1 mb-6">
+                    <TabsTrigger value="definir" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-primary data-[state=active]:text-white">
+                        <Settings2 className="h-3 w-3 mr-2" />
+                        Definir (Aguardando Pauta)
+                    </TabsTrigger>
+                    <TabsTrigger value="producao" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+                         <Hammer className="h-3 w-3 mr-2" />
+                        Fila de Produção
+                    </TabsTrigger>
+                    <TabsTrigger value="todos" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-slate-700 data-[state=active]:text-white">
+                        <RefreshCw className="h-3 w-3 mr-2" />
+                        Todas OSs
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="definir" className="space-y-4">
+                     <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl rounded-3xl overflow-hidden">
+                        <CardHeader className="bg-muted/20 pb-4">
+                            <CardTitle className="text-xl font-black tracking-tighter uppercase">Projetos a Definir</CardTitle>
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Aguardando definição de data e prioridade</p>
+                        </CardHeader>
+                        <CardContent>
+                            {isLoading ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground italic">
+                                    <Loader2 className="h-8 w-8 animate-spin mb-2 text-primary/50" />
+                                    Carregando ordens de serviço...
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-4">
+                                    {defineList.map((order) => (
+                                        <Card key={order.id} className="border border-white/5 bg-white/[0.02] overflow-hidden group">
+                                            <div className="p-6 flex flex-col md:flex-row gap-6">
+                                                <div className="flex-1 space-y-4">
+                                                    <div>
+                                                        <h4 className="text-xl font-black tracking-tight text-white uppercase group-hover:text-primary transition-colors">
+                                                            {order.client}
+                                                        </h4>
+                                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                                                            {order.ticketNumber} - {order.action}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex gap-4">
+                                                        <Button variant="outline" size="sm" onClick={() => handleEditOrder(order)} className="text-[10px] font-black uppercase rounded-xl h-8">Editar OS</Button>
+                                                        <Button variant="ghost" size="sm" onClick={() => handleDeleteOrder(order.id)} className="text-[10px] font-black uppercase text-rose-500/50 hover:text-rose-500 h-8">Remover</Button>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col justify-center gap-3 md:w-48">
+                                                    <Button 
+                                                        className="h-16 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl shadow-xl shadow-emerald-900/10 group/btn"
+                                                        onClick={() => handleStartOrder(order)}
+                                                    >
+                                                        <Play className="h-4 w-4 mr-2" />
+                                                        Mandar p/ Fábrica
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    ))}
+                                    {defineList.length === 0 && (
+                                        <div className="p-12 text-center text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Nenhuma OS aguardando definição.</div>
+                                    )}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="producao" className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4">
+                        {productionQueue.map((order, index) => {
+                             const isUrgent = order.priorityLevel === 'urgente';
+                             return (
+                                <Card 
+                                    key={order.id} 
+                                    className={cn(
+                                        "border transition-all duration-300 backdrop-blur-3xl overflow-hidden group",
+                                        isUrgent ? "border-rose-500/30 bg-rose-500/5 shadow-[0_0_30px_rgba(244,63,94,0.1)]" : "border-white/5 bg-white/[0.02]"
+                                    )}
+                                >
+                                    <div className="p-2 flex flex-col md:flex-row items-stretch md:items-center gap-4">
+                                        {/* Action Column */}
+                                        <div className="flex md:flex-col items-center justify-center p-2 bg-white/5 rounded-2xl gap-2 min-w-[50px]">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary hover:text-white" onClick={() => handleMoveUp(order)}>
+                                                <ChevronUp className="h-5 w-5" />
+                                            </Button>
+                                            <div className="text-[10px] font-black text-white/40">#{index + 1}</div>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary hover:text-white" onClick={() => handleMoveDown(order)}>
+                                                <ChevronDown className="h-5 w-5" />
+                                            </Button>
+                                        </div>
+
+                                        <div className="flex-1 p-4">
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className={cn("text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border border-blue-500/20 bg-blue-500/10 text-blue-400")}>
+                                                            Em Produção
+                                                        </span>
+                                                        <span className={cn("text-[8px] font-black uppercase tracking-wider", isUrgent ? "text-rose-500" : "text-slate-400")}>
+                                                            Prioridade: {order.priorityLevel || 'normal'}
+                                                        </span>
+                                                        <span className="text-[8px] font-black uppercase tracking-wider text-primary/80 flex items-center gap-1 ml-2">
+                                                            <CalendarDays className="h-2 w-2" />
+                                                            Previsão: {order.forecastDate.toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                    <h4 className="text-lg font-black tracking-tight text-white uppercase group-hover:text-primary transition-colors">
+                                                        {order.client}
+                                                    </h4>
+                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                                        {order.ticketNumber} - {order.action}
+                                                    </p>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                    <Button variant="outline" size="sm" onClick={() => handleEditOrder(order)} className="text-[10px] font-black uppercase rounded-xl h-8">Detalhes</Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {order.productionNotes && (
+                                        <div className="px-6 py-3 bg-white/[0.01] border-t border-white/5">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <MessageSquare className="h-2.5 w-2.5 text-primary/40" />
+                                                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30">Instruções de Fábrica</span>
+                                            </div>
+                                            <p className="text-[11px] text-white/60 font-medium italic">"{order.productionNotes}"</p>
+                                        </div>
+                                    )}
+                                </Card>
+                             );
+                        })}
+                        {productionQueue.length === 0 && (
+                             <div className="p-12 text-center text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Fábrica vazia. Libere OSs na aba Definir.</div>
+                        )}
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="todos">
+                    <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl rounded-3xl overflow-hidden">
+                        <CardHeader className="bg-muted/20 pb-4">
+                            <CardTitle className="text-xl font-black tracking-tighter uppercase">Histórico de Ordens de Serviço</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {isLoading ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground italic">
+                                    <Loader2 className="h-8 w-8 animate-spin mb-2 text-primary/50" />
+                                    Carregando ordens de serviço...
+                                </div>
+                            ) : (
+                                <ServiceOrderTable
+                                    orders={orders}
+                                    onEdit={handleEditOrder}
+                                    onDelete={handleDeleteOrder}
+                                />
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
 
             <ServiceOrderFormDialog
                 open={isDialogOpen}

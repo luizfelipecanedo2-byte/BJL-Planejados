@@ -1,6 +1,6 @@
 
 export type ServiceType = "Fabricação" | "Assistência";
-export type ServiceStatus = "Em Andamento" | "Encerrado";
+export type ServiceStatus = "A Definir" | "Em Andamento" | "Encerrado";
 
 export interface LaborLog {
     id?: string;
@@ -24,4 +24,7 @@ export interface ServiceOrder {
     attachments?: string[];
     laborLogs?: LaborLog[];
     amount?: number;
+    priorityLevel?: 'baixa' | 'normal' | 'alta' | 'urgente';
+    productionPriority?: number;
+    productionNotes?: string;
 }
