@@ -1,6 +1,6 @@
 
 export type ServiceType = "Fabricação" | "Assistência";
-export type ServiceStatus = "A Definir" | "Em Andamento" | "Encerrado";
+export type ServiceStatus = "A Definir" | "Em Andamento" | "Corte" | "Montagem" | "Acabamento" | "Pronto" | "Encerrado";
 
 export interface LaborLog {
     id?: string;

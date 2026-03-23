@@ -9,12 +9,38 @@ import { MagicButton } from "@/components/ui/magic-button";
 import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { AnimatedCounter } from "@/components/ui/animated-counter";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+    DndContext, 
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { GripVertical } from "lucide-react";
 
 const OrdemServico = () => {
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
     const [orders, setOrders] = useState<ServiceOrder[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
@@ -297,37 +323,39 @@ const OrdemServico = () => {
         }
     };
 
-    const handleMoveUp = async (order: ServiceOrder) => {
-        const currentPrio = order.productionPriority || 0;
-        const higherItems = orders
-            .filter(o => o.status === "Em Andamento" && (o.productionPriority || 0) > currentPrio)
-            .sort((a, b) => (a.productionPriority || 0) - (b.productionPriority || 0));
+    const handleDragEnd = async (event: any) => {
+        const { active, over } = event;
 
-        if (higherItems.length > 0) {
-            const nextItem = higherItems[0];
-            const nextPrio = nextItem.productionPriority || (currentPrio + 1);
+        if (active.id !== over.id) {
+            const oldIndex = productionQueue.findIndex((item) => item.id === active.id);
+            const newIndex = productionQueue.findIndex((item) => item.id === over.id);
+
+            const newQueue = arrayMove(productionQueue, oldIndex, newIndex);
             
-            await handleUpdate(order.id, { productionPriority: nextPrio });
-            await handleUpdate(nextItem.id, { productionPriority: currentPrio });
-        } else {
-            await handleUpdate(order.id, { productionPriority: currentPrio + 1 });
-        }
-    };
+            // Atualizar localmente para responsividade imediata
+            const updatedOrders = orders.map(order => {
+                const queueItemIndex = newQueue.findIndex(item => item.id === order.id);
+                if (queueItemIndex !== -1) {
+                    // Inverter a lógica pois ordenamos por b.priority - a.priority
+                    // Então o primeiro item da lista (index 0) deve ter a MAIOR prioridade
+                    return { ...order, productionPriority: newQueue.length - queueItemIndex };
+                }
+                return order;
+            });
+            setOrders(updatedOrders);
 
-    const handleMoveDown = async (order: ServiceOrder) => {
-        const currentPrio = order.productionPriority || 0;
-        const lowerItems = orders
-            .filter(o => o.status === "Em Andamento" && (o.productionPriority || 0) < currentPrio)
-            .sort((a, b) => (b.productionPriority || 0) - (a.productionPriority || 0));
-
-        if (lowerItems.length > 0) {
-            const nextItem = lowerItems[0];
-            const nextPrio = nextItem.productionPriority || Math.max(0, currentPrio - 1);
-            
-            await handleUpdate(order.id, { productionPriority: nextPrio });
-            await handleUpdate(nextItem.id, { productionPriority: currentPrio });
-        } else {
-            await handleUpdate(order.id, { productionPriority: Math.max(0, currentPrio - 1) });
+            // Persistir todas as mudanças de prioridade no banco
+            for (let i = 0; i < newQueue.length; i++) {
+                const orderId = newQueue[i].id;
+                const newPrio = newQueue.length - i;
+                
+                // Chamada silenciosa (sem toast para cada item)
+                await supabase
+                    .from('service_orders')
+                    .update({ production_priority: newPrio })
+                    .eq('id', orderId);
+            }
+            toast.success("Ordem da fila atualizada!");
         }
     };
 
@@ -336,9 +364,10 @@ const OrdemServico = () => {
         toast.success("OS enviada para produção!");
     };
 
-    const inProgress = orders.filter(o => o.status === "Em Andamento").length;
+    const inProgressStatuses: ServiceStatus[] = ["Em Andamento", "Corte", "Montagem", "Acabamento", "Pronto"];
+    const inProgress = orders.filter(o => inProgressStatuses.includes(o.status)).length;
     const defining = orders.filter(o => o.status === "A Definir").length;
-    const totalValueActive = orders.filter(o => o.status === "Em Andamento").reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    const totalValueActive = orders.filter(o => inProgressStatuses.includes(o.status)).reduce((acc, curr) => acc + (curr.amount || 0), 0);
     const completedThisMonth = orders.filter(o => {
         const isClosed = o.status === "Encerrado";
         const date = o.completionDate || o.openDate;
@@ -346,10 +375,31 @@ const OrdemServico = () => {
     }).length;
     
     const productionQueue = orders
-        .filter(o => o.status === "Em Andamento")
+        .filter(o => inProgressStatuses.includes(o.status))
         .sort((a, b) => (b.productionPriority || 0) - (a.productionPriority || 0));
 
     const defineList = orders.filter(o => o.status === "A Definir");
+
+    const getStatusProgress = (status: ServiceStatus) => {
+        switch (status) {
+            case "Em Andamento": return 10;
+            case "Corte": return 30;
+            case "Montagem": return 60;
+            case "Acabamento": return 85;
+            case "Pronto": return 100;
+            default: return 0;
+        }
+    };
+
+    const getStatusColor = (status: ServiceStatus) => {
+        switch (status) {
+            case "Corte": return "bg-orange-500";
+            case "Montagem": return "bg-amber-500";
+            case "Acabamento": return "bg-indigo-500";
+            case "Pronto": return "bg-emerald-500 hover:bg-emerald-400";
+            default: return "bg-blue-500";
+        }
+    };
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
@@ -514,74 +564,34 @@ const OrdemServico = () => {
                 </TabsContent>
 
                 <TabsContent value="producao" className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4">
-                        {productionQueue.map((order, index) => {
-                             const isUrgent = order.priorityLevel === 'urgente';
-                             return (
-                                <Card 
-                                    key={order.id} 
-                                    className={cn(
-                                        "border transition-all duration-300 backdrop-blur-3xl overflow-hidden group",
-                                        isUrgent ? "border-rose-500/30 bg-rose-500/5 shadow-[0_0_30px_rgba(244,63,94,0.1)]" : "border-white/5 bg-white/[0.02]"
-                                    )}
-                                >
-                                    <div className="p-2 flex flex-col md:flex-row items-stretch md:items-center gap-4">
-                                        {/* Action Column */}
-                                        <div className="flex md:flex-col items-center justify-center p-2 bg-white/5 rounded-2xl gap-2 min-w-[50px]">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary hover:text-white" onClick={() => handleMoveUp(order)}>
-                                                <ChevronUp className="h-5 w-5" />
-                                            </Button>
-                                            <div className="text-[10px] font-black text-white/40">#{index + 1}</div>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary hover:text-white" onClick={() => handleMoveDown(order)}>
-                                                <ChevronDown className="h-5 w-5" />
-                                            </Button>
-                                        </div>
-
-                                        <div className="flex-1 p-4">
-                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className={cn("text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border border-blue-500/20 bg-blue-500/10 text-blue-400")}>
-                                                            Em Produção
-                                                        </span>
-                                                        <span className={cn("text-[8px] font-black uppercase tracking-wider", isUrgent ? "text-rose-500" : "text-slate-400")}>
-                                                            Prioridade: {order.priorityLevel || 'normal'}
-                                                        </span>
-                                                        <span className="text-[8px] font-black uppercase tracking-wider text-primary/80 flex items-center gap-1 ml-2">
-                                                            <CalendarDays className="h-2 w-2" />
-                                                            Previsão: {order.forecastDate.toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-                                                    <h4 className="text-lg font-black tracking-tight text-white uppercase group-hover:text-primary transition-colors">
-                                                        {order.client}
-                                                    </h4>
-                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                                                        {order.ticketNumber} - {order.action}
-                                                    </p>
-                                                </div>
-
-                                                <div className="flex items-center gap-2">
-                                                    <Button variant="outline" size="sm" onClick={() => handleEditOrder(order)} className="text-[10px] font-black uppercase rounded-xl h-8">Detalhes</Button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {order.productionNotes && (
-                                        <div className="px-6 py-3 bg-white/[0.01] border-t border-white/5">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <MessageSquare className="h-2.5 w-2.5 text-primary/40" />
-                                                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30">Instruções de Fábrica</span>
-                                            </div>
-                                            <p className="text-[11px] text-white/60 font-medium italic">"{order.productionNotes}"</p>
-                                        </div>
-                                    )}
-                                </Card>
-                             );
-                        })}
-                        {productionQueue.length === 0 && (
-                             <div className="p-12 text-center text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Fábrica vazia. Libere OSs na aba Definir.</div>
-                        )}
-                    </div>
+                    <DndContext 
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                        modifiers={[restrictToVerticalAxis]}
+                    >
+                        <SortableContext 
+                            items={productionQueue.map(o => o.id)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            <div className="grid grid-cols-1 gap-4">
+                                {productionQueue.map((order, index) => (
+                                    <SortableServiceOrderCard 
+                                        key={order.id}
+                                        order={order}
+                                        index={index}
+                                        onEdit={handleEditOrder}
+                                        onUpdate={handleUpdate}
+                                        getStatusColor={getStatusColor}
+                                        getStatusProgress={getStatusProgress}
+                                    />
+                                ))}
+                                {productionQueue.length === 0 && (
+                                     <div className="p-12 text-center text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Fábrica vazia. Libere OSs na aba Definir.</div>
+                                )}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
                 </TabsContent>
 
                 <TabsContent value="todos">
@@ -628,4 +638,121 @@ const OrdemServico = () => {
 };
 
 export default OrdemServico;
+
+// Componente Interno para Itens Arrastáveis
+interface SortableItemProps {
+    order: ServiceOrder;
+    index: number;
+    onEdit: (order: ServiceOrder) => void;
+    onUpdate: (id: string, updates: Partial<ServiceOrder>) => void;
+    getStatusColor: (status: any) => string;
+    getStatusProgress: (status: any) => number;
+}
+
+const SortableServiceOrderCard = ({ 
+    order, 
+    index, 
+    onEdit, 
+    onUpdate, 
+    getStatusColor, 
+    getStatusProgress 
+}: SortableItemProps) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: order.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 0,
+        opacity: isDragging ? 0.6 : 1,
+    };
+
+    const isUrgent = order.priorityLevel === 'urgente';
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            <Card 
+                className={cn(
+                    "border transition-all duration-300 backdrop-blur-3xl overflow-hidden group",
+                    isUrgent ? "border-rose-500/30 bg-rose-500/5 shadow-[0_0_30px_rgba(244,63,94,0.1)]" : "border-white/5 bg-white/[0.02]"
+                )}
+            >
+                <div className="p-2 flex flex-col md:flex-row items-stretch md:items-center gap-4">
+                    {/* Botão de Arraste */}
+                    <div 
+                        {...attributes} 
+                        {...listeners} 
+                        className="flex md:flex-col items-center justify-center p-2 bg-white/5 rounded-2xl gap-2 min-w-[50px] cursor-grab active:cursor-grabbing hover:bg-white/10 transition-colors"
+                    >
+                        <GripVertical className="h-5 w-5 text-white/30" />
+                        <div className="text-[10px] font-black text-white/40">#{index + 1}</div>
+                    </div>
+
+                    <div className="flex-1 p-4">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Select value={order.status} onValueChange={(val) => onUpdate(order.id, { status: val as any })}>
+                                        <SelectTrigger className={cn("h-6 border-none shadow-none text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full", getStatusColor(order.status), "text-white")}>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-900 border-white/10 text-[10px] uppercase font-bold">
+                                            <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+                                            <SelectItem value="Corte">Corte</SelectItem>
+                                            <SelectItem value="Montagem">Montagem</SelectItem>
+                                            <SelectItem value="Acabamento">Acabamento</SelectItem>
+                                            <SelectItem value="Pronto">Finalizado</SelectItem>
+                                            <SelectItem value="Encerrado">Encerrado</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    
+                                    <span className={cn("text-[8px] font-black uppercase tracking-wider", isUrgent ? "text-rose-500" : "text-slate-400")}>
+                                        Prioridade: {order.priorityLevel || 'normal'}
+                                    </span>
+                                    <span className="text-[8px] font-black uppercase tracking-wider text-primary/80 flex items-center gap-1 ml-2">
+                                        <CalendarDays className="h-2 w-2" />
+                                        Previsão: {order.forecastDate.toLocaleDateString()}
+                                    </span>
+                                </div>
+                                <h4 className="text-lg font-black tracking-tight text-white uppercase group-hover:text-primary transition-colors">
+                                    {order.client}
+                                </h4>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                    {order.ticketNumber} - {order.action}
+                                </p>
+                                
+                                {/* Barra de Progresso */}
+                                <div className="mt-4 w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                    <div 
+                                        className={cn("h-full transition-all duration-1000", getStatusColor(order.status))}
+                                        style={{ width: `${getStatusProgress(order.status)}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm" onClick={() => onEdit(order)} className="text-[10px] font-black uppercase rounded-xl h-8">Detalhes</Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {order.productionNotes && (
+                    <div className="px-6 py-3 bg-white/[0.01] border-t border-white/5">
+                        <div className="flex items-center gap-2 mb-1">
+                            <MessageSquare className="h-2.5 w-2.5 text-primary/40" />
+                            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30">Instruções de Fábrica</span>
+                        </div>
+                        <p className="text-[11px] text-white/60 font-medium italic">"{order.productionNotes}"</p>
+                    </div>
+                )}
+            </Card>
+        </div>
+    );
+};
 
