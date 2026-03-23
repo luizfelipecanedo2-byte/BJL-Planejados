@@ -37,6 +37,7 @@ export interface Budget {
     production_status?: 'aguardando' | 'corte' | 'montagem' | 'acabamento' | 'pronto' | 'entregue';
     priority_level?: 'baixa' | 'normal' | 'alta' | 'urgente';
     production_notes?: string;
+    production_date?: string;
 }
 
 export function useBudgets() {
@@ -160,7 +161,7 @@ export function useBudgets() {
         try {
             let budgetData, budgetError;
 
-            const budgetFields = {
+            const budgetFields: any = {
                 client_name: budget.client_name,
                 project_name: budget.project_name,
                 days_estimated: budget.days_estimated || 1,
@@ -169,8 +170,16 @@ export function useBudgets() {
                 total_cost: budget.total_cost || 0,
                 total_value: budget.total_value || 0,
                 notes: budget.notes || "",
-                status: budget.status || 'em_elaboracao'
+                status: budget.status || 'em_elaboracao',
+                production_priority: budget.production_priority,
+                production_status: budget.production_status,
+                priority_level: budget.priority_level,
+                production_notes: budget.production_notes,
+                production_date: budget.production_date
             };
+
+            // Remove undefined fields to avoid overwriting with null if they weren't provided in a partial update
+            Object.keys(budgetFields).forEach(key => budgetFields[key] === undefined && delete budgetFields[key]);
 
             if (budget.id) {
                 const { data, error } = await supabase
