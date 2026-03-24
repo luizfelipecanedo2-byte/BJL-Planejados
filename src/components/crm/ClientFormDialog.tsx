@@ -24,6 +24,7 @@ interface ClientFormDialogProps {
     onSubmit: (client: Omit<Client, "id" | "createdAt">) => void;
     onUpdate?: (id: string, updates: Partial<Client>) => void;
     editingClient?: Client | null;
+    initialType?: "cliente" | "fornecedor";
 }
 
 const ClientFormDialog = ({
@@ -32,6 +33,7 @@ const ClientFormDialog = ({
     onSubmit,
     onUpdate,
     editingClient,
+    initialType = "cliente",
 }: ClientFormDialogProps) => {
     const [form, setForm] = useState({
         name: "",
@@ -71,7 +73,7 @@ const ClientFormDialog = ({
                 state: "",
                 zipCode: "",
                 notes: "",
-                type: "cliente",
+                type: initialType,
             });
         }
     }, [editingClient, open]);

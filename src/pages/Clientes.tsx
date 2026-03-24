@@ -2,14 +2,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, UserPlus } from "lucide-react";
+import { Users, Truck, UserPlus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Client } from "@/types/client";
 import ClientTable from "@/components/crm/ClientTable";
 import ClientFormDialog from "@/components/crm/ClientFormDialog";
 import { supabase } from "@/lib/supabase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Truck, UserPlus } from "lucide-react";
 import { MagicButton } from "@/components/ui/magic-button";
 
 const Clientes = () => {
@@ -93,7 +92,7 @@ const Clientes = () => {
                 state: clientData.state,
                 zip_code: clientData.zipCode,
                 notes: clientData.notes,
-                type: clientData.type || "cliente"
+                type: clientData.type || activeTab // Use active tab as fallback
             };
 
             const { data, error } = await supabase
@@ -102,7 +101,15 @@ const Clientes = () => {
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('Error adding client:', error);
+                if (error.code === '42703') {
+                    toast.error("Erro no Banco de Dados: A coluna 'type' está faltando na tabela de clientes. Por favor, execute o script SQL de correção.");
+                } else {
+                    toast.error(`Erro ao cadastrar cliente: ${error.message || "Tente novamente."}`);
+                }
+                return;
+            }
 
             const createdClient: Client = {
                 id: data.id,
@@ -121,9 +128,9 @@ const Clientes = () => {
 
             setClients([createdClient, ...clients]);
             toast.success("Cliente cadastrado com sucesso!");
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error adding client:', error);
-            toast.error("Erro ao cadastrar cliente.");
+            toast.error("Erro inesperado ao cadastrar cliente.");
         }
     };
 
@@ -226,6 +233,7 @@ const Clientes = () => {
                 onSubmit={handleSubmit}
                 onUpdate={handleUpdate}
                 editingClient={editingClient}
+                initialType={activeTab as "cliente" | "fornecedor"}
             />
         </div>
     );
