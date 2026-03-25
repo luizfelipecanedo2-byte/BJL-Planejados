@@ -125,7 +125,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                 @media print {
                     @page {
                         size: A4 portrait;
-                        margin: 0;
+                        margin: 0 !important;
                     }
 
                     /* General Print Reset */
@@ -153,28 +153,30 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     }
 
                     .budget-print-overlay {
-                        position: absolute !important;
+                        position: fixed !important;
                         top: 0 !important;
                         left: 0 !important;
-                        width: 100% !important;
+                        right: 0 !important;
+                        bottom: 0 !important;
+                        width: 210mm !important;
+                        height: 297mm !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         background: white !important;
                         display: block !important;
-                        overflow: visible !important;
+                        overflow: hidden !important;
+                        z-index: 999999 !important;
                     }
 
                     .budget-print-container {
-                        position: relative !important;
-                        margin: 0 !important;
+                        position: absolute !important;
+                        top: 0 !important;
+                        left: 0 !important;
                         width: 210mm !important;
                         height: 297mm !important;
-                        min-height: 297mm !important;
-                        max-height: 297mm !important;
-                        box-shadow: none !important;
-                        border-radius: 0 !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
                         background: white !important;
-                        border: none !important;
                         overflow: hidden !important;
                         display: flex !important;
                         flex-direction: column !important;
@@ -187,7 +189,10 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     }
 
                     .relative.h-48 {
-                        height: 160px !important; /* Slightly more compact header for print */
+                        height: 140px !important; /* Move header content up */
+                    }
+                    .bg-slate-950.h-24 {
+                        height: 80px !important;
                     }
 
                     /* Better table handling */
@@ -240,27 +245,27 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     <div className="absolute top-16 left-0 w-full h-32 bg-amber-500 z-0" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 40%, 0 100%)' }} />
                     <div className="absolute top-16 left-0 w-full h-32 bg-amber-400/50 z-0" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 70%, 0 85%)' }} />
                     
-                    {/* Logo */}
-                    <div className="absolute top-8 left-12 z-20 scale-75 origin-top-left">
+                    {/* Logo - Moved up */}
+                    <div className="absolute top-4 left-12 z-20 scale-75 origin-top-left">
                         <div className="h-44 w-44 rounded-full overflow-hidden bg-black flex items-center justify-center border-8 border-white shadow-2xl">
                             <img src="/logo-bjl.png" alt="BJL Logo" className="w-full h-full object-contain p-2" />
                         </div>
                     </div>
 
-                    {/* Contact Info */}
-                    <div className="absolute top-6 right-12 z-20 flex flex-col gap-1.5 items-end">
-                        <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/20 text-white font-black text-[9px] uppercase tracking-widest shadow-lg">
-                            <Phone size={10} className="text-amber-400" />
-                            <span>(22) 99703-9852</span>
+                    {/* Contact Info - Visible for Print */}
+                    <div className="absolute top-4 right-12 z-20 flex flex-col gap-1.5 items-end print:flex !important">
+                        <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg border border-slate-200/50 text-slate-800 print:text-white font-black text-[9px] uppercase tracking-widest shadow-sm print:flex !important">
+                            <Phone size={10} className="text-amber-500" />
+                            <span className="print:inline-block !important">(22) 99703-9852</span>
                         </div>
-                        <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/20 text-white font-black text-[9px] uppercase tracking-widest shadow-lg">
-                            <Instagram size={10} className="text-amber-400" />
-                            <span>@bjlmoveisplanejados</span>
+                        <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg border border-slate-200/50 text-slate-800 print:text-white font-black text-[9px] uppercase tracking-widest shadow-sm print:flex !important">
+                            <Instagram size={10} className="text-amber-500" />
+                            <span className="print:inline-block !important">@bjlmoveisplanejados</span>
                         </div>
                     </div>
 
-                    <div className="absolute bottom-4 right-12 z-20 flex items-center gap-2 text-slate-800 font-bold text-[8px] uppercase tracking-widest max-w-[250px] text-right">
-                        <span>Rua Maria Vitipó Raposo, n°138, Barão de Macaubas</span>
+                    <div className="absolute bottom-4 right-12 z-20 flex items-center gap-2 text-slate-800 print:text-slate-900 font-black text-[8px] uppercase tracking-widest max-w-[250px] text-right print:flex !important">
+                        <span className="print:inline-block !important">Rua Maria Vitipó Raposo, n°138, Barão de Macaubas</span>
                         <MapPin size={12} className="text-slate-900 shrink-0" />
                     </div>
                 </div>
