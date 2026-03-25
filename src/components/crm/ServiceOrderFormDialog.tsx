@@ -62,7 +62,7 @@ const ServiceOrderFormDialog = ({
         clientId: "",
         type: "Fabricação" as ServiceType,
         action: "",
-        status: "Em Andamento" as ServiceStatus,
+        status: "Plano de corte" as ServiceStatus,
         openDate: new Date().toISOString().split("T")[0],
         forecastDate: "",
         completionDate: "",
@@ -130,7 +130,7 @@ const ServiceOrderFormDialog = ({
                 clientId: "",
                 type: "Fabricação",
                 action: "",
-                status: "Em Andamento",
+                status: "Plano de corte",
                 openDate: new Date().toISOString().split("T")[0],
                 forecastDate: "",
                 completionDate: "",
@@ -146,7 +146,10 @@ const ServiceOrderFormDialog = ({
         setForm((prev) => {
             const updates = { ...prev, [field]: value };
             if (field === "completionDate" && value) {
-                updates.status = "Encerrado";
+                updates.status = "Entregue e Finalizado";
+            }
+            if (field === "status" && value === "Entregue e Finalizado") {
+                updates.completionDate = new Date().toISOString().split("T")[0];
             }
             return updates;
         });
@@ -365,8 +368,17 @@ const ServiceOrderFormDialog = ({
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-                                            <SelectItem value="Encerrado">Encerrado</SelectItem>
+                                            <SelectItem value="Plano de corte">Plano de corte</SelectItem>
+                                            <SelectItem value="Pronto para produção">Pronto para produção</SelectItem>
+                                            <SelectItem value="Corte da caixa">Corte da caixa</SelectItem>
+                                            <SelectItem value="Fita">Fita</SelectItem>
+                                            <SelectItem value="Montagem das caixas">Montagem das caixas</SelectItem>
+                                            <SelectItem value="Corte das portas + Tamponados">Corte das portas + Tamponados</SelectItem>
+                                            <SelectItem value="Colocação dos tamponados">Colocação dos tamponados</SelectItem>
+                                            <SelectItem value="Embalagem">Embalagem</SelectItem>
+                                            <SelectItem value="Pronto para entrega">Pronto para entrega</SelectItem>
+                                            <SelectItem value="Instalação">Instalação</SelectItem>
+                                            <SelectItem value="Entregue e Finalizado">Entregue e Finalizado</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

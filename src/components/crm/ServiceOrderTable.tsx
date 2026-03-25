@@ -23,15 +23,20 @@ interface ServiceOrderTableProps {
 
 const ServiceOrderTable = ({ orders, onEdit, onDelete }: ServiceOrderTableProps) => {
     const getStatusDisplay = (order: ServiceOrder) => {
-        if (order.status === "Encerrado") {
-            return <Badge variant="secondary">Encerrado</Badge>;
+        if (order.status === "Entregue e Finalizado") {
+            return <Badge variant="secondary" className="bg-emerald-500 text-white hover:bg-emerald-600">Entregue e Finalizado</Badge>;
         }
 
         const daysOpen = differenceInDays(new Date(), new Date(order.openDate));
         return (
-            <Badge className="bg-yellow-500 hover:bg-yellow-600">
-                Em andamento há {daysOpen} {daysOpen === 1 ? "dia" : "dias"}
-            </Badge>
+            <div className="flex flex-col gap-1">
+                <Badge className="bg-amber-500 hover:bg-amber-600 whitespace-nowrap">
+                    {order.status}
+                </Badge>
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    Há {daysOpen} {daysOpen === 1 ? "dia" : "dias"}
+                </span>
+            </div>
         );
     };
 
