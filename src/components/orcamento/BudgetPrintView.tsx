@@ -125,7 +125,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                 @media print {
                     @page {
                         size: A4 portrait;
-                        margin: 10mm 0; /* Vertical margins to allow browser headers/footers if user wants, or set to 0 for full control */
+                        margin: 0;
                     }
 
                     /* General Print Reset */
@@ -135,8 +135,10 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         margin: 0 !important;
                         padding: 0 !important;
                         width: 210mm !important;
+                        height: 297mm !important;
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
+                        overflow: hidden !important;
                     }
 
                     /* Hide UI elements */
@@ -165,15 +167,17 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     .budget-print-container {
                         position: relative !important;
                         margin: 0 !important;
-                        width: 100% !important;
-                        max-width: 210mm !important;
-                        min-height: auto !important;
-                        height: auto !important;
+                        width: 210mm !important;
+                        height: 297mm !important;
+                        min-height: 297mm !important;
+                        max-height: 297mm !important;
                         box-shadow: none !important;
                         border-radius: 0 !important;
                         background: white !important;
                         border: none !important;
-                        overflow: visible !important;
+                        overflow: hidden !important;
+                        display: flex !important;
+                        flex-direction: column !important;
                     }
 
                     /* Inner content margins for print safety */
