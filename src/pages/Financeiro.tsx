@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, AlertTriangle } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, AlertTriangle, Receipt, FileSearch } from "lucide-react";
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -30,6 +30,8 @@ import DRETab from "@/components/financeiro/DRETab";
 import ConciliationTab from "@/components/financeiro/ConciliationTab";
 import AssetsTab from "@/components/financeiro/AssetsTab";
 import ServiceExpensesTab from "@/components/financeiro/ServiceExpensesTab";
+import DDAAnalysisTab from "@/components/financeiro/DDAAnalysisTab";
+import NotaFiscalTab from "@/components/financeiro/NotaFiscalTab";
 
 const Financeiro = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -857,10 +859,18 @@ const Financeiro = () => {
         <div className="overflow-x-auto pb-2 scrollbar-hide">
           <TabsList className="w-full sm:w-auto justify-start h-14 bg-muted/20 p-1.5 rounded-2xl border border-border/40 backdrop-blur-md">
             <TabsTrigger value="dashboard" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Dashboard</TabsTrigger>
+            <TabsTrigger value="dda_analysis" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:shadow-lg active:scale-95 transition-all text-blue-400 data-[state=active]:text-white">
+              <FileSearch className="h-3 w-3 mr-2" />
+              Buscador DDA
+            </TabsTrigger>
             <TabsTrigger value="lancamentos" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Lançamentos</TabsTrigger>
             <TabsTrigger value="dre" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">DRE</TabsTrigger>
             <TabsTrigger value="gastos_servicos" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Gastos Projeto</TabsTrigger>
             <TabsTrigger value="conciliacao" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Conciliação</TabsTrigger>
+            <TabsTrigger value="notas_fiscais" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">
+              <Receipt className="h-3 w-3 mr-2" />
+              Notas Fiscais
+            </TabsTrigger>
             <TabsTrigger value="patrimonio" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Em Ativos</TabsTrigger>
           </TabsList>
         </div>
@@ -882,6 +892,10 @@ const Financeiro = () => {
             formatCurrency={formatCurrency}
             handleEditTransaction={handleEditTransaction}
           />
+        </TabsContent>
+
+        <TabsContent value="dda_analysis">
+          <DDAAnalysisTab onTransactionUpdate={fetchTransactions} />
         </TabsContent>
 
         <TabsContent value="lancamentos" className="space-y-6">
@@ -1012,6 +1026,7 @@ const Financeiro = () => {
         <TabsContent value="dre"><DRETab selectedDREYear={selectedDREYear} setSelectedDREYear={setSelectedDREYear} dreData={dreData} detailedExpenses={detailedExpenses} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="gastos_servicos"><ServiceExpensesTab serviceExpenses={serviceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="conciliacao"><ConciliationTab selectedAccount={selectedAccount} setSelectedAccount={setSelectedAccount} currentDateReconciliation={currentDateReconciliation} handlePrevMonth={handlePrevMonth} handleNextMonth={handleNextMonth} totalAccountBalance={totalAccountBalance} reconciliationDailyData={reconciliationDailyData} formatCurrency={formatCurrency} /></TabsContent>
+        <TabsContent value="notas_fiscais"><NotaFiscalTab /></TabsContent>
         <TabsContent value="patrimonio"><AssetsTab assets={assets} handleNewAsset={handleNewAsset} formatCurrency={formatCurrency} /></TabsContent>
       </Tabs>
 

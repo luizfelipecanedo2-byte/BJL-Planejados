@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import ServiceOrderTable from "@/components/crm/ServiceOrderTable";
 import ServiceOrderFormDialog from "@/components/crm/ServiceOrderFormDialog";
-import { ServiceOrder } from "@/types/serviceOrder";
+import { ServiceOrder, ServiceStatus } from "@/types/serviceOrder";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
