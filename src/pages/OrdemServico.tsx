@@ -83,7 +83,7 @@ const OrdemServico = () => {
                 client: o.client || "Não informado",
                 type: o.type as any || "Fabricação",
                 action: o.action || "",
-                status: o.status as any || "Em Andamento",
+                status: o.status as any || "Plano de corte",
                 forecastDate: parseDate(o.forecast_date),
                 completionDate: o.completion_date ? parseDate(o.completion_date) : undefined,
                 notes: o.notes,
@@ -362,16 +362,28 @@ const OrdemServico = () => {
     };
 
     const handleStartOrder = async (order: ServiceOrder) => {
-        await handleUpdate(order.id, { status: 'Em Andamento' });
+        await handleUpdate(order.id, { status: 'Plano de corte' });
         toast.success("OS enviada para produção!");
     };
 
-    const inProgressStatuses: ServiceStatus[] = ["Em Andamento", "Corte", "Montagem", "Acabamento", "Pronto"];
+    const inProgressStatuses: ServiceStatus[] = [
+        "Plano de corte",
+        "Pronto para produção",
+        "Corte da caixa",
+        "Fita",
+        "Montagem das caixas",
+        "Corte das portas + Tamponados",
+        "Colocação dos tamponados",
+        "Embalagem",
+        "Pronto para entrega",
+        "Instalação",
+        "Entregue e Finalizado"
+    ];
     const inProgress = orders.filter(o => inProgressStatuses.includes(o.status)).length;
     const defining = orders.filter(o => o.status === "A Definir").length;
     const totalValueActive = orders.filter(o => inProgressStatuses.includes(o.status)).reduce((acc, curr) => acc + (curr.amount || 0), 0);
     const completedThisMonth = orders.filter(o => {
-        const isClosed = o.status === "Encerrado";
+        const isClosed = o.status === "Entregue e Finalizado";
         const date = o.completionDate || o.openDate;
         return isClosed && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
     }).length;
@@ -384,22 +396,35 @@ const OrdemServico = () => {
 
     const getStatusProgress = (status: ServiceStatus) => {
         switch (status) {
-            case "Em Andamento": return 10;
-            case "Corte": return 30;
-            case "Montagem": return 60;
-            case "Acabamento": return 85;
-            case "Pronto": return 100;
+            case "Plano de corte": return 5;
+            case "Pronto para produção": return 15;
+            case "Corte da caixa": return 25;
+            case "Fita": return 35;
+            case "Montagem das caixas": return 45;
+            case "Corte das portas + Tamponados": return 55;
+            case "Colocação dos tamponados": return 65;
+            case "Embalagem": return 75;
+            case "Pronto para entrega": return 85;
+            case "Instalação": return 95;
+            case "Entregue e Finalizado": return 100;
             default: return 0;
         }
     };
 
     const getStatusColor = (status: ServiceStatus) => {
         switch (status) {
-            case "Corte": return "bg-orange-500";
-            case "Montagem": return "bg-amber-500";
-            case "Acabamento": return "bg-indigo-500";
-            case "Pronto": return "bg-emerald-500 hover:bg-emerald-400";
-            default: return "bg-blue-500";
+            case "Plano de corte": return "bg-slate-500";
+            case "Pronto para produção": return "bg-blue-500";
+            case "Corte da caixa": return "bg-orange-500";
+            case "Fita": return "bg-amber-500";
+            case "Montagem das caixas": return "bg-yellow-600";
+            case "Corte das portas + Tamponados": return "bg-indigo-500";
+            case "Colocação dos tamponados": return "bg-purple-500";
+            case "Embalagem": return "bg-pink-500";
+            case "Pronto para entrega": return "bg-cyan-500";
+            case "Instalação": return "bg-emerald-400";
+            case "Entregue e Finalizado": return "bg-emerald-600";
+            default: return "bg-slate-400";
         }
     };
 
@@ -681,11 +706,20 @@ const SortableServiceOrderCard = ({
         <div ref={setNodeRef} style={style}>
             <Card 
                 className={cn(
-                    "border transition-all duration-300 backdrop-blur-3xl overflow-hidden group",
-                    isUrgent ? "border-rose-500/30 bg-rose-500/5 shadow-[0_0_30px_rgba(244,63,94,0.1)]" : "border-white/5 bg-white/[0.02]"
+                    "border transition-all duration-300 backdrop-blur-3xl overflow-hidden group relative",
+                    isUrgent ? "border-rose-500/30 bg-rose-500/5 shadow-[0_0_30px_rgba(244,63,94,0.1)]" : "border-white/5 bg-white/[0.02]",
+                    order.status === "Entregue e Finalizado" && "bg-emerald-600/90 border-emerald-400/50"
                 )}
             >
-                <div className="p-2 flex flex-col md:flex-row items-stretch md:items-center gap-4">
+                {/* Background Progress Fill */}
+                {order.status !== "Entregue e Finalizado" && (
+                    <div 
+                        className={cn("absolute inset-0 transition-all duration-1000 opacity-[0.08] pointer-events-none", getStatusColor(order.status))}
+                        style={{ width: `${getStatusProgress(order.status)}%` }}
+                    />
+                )}
+
+                <div className="p-2 flex flex-col md:flex-row items-stretch md:items-center gap-4 relative z-10">
                     {/* Botão de Arraste */}
                     <div 
                         {...attributes} 
@@ -705,12 +739,17 @@ const SortableServiceOrderCard = ({
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="bg-slate-900 border-white/10 text-[10px] uppercase font-bold">
-                                            <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-                                            <SelectItem value="Corte">Corte</SelectItem>
-                                            <SelectItem value="Montagem">Montagem</SelectItem>
-                                            <SelectItem value="Acabamento">Acabamento</SelectItem>
-                                            <SelectItem value="Pronto">Finalizado</SelectItem>
-                                            <SelectItem value="Encerrado">Encerrado</SelectItem>
+                                            <SelectItem value="Plano de corte">Plano de corte</SelectItem>
+                                            <SelectItem value="Pronto para produção">Pronto para produção</SelectItem>
+                                            <SelectItem value="Corte da caixa">Corte da caixa</SelectItem>
+                                            <SelectItem value="Fita">Fita</SelectItem>
+                                            <SelectItem value="Montagem das caixas">Montagem das caixas</SelectItem>
+                                            <SelectItem value="Corte das portas + Tamponados">Corte das portas + Tamponados</SelectItem>
+                                            <SelectItem value="Colocação dos tamponados">Colocação dos tamponados</SelectItem>
+                                            <SelectItem value="Embalagem">Embalagem</SelectItem>
+                                            <SelectItem value="Pronto para entrega">Pronto para entrega</SelectItem>
+                                            <SelectItem value="Instalação">Instalação</SelectItem>
+                                            <SelectItem value="Entregue e Finalizado">Entregue e Finalizado</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     
@@ -729,10 +768,10 @@ const SortableServiceOrderCard = ({
                                     {order.ticketNumber} - {order.action}
                                 </p>
                                 
-                                {/* Barra de Progresso */}
+                                {/* Barra de Progresso compacta no fundo */}
                                 <div className="mt-4 w-full h-1 bg-white/5 rounded-full overflow-hidden">
                                     <div 
-                                        className={cn("h-full transition-all duration-1000", getStatusColor(order.status))}
+                                        className={cn("h-full transition-all duration-1000", order.status === "Entregue e Finalizado" ? "bg-white" : getStatusColor(order.status))}
                                         style={{ width: `${getStatusProgress(order.status)}%` }}
                                     />
                                 </div>
