@@ -140,20 +140,25 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     }
 
                     /* Hide UI elements */
-                    body > *:not(.budget-print-overlay) {
-                        display: none !important;
+                    body {
+                        visibility: hidden !important;
+                        background: white !important;
                     }
                     
+                    .budget-print-overlay, 
+                    .budget-print-overlay * {
+                        visibility: visible !important;
+                    }
+
                     .budget-print-overlay {
-                        position: static !important;
+                        position: absolute !important;
                         top: 0 !important;
                         left: 0 !important;
-                        width: 210mm !important;
+                        width: 100% !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         background: white !important;
                         display: block !important;
-                        visibility: visible !important;
                         overflow: visible !important;
                     }
 
