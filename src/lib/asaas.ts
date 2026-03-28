@@ -47,8 +47,11 @@ export async function fetchDDABoletos(): Promise<AsaasDDABill[]> {
     const isSandbox = apiKey.startsWith('$');
     const baseUrl = isSandbox ? 'https://sandbox.asaas.com/api/v3' : 'https://www.asaas.com/api/v3';
 
+    // Proxy to avoid CORS issues in the browser
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(baseUrl + '/bills/dda')}`;
+
     try {
-        const response = await fetch(`${baseUrl}/bills/dda`, {
+        const response = await fetch(proxyUrl, {
             method: 'GET',
             headers: {
                 'access_token': apiKey,
@@ -57,14 +60,21 @@ export async function fetchDDABoletos(): Promise<AsaasDDABill[]> {
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.errors?.[0]?.description || "Erro ao buscar boletos no Asaas.");
+            let errorMsg = "Erro ao buscar boletos no Asaas.";
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.errors?.[0]?.description || errorData.message || response.statusText;
+            } catch(e) {
+                errorMsg = response.statusText || "Erro desconhecido HTTP " + response.status;
+            }
+            console.error("Erro Asaas DDA:", errorMsg);
+            throw new Error(errorMsg);
         }
 
         const result = await response.json();
         return result.data || [];
-    } catch (error) {
-        console.error("Fetch DDA error:", error);
+    } catch (error: any) {
+        console.error("Fetch DDA error completo:", error);
         throw error;
     }
 }

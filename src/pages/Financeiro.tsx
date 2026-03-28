@@ -169,6 +169,7 @@ const Financeiro = () => {
   };
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogInitialType, setDialogInitialType] = useState<any>("expense");
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
@@ -186,6 +187,7 @@ const Financeiro = () => {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
+  const [showRecentlyAdded, setShowRecentlyAdded] = useState(false);
 
   // Dashboard State
   const [selectedYear, setSelectedYear] = useState<string>("2026");
@@ -314,7 +316,7 @@ const Financeiro = () => {
   };
 
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => {
+    let result = transactions.filter(t => {
       const matchesSearch =
         t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.contact.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -322,6 +324,8 @@ const Financeiro = () => {
         t.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (t.invoiceNumber && t.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (t.orderService && t.orderService.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      if (showRecentlyAdded) return matchesSearch;
 
       const matchesType = typeFilter === "all" || t.type === typeFilter;
       const matchesStatus = statusFilter === "all" || t.status === statusFilter;
@@ -342,7 +346,10 @@ const Financeiro = () => {
 
       return matchesSearch && matchesType && matchesStatus && matchesYear && matchesMonth && matchesOS && matchesPaymentMethod;
     });
-  }, [transactions, searchTerm, typeFilter, statusFilter, selectedYear, selectedFilterMonth, dateFilterType, osFilter, paymentMethodFilter, showOverdueOnly]);
+
+    if (showRecentlyAdded) return result.slice(0, 50);
+    return result;
+  }, [transactions, searchTerm, typeFilter, statusFilter, selectedYear, selectedFilterMonth, dateFilterType, osFilter, paymentMethodFilter, showOverdueOnly, showRecentlyAdded]);
 
   const metrics = useMemo(() => {
     const income = filteredTransactions
@@ -722,7 +729,8 @@ const Financeiro = () => {
   };
 
   // Handlers (Simplified and redirected to the same state/Supabase logic)
-  const handleNewTransaction = () => { setEditingTransaction(null); setIsDialogOpen(true); };
+  const handleNewTransaction = () => { setEditingTransaction(null); setDialogInitialType("expense"); setIsDialogOpen(true); };
+  const handleNewTransfer = () => { setEditingTransaction(null); setDialogInitialType("transfer"); setIsDialogOpen(true); };
   const handleEditTransaction = (transaction: Transaction) => { setEditingTransaction(transaction); setIsDialogOpen(true); setActiveTab("lancamentos"); };
   const handleDeleteTransaction = async (id: string) => {
     if (!window.confirm("Tem certeza que deseja excluir esta transação?")) return;
@@ -997,7 +1005,17 @@ const Financeiro = () => {
             </div>
             <div className="flex gap-2">
               <Button
-                onClick={() => setShowOverdueOnly(!showOverdueOnly)}
+                onClick={() => { setShowRecentlyAdded(!showRecentlyAdded); setShowOverdueOnly(false); }}
+                variant={showRecentlyAdded ? "default" : "outline"}
+                className={cn(
+                  "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
+                  showRecentlyAdded && "bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 border-none"
+                )}
+              >
+                {showRecentlyAdded ? "Filtro Normal" : "Últimas Lançadas"}
+              </Button>
+              <Button
+                onClick={() => { setShowOverdueOnly(!showOverdueOnly); setShowRecentlyAdded(false); }}
                 variant={showOverdueOnly ? "destructive" : "outline"}
                 className={cn(
                   "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
@@ -1008,6 +1026,7 @@ const Financeiro = () => {
                 {showOverdueOnly ? "Ver Todos" : `Atrasados (${overdueTransactions.length})`}
               </Button>
               <Button onClick={handleNewTransaction} className="rounded-xl px-6 font-black uppercase tracking-widest text-xs h-11 shadow-lg shadow-primary/20 transition-transform active:scale-95"><Plus size={16} className="mr-2" /> Novo Fluxo</Button>
+              <Button onClick={handleNewTransfer} className="rounded-xl px-4 font-black uppercase tracking-widest text-xs h-11 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-transform active:scale-95"><Plus size={16} className="mr-2" /> Transferência</Button>
             </div>
           </div>
 
@@ -1030,7 +1049,7 @@ const Financeiro = () => {
         <TabsContent value="patrimonio"><AssetsTab assets={assets} handleNewAsset={handleNewAsset} formatCurrency={formatCurrency} /></TabsContent>
       </Tabs>
 
-      <TransactionFormDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} onSubmit={handleSubmit} onUpdate={handleUpdate} editingTransaction={editingTransaction} />
+      <TransactionFormDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} onSubmit={handleSubmit} onUpdate={handleUpdate} editingTransaction={editingTransaction} initialType={dialogInitialType} />
       <AssetFormDialog open={isAssetDialogOpen} onOpenChange={setIsAssetDialogOpen} onSubmit={handleAssetSubmit} onUpdate={() => { }} editingAsset={editingAsset} />
       <ServiceExpenseFormDialog open={isServiceExpenseDialogOpen} onOpenChange={setIsServiceExpenseDialogOpen} onSubmit={handleServiceExpenseSubmit} onUpdate={handleUpdateServiceExpense} editingExpense={editingServiceExpense} />
 

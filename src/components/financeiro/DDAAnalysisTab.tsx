@@ -94,7 +94,7 @@ export default function DDAAnalysisTab({ onTransactionUpdate }: { onTransactionU
                 {
                     loading: 'Conectando ao Asaas e buscando boletos...',
                     success: (msg) => msg,
-                    error: "Erro ao sincronizar buscador de boletos (DDA)."
+                    error: (err: any) => err.message || "Erro ao sincronizar buscador de boletos (DDA)."
                 }
             );
         } catch (error) {

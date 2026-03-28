@@ -44,6 +44,7 @@ interface TransactionFormDialogProps {
     onSubmit: (transaction: Omit<Transaction, "id"> | Omit<Transaction, "id">[]) => void;
     onUpdate?: (id: string, updates: Partial<Transaction>) => void;
     editingTransaction?: Transaction | null;
+    initialType?: TransactionType | "transfer";
 }
 
 const TransactionFormDialog = ({
@@ -52,8 +53,9 @@ const TransactionFormDialog = ({
     onSubmit,
     onUpdate,
     editingTransaction,
+    initialType = "expense",
 }: TransactionFormDialogProps) => {
-    const [type, setType] = useState<TransactionType>("expense");
+    const [type, setType] = useState<TransactionType | "transfer">(initialType);
     const [category, setCategory] = useState("");
     const [status, setStatus] = useState<TransactionStatus>("pending");
     const [isInstallment, setIsInstallment] = useState(false);
@@ -61,6 +63,7 @@ const TransactionFormDialog = ({
     const [isRecurring, setIsRecurring] = useState(false);
     const [recurringCount, setRecurringCount] = useState("12");
     const [isUploading, setIsUploading] = useState(false);
+    const [destinationInstitution, setDestinationInstitution] = useState("");
 
     const [clients, setClients] = useState<Client[]>([]);
     const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
@@ -155,7 +158,7 @@ const TransactionFormDialog = ({
             });
         } else {
             // Reset Default state
-            setType("expense");
+            setType(initialType);
             setCategory("");
             setStatus("pending");
             setForm({
@@ -173,12 +176,12 @@ const TransactionFormDialog = ({
                 orderService: "",
                 boletoUrl: "",
             });
-            setIsInstallment(false);
             setInstallmentsCount("2");
             setIsRecurring(false);
             setRecurringCount("12");
+            setDestinationInstitution("");
         }
-    }, [editingTransaction, open]);
+    }, [editingTransaction, open, initialType]);
 
     const handleUpdateField = (field: string, value: string) => {
         setForm((prev) => {
@@ -243,8 +246,8 @@ const TransactionFormDialog = ({
         const baseSubmitData = {
             ...form,
             amount: amount,
-            type,
-            category,
+            type: type === 'transfer' ? 'expense' : type,
+            category: type === 'transfer' ? 'Transferência' : category,
             status,
             competenceDate: new Date(form.competenceDate),
             dueDate: new Date(form.dueDate),
@@ -254,6 +257,21 @@ const TransactionFormDialog = ({
 
         if (editingTransaction && onUpdate) {
             onUpdate(editingTransaction.id, baseSubmitData);
+        } else if (type === 'transfer') {
+            const transferOut = {
+                ...baseSubmitData,
+                type: 'expense' as TransactionType,
+                subcategory: 'Transferência entre Contas',
+                description: form.description || `Transferência para ${destinationInstitution}`,
+            };
+            const transferIn = {
+                ...baseSubmitData,
+                type: 'income' as TransactionType,
+                financialInstitution: destinationInstitution,
+                subcategory: 'Transferência entre Contas',
+                description: form.description || `Transferência de ${form.financialInstitution}`,
+            };
+            onSubmit([transferOut, transferIn]);
         } else {
             if (isInstallment && Number(installmentsCount) > 1) {
                 const count = Number(installmentsCount);
@@ -325,7 +343,7 @@ const TransactionFormDialog = ({
                     <div className="flex gap-4 justify-center py-2 bg-muted/30 rounded-lg">
                         <RadioGroup
                             value={type}
-                            onValueChange={(v) => { setType(v as TransactionType); setCategory(""); }}
+                            onValueChange={(v) => { setType(v as TransactionType | "transfer"); setCategory(""); }}
                             className="flex gap-8"
                         >
                             <div className="flex items-center space-x-2">
@@ -336,6 +354,12 @@ const TransactionFormDialog = ({
                                 <RadioGroupItem value="expense" id="expense" className="text-red-600 border-red-600 data-[state=checked]:bg-red-600 data-[state=checked]:text-white" />
                                 <Label htmlFor="expense" className="text-red-600 font-semibold cursor-pointer text-lg">Despesa</Label>
                             </div>
+                            {!editingTransaction && (
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="transfer" id="transfer" className="text-blue-600 border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white" />
+                                    <Label htmlFor="transfer" className="text-blue-600 font-semibold cursor-pointer text-lg">Transferência</Label>
+                                </div>
+                            )}
                         </RadioGroup>
                     </div>
 
@@ -565,46 +589,50 @@ const TransactionFormDialog = ({
 
                     {/* Seção 4: Classificação */}
                     <div className="grid grid-cols-2 gap-4">
+                        {type !== 'transfer' && (
+                            <>
+                                <div>
+                                    <Label>Categoria</Label>
+                                    <Select value={category} onValueChange={setCategory} required>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Selecione" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {CATEGORIES[type as keyof typeof CATEGORIES].map((cat) => (
+                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label htmlFor="subcategory">Subcategoria</Label>
+                                    {SUBCATEGORIES[category] ? (
+                                        <Select
+                                            value={form.subcategory}
+                                            onValueChange={(v) => handleUpdateField("subcategory", v)}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecione" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {SUBCATEGORIES[category].map((sub) => (
+                                                    <SelectItem key={sub} value={sub}>{sub}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <Input
+                                            id="subcategory"
+                                            value={form.subcategory}
+                                            onChange={(e) => handleUpdateField("subcategory", e.target.value)}
+                                            placeholder="Especifique melhor"
+                                        />
+                                    )}
+                                </div>
+                            </>
+                        )}
                         <div>
-                            <Label>Categoria</Label>
-                            <Select value={category} onValueChange={setCategory} required>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Selecione" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {CATEGORIES[type].map((cat) => (
-                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label htmlFor="subcategory">Subcategoria</Label>
-                            {SUBCATEGORIES[category] ? (
-                                <Select
-                                    value={form.subcategory}
-                                    onValueChange={(v) => handleUpdateField("subcategory", v)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecione" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {SUBCATEGORIES[category].map((sub) => (
-                                            <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            ) : (
-                                <Input
-                                    id="subcategory"
-                                    value={form.subcategory}
-                                    onChange={(e) => handleUpdateField("subcategory", e.target.value)}
-                                    placeholder="Especifique melhor"
-                                />
-                            )}
-                        </div>
-                        <div>
-                            <Label htmlFor="financialInstitution">Instituição Financeira</Label>
+                            <Label htmlFor="financialInstitution">{type === 'transfer' ? 'Instituição de Origem' : 'Instituição Financeira'}</Label>
                             <Select
                                 value={form.financialInstitution}
                                 onValueChange={(v) => handleUpdateField("financialInstitution", v)}
@@ -619,6 +647,25 @@ const TransactionFormDialog = ({
                                 </SelectContent>
                             </Select>
                         </div>
+                        {type === 'transfer' && (
+                            <div>
+                                <Label htmlFor="destinationInstitution">Instituição de Destino</Label>
+                                <Select
+                                    value={destinationInstitution}
+                                    onValueChange={setDestinationInstitution}
+                                    required={type === 'transfer'}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                                        <SelectItem value="Banco Itaú">Banco Itaú</SelectItem>
+                                        <SelectItem value="Mercado Pago">Mercado Pago</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                         <div>
                             <Label>Forma de Pagamento</Label>
                             <Select value={form.paymentMethod} onValueChange={(v) => handleUpdateField("paymentMethod", v)} required>
