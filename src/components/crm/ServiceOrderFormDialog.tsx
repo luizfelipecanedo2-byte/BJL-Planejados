@@ -362,7 +362,7 @@ const ServiceOrderFormDialog = ({
                                     <Label htmlFor="status">Status</Label>
                                     <Select
                                         value={form.status}
-                                        onValueChange={(v) => update("status", v as ServiceStatus)}
+                                        onValueChange={(v) => handleDateChange("status", v as ServiceStatus)}
                                     >
                                         <SelectTrigger>
                                             <SelectValue />

@@ -246,7 +246,19 @@ const OrdemServico = () => {
             if (updates.client) updateData.client = updates.client;
             if (updates.type) updateData.type = updates.type;
             if (updates.action) updateData.action = updates.action;
-            if (updates.status) updateData.status = updates.status;
+            if (updates.status) {
+                updateData.status = updates.status;
+                if (updates.status === "Entregue e Finalizado") {
+                    updateData.completion_date = updates.completionDate 
+                        ? updates.completionDate.toISOString().split('T')[0]
+                        : new Date().toISOString().split('T')[0];
+                    updateData.production_priority = 0;
+                    
+                    // Atualizar o objeto de updates local também
+                    updates.completionDate = updates.completionDate || new Date();
+                    updates.productionPriority = 0;
+                }
+            }
             if (updates.forecastDate) updateData.forecast_date = updates.forecastDate.toISOString().split('T')[0];
 
             // Permitir limpar a data de conclusão
@@ -390,7 +402,15 @@ const OrdemServico = () => {
     
     const productionQueue = orders
         .filter(o => inProgressStatuses.includes(o.status))
-        .sort((a, b) => (b.productionPriority || 0) - (a.productionPriority || 0));
+        .sort((a, b) => {
+            const aIsFinished = a.status === "Entregue e Finalizado";
+            const bIsFinished = b.status === "Entregue e Finalizado";
+            
+            if (aIsFinished && !bIsFinished) return 1;
+            if (!aIsFinished && bIsFinished) return -1;
+            
+            return (b.productionPriority || 0) - (a.productionPriority || 0);
+        });
 
     const defineList = orders.filter(o => o.status === "A Definir");
 
@@ -634,7 +654,13 @@ const OrdemServico = () => {
                                 </div>
                             ) : (
                                 <ServiceOrderTable
-                                    orders={orders}
+                                    orders={[...orders].sort((a, b) => {
+                                        const aIsFinished = a.status === "Entregue e Finalizado";
+                                        const bIsFinished = b.status === "Entregue e Finalizado";
+                                        if (aIsFinished && !bIsFinished) return 1;
+                                        if (!aIsFinished && bIsFinished) return -1;
+                                        return 0; // Mantém a ordem original para itens não finalizados
+                                    })}
                                     onEdit={handleEditOrder}
                                     onDelete={handleDeleteOrder}
                                 />
