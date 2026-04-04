@@ -13,6 +13,13 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 const STATUS_ORDER: ServiceStatus[] = [
     "Plano de corte",
@@ -256,6 +263,47 @@ const ProducaoFabrica = () => {
                     </DialogHeader>
 
                     <div className="space-y-8 mt-6">
+                        {/* Ajuste de Estágio (Correção) */}
+                        <div className="space-y-3 p-6 bg-primary/5 rounded-[2rem] border border-primary/20">
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                <Hammer className="h-3 w-3" />
+                                Ajustar Estágio Atual (Correção)
+                            </h4>
+                            <Select 
+                                value={selectedOrder?.status} 
+                                onValueChange={async (newStatus) => {
+                                    if (!selectedOrder) return;
+                                    try {
+                                        const { error } = await supabase
+                                            .from('service_orders')
+                                            .update({ status: newStatus })
+                                            .eq('id', selectedOrder.id);
+                                        
+                                        if (error) throw error;
+                                        
+                                        // Atualiza o estado local
+                                        setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, status: newStatus as any } : o));
+                                        setSelectedOrder({ ...selectedOrder, status: newStatus as any });
+                                        toast.success("Estágio corrigido com sucesso!");
+                                    } catch (err) {
+                                        toast.error("Erro ao corrigir estágio.");
+                                    }
+                                }}
+                            >
+                                <SelectTrigger className="h-14 bg-white/5 border-white/10 rounded-2xl text-white font-bold uppercase tracking-tight">
+                                    <SelectValue placeholder="Selecione o estágio" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-slate-900 border-white/10 text-white font-bold uppercase text-[10px]">
+                                    {STATUS_ORDER.map(status => (
+                                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-[8px] font-bold text-muted-foreground uppercase text-center mt-2 px-4">
+                                Use este campo se avançar o projeto por engano.
+                            </p>
+                        </div>
+
                         {/* Notas */}
                         <div className="space-y-3">
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
