@@ -641,8 +641,8 @@ const TransactionFormDialog = ({
                                     <SelectValue placeholder="Selecione" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="Nubank">Nubank</SelectItem>
                                     <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                                    <SelectItem value="Banco Itaú">Banco Itaú</SelectItem>
                                     <SelectItem value="Mercado Pago">Mercado Pago</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -659,8 +659,8 @@ const TransactionFormDialog = ({
                                         <SelectValue placeholder="Selecione" />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="Nubank">Nubank</SelectItem>
                                         <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                                        <SelectItem value="Banco Itaú">Banco Itaú</SelectItem>
                                         <SelectItem value="Mercado Pago">Mercado Pago</SelectItem>
                                     </SelectContent>
                                 </Select>

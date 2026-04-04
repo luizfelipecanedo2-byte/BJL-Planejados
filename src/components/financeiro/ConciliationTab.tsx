@@ -54,7 +54,6 @@ const ConciliationTab = ({
                         {/* Account HUD */}
                         <div className="flex flex-col items-center sm:items-end group">
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1 flex items-center gap-2">
-                                {selectedAccount === 'banco_itau' && <img src="https://static.cdnlogo.com/logos/i/14/itau_800.png" className="h-3 w-3 object-contain" alt="Itaú" />}
                                 {selectedAccount === 'dinheiro' && <span className="text-[10px]">💰</span>}
                                 {selectedAccount === 'nubank' && <img src="https://logodownload.org/wp-content/uploads/2019/08/nubank-logo-3.png" className="h-3 w-3 object-contain" alt="Nubank" />}
                                 Saldo Disponível
@@ -62,11 +61,9 @@ const ConciliationTab = ({
                             <div className="text-3xl font-black text-emerald-400 tracking-tighter flex items-center gap-3">
                                 <div className={cn(
                                     "p-2 rounded-xl border transition-all duration-500 flex items-center justify-center overflow-hidden w-12 h-12",
-                                    selectedAccount === 'banco_itau' ? "bg-white border-white/20 shadow-lg shadow-orange-500/10" :
                                     selectedAccount === 'dinheiro' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" :
                                     "bg-white border-white/20 shadow-lg shadow-purple-500/10"
                                 )}>
-                                    {selectedAccount === 'banco_itau' && <img src="https://static.cdnlogo.com/logos/i/14/itau_800.png" className="h-8 w-8 object-contain scale-110" alt="Itaú" />}
                                     {selectedAccount === 'dinheiro' && <span className="text-3xl">💰</span>}
                                     {selectedAccount === 'nubank' && <img src="https://logodownload.org/wp-content/uploads/2019/08/nubank-logo-3.png" className="h-8 w-8 object-contain" alt="Nubank" />}
                                 </div>
@@ -83,12 +80,6 @@ const ConciliationTab = ({
                                     <SelectValue placeholder="Selecione a conta" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-950 border-slate-800 text-white rounded-xl">
-                                    <SelectItem value="banco_itau" className="focus:bg-primary/20 focus:text-white rounded-lg cursor-pointer">
-                                        <div className="flex items-center gap-2">
-                                            <img src="https://static.cdnlogo.com/logos/i/14/itau_800.png" className="h-4 w-4 object-contain" alt="Itaú" />
-                                            <span className="font-bold">Banco Itaú</span>
-                                        </div>
-                                    </SelectItem>
                                     <SelectItem value="nubank" className="focus:bg-primary/20 focus:text-white rounded-lg cursor-pointer">
                                         <div className="flex items-center gap-2">
                                             <img src="https://logodownload.org/wp-content/uploads/2019/08/nubank-logo-3.png" className="h-4 w-4 object-contain" alt="Nubank" />

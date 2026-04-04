@@ -195,7 +195,7 @@ const Financeiro = () => {
   const [selectedDashMonth, setSelectedDashMonth] = useState<number | 'anual'>(new Date().getMonth());
 
   // Conciliation State
-  const [selectedAccount, setSelectedAccount] = useState<string>("banco_itau");
+  const [selectedAccount, setSelectedAccount] = useState<string>("nubank");
   const [currentDateReconciliation, setCurrentDateReconciliation] = useState<Date>(new Date());
 
   const toggleSelect = (id: string) => {
@@ -245,8 +245,6 @@ const Financeiro = () => {
     return transactions.filter(t => {
       if (selectedAccount === 'dinheiro') {
         return t.financialInstitution === 'Dinheiro';
-      } else if (selectedAccount === 'banco_itau') {
-        return t.financialInstitution === 'Banco Itaú';
       } else if (selectedAccount === 'nubank') {
         return t.financialInstitution === 'Nubank';
       }
