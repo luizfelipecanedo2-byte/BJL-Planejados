@@ -66,12 +66,11 @@ export default function Login() {
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">E-mail</label>
                             <div className="relative group/input">
-                                <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-md group-focus-within/input:bg-primary/10 transition-all" />
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within/input:text-primary transition-colors" />
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within/input:text-primary transition-colors z-[60]" />
                                 <Input
                                     type="email"
                                     placeholder="seu@email.com"
-                                    className="pl-12 h-14 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all text-base font-medium"
+                                    className="pl-12 h-14 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all text-base font-medium relative z-50 cursor-text"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
@@ -83,12 +82,11 @@ export default function Login() {
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Senha</label>
                             <div className="relative group/input">
-                                <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-md group-focus-within/input:bg-primary/10 transition-all" />
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within/input:text-primary transition-colors" />
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within/input:text-primary transition-colors z-[60]" />
                                 <Input
                                     type="password"
                                     placeholder="••••••••"
-                                    className="pl-12 h-14 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all text-base font-medium"
+                                    className="pl-12 h-14 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all text-base font-medium relative z-50 cursor-text"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
