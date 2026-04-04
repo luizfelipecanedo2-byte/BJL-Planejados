@@ -64,7 +64,7 @@ export default function Login() {
                 <CardContent className="px-6 pb-8 relative z-10">
                     <form onSubmit={handleLogin} className="space-y-5">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Acesso Seguro</label>
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">E-mail</label>
                             <div className="relative group/input">
                                 <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-md group-focus-within/input:bg-primary/10 transition-all" />
                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within/input:text-primary transition-colors" />
@@ -75,12 +75,13 @@ export default function Login() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
+                                    autoFocus
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Credencial Secreta</label>
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Senha</label>
                             <div className="relative group/input">
                                 <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-md group-focus-within/input:bg-primary/10 transition-all" />
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within/input:text-primary transition-colors" />
@@ -104,10 +105,10 @@ export default function Login() {
                             {loading ? (
                                 <div className="flex items-center gap-3">
                                     <Loader2 className="h-5 w-5 animate-spin" />
-                                    <span>Verificando...</span>
+                                    <span>Acessando...</span>
                                 </div>
                             ) : (
-                                "Desbloquear Sistema"
+                                "Entrar no Sistema"
                             )}
                         </Button>
                     </form>
