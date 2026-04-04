@@ -71,10 +71,10 @@ const MainLayout = () => {
 
     const allMenuItems = [
         { icon: TrendingUp, label: "CRM", path: "/", roles: ['admin'], emoji: "📊" },
-        { icon: Calculator, label: "Orçamento", path: "/orcamento", roles: ['admin', 'colaborador'], emoji: "💰" },
+        { icon: Calculator, label: "Orçamento", path: "/orcamento", roles: ['admin'], emoji: "💰" },
         { icon: Users, label: "Cliente e Fornecedores", path: "/clientes", roles: ['admin'], emoji: "👥" },
         { icon: DollarSign, label: "Financeiro", path: "/financeiro", roles: ['admin'], emoji: "🏦" },
-        { icon: ClipboardList, label: "Ordem de Serviço", path: "/ordem-servico", roles: ['admin', 'colaborador'], emoji: "📋" },
+        { icon: ClipboardList, label: "Ordem de Serviço", path: "/ordem-servico", roles: ['admin'], emoji: "📋" },
         { icon: Package, label: "Estoque", path: "/estoque", roles: ['admin', 'colaborador'], emoji: "📦" },
         { icon: Calendar, label: "Pedidos da Semana", path: "/pedidos-semana", roles: ['admin', 'colaborador'], emoji: "🗓️" },
         { icon: Hammer, label: "Fábrica", path: "/producao-fabrica", roles: ['admin', 'colaborador'], emoji: "🔨" },

@@ -124,11 +124,11 @@ const App = () => {
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
 
             <Route path="/" element={session ? <MainLayout /> : <Navigate to="/login" />}>
-              <Route index element={isAdmin ? <Index /> : <Navigate to="/ordem-servico" />} />
-              <Route path="financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/ordem-servico" />} />
-              <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="/ordem-servico" />} />
-              <Route path="ordem-servico" element={<OrdemServico />} />
-              <Route path="orcamento" element={<Orcamento />} />
+              <Route index element={isAdmin ? <Index /> : <Navigate to="/producao-fabrica" />} />
+              <Route path="financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/producao-fabrica" />} />
+              <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="/producao-fabrica" />} />
+              <Route path="ordem-servico" element={isAdmin ? <OrdemServico /> : <Navigate to="/producao-fabrica" />} />
+              <Route path="orcamento" element={isAdmin ? <Orcamento /> : <Navigate to="/producao-fabrica" />} />
               <Route path="estoque" element={<Estoque />} />
               <Route path="pedidos-semana" element={<PedidosSemana />} />
               <Route path="producao-fabrica" element={<ProducaoFabrica />} />
