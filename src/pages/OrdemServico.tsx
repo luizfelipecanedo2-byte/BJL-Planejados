@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 import ServiceOrderTable from "@/components/crm/ServiceOrderTable";
 import ServiceOrderFormDialog from "@/components/crm/ServiceOrderFormDialog";
 import { ServiceOrder, ServiceStatus } from "@/types/serviceOrder";
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
+import ProductionTimeline from "@/components/crm/ProductionTimeline";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
 import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play } from "lucide-react";
@@ -556,6 +557,10 @@ const OrdemServico = () => {
                         <RefreshCw className="h-3 w-3 mr-2" />
                         Todas OSs
                     </TabsTrigger>
+                    <TabsTrigger value="cronograma" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-primary data-[state=active]:text-white">
+                        <CalendarDays className="h-3 w-3 mr-2" />
+                        Histórico Cronograma
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="definir" className="space-y-4">
@@ -667,6 +672,13 @@ const OrdemServico = () => {
                             )}
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                <TabsContent value="cronograma">
+                    <ProductionTimeline 
+                        orders={orders}
+                        onEdit={handleEditOrder}
+                    />
                 </TabsContent>
             </Tabs>
 
