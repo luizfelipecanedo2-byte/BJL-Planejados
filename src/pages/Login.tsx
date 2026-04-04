@@ -32,12 +32,12 @@ export default function Login() {
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-black relative overflow-hidden">
             {/* Ambient Background Layer */}
-            <div className="absolute inset-0 aurora-bg opacity-30"></div>
-            <div className="absolute inset-0 stardust opacity-50"></div>
+            <div className="absolute inset-0 aurora-bg opacity-30 pointer-events-none"></div>
+            <div className="absolute inset-0 stardust opacity-50 pointer-events-none"></div>
             
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black pointer-events-none"></div>
 
-            <Card className="w-full max-w-md relative shadow-2xl border border-white/10 backdrop-blur-3xl bg-black/40 rounded-[2.5rem] p-4 overflow-hidden spotlight-card tilt-card border-beam-card">
+            <Card className="w-full max-w-md relative shadow-2xl border border-white/10 backdrop-blur-3xl bg-black/40 rounded-[2.5rem] p-4 overflow-hidden spotlight-card border-beam-card z-10">
                 <div className="absolute -top-24 -left-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
                 <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl" />
 
