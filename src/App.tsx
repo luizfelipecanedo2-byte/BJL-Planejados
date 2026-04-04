@@ -15,6 +15,7 @@ import PedidosSemana from "./pages/PedidosSemana";
 import Clientes from "./pages/Clientes";
 import Orcamento from "./pages/Orcamento";
 import Login from "./pages/Login";
+import ProducaoFabrica from "./pages/ProducaoFabrica";
 
 const queryClient = new QueryClient();
 
@@ -130,6 +131,7 @@ const App = () => {
               <Route path="orcamento" element={<Orcamento />} />
               <Route path="estoque" element={<Estoque />} />
               <Route path="pedidos-semana" element={<PedidosSemana />} />
+              <Route path="producao-fabrica" element={<ProducaoFabrica />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
