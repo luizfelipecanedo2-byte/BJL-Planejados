@@ -36,10 +36,21 @@ const ConciliationTab = ({
     reconciliationDailyData,
     formatCurrency,
 }: ConciliationTabProps) => {
+    const isNubank = selectedAccount === 'nubank';
+    const isDinheiro = selectedAccount === 'dinheiro';
+
     return (
         <div className="space-y-6 text-foreground">
-            <div className="flex flex-col gap-6 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-6 rounded-2xl border border-slate-800 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl opacity-50" />
+            <div className={cn(
+                "flex flex-col gap-6 p-6 rounded-2xl border shadow-2xl relative overflow-hidden transition-all duration-700",
+                isNubank ? "bg-gradient-to-br from-purple-900 via-purple-950 to-black border-purple-500/20" : 
+                isDinheiro ? "bg-gradient-to-br from-emerald-900 via-emerald-950 to-black border-emerald-500/20" :
+                "bg-gradient-to-br from-slate-900 via-slate-950 to-black border-slate-800"
+            )}>
+                <div className={cn(
+                    "absolute top-0 right-0 w-64 h-64 rounded-full -mr-32 -mt-32 blur-3xl opacity-50 transition-colors duration-700",
+                    isNubank ? "bg-purple-500/20" : isDinheiro ? "bg-emerald-500/20" : "bg-primary/5"
+                )} />
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
                     <div className="flex flex-col gap-1 text-center sm:text-left">
@@ -60,9 +71,10 @@ const ConciliationTab = ({
                             </span>
                             <div className="text-3xl font-black text-emerald-400 tracking-tighter flex items-center gap-3">
                                 <div className={cn(
-                                    "p-2 rounded-xl border transition-all duration-500 flex items-center justify-center overflow-hidden w-12 h-12",
-                                    selectedAccount === 'dinheiro' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" :
-                                    "bg-white border-white/20 shadow-lg shadow-purple-500/10"
+                                    "p-2 rounded-xl border transition-all duration-500 flex items-center justify-center overflow-hidden w-12 h-12 shadow-xl",
+                                    isDinheiro ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500 shadow-emerald-500/10" :
+                                    isNubank ? "bg-purple-600 border-purple-400/30 text-white shadow-purple-500/20" :
+                                    "bg-white border-white/20"
                                 )}>
                                     {selectedAccount === 'dinheiro' && <span className="text-3xl">💰</span>}
                                     {selectedAccount === 'nubank' && <img src="https://logodownload.org/wp-content/uploads/2019/08/nubank-logo-3.png" className="h-8 w-8 object-contain" alt="Nubank" />}
@@ -76,10 +88,18 @@ const ConciliationTab = ({
                         <div className="flex items-center gap-3">
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Conta:</span>
                             <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                                <SelectTrigger className="w-[200px] border-slate-700 bg-slate-800/50 text-white font-black uppercase tracking-tighter hover:bg-slate-800 transition-colors rounded-xl h-11">
+                                <SelectTrigger className={cn(
+                                    "w-[200px] bg-slate-800/50 text-white font-black uppercase tracking-tighter hover:bg-slate-800 transition-all rounded-xl h-11 border",
+                                    isNubank ? "border-purple-500/30" : isDinheiro ? "border-emerald-500/30" : "border-slate-700"
+                                )}>
                                     <SelectValue placeholder="Selecione a conta" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-slate-950 border-slate-800 text-white rounded-xl">
+                                <SelectContent className={cn(
+                                    "text-white rounded-xl border",
+                                    isNubank ? "bg-purple-950 border-purple-500/20" : 
+                                    isDinheiro ? "bg-emerald-950 border-emerald-500/20" : 
+                                    "bg-slate-950 border-slate-800"
+                                )}>
                                     <SelectItem value="nubank" className="focus:bg-primary/20 focus:text-white rounded-lg cursor-pointer">
                                         <div className="flex items-center gap-2">
                                             <img src="https://logodownload.org/wp-content/uploads/2019/08/nubank-logo-3.png" className="h-4 w-4 object-contain" alt="Nubank" />
@@ -128,7 +148,12 @@ const ConciliationTab = ({
                                 <AnimatedCounter value={reconciliationDailyData.initialBalance} formatter={formatCurrency} />
                             </span>
                         </div>
-                        <Button className="bg-primary hover:bg-primary/80 text-primary-foreground font-black uppercase tracking-widest text-[10px] px-6 py-5 rounded-xl shadow-lg shadow-primary/20">
+                        <Button className={cn(
+                            "font-black uppercase tracking-widest text-[10px] px-6 py-5 rounded-xl shadow-lg transition-all",
+                            isNubank ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20" : 
+                            isDinheiro ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20" :
+                            "bg-primary hover:bg-primary/80 text-primary-foreground shadow-primary/20"
+                        )}>
                             Ajustar Saldo
                         </Button>
                     </div>
@@ -200,7 +225,12 @@ const ConciliationTab = ({
                     <div className="relative w-full overflow-auto">
                         <table className="w-full text-xs border-collapse">
                             <thead>
-                                <tr className="bg-slate-900/80 text-slate-400 border-b border-slate-800">
+                                <tr className={cn(
+                                    "text-slate-400 border-b",
+                                    isNubank ? "bg-purple-900/40 border-purple-500/20" :
+                                    isDinheiro ? "bg-emerald-900/40 border-emerald-500/20" :
+                                    "bg-slate-900/80 border-slate-800"
+                                )}>
                                     <th className="h-14 px-6 text-center font-black uppercase tracking-widest w-[140px]">Data</th>
                                     <th className="h-14 px-6 text-right font-black uppercase tracking-widest">Entradas</th>
                                     <th className="h-14 px-6 text-right font-black uppercase tracking-widest">Saídas</th>

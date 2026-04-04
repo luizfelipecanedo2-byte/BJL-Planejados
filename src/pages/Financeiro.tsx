@@ -853,7 +853,11 @@ const Financeiro = () => {
 
 
   return (
-    <div className="space-y-6">
+    <div className={cn(
+      "space-y-6 transition-all duration-1000 min-h-screen p-4 -m-4",
+      activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "bg-purple-950/30" : 
+      activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-950/30" : ""
+    )}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
            <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Financeiro</h2>
@@ -863,7 +867,12 @@ const Financeiro = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <div className="overflow-x-auto pb-2 scrollbar-hide">
-          <TabsList className="w-full sm:w-auto justify-start h-14 bg-muted/20 p-1.5 rounded-2xl border border-border/40 backdrop-blur-md">
+          <TabsList className={cn(
+            "w-full sm:w-auto justify-start h-14 p-1.5 rounded-2xl border backdrop-blur-md transition-all duration-700",
+            activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "bg-purple-900/30 border-purple-500/20" :
+            activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-900/30 border-emerald-500/20" :
+            "bg-muted/20 border-border/40"
+          )}>
             <TabsTrigger value="dashboard" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Dashboard</TabsTrigger>
             <TabsTrigger value="dda_analysis" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:shadow-lg active:scale-95 transition-all text-blue-400 data-[state=active]:text-white">
               <FileSearch className="h-3 w-3 mr-2" />
@@ -872,7 +881,12 @@ const Financeiro = () => {
             <TabsTrigger value="lancamentos" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Lançamentos</TabsTrigger>
             <TabsTrigger value="dre" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">DRE</TabsTrigger>
             <TabsTrigger value="gastos_servicos" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Gastos Projeto</TabsTrigger>
-            <TabsTrigger value="conciliacao" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Conciliação</TabsTrigger>
+            <TabsTrigger value="conciliacao" className={cn(
+              "rounded-xl px-6 font-bold text-xs uppercase tracking-widest active:scale-95 transition-all",
+              activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "data-[state=active]:bg-purple-600 data-[state=active]:text-white" :
+              activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "data-[state=active]:bg-emerald-600 data-[state=active]:text-white" :
+              "data-[state=active]:bg-primary data-[state=active]:shadow-lg"
+            )}>Conciliação</TabsTrigger>
             <TabsTrigger value="notas_fiscais" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">
               <Receipt className="h-3 w-3 mr-2" />
               Notas Fiscais
