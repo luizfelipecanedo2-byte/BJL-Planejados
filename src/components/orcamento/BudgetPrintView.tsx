@@ -98,13 +98,31 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
     };
 
     return (
-        <div className="budget-print-overlay fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-sm overflow-y-auto p-4 md:p-10 print:p-0 print:bg-white print:relative print:overflow-visible flex justify-center">
+        <div className="budget-print-overlay fixed inset-0 z-[99999] bg-slate-900/90 backdrop-blur-sm overflow-y-auto p-4 md:p-10 print:p-0 print:bg-white print:relative print:overflow-visible flex justify-center">
             
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
                     @page { size: A4; margin: 0; }
-                    body { background: white !important; margin: 0 !important; }
-                    .budget-print-overlay { padding: 0 !important; display: block !important; position: static !important; }
+                    
+                    /* Hide everything else */
+                    body > * { display: none !important; }
+                    body > .budget-print-overlay { display: block !important; visibility: visible !important; }
+                    
+                    /* Reset body for print */
+                    body { background: white !important; margin: 0 !important; padding: 0 !important; }
+                    
+                    .budget-print-overlay { 
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        padding: 0 !important; 
+                        margin: 0 !important;
+                        display: block !important; 
+                        background: white !important;
+                        z-index: 99999 !important;
+                    }
+                    
                     .budget-print-container { 
                         box-shadow: none !important; 
                         margin: 0 !important; 
@@ -114,14 +132,13 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     }
                     .no-print { display: none !important; }
                     .force-break-before { page-break-before: always !important; }
-                    .page-container { padding: 40px !important; }
                 }
             `}} />
 
             <div className="budget-print-container bg-white w-full max-w-[850px] shadow-2xl flex flex-col print:shadow-none min-h-screen">
                 
                 {/* 1. CABEÇALHO ROBUSTO */}
-                <div className="bg-emerald-600 text-white p-8 flex justify-between items-center border-b-[8px] border-amber-500">
+                <div className="bg-slate-950 text-white p-8 flex justify-between items-center border-b-[8px] border-amber-500">
                     <div className="flex items-center gap-6">
                         <div className="h-32 w-32 rounded-full overflow-hidden bg-white flex items-center justify-center p-1 shadow-lg border-2 border-amber-500">
                             <img src="/logo-bjl.png" alt="Logo" className="w-full h-full object-contain" />
