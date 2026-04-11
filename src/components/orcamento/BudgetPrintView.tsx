@@ -148,8 +148,14 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     }
                     
                     /* Reset everything except our target */
-                    body > *:not(.budget-print-overlay) {
-                        display: none !important;
+                    body {
+                        visibility: hidden !important;
+                        background: white !important;
+                    }
+                    
+                    .budget-print-overlay, 
+                    .budget-print-overlay * {
+                        visibility: visible !important;
                     }
 
                     .budget-print-overlay {
@@ -164,6 +170,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         display: block !important;
                         overflow: visible !important;
                         z-index: 999999 !important;
+                        visibility: visible !important;
                     }
 
                     .budget-print-container {
