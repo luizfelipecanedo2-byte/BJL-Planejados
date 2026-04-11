@@ -133,6 +133,8 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         background: white !important;
                         margin: 0 !important;
                         padding: 0 !important;
+                        height: auto !important;
+                        min-height: 0 !important;
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                     }
@@ -153,15 +155,21 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         top: 0 !important;
                         width: 100% !important;
                         height: auto !important;
+                        min-height: 0 !important;
                         display: block !important;
+                        padding: 0 !important;
+                        background: white !important;
                     }
 
                     .budget-print-container {
                         width: 100% !important;
+                        height: auto !important;
+                        min-height: 0 !important;
                         display: block !important;
                         box-shadow: none !important;
                         border: none !important;
                         border-radius: 0 !important;
+                        overflow: visible !important;
                     }
 
                     /* Header: Static and Solid */
@@ -210,7 +218,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     .absolute.bottom-4.right-12 { top: 100px !important; right: 20px !important; position: absolute !important; display: flex !important; }
 
                     /* Proposal Info */
-                    .px-12 { padding: 0 !important; display: block !important; }
+                    .px-12 { padding: 30px !important; display: block !important; height: auto !important; }
                     .budget-print-container table { 
                         width: 100% !important; 
                         margin-top: 20px !important;
@@ -218,26 +226,25 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     }
                     .budget-print-container tr { page-break-inside: avoid !important; }
 
-                    /* THE PAGE BREAK - FORCE IT */
+                    /* THE PAGE BREAKS */
                     .footer-totals {
-                        page-break-before: always !important;
-                        break-before: page !important;
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        margin-top: 30px !important;
                         display: grid !important;
                         grid-template-columns: repeat(5, 1fr) !important;
-                        padding-top: 50px !important;
-                    }
-
-                    .footer-totals .bg-slate-900 {
-                        box-shadow: inset 0 0 0 1000px #0f172a !important;
-                        background: #0f172a !important;
-                        color: white !important;
                     }
 
                     .print-hidden, button, .print\:hidden { display: none !important; }
+                    
+                    /* Force visible elements and allow growth */
+                    .overflow-hidden { overflow: visible !important; }
+                    .flex-1 { flex: none !important; height: auto !important; }
+                    .budget-print-container { height: auto !important; min-height: 0 !important; }
                 }
             `}} />
 
-            <div className="budget-print-container bg-white min-h-[1123px] print:min-h-0 w-full max-w-[800px] mx-auto shadow-2xl relative print:shadow-none print:m-0 print:max-w-none rounded-[3rem] overflow-hidden print:rounded-none flex flex-col">
+            <div className="budget-print-container bg-white min-h-[1123px] print:min-h-0 w-full max-w-[800px] mx-auto shadow-2xl relative print:shadow-none print:m-0 print:max-w-none rounded-[3rem] print:rounded-none flex flex-col print:overflow-visible">
                 
                 {/* Header with Black Bar and Gold Wave */}
                 <div className="relative h-48 shrink-0">
@@ -303,7 +310,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     </div>
 
                     {/* Commercial View (Proposta) is now the only view */}
-                    <div className="mb-8 overflow-hidden rounded-[1.5rem] border border-slate-100">
+                    <div className="mb-8 overflow-hidden print:overflow-visible rounded-[1.5rem] border border-slate-100">
                             <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center group relative">
                                 <span className="text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-3">
                                     Descrição dos Ambientes e Serviços
