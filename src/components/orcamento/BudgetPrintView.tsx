@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, Instagram, MapPin, Printer, X, Plus, Trash2, Save } from 'lucide-react';
+import { Phone, Instagram, MapPin, Printer, X, Plus, Trash2, Save, CheckCircle2, Award } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface BudgetPrintViewProps {
@@ -54,7 +54,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
             "MDF Branco TX (Internos)",
             "Dobradiças Click Slow",
             "Corrediças Telespópicas",
-            ""
+            "Puxadores Perfil/Embutir"
         ];
     });
 
@@ -102,6 +102,8 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
         <div className="budget-print-overlay fixed inset-0 z-[99999] bg-slate-900/90 backdrop-blur-sm overflow-y-auto p-4 md:p-10 print:p-0 print:bg-white print:relative print:overflow-visible flex justify-center">
             
             <style dangerouslySetInnerHTML={{ __html: `
+                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&display=swap');
+                
                 @media print {
                     @page { size: A4; margin: 0; }
                     body > * { display: none !important; }
@@ -123,101 +125,118 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     }
                     input, textarea { border: none !important; background: transparent !important; }
                 }
-                .logo-container { filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+
+                .budget-print-container { font-family: 'Outfit', sans-serif; }
+                .watermark-bg {
+                    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z' fill='%23f59e0b' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
+                }
             `}} />
 
-            <div className="budget-print-container bg-white w-full max-w-[850px] shadow-2xl flex flex-col print:shadow-none min-h-screen font-sans">
+            <div className="budget-print-container bg-white w-full max-w-[850px] shadow-2xl flex flex-col print:shadow-none min-h-screen watermark-bg relative">
                 
-                {/* 1. CABEÇALHO ESTILIZADO (IGUAL IMAGEM) */}
+                {/* 1. CABEÇALHO PREMIUM */}
                 <div className="relative">
-                    <div className="bg-[#0f172a] text-white h-16 flex items-center justify-center px-10 relative">
-                        <div className="absolute left-10 top-2 h-32 w-32 rounded-full bg-black shadow-xl z-20 logo-container flex items-center justify-center overflow-hidden border-2 border-[#f59e0b]">
+                    <div className="bg-[#0f172a] text-white h-20 flex items-center justify-center px-10 relative">
+                        <div className="absolute left-10 top-2 h-36 w-36 rounded-full bg-black shadow-2xl z-20 flex items-center justify-center overflow-hidden border-2 border-[#f59e0b]">
                             <img src="/logo-bjl.png" alt="BJL" className="w-full h-full object-cover" />
                         </div>
-                        <h1 className="text-xl font-black uppercase tracking-[0.2em] ml-28">BJL PLANEJADOS</h1>
-                        <div className="absolute right-10 flex flex-col items-end gap-1">
-                            <div className="flex items-center gap-1 text-[9px] font-bold bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
-                                <Phone size={10} className="text-[#f59e0b]" /> (22) 99703-9852
+                        <div className="ml-24 flex flex-col items-center">
+                            <h1 className="text-2xl font-black uppercase tracking-[0.4em] leading-none mb-1">BJL PLANEJADOS</h1>
+                            <p className="text-[9px] font-black text-[#f59e0b] tracking-[0.6em] uppercase opacity-80">Design & Sofisticação</p>
+                        </div>
+                        <div className="absolute right-10 flex flex-col items-end gap-1 font-semibold text-[10px]">
+                            <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                                <Phone size={11} className="text-[#f59e0b]" /> (22) 99703-9852
                             </div>
-                            <div className="flex items-center gap-1 text-[9px] font-bold bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
-                                <Instagram size={10} className="text-[#f59e0b]" /> @bjlmoveisplanejados
+                            <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                                <Instagram size={11} className="text-[#f59e0b]" /> @bjlmoveisplanejados
                             </div>
                         </div>
                     </div>
-                    <div className="h-6 bg-[#f59e0b] w-full" />
+                    <div className="h-8 bg-gradient-to-r from-[#f59e0b] via-[#fbbf24] to-[#f59e0b] w-full" />
                     <div className="flex justify-end pr-10 pt-2 items-center gap-2">
-                         <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Rua Maria Vitipó Raposo, n°138, Barão de Macaubas</span>
-                         <MapPin size={10} className="text-slate-400" />
+                         <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">BJL Moveis Planejados e Marcenaria • Barão de Macaubas</span>
+                         <MapPin size={11} className="text-slate-400" />
                     </div>
                 </div>
 
-                {/* 2. PROPOSTA PARA (PÍLULA LARANJA) */}
-                <div className="px-10 py-8 flex justify-between items-start">
-                    <div className="bg-[#f59e0b] rounded-[2rem] px-10 py-6 min-w-[400px] shadow-lg shadow-orange-500/10">
-                        <span className="text-[10px] font-black uppercase text-white/80 tracking-widest block mb-2">PROPOSTA PARA</span>
+                {/* 2. PROPOSTA COM DESIGN ARREDONDADO */}
+                <div className="px-12 py-12 flex justify-between items-start">
+                    <div className="bg-gradient-to-br from-[#f59e0b] to-[#d97706] rounded-[3rem] px-12 py-10 min-w-[480px] shadow-2xl shadow-orange-500/20 relative">
+                        <div className="flex items-center gap-2 mb-3">
+                             <Award size={14} className="text-white/60" />
+                             <span className="text-[10px] font-black uppercase text-white/70 tracking-[0.2em] block">PROPOSTA CUSTOMIZADA</span>
+                        </div>
                         <textarea 
                             value={budget.client_name}
                             onChange={(e) => setBudget({...budget, client_name: e.target.value})}
                             rows={1}
-                            className="w-full bg-transparent border-none p-0 text-3xl font-black uppercase tracking-tight text-white focus:ring-0 resize-none overflow-hidden"
+                            className="w-full bg-transparent border-none p-0 text-4xl font-black uppercase tracking-tight text-white focus:ring-0 resize-none overflow-hidden placeholder:text-white/30"
                             placeholder="NOME DO CLIENTE"
                         />
                     </div>
                     <div className="text-right">
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">ORÇAMENTO REF.</p>
-                        <p className="text-3xl font-black text-slate-900 leading-none">#{budgetNumber || "000"}</p>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">EMITIDO EM</p>
-                        <p className="text-xs font-black text-slate-700">{new Date().toLocaleDateString('pt-BR')}</p>
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 underline decoration-[#f59e0b] decoration-2 underline-offset-4">REF. DO PROJETO</p>
+                        <p className="text-4xl font-black text-slate-900 leading-none">#{budgetNumber || "000"}</p>
+                        <div className="mt-8">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">DATA DE VALIDADE</p>
+                            <p className="text-sm font-black text-slate-700">{new Date().toLocaleDateString('pt-BR')}</p>
+                        </div>
                     </div>
                 </div>
 
-                {/* 3. LISTA DE ITENS */}
-                <div className="px-10 flex-1">
-                    <div className="bg-[#1e293b] text-white px-8 py-4 flex justify-between items-center rounded-2xl mb-4">
-                        <span className="text-xs font-black uppercase tracking-[0.2em]">DESCRIÇÃO DOS AMBIENTES E SERVIÇOS</span>
-                        <button onClick={addAmbiente} className="no-print p-2 bg-[#f59e0b] text-black rounded-lg text-[10px] font-black uppercase flex items-center gap-1 hover:scale-105 transition-all">
-                            <Plus size={14} /> NOVO AMBIENTE
+                {/* 3. LISTA DE ITENS - DESIGN PREMIUM */}
+                <div className="px-12 flex-1">
+                    <div className="bg-[#0f172a] text-white px-10 py-6 flex justify-between items-center rounded-3xl mb-6 shadow-xl shadow-slate-900/10">
+                        <div className="flex items-center gap-3">
+                             <div className="w-2 h-8 bg-[#f59e0b] rounded-full" />
+                             <span className="text-xs font-black uppercase tracking-[0.3em]">DETALHAMENTO TÉCNICO DOS AMBIENTES</span>
+                        </div>
+                        <button onClick={addAmbiente} className="no-print px-4 py-2 bg-[#f59e0b] text-[#0f172a] rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:scale-105 transition-all shadow-lg shadow-amber-500/30">
+                            <Plus size={16} /> ADICIONAR ITEM
                         </button>
                     </div>
                     
                     <table className="w-full">
                         <thead>
-                            <tr className="border-b border-slate-100 h-12">
-                                <th className="px-4 text-left text-[9px] font-black uppercase text-slate-400 tracking-widest">AMBIENTE / DETALHAMENTO</th>
-                                <th className="px-4 text-right text-[9px] font-black uppercase text-slate-400 tracking-widest">INVESTIMENTO (A VISTA)</th>
+                            <tr className="border-b-2 border-slate-100 h-14">
+                                <th className="px-6 text-left text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">DESCRIÇÃO DO SERVIÇO</th>
+                                <th className="px-6 text-right text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">VALOR UNITÁRIO</th>
                                 <th className="w-8 no-print"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {ambientes.map((amb) => (
-                                <tr key={amb.id} className="group transition-all">
-                                    <td className="py-6 px-4">
-                                        <textarea 
-                                            value={amb.description}
-                                            onChange={(e) => handleAmbienteChange(amb.id, 'description', e.target.value)}
-                                            rows={1}
-                                            className="w-full bg-transparent border-none p-0 text-sm font-black text-slate-700 uppercase focus:ring-0 resize-y min-h-[24px] leading-relaxed"
-                                            placeholder="DESCRIÇÃO DO AMBIENTE..."
-                                        />
+                            {ambientes.map((amb, index) => (
+                                <tr key={amb.id} className="group hover:bg-slate-50/50 transition-all">
+                                    <td className="py-8 px-6">
+                                        <div className="flex gap-4">
+                                            <span className="text-[10px] font-black text-[#f59e0b] opacity-40">0{index+1}.</span>
+                                            <textarea 
+                                                value={amb.description}
+                                                onChange={(e) => handleAmbienteChange(amb.id, 'description', e.target.value)}
+                                                rows={1}
+                                                className="w-full bg-transparent border-none p-0 text-[15px] font-black text-slate-800 uppercase focus:ring-0 resize-y min-h-[24px] leading-relaxed"
+                                                placeholder="DESCREVA O AMBIENTE..."
+                                            />
+                                        </div>
                                     </td>
-                                    <td className="py-6 px-4 text-right align-top">
+                                    <td className="py-8 px-6 text-right align-top">
                                         <div className="flex items-center justify-end gap-2">
-                                            <span className="text-[10px] font-black text-slate-200 no-print">R$</span>
+                                            <span className="text-[10px] font-black text-slate-300 no-print">R$</span>
                                             <input 
                                                 type="number"
                                                 value={amb.value}
                                                 onChange={(e) => handleAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
-                                                className="w-24 bg-transparent border-none p-0 text-right text-base font-black text-slate-900 focus:ring-0 no-print"
+                                                className="w-28 bg-transparent border-none p-0 text-right text-lg font-black text-slate-900 focus:ring-0 no-print"
                                             />
-                                            {/* Versão para Impressão */}
-                                            <span className="hidden print:inline text-base font-black text-slate-800">
+                                            <span className="hidden print:inline text-lg font-black text-slate-900">
                                                 {formatCurrency(amb.value).replace('R$', '').trim()}
                                             </span>
                                         </div>
                                     </td>
                                     <td className="p-2 no-print">
-                                        <button onClick={() => removeAmbiente(amb.id)} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-2 hover:bg-rose-50 rounded-lg">
-                                            <Trash2 size={16} />
+                                        <button onClick={() => removeAmbiente(amb.id)} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-3 hover:bg-rose-50 rounded-2xl">
+                                            <Trash2 size={18} />
                                         </button>
                                     </td>
                                 </tr>
@@ -226,19 +245,19 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     </table>
                 </div>
 
-                {/* 4. TOTAIS E ESPECIFICAÇÕES (IGUAL A IMAGEM) */}
-                <div className="px-10 py-10 bg-slate-50/50 mt-10 print:bg-white print:mt-0 force-break-before">
-                    <div className="flex flex-row justify-between gap-10">
+                {/* 4. TOTAIS E CONDIÇÕES - NÍVEL LUXO */}
+                <div className="px-12 py-14 mt-10 print:mt-10 force-break-before bg-slate-50/30">
+                    <div className="flex flex-row justify-between gap-12">
                         {/* Esquerda: Condições e Specs */}
-                        <div className="flex-1 space-y-10">
-                            <div>
-                                <h3 className="text-[10px] font-black uppercase text-[#f59e0b] tracking-[0.2em] mb-6 flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 bg-[#f59e0b] rounded-full" /> CONDIÇÕES DE PAGAMENTO
+                        <div className="flex-1 space-y-12">
+                            <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+                                <h3 className="text-[11px] font-black uppercase text-[#f59e0b] tracking-[0.3em] mb-8 flex items-center gap-3">
+                                    <CheckCircle2 size={16} /> CONDIÇÕES DE PAGAMENTO
                                 </h3>
-                                <div className="space-y-3 pl-6">
+                                <div className="space-y-4 pl-6">
                                     {paymentTerms.map((term, i) => (
-                                        <div key={i} className="flex gap-3">
-                                            <span className="text-[9px] font-black text-[#f59e0b] opacity-50">0{i+1}.</span>
+                                        <div key={i} className="flex gap-4 items-center">
+                                            <div className="w-1.5 h-1.5 bg-[#f59e0b]/30 rounded-full" />
                                             <input 
                                                 value={term}
                                                 onChange={(e) => {
@@ -246,20 +265,20 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                                     newTerms[i] = e.target.value;
                                                     setPaymentTerms(newTerms);
                                                 }}
-                                                className="flex-1 bg-transparent border-none p-0 text-[10px] font-bold text-slate-600 uppercase focus:ring-0 leading-tight"
+                                                className="flex-1 bg-transparent border-none p-0 text-xs font-bold text-slate-600 uppercase focus:ring-0 leading-tight"
                                             />
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                            <div>
-                                <h3 className="text-[10px] font-black uppercase text-[#f59e0b] tracking-[0.2em] mb-6 flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 bg-[#f59e0b] rounded-full" /> ESPECIFICAÇÕES TÉCNICAS
+                            <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+                                <h3 className="text-[11px] font-black uppercase text-[#f59e0b] tracking-[0.3em] mb-8 flex items-center gap-3">
+                                    <Award size={16} /> ESPECIFICAÇÕES TÉCNICAS
                                 </h3>
-                                <div className="grid grid-cols-2 gap-x-8 gap-y-3 pl-6">
+                                <div className="grid grid-cols-2 gap-x-10 gap-y-4 pl-6">
                                     {techSpecs.map((spec, i) => (
-                                        <div key={i} className="flex items-center gap-2 border-b border-slate-100 pb-1">
-                                            <div className="w-2 h-[1px] bg-slate-300" />
+                                        <div key={i} className="flex items-center gap-3 border-b border-slate-50 pb-2">
+                                            <div className="w-3 h-[2px] bg-[#f59e0b]/50 rounded-full" />
                                             <input 
                                                 value={spec}
                                                 onChange={(e) => {
@@ -267,56 +286,87 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                                     newSpecs[i] = e.target.value;
                                                     setTechSpecs(newSpecs);
                                                 }}
-                                                className="flex-1 bg-transparent border-none p-0 text-[9px] font-bold text-slate-500 uppercase focus:ring-0"
-                                                placeholder="..."
+                                                className="flex-1 bg-transparent border-none p-0 text-[10px] font-bold text-slate-500 uppercase focus:ring-0 placeholder:text-slate-200"
+                                                placeholder="ADICIONE ESPECIFICAÇÃO..."
                                             />
                                         </div>
                                     ))}
                                 </div>
                             </div>
+                            
+                            {/* CAMPO DE ASSINATURA */}
+                            <div className="pt-10 flex gap-10">
+                                <div className="flex-1 text-center">
+                                    <div className="h-[1px] bg-slate-200 w-full mb-3" />
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">ASSINATURA DO CLIENTE</p>
+                                </div>
+                                <div className="flex-1 text-center">
+                                    <div className="h-[1px] bg-slate-200 w-full mb-3" />
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">BJL PLANEJADOS</p>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Direita: Cartão de Totais (IGUAL A IMAGEM) */}
-                        <div className="w-full md:w-[350px]">
-                            <div className="bg-[#0f172a] text-white p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
-                                <div className="relative z-10 flex flex-col gap-8">
+                        {/* Direita: Cartão de Totais Glamour */}
+                        <div className="w-[380px]">
+                            <div className="bg-[#0f172a] text-white p-12 rounded-[3.5rem] shadow-[0_25px_50px_-12px_rgba(15,23,42,0.3)] relative overflow-hidden group border border-white/5">
+                                <div className="relative z-10 flex flex-col gap-10">
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">TOTAL À VISTA</p>
-                                        <h4 className="text-5xl font-black tabular-nums">{formatCurrency(displayTotal)}</h4>
+                                        <p className="text-[11px] font-black uppercase text-amber-500/50 tracking-[0.3em] mb-3">VALOR TOTAL À VISTA</p>
+                                        <h4 className="text-5xl font-black tabular-nums tracking-tighter">{formatCurrency(displayTotal)}</h4>
                                     </div>
                                     
-                                    <div className="h-[1px] bg-white/10 w-full" />
+                                    <div className="h-[2px] bg-gradient-to-r from-[#f59e0b]/0 via-[#f59e0b]/20 to-[#f59e0b]/0 w-full" />
                                     
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">TOTAL PARCELADO</p>
-                                        <p className="text-[9px] font-bold text-slate-500 mb-2 uppercase">EM ATÉ 10X NO CARTÃO</p>
-                                        <h5 className="text-4xl font-black text-[#f59e0b] tabular-nums">{formatCurrency(cardValue)}</h5>
-                                        <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
-                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">VALIDADE: 07 DIAS</p>
+                                        <p className="text-[11px] font-black uppercase text-slate-400 tracking-[0.3em] mb-4">OPÇÃO DE PARCELAMENTO</p>
+                                        <div className="flex items-center gap-2 mb-3">
+                                             <CheckCircle2 size={12} className="text-amber-500" />
+                                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ATÉ 10X S/ JUROS NO CARTÃO</p>
+                                        </div>
+                                        <h5 className="text-4xl font-black text-[#f59e0b] tabular-nums tracking-tighter">{formatCurrency(cardValue)}</h5>
+                                        <div className="mt-12 flex flex-col items-center gap-2">
+                                            <div className="w-16 h-1 bg-white/5 rounded-full" />
+                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.5em] text-center">PROPOSTA EXCLUSIVA</p>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="absolute top-10 right-10 opacity-5 pointer-events-none transition-transform group-hover:scale-110 duration-700">
-                                    <Printer size={120} />
+                                <div className="absolute -top-10 -right-10 opacity-[0.03] pointer-events-none transition-transform group-hover:scale-110 duration-700">
+                                    <Printer size={250} />
                                 </div>
                             </div>
-                            <p className="text-center text-[8px] font-black uppercase text-slate-300 mt-6 tracking-[0.3em]">BJL PLANEJADOS • QUALIDADE & PRECISÃO</p>
+                            <p className="text-center text-[9px] font-black uppercase text-slate-400 mt-10 tracking-[0.5em] opacity-50">BJL PLANEJADOS • MARMORARIA & MARCENARIA</p>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* RODAPÉ ELEGANTE */}
+                <div className="mt-auto px-12 py-10 border-t border-slate-100 flex justify-between items-center opacity-70">
+                    <div className="text-[10px] font-bold text-slate-400">
+                        Obrigado por escolher a BJL Planejados. <br />Qualidade e precisão em cada detalhe.
+                    </div>
+                    <div className="flex gap-4">
+                        <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center">
+                            <Phone size={14} className="text-slate-300" />
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center">
+                            <Instagram size={14} className="text-slate-300" />
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* CONTROLES FLUTUANTES NO-PRINT */}
-            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex gap-4 no-print z-[999999] bg-[#0f172a]/80 backdrop-blur-xl p-5 rounded-[2rem] border border-white/10 shadow-2xl scale-90 md:scale-100">
-                <button onClick={onClose} className="px-8 py-3 bg-white/5 text-white/70 rounded-2xl font-black uppercase text-xs hover:bg-rose-500 hover:text-white transition-all flex items-center gap-3 border border-white/5">
-                    <X size={18} /> FECHAR
+            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex gap-4 no-print z-[999999] bg-[#0f172a]/90 backdrop-blur-2xl p-6 rounded-[3rem] border border-white/10 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] scale-90 md:scale-100">
+                <button onClick={onClose} className="px-8 py-4 bg-white/5 text-white/50 rounded-2xl font-black uppercase text-xs hover:bg-rose-500/20 hover:text-rose-500 transition-all flex items-center gap-3 border border-white/5">
+                    <X size={20} /> FECHAR
                 </button>
-                <div className="w-[1px] h-10 bg-white/10 self-center" />
-                <button onClick={handleSave} disabled={isSaving} className="px-10 py-3 bg-emerald-500 text-white rounded-2xl font-black uppercase text-xs hover:scale-105 active:scale-95 transition-all flex items-center gap-3 shadow-lg shadow-emerald-500/20">
-                    <Save size={18} /> {isSaving ? "SALVANDO..." : "SALVAR ALTERAÇÕES"}
+                <div className="w-[1px] h-12 bg-white/10 self-center" />
+                <button onClick={handleSave} disabled={isSaving} className="px-10 py-4 bg-emerald-500/20 text-emerald-400 rounded-2xl font-black uppercase text-xs hover:bg-emerald-500 hover:text-white active:scale-95 transition-all flex items-center gap-3 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
+                    <Save size={20} /> {isSaving ? "SALVANDO..." : "SALVAR PROPOSTA"}
                 </button>
-                <button onClick={() => window.print()} className="px-12 py-3 bg-[#f59e0b] text-[#0f172a] rounded-2xl font-black uppercase text-xs hover:scale-110 active:scale-95 transition-all flex items-center gap-3 shadow-lg shadow-[#f59e0b]/20">
-                    <Printer size={18} /> GERAR PDF / IMPRIMIR
+                <button onClick={() => window.print()} className="px-14 py-4 bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-[#0f172a] rounded-2xl font-black uppercase text-xs hover:scale-110 active:scale-95 transition-all flex items-center gap-3 shadow-[0_15px_30px_-5px_rgba(245,158,11,0.4)]">
+                    <Printer size={20} /> GERAR PDF / IMPRIMIR
                 </button>
             </div>
         </div>
