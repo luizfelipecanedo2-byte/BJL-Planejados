@@ -37,8 +37,8 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
             }
         } catch (e) {}
         return [
-            "Entrada de 50% no fechamento do contrato (TED/PIX).",
-            "Saldo restante de 50% na data da entrega técnica.",
+            "Entrada de 60% no fechamento do contrato.",
+            "Saldo restante de 40% na data da entrega técnica.",
             "Prazo de entrega: A definir conforme cronograma."
         ];
     });
@@ -51,10 +51,10 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
             }
         } catch (e) {}
         return [
-            "MDF Branco TX (Interno)",
-            "Dobradiças Amortecedor",
+            "MDF Branco TX (Internos)",
+            "Dobradiças Click Slow",
             "Corrediças Telespópicas",
-            "Puxadores Perfil/Embutir"
+            ""
         ];
     });
 
@@ -89,6 +89,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                 total_cost: displayTotal
             };
             await onSave(updatedBudget, initialBudget.budget_items || []);
+            toast.success("Orçamento salvo!");
         } catch (error) {
             console.error("Error saving budget:", error);
             toast.error("Erro ao salvar");
@@ -103,129 +104,119 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
                     @page { size: A4; margin: 0; }
-                    
-                    /* Hide everything else */
                     body > * { display: none !important; }
                     body > .budget-print-overlay { display: block !important; visibility: visible !important; }
-                    
-                    /* Reset body for print */
                     body { background: white !important; margin: 0 !important; padding: 0 !important; }
-                    
                     .budget-print-overlay { 
                         position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 100% !important;
-                        padding: 0 !important; 
-                        margin: 0 !important;
-                        display: block !important; 
-                        background: white !important;
+                        left: 0 !important; top: 0 !important;
+                        width: 100% !important; height: auto !important;
+                        padding: 0 !important; margin: 0 !important;
+                        display: block !important; background: white !important;
                         z-index: 99999 !important;
-                    }
-                    
-                    .budget-print-container { 
-                        box-shadow: none !important; 
-                        margin: 0 !important; 
-                        width: 100% !important; 
-                        max-width: none !important;
-                        border-radius: 0 !important;
                     }
                     .no-print { display: none !important; }
                     .force-break-before { page-break-before: always !important; }
+                    .budget-print-container { 
+                        box-shadow: none !important; margin: 0 !important; width: 100% !important; 
+                        max-width: none !important; border-radius: 0 !important;
+                    }
+                    input, textarea { border: none !important; background: transparent !important; }
                 }
+                .logo-container { filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
             `}} />
 
-            <div className="budget-print-container bg-white w-full max-w-[850px] shadow-2xl flex flex-col print:shadow-none min-h-screen">
+            <div className="budget-print-container bg-white w-full max-w-[850px] shadow-2xl flex flex-col print:shadow-none min-h-screen font-sans">
                 
-                {/* 1. CABEÇALHO ROBUSTO */}
-                <div className="bg-slate-950 text-white p-8 flex justify-between items-center border-b-[8px] border-amber-500">
-                    <div className="flex items-center gap-6">
-                        <div className="h-32 w-32 rounded-full overflow-hidden bg-white flex items-center justify-center p-1 shadow-lg border-2 border-amber-500">
-                            <img src="/logo-bjl.png" alt="Logo" className="w-full h-full object-contain" />
+                {/* 1. CABEÇALHO ESTILIZADO (IGUAL IMAGEM) */}
+                <div className="relative">
+                    <div className="bg-[#0f172a] text-white h-16 flex items-center justify-center px-10 relative">
+                        <div className="absolute left-10 top-2 h-32 w-32 rounded-full bg-white p-1 shadow-xl z-20 logo-container flex items-center justify-center overflow-hidden border-2 border-[#f59e0b]">
+                            <img src="/logo-bjl.png" alt="BJL" className="w-[85%] h-[85%] object-contain" />
                         </div>
-                        <div>
-                            <h1 className="text-3xl font-black uppercase tracking-tighter leading-none">BJL Planejados</h1>
-                            <p className="text-amber-500 font-bold uppercase tracking-widest text-xs mt-2">Qualidade & Precisão em Marcenaria</p>
-                        </div>
-                    </div>
-                    <div className="text-right space-y-1">
-                        <div className="flex items-center justify-end gap-2 text-sm font-bold opacity-90">
-                            <Phone size={14} className="text-amber-500" /> (22) 99703-9852
-                        </div>
-                        <div className="flex items-center justify-end gap-2 text-sm font-bold opacity-90">
-                            <Instagram size={14} className="text-amber-500" /> @bjlmoveisplanejados
-                        </div>
-                        <div className="flex items-center justify-end gap-2 text-xs opacity-70 mt-4 max-w-[200px]">
-                            Rua Maria Vitipó Raposo, n°138, Barão de Macaubas <MapPin size={12} />
+                        <h1 className="text-xl font-black uppercase tracking-[0.2em] ml-28">BJL PLANEJADOS</h1>
+                        <div className="absolute right-10 flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-1 text-[9px] font-bold bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                                <Phone size={10} className="text-[#f59e0b]" /> (22) 99703-9852
+                            </div>
+                            <div className="flex items-center gap-1 text-[9px] font-bold bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                                <Instagram size={10} className="text-[#f59e0b]" /> @bjlmoveisplanejados
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                {/* 2. INFORMAÇÕES DO CLIENTE */}
-                <div className="p-10 pb-4">
-                    <div className="flex justify-between items-end border-b-2 border-slate-100 pb-6">
-                        <div className="flex-1">
-                            <h2 className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-2">Proposta para Cliente</h2>
-                            <textarea 
-                                value={budget.client_name}
-                                onChange={(e) => setBudget({...budget, client_name: e.target.value})}
-                                rows={1}
-                                className="w-full bg-transparent border-none p-0 text-3xl font-black uppercase tracking-tight text-slate-900 focus:ring-0 resize-none overflow-hidden"
-                            />
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Orçamento Ref.</p>
-                            <p className="text-xl font-black text-slate-900">#{budgetNumber || "0000"}</p>
-                            <p className="text-[10px] font-bold text-slate-500 mt-2">{new Date().toLocaleDateString('pt-BR')}</p>
-                        </div>
+                    <div className="h-6 bg-[#f59e0b] w-full" />
+                    <div className="flex justify-end pr-10 pt-2 items-center gap-2">
+                         <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Rua Maria Vitipó Raposo, n°138, Barão de Macaubas</span>
+                         <MapPin size={10} className="text-slate-400" />
                     </div>
                 </div>
 
-                {/* 3. LISTA DE ITENS (AMBIEBTES) */}
-                <div className="p-10 flex-1">
-                    <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center rounded-t-xl">
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Descrição detalhada dos serviços</span>
-                        <button onClick={addAmbiente} className="no-print p-2 bg-amber-500 text-black rounded text-[10px] font-bold uppercase flex items-center gap-1">
-                            <Plus size={12} /> Novo Ambiente
+                {/* 2. PROPOSTA PARA (PÍLULA LARANJA) */}
+                <div className="px-10 py-8 flex justify-between items-start">
+                    <div className="bg-[#f59e0b] rounded-[2rem] px-10 py-6 min-w-[400px] shadow-lg shadow-orange-500/10">
+                        <span className="text-[10px] font-black uppercase text-white/80 tracking-widest block mb-2">PROPOSTA PARA</span>
+                        <textarea 
+                            value={budget.client_name}
+                            onChange={(e) => setBudget({...budget, client_name: e.target.value})}
+                            rows={1}
+                            className="w-full bg-transparent border-none p-0 text-3xl font-black uppercase tracking-tight text-white focus:ring-0 resize-none overflow-hidden"
+                            placeholder="NOME DO CLIENTE"
+                        />
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">ORÇAMENTO REF.</p>
+                        <p className="text-3xl font-black text-slate-900 leading-none">#{budgetNumber || "000"}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">EMITIDO EM</p>
+                        <p className="text-xs font-black text-slate-700">{new Date().toLocaleDateString('pt-BR')}</p>
+                    </div>
+                </div>
+
+                {/* 3. LISTA DE ITENS */}
+                <div className="px-10 flex-1">
+                    <div className="bg-[#1e293b] text-white px-8 py-4 flex justify-between items-center rounded-2xl mb-4">
+                        <span className="text-xs font-black uppercase tracking-[0.2em]">DESCRIÇÃO DOS AMBIENTES E SERVIÇOS</span>
+                        <button onClick={addAmbiente} className="no-print p-2 bg-[#f59e0b] text-black rounded-lg text-[10px] font-black uppercase flex items-center gap-1 hover:scale-105 transition-all">
+                            <Plus size={14} /> NOVO AMBIENTE
                         </button>
                     </div>
-                    <table className="w-full border-collapse">
+                    
+                    <table className="w-full">
                         <thead>
-                            <tr className="bg-slate-50 border-b border-slate-200">
-                                <th className="p-4 text-left text-[10px] font-black uppercase text-slate-500 w-[75%]">Ambiente / Detalhamento</th>
-                                <th className="p-4 text-right text-[10px] font-black uppercase text-slate-500">Valor (À Vista)</th>
+                            <tr className="border-b border-slate-100 h-12">
+                                <th className="px-4 text-left text-[9px] font-black uppercase text-slate-400 tracking-widest">AMBIENTE / DETALHAMENTO</th>
+                                <th className="px-4 text-right text-[9px] font-black uppercase text-slate-400 tracking-widest">INVESTIMENTO (A VISTA)</th>
                                 <th className="w-8 no-print"></th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-slate-50">
                             {ambientes.map((amb) => (
-                                <tr key={amb.id} className="border-b border-slate-100 hover:bg-slate-50 group">
-                                    <td className="p-4">
+                                <tr key={amb.id} className="group transition-all">
+                                    <td className="py-6 px-4">
                                         <textarea 
                                             value={amb.description}
                                             onChange={(e) => handleAmbienteChange(amb.id, 'description', e.target.value)}
                                             rows={1}
-                                            className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-800 uppercase focus:ring-0 resize-y min-h-[30px]"
-                                            placeholder="Descreva o ambiente e o serviço..."
+                                            className="w-full bg-transparent border-none p-0 text-sm font-black text-slate-700 uppercase focus:ring-0 resize-y min-h-[24px] leading-relaxed"
+                                            placeholder="DESCRIÇÃO DO AMBIENTE..."
                                         />
                                     </td>
-                                    <td className="p-4 text-right align-top">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <span className="no-print text-xs text-slate-300">R$</span>
+                                    <td className="py-6 px-4 text-right align-top">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <span className="text-[10px] font-black text-slate-200 no-print">R$</span>
                                             <input 
                                                 type="number"
                                                 value={amb.value}
                                                 onChange={(e) => handleAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
-                                                className="w-24 bg-transparent border-none p-0 text-right text-base font-black text-slate-900 focus:ring-0 print-hidden-input"
+                                                className="w-24 bg-transparent border-none p-0 text-right text-base font-black text-slate-900 focus:ring-0 no-print"
                                             />
                                             {/* Versão para Impressão */}
-                                            <span className="hidden print:inline text-lg font-black text-slate-900">
-                                                {formatCurrency(amb.value)}
+                                            <span className="hidden print:inline text-base font-black text-slate-800">
+                                                {formatCurrency(amb.value).replace('R$', '').trim()}
                                             </span>
                                         </div>
                                     </td>
                                     <td className="p-2 no-print">
-                                        <button onClick={() => removeAmbiente(amb.id)} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
+                                        <button onClick={() => removeAmbiente(amb.id)} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-2 hover:bg-rose-50 rounded-lg">
                                             <Trash2 size={16} />
                                         </button>
                                     </td>
@@ -235,96 +226,97 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     </table>
                 </div>
 
-                {/* 4. RODAPÉ DE TOTAIS E CONDIÇÕES (EM NOVA PÁGINA SE NECESSÁRIO) */}
-                <div className="force-break-before p-10 bg-slate-50 border-t border-slate-200">
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
-                        {/* Termos e Condições */}
-                        <div className="md:col-span-3 space-y-10">
+                {/* 4. TOTAIS E ESPECIFICAÇÕES (IGUAL A IMAGEM) */}
+                <div className="px-10 py-10 bg-slate-50/50 mt-10 print:bg-white print:mt-0 force-break-before">
+                    <div className="flex flex-col md:flex-row justify-between gap-10">
+                        {/* Esquerda: Condições e Specs */}
+                        <div className="flex-1 space-y-10">
                             <div>
-                                <h3 className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-4 flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span> Condições de Pagamento
+                                <h3 className="text-[10px] font-black uppercase text-[#f59e0b] tracking-[0.2em] mb-6 flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 bg-[#f59e0b] rounded-full" /> CONDIÇÕES DE PAGAMENTO
                                 </h3>
-                                <div className="space-y-4 pl-4 border-l-2 border-amber-100">
+                                <div className="space-y-3 pl-6">
                                     {paymentTerms.map((term, i) => (
-                                        <input 
-                                            key={`pt-${i}`}
-                                            value={term}
-                                            onChange={(e) => {
-                                                const newTerms = [...paymentTerms];
-                                                newTerms[i] = e.target.value;
-                                                setPaymentTerms(newTerms);
-                                            }}
-                                            className="w-full bg-transparent border-none p-0 text-xs font-bold text-slate-700 uppercase focus:ring-0 mb-1"
-                                        />
+                                        <div key={i} className="flex gap-3">
+                                            <span className="text-[9px] font-black text-[#f59e0b] opacity-50">0{i+1}.</span>
+                                            <input 
+                                                value={term}
+                                                onChange={(e) => {
+                                                    const newTerms = [...paymentTerms];
+                                                    newTerms[i] = e.target.value;
+                                                    setPaymentTerms(newTerms);
+                                                }}
+                                                className="flex-1 bg-transparent border-none p-0 text-[10px] font-bold text-slate-600 uppercase focus:ring-0 leading-tight"
+                                            />
+                                        </div>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-4 flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span> Especificações Técnicas
+                                <h3 className="text-[10px] font-black uppercase text-[#f59e0b] tracking-[0.2em] mb-6 flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 bg-[#f59e0b] rounded-full" /> ESPECIFICAÇÕES TÉCNICAS
                                 </h3>
-                                <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-amber-100">
+                                <div className="grid grid-cols-2 gap-x-8 gap-y-3 pl-6">
                                     {techSpecs.map((spec, i) => (
-                                        <input 
-                                            key={`ts-${i}`}
-                                            value={spec}
-                                            onChange={(e) => {
-                                                const newSpecs = [...techSpecs];
-                                                newSpecs[i] = e.target.value;
-                                                setTechSpecs(newSpecs);
-                                            }}
-                                            className="w-full bg-transparent border-none p-0 text-[10px] font-bold text-slate-500 uppercase focus:ring-0"
-                                        />
+                                        <div key={i} className="flex items-center gap-2 border-b border-slate-100 pb-1">
+                                            <div className="w-2 h-[1px] bg-slate-300" />
+                                            <input 
+                                                value={spec}
+                                                onChange={(e) => {
+                                                    const newSpecs = [...techSpecs];
+                                                    newSpecs[i] = e.target.value;
+                                                    setTechSpecs(newSpecs);
+                                                }}
+                                                className="flex-1 bg-transparent border-none p-0 text-[9px] font-bold text-slate-500 uppercase focus:ring-0"
+                                                placeholder="..."
+                                            />
+                                        </div>
                                     ))}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Quadros de Totais */}
-                        <div className="md:col-span-2">
-                            <div className="bg-slate-950 text-white p-8 rounded-2xl shadow-xl flex flex-col gap-6 relative overflow-hidden">
-                                <div className="z-10">
-                                    <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest mb-2">Total à Vista</p>
-                                    <h4 className="text-4xl font-black tabular-nums">{formatCurrency(displayTotal)}</h4>
-                                </div>
-                                <div className="border-t border-white/10 pt-6 z-10">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Opção Parcelada</p>
-                                        <div className="flex items-center gap-1 no-print">
-                                            <input 
-                                                type="number"
-                                                value={budget.card_fee_percent || 11}
-                                                onChange={(e) => setBudget({...budget, card_fee_percent: parseFloat(e.target.value) || 0})}
-                                                className="w-8 bg-transparent text-amber-500 font-bold text-right focus:ring-0 border-none p-0"
-                                            />
-                                            <span className="text-xs text-slate-600">%</span>
+                        {/* Direita: Cartão de Totais (IGUAL A IMAGEM) */}
+                        <div className="w-full md:w-[350px]">
+                            <div className="bg-[#0f172a] text-white p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+                                <div className="relative z-10 flex flex-col gap-8">
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">TOTAL À VISTA</p>
+                                        <h4 className="text-5xl font-black tabular-nums">{formatCurrency(displayTotal)}</h4>
+                                    </div>
+                                    
+                                    <div className="h-[1px] bg-white/10 w-full" />
+                                    
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">TOTAL PARCELADO</p>
+                                        <p className="text-[9px] font-bold text-slate-500 mb-2 uppercase">EM ATÉ 10X NO CARTÃO</p>
+                                        <h5 className="text-4xl font-black text-[#f59e0b] tabular-nums">{formatCurrency(cardValue)}</h5>
+                                        <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
+                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">VALIDADE: 07 DIAS</p>
                                         </div>
                                     </div>
-                                    <h5 className="text-2xl font-black text-amber-500 tabular-nums">{formatCurrency(cardValue)}</h5>
-                                    <p className="text-[9px] text-slate-500 uppercase mt-2">Em até 10x s/ juros no cartão</p>
                                 </div>
-                                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                                    <Printer size={80} />
+                                <div className="absolute top-10 right-10 opacity-5 pointer-events-none transition-transform group-hover:scale-110 duration-700">
+                                    <Printer size={120} />
                                 </div>
-                                <p className="text-[9px] font-bold text-center mt-6 text-slate-500 uppercase tracking-[0.2em]">Validade da Proposta: 07 Dias</p>
                             </div>
-                            <p className="text-center text-[8px] font-black uppercase text-slate-300 mt-6 tracking-widest">BJL Planejados • Qualidade & Precisão</p>
+                            <p className="text-center text-[8px] font-black uppercase text-slate-300 mt-6 tracking-[0.3em]">BJL PLANEJADOS • QUALIDADE & PRECISÃO</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* CONTROLES FLUTUANTES NO-PRINT */}
-            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex gap-4 no-print z-[99999] bg-slate-900/60 backdrop-blur-md p-4 rounded-full border border-white/10 shadow-2xl">
-                <button onClick={onClose} className="px-6 py-2 bg-white/10 text-white rounded-full font-bold uppercase text-xs hover:bg-rose-500 transition-all flex items-center gap-2">
-                    <X size={16} /> Fechar
+            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex gap-4 no-print z-[999999] bg-[#0f172a]/80 backdrop-blur-xl p-5 rounded-[2rem] border border-white/10 shadow-2xl scale-90 md:scale-100">
+                <button onClick={onClose} className="px-8 py-3 bg-white/5 text-white/70 rounded-2xl font-black uppercase text-xs hover:bg-rose-500 hover:text-white transition-all flex items-center gap-3 border border-white/5">
+                    <X size={18} /> FECHAR
                 </button>
-                <div className="w-[1px] h-8 bg-white/20" />
-                <button onClick={handleSave} disabled={isSaving} className="px-8 py-2 bg-emerald-500 text-white rounded-full font-bold uppercase text-xs hover:scale-105 transition-all flex items-center gap-2">
-                    <Save size={16} /> {isSaving ? "Salvando..." : "Salvar"}
+                <div className="w-[1px] h-10 bg-white/10 self-center" />
+                <button onClick={handleSave} disabled={isSaving} className="px-10 py-3 bg-emerald-500 text-white rounded-2xl font-black uppercase text-xs hover:scale-105 active:scale-95 transition-all flex items-center gap-3 shadow-lg shadow-emerald-500/20">
+                    <Save size={18} /> {isSaving ? "SALVANDO..." : "SALVAR ALTERAÇÕES"}
                 </button>
-                <button onClick={() => window.print()} className="px-10 py-2 bg-amber-500 text-black rounded-full font-bold uppercase text-xs hover:scale-105 transition-all flex items-center gap-2">
-                    <Printer size={16} /> Gerar PDF / Imprimir
+                <button onClick={() => window.print()} className="px-12 py-3 bg-[#f59e0b] text-[#0f172a] rounded-2xl font-black uppercase text-xs hover:scale-110 active:scale-95 transition-all flex items-center gap-3 shadow-lg shadow-[#f59e0b]/20">
+                    <Printer size={18} /> GERAR PDF / IMPRIMIR
                 </button>
             </div>
         </div>
