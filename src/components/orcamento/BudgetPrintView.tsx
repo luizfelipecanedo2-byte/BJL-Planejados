@@ -228,7 +228,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
 
                 {/* 4. TOTAIS E ESPECIFICAÇÕES (IGUAL A IMAGEM) */}
                 <div className="px-10 py-10 bg-slate-50/50 mt-10 print:bg-white print:mt-0 force-break-before">
-                    <div className="flex flex-col md:flex-row justify-between gap-10">
+                    <div className="flex flex-row justify-between gap-10">
                         {/* Esquerda: Condições e Specs */}
                         <div className="flex-1 space-y-10">
                             <div>
