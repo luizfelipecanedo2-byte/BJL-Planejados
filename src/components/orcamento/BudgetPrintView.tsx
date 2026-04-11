@@ -161,42 +161,43 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     .budget-print-container {
                         width: 210mm !important;
                         height: auto !important;
-                        min-height: auto !important;
                         background: white !important;
                         display: block !important;
                         border-radius: 0 !important;
                         box-shadow: none !important;
-                        overflow: visible !important;
+                    }
+
+                    /* Force Header Space */
+                    .budget-print-container > div:first-child.relative.h-48 {
+                        height: 200px !important;
+                        display: block !important;
+                        position: relative !important;
+                        background: white !important;
+                        margin-bottom: 20px !important;
                     }
 
                     /* Force Colors */
-                    .bg-slate-950 { box-shadow: inset 0 0 0 1000px #020617 !important; background-color: #020617 !important; }
+                    .bg-slate-950 { box-shadow: inset 0 0 0 1000px #020617 !important; background-color: #020617 !important; height: 90px !important; display: flex !important; }
                     .bg-amber-500 { box-shadow: inset 0 0 0 1000px #f59e0b !important; background-color: #f59e0b !important; }
-                    .bg-amber-400\/50 { box-shadow: inset 0 0 0 1000px rgba(251, 191, 36, 0.5) !important; background-color: rgba(251, 191, 36, 0.5) !important; }
                     .bg-slate-900 { box-shadow: inset 0 0 0 1000px #0f172a !important; background-color: #0f172a !important; }
                     .bg-black { box-shadow: inset 0 0 0 1000px #000000 !important; background-color: #000000 !important; }
-                    .bg-white { box-shadow: inset 0 0 0 1000px #ffffff !important; background-color: #ffffff !important; }
                     
                     .text-white { color: white !important; }
                     .text-amber-500 { color: #f59e0b !important; }
 
-                    /* Header Restoration */
-                    .relative.h-48 { height: 180px !important; display: block !important; position: relative !important; width: 100% !important; }
-                    .bg-slate-950.h-24 { height: 80px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
-                    
-                    /* Correct absolute positions for print */
-                    .absolute.top-16 { top: 60px !important; height: 100px !important; }
-                    .absolute.top-4 { top: 12px !important; }
-                    .absolute.bottom-4 { bottom: 12px !important; }
-                    .absolute.left-12 { left: 15mm !important; }
-                    .absolute.right-12 { right: 15mm !important; }
+                    /* Absolute Elements Fixed */
+                    .absolute.top-16 { top: 60px !important; height: 120px !important; display: block !important; }
+                    .absolute.top-4 { top: 10px !important; display: block !important; }
+                    .absolute.bottom-4 { bottom: 10px !important; display: block !important; }
+                    .absolute.left-12 { left: 12mm !important; display: block !important; }
+                    .absolute.right-12 { right: 12mm !important; display: block !important; }
 
                     .px-12 { 
                         padding-left: 15mm !important; 
                         padding-right: 15mm !important; 
                         display: block !important;
-                        flex: none !important;
                         height: auto !important;
+                        margin-top: 10px !important;
                     }
 
                     /* Fix Table and Item List */
