@@ -155,16 +155,18 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         background: white !important;
                         z-index: 999999 !important;
                         display: block !important;
+                        height: auto !important;
                     }
 
                     .budget-print-container {
                         width: 210mm !important;
-                        min-height: 297mm !important;
+                        height: auto !important;
+                        min-height: auto !important;
                         background: white !important;
-                        display: flex !important;
-                        flex-direction: column !important;
+                        display: block !important;
                         border-radius: 0 !important;
                         box-shadow: none !important;
+                        overflow: visible !important;
                     }
 
                     /* Force Colors */
@@ -179,17 +181,23 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     .text-amber-500 { color: #f59e0b !important; }
 
                     /* Header Restoration */
-                    .relative.h-48 { height: 192px !important; display: block !important; position: relative !important; overflow: visible !important; }
-                    .bg-slate-950.h-24 { height: 96px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+                    .relative.h-48 { height: 180px !important; display: block !important; position: relative !important; width: 100% !important; }
+                    .bg-slate-950.h-24 { height: 80px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
                     
                     /* Correct absolute positions for print */
-                    .absolute.top-16 { top: 64px !important; height: 128px !important; }
-                    .absolute.top-4 { top: 16px !important; }
-                    .absolute.bottom-4 { bottom: 16px !important; }
+                    .absolute.top-16 { top: 60px !important; height: 100px !important; }
+                    .absolute.top-4 { top: 12px !important; }
+                    .absolute.bottom-4 { bottom: 12px !important; }
                     .absolute.left-12 { left: 15mm !important; }
                     .absolute.right-12 { right: 15mm !important; }
 
-                    .px-12 { padding-left: 15mm !important; padding-right: 15mm !important; }
+                    .px-12 { 
+                        padding-left: 15mm !important; 
+                        padding-right: 15mm !important; 
+                        display: block !important;
+                        flex: none !important;
+                        height: auto !important;
+                    }
 
                     /* Fix Table and Item List */
                     .mb-8.overflow-hidden { overflow: visible !important; }
