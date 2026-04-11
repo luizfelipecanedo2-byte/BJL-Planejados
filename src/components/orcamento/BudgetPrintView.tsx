@@ -170,23 +170,21 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         border: none !important;
                         border-radius: 0 !important;
                         overflow: visible !important;
-                    }
-
-                    /* Header: Static and Solid */
+                                    /* Header: Static and Solid */
                     .budget-print-container > div:first-child {
-                        height: 150px !important;
+                        height: 160px !important;
                         background-color: #020617 !important;
                         box-shadow: inset 0 0 0 1000px #020617 !important;
                         color: white !important;
                         display: block !important;
                         position: relative !important;
-                        margin-bottom: 20px !important;
+                        margin-bottom: 30px !important;
                     }
                     
                     .bg-slate-950.h-24 {
                         background: transparent !important;
                         box-shadow: none !important;
-                        height: 80px !important;
+                        height: 90px !important;
                         display: flex !important;
                         align-items: center !important;
                         justify-content: center !important;
@@ -194,45 +192,55 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     
                     .bg-slate-950.h-24 h1 {
                         color: white !important;
-                        font-size: 24pt !important;
+                        font-size: 28pt !important;
                         font-weight: 900 !important;
                         display: block !important;
                         visibility: visible !important;
+                        margin-top: 10px !important;
                     }
 
                     /* Golden Waves */
                     .bg-amber-500 {
                         position: absolute !important;
-                        top: 80px !important;
+                        top: 100px !important;
                         left: 0 !important;
                         width: 100% !important;
-                        height: 40px !important;
+                        height: 60px !important;
                         background: #f59e0b !important;
                         box-shadow: inset 0 0 0 1000px #f59e0b !important;
                         display: block !important;
                     }
                     
                     /* Logo and Contacts */
-                    .absolute.top-4.left-12 { top: 10px !important; left: 20px !important; position: absolute !important; }
-                    .absolute.top-4.right-12 { top: 10px !important; right: 20px !important; position: absolute !important; display: flex !important; flex-direction: column !important; }
-                    .absolute.bottom-4.right-12 { top: 100px !important; right: 20px !important; position: absolute !important; display: flex !important; }
+                    .absolute.top-4.left-12 { top: 15px !important; left: 30px !important; position: absolute !important; }
+                    .absolute.top-4.right-12 { top: 15px !important; right: 30px !important; position: absolute !important; display: flex !important; flex-direction: column !important; }
+                    .absolute.bottom-4.right-12 { top: 115px !important; right: 30px !important; position: absolute !important; display: flex !important; }
 
                     /* Proposal Info */
-                    .px-12 { padding: 30px !important; display: block !important; height: auto !important; }
+                    .px-12 { padding: 40px !important; display: block !important; height: auto !important; }
+                    
+                    /* Text sizes */
+                    .budget-print-container table th { font-size: 11pt !important; color: #64748b !important; }
+                    .budget-print-container table td { font-size: 13pt !important; color: #0f172a !important; padding: 15px 0 !important; }
+                    .text-[9px] { font-size: 10pt !important; }
+                    .text-[8px] { font-size: 9pt !important; }
+                    .text-xs { font-size: 11pt !important; }
+                    
                     .budget-print-container table { 
                         width: 100% !important; 
-                        margin-top: 20px !important;
+                        margin-top: 30px !important;
                         border-collapse: collapse !important;
                     }
-                    .budget-print-container tr { page-break-inside: avoid !important; }
+                    .budget-print-container tr { page-break-inside: avoid !important; border-bottom: 1px solid #f1f5f9 !important; }
 
                     /* THE PAGE BREAKS */
                     .footer-totals {
                         page-break-inside: avoid !important;
                         break-inside: avoid !important;
-                        margin-top: 30px !important;
+                        margin-top: 40px !important;
                         display: grid !important;
                         grid-template-columns: repeat(5, 1fr) !important;
+                        gap: 20px !important;
                     }
 
                     .print-hidden, button, .print\:hidden { display: none !important; }
@@ -241,6 +249,10 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     .overflow-hidden { overflow: visible !important; }
                     .flex-1 { flex: none !important; height: auto !important; }
                     .budget-print-container { height: auto !important; min-height: 0 !important; }
+                    
+                    /* Fix for inputs and textareas in print */
+                    input, textarea { display: none !important; }
+                    .print-show { display: block !important; visibility: visible !important; }
                 }
             `}} />
 
@@ -269,7 +281,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     {/* Contact Info - Visible for Print */}
                     <div className="absolute top-4 right-12 z-20 flex flex-col gap-1.5 items-end print:flex !important">
                         <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg border border-slate-200/50 text-slate-800 print:text-white font-black text-[9px] uppercase tracking-widest shadow-sm print:flex !important">
-                            <Phone size={10} className="text-amber-500" />
+                            < Phone size={10} className="text-amber-500" />
                             <span className="print:inline-block !important">(22) 99703-9852</span>
                         </div>
                         <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg border border-slate-200/50 text-slate-800 print:text-white font-black text-[9px] uppercase tracking-widest shadow-sm print:flex !important">
@@ -285,34 +297,37 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                 </div>
 
                 <div className="px-12 pb-20 flex-1 flex flex-col">
-                    <div className="flex justify-between items-start mt-6 mb-6">
+                    <div className="flex justify-between items-start mt-6 mb-10">
                         <div className="flex-1">
-                             <div className="bg-amber-500 text-white px-8 py-3.5 rounded-[1.5rem] shadow-xl shadow-amber-500/10 group relative overflow-hidden text-left">
+                             <div className="bg-amber-500 text-white px-8 py-5 rounded-[1.5rem] shadow-xl shadow-amber-500/10 group relative overflow-hidden text-left">
                                 <h2 className="text-[9px] font-black uppercase tracking-[0.2em] mb-1 opacity-80 flex items-center gap-2">
                                     Proposta para
                                 </h2>
                                 <input 
                                     value={budget.client_name}
                                     onChange={(e) => setBudget({...budget, client_name: e.target.value})}
-                                    className="bg-transparent text-2xl font-black uppercase tracking-tighter leading-none w-full border-none focus:ring-0 focus:outline-none placeholder:text-white/50"
+                                    className="bg-transparent text-2xl font-black uppercase tracking-tighter leading-none w-full border-none focus:ring-0 focus:outline-none placeholder:text-white/50 print:hidden"
                                     placeholder="NOME DO CLIENTE"
                                 />
+                                <div className="hidden print:block text-3xl font-black uppercase tracking-tighter leading-none mt-1">
+                                    {budget.client_name}
+                                </div>
                              </div>
                         </div>
                         <div className="text-right pl-8 pt-1">
                             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary mb-1">Orçamento Ref.</p>
                             <p className="text-xl font-black text-slate-900 tracking-tighter leading-none">#{budgetNumber || budget.id.substring(0, 6).toUpperCase()}</p>
-                            <div className="mt-3">
+                            <div className="mt-4">
                                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Emitido em</p>
-                                <p className="text-xs font-black text-slate-900 tabular-nums">{new Date(budget.created_at || new Date()).toLocaleDateString('pt-BR')}</p>
+                                <p className="text-sm font-black text-slate-900 tabular-nums">{new Date(budget.created_at || new Date()).toLocaleDateString('pt-BR')}</p>
                             </div>
                         </div>
                     </div>
 
                     {/* Commercial View (Proposta) is now the only view */}
                     <div className="mb-8 overflow-hidden print:overflow-visible rounded-[1.5rem] border border-slate-100">
-                            <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center group relative">
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-3">
+                            <div className="bg-slate-900 text-white px-6 py-5 flex justify-between items-center group relative">
+                                <span className="text-[10px] md:text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3">
                                     Descrição dos Ambientes e Serviços
                                 </span>
                                 <button 
@@ -325,32 +340,38 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                             <table className="w-full text-left border-collapse bg-white">
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-slate-200">
-                                        <th className="pl-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 w-[70%]">Ambiente / Detalhamento</th>
-                                        <th className="pr-6 py-3 text-right text-[9px] font-black uppercase tracking-widest text-slate-400">Investimento (À Vista)</th>
+                                        <th className="pl-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 w-[70%]">Ambiente / Detalhamento</th>
+                                        <th className="pr-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Investimento (À Vista)</th>
                                         <th className="w-8 print:hidden"></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {ambientes.map((amb) => (
                                         <tr key={amb.id} className="hover:bg-amber-50/20 group">
-                                            <td className="pl-6 py-4">
+                                            <td className="pl-6 py-5">
                                                 <textarea 
                                                     value={amb.description}
                                                     rows={1}
                                                     onChange={(e) => handleAmbienteChange(amb.id, 'description', e.target.value)}
-                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 font-black text-slate-800 uppercase text-[11px] tracking-tight placeholder:text-slate-200 resize-y min-h-[24px]"
+                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 font-black text-slate-800 uppercase text-[12px] md:text-[14px] tracking-tight placeholder:text-slate-200 resize-y min-h-[24px] print:hidden"
                                                     placeholder="Descreva o ambiente e o que será feito..."
                                                 />
+                                                <div className="hidden print:block font-black text-slate-800 uppercase text-[14px] leading-relaxed">
+                                                    {amb.description}
+                                                </div>
                                             </td>
-                                            <td className="pr-6 py-4 text-right">
+                                            <td className="pr-6 py-5 text-right">
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <span className="text-[9px] font-bold text-slate-300">R$</span>
+                                                    <span className="text-[10px] font-bold text-slate-300 print:hidden">R$</span>
                                                     <input 
                                                         type="number"
                                                         value={amb.value}
                                                         onChange={(e) => handleAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
-                                                        className="w-24 bg-transparent border-none focus:ring-0 p-0 text-right font-black text-slate-600 text-xs"
+                                                        className="w-24 bg-transparent border-none focus:ring-0 p-0 text-right font-black text-slate-600 text-[14px] print:hidden"
                                                     />
+                                                    <div className="hidden print:block font-black text-slate-900 text-[16px]">
+                                                        {formatCurrency(amb.value)}
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="pr-2 print:hidden">
@@ -370,14 +391,14 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     <div className="flex-1 min-h-[40px]" />
 
                     {/* Footer and Totals */}
-                    <div className="grid grid-cols-5 gap-8 items-start pt-6 border-t border-slate-100 footer-totals">
-                        <div className="col-span-3 space-y-6">
+                    <div className="grid grid-cols-5 gap-8 items-start pt-8 border-t border-slate-100 footer-totals">
+                        <div className="col-span-3 space-y-8">
                             <div>
-                                <h4 className="flex items-center gap-2 text-[9px] font-black uppercase text-amber-600 tracking-widest mb-3">
+                                <h4 className="flex items-center gap-2 text-[10px] font-black uppercase text-amber-600 tracking-widest mb-4">
                                     <div className="h-1.5 w-1.5 bg-amber-500 rounded-full" />
                                     Condições de Pagamento
                                 </h4>
-                                <div className="space-y-1.5 text-[9px] font-black text-slate-500 uppercase tracking-tight pl-4 border-l-2 border-slate-100">
+                                <div className="space-y-3 text-[10px] font-black text-slate-500 uppercase tracking-tight pl-4 border-l-2 border-slate-100">
                                     {paymentTerms.map((term, i) => (
                                         <div key={`term-${i}`} className="flex items-center gap-2 group">
                                             <span className="text-amber-500/30 shrink-0">0{i+1}.</span>
@@ -388,18 +409,21 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                                     newTerms[i] = e.target.value;
                                                     setPaymentTerms(newTerms);
                                                 }}
-                                                className="w-full bg-transparent border-none focus:ring-0 p-0 text-slate-500"
+                                                className="w-full bg-transparent border-none focus:ring-0 p-0 text-slate-500 print:hidden"
                                             />
+                                            <div className="hidden print:block text-slate-600 text-[12px]">
+                                                {term}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <h4 className="flex items-center gap-2 text-[9px] font-black uppercase text-amber-600 tracking-widest mb-3">
+                                <h4 className="flex items-center gap-2 text-[10px] font-black uppercase text-amber-600 tracking-widest mb-4">
                                     <div className="h-1.5 w-1.5 bg-amber-500 rounded-full" />
                                     Especificações Técnicas
                                 </h4>
-                                <div className="grid grid-cols-2 gap-y-1.5 gap-x-6 text-[8px] font-black text-slate-400 uppercase tracking-widest pl-4 border-l-2 border-slate-100">
+                                <div className="grid grid-cols-2 gap-y-3 gap-x-8 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-4 border-l-2 border-slate-100">
                                     {techSpecs.map((spec, i) => (
                                         <div key={`spec-${i}`} className="flex items-center gap-2 group">
                                             <div className="h-0.5 w-2 bg-slate-200 shrink-0" />
@@ -410,45 +434,49 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                                     newSpecs[i] = e.target.value;
                                                     setTechSpecs(newSpecs);
                                                 }}
-                                                className="w-full bg-transparent border-none focus:ring-0 p-0 text-slate-400"
+                                                className="w-full bg-transparent border-none focus:ring-0 p-0 text-slate-400 print:hidden"
                                             />
+                                            <div className="hidden print:block text-slate-500 text-[11px]">
+                                                {spec}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="col-span-2 space-y-3">
-                            <div className="bg-slate-900 p-6 rounded-[2rem] text-white space-y-4 shadow-xl relative overflow-hidden">
+                        <div className="col-span-2 space-y-4">
+                            <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white space-y-6 shadow-xl relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-4 opacity-5">
                                     <Printer size={60} />
                                 </div>
                                 <div className="relative z-10">
-                                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-amber-500 mb-1">Total À Vista</p>
-                                    <p className="text-3xl font-black text-white tracking-tighter leading-none tabular-nums">{formatCurrency(displayTotal)}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500 mb-2">Total À Vista</p>
+                                    <p className="text-4xl font-black text-white tracking-tighter leading-none tabular-nums">{formatCurrency(displayTotal)}</p>
                                 </div>
-                                <div className="pt-4 border-t border-white/10 relative z-10">
-                                    <div className="flex justify-between items-center mb-1.5">
+                                <div className="pt-6 border-t border-white/10 relative z-10">
+                                    <div className="flex justify-between items-center mb-2">
                                         <div className="flex flex-col">
-                                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Total Parcelado</p>
-                                            <p className="text-[6.5px] font-black uppercase tracking-[0.1em] text-slate-500 mt-0.5">Em até 10x no cartão</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Parcelado</p>
+                                            <p className="text-[8px] font-black uppercase tracking-[0.1em] text-slate-500 mt-1">Em até 10x no cartão</p>
                                         </div>
-                                        <div className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded-md print:hidden">
+                                        <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md print:hidden">
                                             <input 
                                                 type="number"
                                                 value={budget.card_fee_percent || 11}
                                                 onChange={(e) => setBudget({...budget, card_fee_percent: parseFloat(e.target.value) || 0})}
-                                                className="w-6 bg-transparent border-none focus:ring-0 p-0 text-[10px] font-black text-amber-500 text-center"
+                                                className="w-8 bg-transparent border-none focus:ring-0 p-0 text-[12px] font-black text-amber-500 text-center"
                                             />
-                                            <span className="text-[8px] font-black text-slate-600">%</span>
+                                            <span className="text-[10px] font-black text-slate-600">%</span>
                                         </div>
                                     </div>
-                                    <p className="text-2xl font-black text-amber-500 tracking-tighter leading-none tabular-nums">{formatCurrency(cardValue)}</p>
-                                    <p className="text-[7px] font-bold text-slate-500 uppercase mt-3 tracking-[0.2em] text-right">Validade: 07 Dias</p>
+                                    <p className="text-3xl font-black text-amber-500 tracking-tighter leading-none tabular-nums">{formatCurrency(cardValue)}</p>
+                                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-4 tracking-[0.2em] text-right">Validade: 07 Dias</p>
                                 </div>
                             </div>
-                            <p className="text-[8px] text-center text-slate-400 font-black uppercase tracking-[0.1em] opacity-40">BJL PLANEJADOS • QUALIDADE & PRECISÃO</p>
+                            <p className="text-[10px] text-center text-slate-400 font-black uppercase tracking-[0.1em] opacity-40">BJL PLANEJADOS • QUALIDADE & PRECISÃO</p>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
