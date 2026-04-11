@@ -1,138 +1,49 @@
-import React, { useState } from 'react';
-import { Phone, Instagram, MapPin, Printer, X, Plus, Trash2, Save, CheckCircle2, Award } from 'lucide-react';
-import { toast } from 'sonner';
+import React from 'react';
+import { formatCurrency } from '@/lib/utils';
+import { Award, Trash2 } from 'lucide-react';
+
+interface Ambiente {
+    id: string;
+    description: string;
+    value: number;
+}
 
 interface BudgetPrintViewProps {
     budget: any;
-    onClose: () => void;
-    onSave?: (updatedBudget: any, updatedItems: any[]) => Promise<void>;
-    budgetNumber?: number;
-    initialTab?: 'commercial' | 'technical';
+    ambientes: Ambiente[];
+    setBudget: (budget: any) => void;
+    handleAmbienteChange: (id: string, field: string, value: any) => void;
+    removeAmbiente: (id: string) => void;
+    budgetNumber?: string;
 }
 
-const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber, initialTab = 'commercial' }: BudgetPrintViewProps) => {
-    const [budget, setBudget] = useState({...initialBudget});
-    const [isSaving, setIsSaving] = useState(false);
-    
-    const [ambientes, setAmbientes] = useState(() => {
-        try {
-            if (initialBudget.notes) {
-                const parsed = JSON.parse(initialBudget.notes);
-                if (parsed.ambientes && Array.isArray(parsed.ambientes)) return parsed.ambientes;
-            }
-        } catch (e) {}
-        
-        return [{
-            id: `amb-${Date.now()}`,
-            description: initialBudget.project_name || "Ambiente Geral",
-            value: initialBudget.total_value / (1 + (parseFloat(initialBudget.card_fee_percent) || 11) / 100)
-        }];
-    });
+export const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
+    budget,
+    ambientes,
+    setBudget,
+    handleAmbienteChange,
+    removeAmbiente,
+    budgetNumber
+}) => {
+    const totalValue = ambientes.reduce((acc, curr) => acc + curr.value, 0);
+    const installmentValue = totalValue * 1.11; // 11% fee for installments
 
-    const [paymentTerms, setPaymentTerms] = useState(() => {
-        try {
-            if (initialBudget.notes) {
-                const parsed = JSON.parse(initialBudget.notes);
-                if (parsed.paymentTerms && Array.isArray(parsed.paymentTerms)) return parsed.paymentTerms;
-            }
-        } catch (e) {}
-        return [
-            "Entrada de 60% no fechamento do contrato.",
-            "Saldo restante de 40% na data da entrega técnica.",
-            "Prazo de entrega: A definir conforme cronograma."
-        ];
-    });
+    const paymentTerms = [
+        "01. ENTRADA DE 60% NO FECHAMENTO DO CONTRATO.",
+        "02. SALDO RESTANTE DE 40% NA DATA DA ENTREGA TÉCNICA.",
+        "03. PRAZO DE ENTREGA: A DEFINIR CONFORME CRONOGRAMA."
+    ];
 
-    const [techSpecs, setTechSpecs] = useState(() => {
-        try {
-            if (initialBudget.notes) {
-                const parsed = JSON.parse(initialBudget.notes);
-                if (parsed.techSpecs && Array.isArray(parsed.techSpecs)) return parsed.techSpecs;
-            }
-        } catch (e) {}
-        return [
-            "MDF Branco TX (Internos)",
-            "Dobradiças Click Slow",
-            "Corrediças Telespópicas",
-            ""
-        ];
-    });
-
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-    };
-
-    const handleAmbienteChange = (id: string, field: string, value: any) => {
-        setAmbientes(ambientes.map(amb => amb.id === id ? { ...amb, [field]: value } : amb));
-    };
-
-    const addAmbiente = () => {
-        setAmbientes([...ambientes, { id: `amb-${Date.now()}`, description: "", value: 0 }]);
-    };
-
-    const removeAmbiente = (id: string) => {
-        setAmbientes(ambientes.filter(amb => amb.id !== id));
-    };
-
-    const displayTotal = ambientes.reduce((acc: number, curr: any) => acc + (parseFloat(curr.value) || 0), 0);
-    const cardValue = displayTotal * (1 + (parseFloat(budget.card_fee_percent) || 11) / 100);
-
-    const handleSave = async () => {
-        if (!onSave) return;
-        setIsSaving(true);
-        try {
-            const notesObj = { ambientes, paymentTerms, techSpecs };
-            const updatedBudget = {
-                ...budget,
-                notes: JSON.stringify(notesObj),
-                total_value: cardValue, 
-                total_cost: displayTotal
-            };
-            await onSave(updatedBudget, initialBudget.budget_items || []);
-            toast.success("Orçamento salvo!");
-        } catch (error) {
-            console.error("Error saving budget:", error);
-            toast.error("Erro ao salvar");
-        } finally {
-            setIsSaving(false);
-        }
-    };
+    const techSpecs = [
+        "MDF BRANCO TX (INTERNOS)",
+        "DOBRADIÇAS CLICK SLOW",
+        "CORREDIÇAS TELESCÓPICAS"
+    ];
 
     return (
-        <div className="budget-print-overlay fixed inset-0 z-[99999] bg-slate-900/90 backdrop-blur-sm overflow-y-auto p-4 md:p-10 print:p-0 print:bg-white print:relative print:overflow-visible flex justify-center">
-            
-            <style dangerouslySetInnerHTML={{ __html: `
-                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&display=swap');
-                
-                @media print {
-                    @page { size: A4; margin: 0; }
-                    body > * { display: none !important; }
-                    body > .budget-print-overlay { display: block !important; visibility: visible !important; }
-                    body { background: white !important; margin: 0 !important; padding: 0 !important; }
-                    .budget-print-overlay { 
-                        position: absolute !important;
-                        left: 0 !important; top: 0 !important;
-                        width: 100% !important; height: auto !important;
-                        padding: 0 !important; margin: 0 !important;
-                        display: block !important; background: white !important;
-                        z-index: 99999 !important;
-                    }
-                    .no-print { display: none !important; }
-                    .force-break-before { page-break-before: always !important; }
-                    .budget-print-container { 
-                        box-shadow: none !important; margin: 0 !important; width: 100% !important; 
-                        max-width: none !important; border-radius: 0 !important;
-                    }
-                    input, textarea { border: none !important; background: transparent !important; }
-                }
-
-                .budget-print-container { font-family: 'Outfit', sans-serif; }
-                .watermark-bg {
-                    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z' fill='%23f59e0b' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
-                }
-            `}} />
-
-            <div className="budget-print-container bg-white w-full max-w-[850px] shadow-2xl flex flex-col print:shadow-none min-h-screen watermark-bg relative">
+        <div className="min-h-screen bg-slate-100 py-12 px-4 no-print flex justify-center">
+            {/* DOCUMENT CONTAINER */}
+            <div className="bg-white shadow-[0_0_50px_rgba(0,0,0,0.1)] w-full max-w-[210mm] min-h-[297mm] text-slate-900 relative print:shadow-none print:m-0 print:w-full font-['Outfit'] overflow-hidden">
                 
                 {/* 1. CABEÇALHO PREMIUM */}
                 <div className="relative">
@@ -142,30 +53,29 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         </div>
                         <div className="ml-24 flex flex-col items-center">
                             <h1 className="text-2xl font-black uppercase tracking-[0.4em] leading-none mb-1">BJL PLANEJADOS</h1>
-                            <p className="text-[9px] font-black text-[#f59e0b] tracking-[0.6em] uppercase opacity-80">Design & Sofisticação</p>
+                            <p className="text-[10px] font-black text-[#f59e0b] tracking-[0.6em] uppercase opacity-80">Marcenaria de Alto Padrão</p>
                         </div>
                         <div className="absolute right-10 flex flex-col items-end gap-1 font-semibold text-[10px]">
                             <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-                                <Phone size={11} className="text-[#f59e0b]" /> (22) 99703-9852
+                                <span>(22) 99703-9852</span>
                             </div>
                             <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-                                <Instagram size={11} className="text-[#f59e0b]" /> @bjlmoveisplanejados
+                                <span>@bjlmoveisplanejados</span>
                             </div>
                         </div>
                     </div>
-                    <div className="h-8 bg-gradient-to-r from-[#f59e0b] via-[#fbbf24] to-[#f59e0b] w-full" />
-                    <div className="flex justify-end pr-10 pt-2 items-center gap-2">
-                         <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">BJL Moveis Planejados e Marcenaria • Barão de Macaubas</span>
-                         <MapPin size={11} className="text-slate-400" />
+                    <div className="h-8 bg-gradient-to-r from-[#f59e0b] via-[#fbbf24] to-[#f59e0b] w-full"></div>
+                    <div className="flex justify-end pr-12 pt-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        BJL Moveis Planejados e Marcenaria • Barão de Macaubas
                     </div>
                 </div>
 
                 {/* 2. PROPOSTA COM DESIGN ARREDONDADO */}
-                <div className="px-12 py-12 flex justify-between items-start">
-                    <div className="bg-gradient-to-br from-[#f59e0b] to-[#d97706] rounded-[3rem] px-12 py-10 min-w-[480px] shadow-2xl shadow-orange-500/20 relative">
+                <div className="px-12 py-10 flex justify-between items-start">
+                    <div className="bg-gradient-to-br from-[#f59e0b] to-[#d97706] rounded-[2.5rem] px-12 py-8 min-w-[480px] shadow-2xl shadow-orange-500/20 relative">
                         <div className="flex items-center gap-2 mb-3">
                              <Award size={14} className="text-white/60" />
-                             <span className="text-[10px] font-black uppercase text-white/70 tracking-[0.2em] block">PROPOSTA CUSTOMIZADA</span>
+                             <span className="text-[10px] font-black uppercase text-white/70 tracking-[0.2em] block">PROPOSTA COMERCIAL PARA</span>
                         </div>
                         <textarea 
                             value={budget.client_name}
@@ -185,26 +95,17 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     </div>
                 </div>
 
-                {/* 3. LISTA DE ITENS - DESIGN PREMIUM */}
-                <div className="px-12 flex-1">
-                    <div className="bg-[#0f172a] text-white px-10 py-6 flex justify-between items-center rounded-3xl mb-6 shadow-xl shadow-slate-900/10">
+                {/* 3. LISTA DE AMBIENTES - TABELA CLEAN */}
+                <div className="px-16 mt-4">
+                    <div className="bg-[#0f172a] text-white px-10 py-5 rounded-2xl mb-8 flex justify-between shadow-xl">
                         <div className="flex items-center gap-3">
-                             <div className="w-2 h-8 bg-[#f59e0b] rounded-full" />
-                             <span className="text-xs font-black uppercase tracking-[0.3em]">DETALHAMENTO TÉCNICO DOS AMBIENTES</span>
+                            <div className="w-1.5 h-6 bg-[#f59e0b] rounded-full"></div>
+                            <span className="text-[11px] font-black uppercase tracking-[0.3em]">DETALHAMENTO DOS AMBIENTES</span>
                         </div>
-                        <button onClick={addAmbiente} className="no-print px-4 py-2 bg-[#f59e0b] text-[#0f172a] rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:scale-105 transition-all shadow-lg shadow-amber-500/30">
-                            <Plus size={16} /> ADICIONAR ITEM
-                        </button>
+                        <span className="text-[11px] font-black uppercase tracking-[0.3em]">VALOR À VISTA</span>
                     </div>
-                    
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b-2 border-slate-100 h-14">
-                                <th className="px-6 text-left text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">DESCRIÇÃO DO SERVIÇO</th>
-                                <th className="px-6 text-right text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">VALOR UNITÁRIO</th>
-                                <th className="w-8 no-print"></th>
-                            </tr>
-                        </thead>
+
+                    <table className="w-full border-separate border-spacing-0">
                         <tbody className="space-y-4">
                             {ambientes.map((amb, index) => (
                                 <tr key={amb.id} className="group transition-all bg-slate-50/80 rounded-2xl overflow-hidden block mb-4 border border-slate-100">
@@ -215,13 +116,13 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                                 value={amb.description}
                                                 onChange={(e) => handleAmbienteChange(amb.id, 'description', e.target.value)}
                                                 rows={1}
-                                                className="w-full bg-transparent border-none p-0 text-[14px] font-black text-slate-800 uppercase focus:ring-0 resize-y min-h-[24px] leading-relaxed"
+                                                className="w-full bg-transparent border-none p-0 text-[15px] font-black text-slate-800 uppercase focus:ring-0 resize-y min-h-[24px] leading-relaxed"
                                                 placeholder="DESCREVA O AMBIENTE..."
                                             />
                                         </div>
                                     </td>
-                                    <td className="py-6 px-8 text-right align-top block md:table-cell border-t md:border-t-0 border-slate-100 bg-slate-100/20 md:bg-transparent">
-                                        <div className="flex items-center justify-end gap-2">
+                                    <td className="py-6 px-8 text-right align-top block md:table-cell border-t md:border-t-0 border-slate-100 bg-slate-100/20 md:bg-transparent min-w-[160px]">
+                                        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                                             <span className="text-[10px] font-black text-slate-300 no-print">R$</span>
                                             <input 
                                                 type="number"
@@ -230,7 +131,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                                 className="w-28 bg-transparent border-none p-0 text-right text-base font-black text-slate-900 focus:ring-0 no-print"
                                             />
                                             <span className="hidden print:inline text-base font-black text-slate-900">
-                                                {formatCurrency(amb.value).replace('R$', '').trim()}
+                                                {formatCurrency(amb.value)}
                                             </span>
                                         </div>
                                     </td>
@@ -245,116 +146,86 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     </table>
                 </div>
 
-                {/* 4. TOTAIS E CONDIÇÕES - NÍVEL LUXO */}
-                <div className="px-12 py-14 mt-10 print:mt-10 force-break-before bg-slate-50/30">
+                {/* 4. TOTAIS E CONDIÇÕES - DESIGN IMPACTANTE */}
+                <div className="px-16 py-8 mt-4 bg-slate-50/50 break-inside-avoid">
                     <div className="flex flex-row justify-between gap-12">
-                        {/* Esquerda: Condições e Specs */}
-                        <div className="flex-1 space-y-12">
-                            <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-                                <h3 className="text-[11px] font-black uppercase text-[#f59e0b] tracking-[0.3em] mb-8 flex items-center gap-3">
-                                    <CheckCircle2 size={16} /> CONDIÇÕES DE PAGAMENTO
+                        {/* CONDIÇÕES LADO ESQUERDO */}
+                        <div className="flex-1 space-y-8">
+                            <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-slate-100">
+                                <h3 className="text-[11px] font-black uppercase text-[#f59e0b] tracking-[0.2em] mb-4 flex items-center gap-2">
+                                    <div className="w-4 h-[2px] bg-[#f59e0b]"></div> CONDIÇÕES DE PAGAMENTO
                                 </h3>
-                                <div className="space-y-4 pl-6">
+                                <div className="space-y-3 pl-6 border-l-2 border-slate-100 italic font-bold text-[10px] text-slate-600 uppercase">
                                     {paymentTerms.map((term, i) => (
-                                        <div key={i} className="flex gap-4 items-center">
-                                            <div className="w-1.5 h-1.5 bg-[#f59e0b]/30 rounded-full" />
-                                            <input 
-                                                value={term}
-                                                onChange={(e) => {
-                                                    const newTerms = [...paymentTerms];
-                                                    newTerms[i] = e.target.value;
-                                                    setPaymentTerms(newTerms);
-                                                }}
-                                                className="flex-1 bg-transparent border-none p-0 text-xs font-bold text-slate-600 uppercase focus:ring-0 leading-tight"
-                                            />
-                                        </div>
+                                        <div key={i}>{term}</div>
                                     ))}
                                 </div>
                             </div>
-                            <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-                                <h3 className="text-[11px] font-black uppercase text-[#f59e0b] tracking-[0.3em] mb-8 flex items-center gap-3">
-                                    <Award size={16} /> ESPECIFICAÇÕES TÉCNICAS
+                            
+                            <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-slate-100">
+                                <h3 className="text-[11px] font-black uppercase text-[#f59e0b] tracking-[0.2em] mb-4 flex items-center gap-2">
+                                    <div className="w-4 h-[2px] bg-[#f59e0b]"></div> ESPECIFICAÇÕES TÉCNICAS
                                 </h3>
-                                <div className="grid grid-cols-2 gap-x-10 gap-y-4 pl-6">
+                                <div className="grid grid-cols-2 gap-4 pl-6 border-l-2 border-slate-100 font-bold text-[9px] text-slate-400 uppercase">
                                     {techSpecs.map((spec, i) => (
-                                        <div key={i} className="flex items-center gap-3 border-b border-slate-50 pb-2">
-                                            <div className="w-3 h-[2px] bg-[#f59e0b]/50 rounded-full" />
-                                            <input 
-                                                value={spec}
-                                                onChange={(e) => {
-                                                    const newSpecs = [...techSpecs];
-                                                    newSpecs[i] = e.target.value;
-                                                    setTechSpecs(newSpecs);
-                                                }}
-                                                className="flex-1 bg-transparent border-none p-0 text-[10px] font-bold text-slate-500 uppercase focus:ring-0 placeholder:text-slate-200"
-                                                placeholder="ADICIONE ESPECIFICAÇÃO..."
-                                            />
-                                        </div>
+                                        <div key={i}>• {spec}</div>
                                     ))}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Direita: Cartão de Totais Glamour Compacto */}
-                        <div className="w-[300px]">
-                            <div className="bg-[#0f172a] text-white p-8 rounded-[2rem] shadow-xl relative overflow-hidden border border-white/5">
+                        {/* CARTÃO DE TOTAIS LADO DIREITO */}
+                        <div className="w-[300px] shrink-0">
+                            <div className="bg-[#0f172a] text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden h-full flex flex-col justify-center border-2 border-white/5">
+                                {/* Watermark subtle background */}
+                                <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-[#f59e0b] opacity-[0.03] rounded-full blur-3xl"></div>
+                                
                                 <div className="relative z-10 flex flex-col gap-6">
                                     <div className="border-l-2 border-[#f59e0b] pl-4">
-                                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">TOTAL À VISTA</p>
-                                        <h4 className="text-2xl font-black tabular-nums">{formatCurrency(displayTotal)}</h4>
+                                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">TOTAL À VISTA</p>
+                                        <h4 className="text-2xl font-black whitespace-nowrap">{formatCurrency(totalValue)}</h4>
                                     </div>
-                                    
-                                    <div className="h-[1px] bg-white/5 w-full" />
-                                    
+
+                                    <div className="h-[1px] bg-white/10 w-full"></div>
+
                                     <div className="border-l-2 border-slate-600 pl-4">
-                                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">PARCELADO (10X)</p>
-                                        <h5 className="text-xl font-black text-[#f59e0b] tabular-nums">{formatCurrency(cardValue)}</h5>
+                                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">PARCELADO (10X)</p>
+                                        <h5 className="text-xl font-black text-[#f59e0b] whitespace-nowrap">{formatCurrency(installmentValue)}</h5>
                                     </div>
-                                    
-                                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest text-center mt-2">Validade: 07 Dias</p>
                                 </div>
-                                <div className="absolute top-2 right-2 opacity-[0.03] pointer-events-none">
-                                    <Printer size={60} />
-                                </div>
+                                <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest text-center mt-8">VALIDADE DA PROPOSTA: 07 DIAS</p>
                             </div>
-                            <p className="text-[7px] font-black uppercase text-slate-300 mt-4 tracking-[0.4em] text-center">BJL PLANEJADOS</p>
+                            <p className="text-[7px] font-black uppercase text-slate-300 mt-4 tracking-[0.4em] text-center italic">BJL PLANEJADOS • QUALIDADE QUE PERMANECE</p>
                         </div>
                     </div>
                 </div>
-                    </div>
+
+                {/* WATERMARK BACKGROUND DECORATION */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.02] pointer-events-none -rotate-12 select-none z-0">
+                    <h1 className="text-[200px] font-black">BJL</h1>
                 </div>
-                
-                {/* RODAPÉ ELEGANTE */}
-                <div className="mt-auto px-12 py-10 border-t border-slate-100 flex justify-between items-center opacity-70">
-                    <div className="text-[10px] font-bold text-slate-400">
-                        Obrigado por escolher a BJL Planejados. <br />Qualidade e precisão em cada detalhe.
-                    </div>
-                    <div className="flex gap-4">
-                        <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center">
-                            <Phone size={14} className="text-slate-300" />
-                        </div>
-                        <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center">
-                            <Instagram size={14} className="text-slate-300" />
-                        </div>
-                    </div>
+
+                <div className="text-center py-12 no-print">
+                    <button 
+                        onClick={() => window.print()}
+                        className="bg-[#0f172a] text-white px-12 py-5 rounded-full font-black uppercase tracking-[0.3em] hover:scale-105 transition-all shadow-2xl shadow-slate-900/20 active:scale-95"
+                    >
+                        GERAR PROPOSTA PDF
+                    </button>
                 </div>
             </div>
 
-            {/* CONTROLES FLUTUANTES NO-PRINT */}
-            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex gap-4 no-print z-[999999] bg-[#0f172a]/90 backdrop-blur-2xl p-6 rounded-[3rem] border border-white/10 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] scale-90 md:scale-100">
-                <button onClick={onClose} className="px-8 py-4 bg-white/5 text-white/50 rounded-2xl font-black uppercase text-xs hover:bg-rose-500/20 hover:text-rose-500 transition-all flex items-center gap-3 border border-white/5">
-                    <X size={20} /> FECHAR
-                </button>
-                <div className="w-[1px] h-12 bg-white/10 self-center" />
-                <button onClick={handleSave} disabled={isSaving} className="px-10 py-4 bg-emerald-500/20 text-emerald-400 rounded-2xl font-black uppercase text-xs hover:bg-emerald-500 hover:text-white active:scale-95 transition-all flex items-center gap-3 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
-                    <Save size={20} /> {isSaving ? "SALVANDO..." : "SALVAR PROPOSTA"}
-                </button>
-                <button onClick={() => window.print()} className="px-14 py-4 bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-[#0f172a] rounded-2xl font-black uppercase text-xs hover:scale-110 active:scale-95 transition-all flex items-center gap-3 shadow-[0_15px_30px_-5px_rgba(245,158,11,0.4)]">
-                    <Printer size={20} /> GERAR PDF / IMPRIMIR
-                </button>
-            </div>
+            <style dangerouslySetInnerHTML={{ __html: `
+                @media print {
+                    @page { size: A4; margin: 0; }
+                    body * { visibility: hidden; }
+                    .print\\:m-0, .print\\:m-0 * { visibility: visible; }
+                    .print\\:m-0 { position: absolute; left: 0; top: 0; width: 100%; margin: 0 !important; padding: 0 !important; }
+                    .no-print { display: none !important; }
+                    textarea { border: none !important; resize: none !important; }
+                    .break-inside-avoid { break-inside: avoid; }
+                }
+            `}} />
         </div>
     );
 };
-
-export default BudgetPrintView;
