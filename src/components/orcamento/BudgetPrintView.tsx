@@ -155,69 +155,88 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         background: white !important;
                         z-index: 999999 !important;
                         display: block !important;
-                        height: auto !important;
                     }
 
                     .budget-print-container {
                         width: 210mm !important;
-                        height: auto !important;
                         background: white !important;
                         display: block !important;
-                        border-radius: 0 !important;
-                        box-shadow: none !important;
+                        padding-top: 50mm !important; /* Huge space for header */
+                        position: relative !important;
                     }
 
-                    /* Force Header Space */
-                    .budget-print-container > div:first-child.relative.h-48 {
-                        height: 200px !important;
+                    /* Header Print Fix */
+                    .budget-print-container > div:first-child {
+                        position: absolute !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        width: 100% !important;
+                        height: 50mm !important;
                         display: block !important;
+                        background: #020617 !important;
+                        box-shadow: inset 0 0 0 1000px #020617 !important;
+                    }
+
+                    .bg-slate-950.h-24 {
+                        background: #020617 !important;
+                        box-shadow: inset 0 0 0 1000px #020617 !important;
+                        height: 25mm !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
                         position: relative !important;
-                        background: white !important;
-                        margin-bottom: 20px !important;
+                        z-index: 20 !important;
+                    }
+
+                    /* Golden Waves - Simplify for print */
+                    .absolute.top-16.bg-amber-500 {
+                        top: 20mm !important;
+                        height: 30mm !important;
+                        background: #f59e0b !important;
+                        box-shadow: inset 0 0 0 1000px #f59e0b !important;
+                        clip-path: none !important;
+                        z-index: 5 !important;
+                    }
+                    
+                    /* Logo and Info */
+                    .absolute.top-4.left-12 {
+                        top: 5mm !important;
+                        left: 10mm !important;
+                        z-index: 30 !important;
+                        display: block !important;
+                    }
+
+                    .absolute.top-4.right-12 {
+                        top: 5mm !important;
+                        right: 10mm !important;
+                        z-index: 30 !important;
+                        display: flex !important;
+                    }
+
+                    .absolute.bottom-4.right-12 {
+                        top: 35mm !important;
+                        right: 10mm !important;
+                        z-index: 30 !important;
+                        display: flex !important;
                     }
 
                     /* Force Colors */
-                    .bg-slate-950 { box-shadow: inset 0 0 0 1000px #020617 !important; background-color: #020617 !important; height: 90px !important; display: flex !important; }
-                    .bg-amber-500 { box-shadow: inset 0 0 0 1000px #f59e0b !important; background-color: #f59e0b !important; }
                     .bg-slate-900 { box-shadow: inset 0 0 0 1000px #0f172a !important; background-color: #0f172a !important; }
                     .bg-black { box-shadow: inset 0 0 0 1000px #000000 !important; background-color: #000000 !important; }
+                    .bg-amber-500 { box-shadow: inset 0 0 0 1000px #f59e0b !important; background-color: #f59e0b !important; }
                     
                     .text-white { color: white !important; }
                     .text-amber-500 { color: #f59e0b !important; }
-
-                    /* Absolute Elements Fixed */
-                    .absolute.top-16 { top: 60px !important; height: 120px !important; display: block !important; }
-                    .absolute.top-4 { top: 10px !important; display: block !important; }
-                    .absolute.bottom-4 { bottom: 10px !important; display: block !important; }
-                    .absolute.left-12 { left: 12mm !important; display: block !important; }
-                    .absolute.right-12 { right: 12mm !important; display: block !important; }
+                    .text-slate-800 { color: #1e293b !important; }
 
                     .px-12 { 
                         padding-left: 15mm !important; 
                         padding-right: 15mm !important; 
                         display: block !important;
-                        height: auto !important;
-                        margin-top: 10px !important;
-                    }
-
-                    /* Fix Table and Item List */
-                    .mb-8.overflow-hidden { overflow: visible !important; }
-                    .budget-print-container table { 
-                        display: table !important; 
-                        width: 100% !important; 
-                        border-collapse: collapse !important;
-                    }
-                    .budget-print-container tr { 
-                        display: table-row !important; 
-                        page-break-inside: avoid !important; 
-                    }
-                    .budget-print-container td { 
-                        display: table-cell !important; 
                     }
 
                     .footer-totals {
                         page-break-inside: avoid !important;
-                        margin-top: auto !important;
                         padding-top: 30px !important;
                     }
 
