@@ -161,7 +161,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         width: 210mm !important;
                         background: white !important;
                         display: block !important;
-                        padding-top: 50mm !important; /* Huge space for header */
+                        padding-top: 45mm !important; /* Space for header */
                         position: relative !important;
                     }
 
@@ -171,7 +171,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         top: 0 !important;
                         left: 0 !important;
                         width: 100% !important;
-                        height: 50mm !important;
+                        height: 45mm !important;
                         display: block !important;
                         background: #020617 !important;
                         box-shadow: inset 0 0 0 1000px #020617 !important;
@@ -180,42 +180,55 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     .bg-slate-950.h-24 {
                         background: #020617 !important;
                         box-shadow: inset 0 0 0 1000px #020617 !important;
-                        height: 25mm !important;
+                        height: 20mm !important;
                         display: flex !important;
                         align-items: center !important;
                         justify-content: center !important;
-                        position: relative !important;
+                        position: absolute !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        width: 100% !important;
                         z-index: 20 !important;
                     }
+                    
+                    .bg-slate-950.h-24 h1 {
+                        color: white !important;
+                        display: block !important;
+                        font-family: inherit !important;
+                        font-weight: 900 !important;
+                    }
 
-                    /* Golden Waves - Simplify for print */
-                    .absolute.top-16.bg-amber-500 {
-                        top: 20mm !important;
-                        height: 30mm !important;
+                    /* Golden Waves */
+                    .bg-amber-500 {
+                        position: absolute !important;
+                        top: 15mm !important;
+                        left: 0 !important;
+                        width: 100% !important;
+                        height: 25mm !important;
                         background: #f59e0b !important;
                         box-shadow: inset 0 0 0 1000px #f59e0b !important;
-                        clip-path: none !important;
                         z-index: 5 !important;
                     }
                     
                     /* Logo and Info */
                     .absolute.top-4.left-12 {
-                        top: 5mm !important;
-                        left: 10mm !important;
+                        top: 4mm !important;
+                        left: 12mm !important;
                         z-index: 30 !important;
                         display: block !important;
                     }
 
                     .absolute.top-4.right-12 {
-                        top: 5mm !important;
-                        right: 10mm !important;
+                        top: 4mm !important;
+                        right: 12mm !important;
                         z-index: 30 !important;
                         display: flex !important;
+                        flex-direction: column !important;
                     }
 
                     .absolute.bottom-4.right-12 {
-                        top: 35mm !important;
-                        right: 10mm !important;
+                        top: 32mm !important;
+                        right: 12mm !important;
                         z-index: 30 !important;
                         display: flex !important;
                     }
@@ -223,7 +236,6 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     /* Force Colors */
                     .bg-slate-900 { box-shadow: inset 0 0 0 1000px #0f172a !important; background-color: #0f172a !important; }
                     .bg-black { box-shadow: inset 0 0 0 1000px #000000 !important; background-color: #000000 !important; }
-                    .bg-amber-500 { box-shadow: inset 0 0 0 1000px #f59e0b !important; background-color: #f59e0b !important; }
                     
                     .text-white { color: white !important; }
                     .text-amber-500 { color: #f59e0b !important; }
@@ -236,8 +248,8 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     }
 
                     .footer-totals {
-                        page-break-inside: avoid !important;
-                        padding-top: 30px !important;
+                        page-break-before: always !important;
+                        padding-top: 30mm !important;
                     }
 
                     .print-hidden, button, .print\:hidden {
