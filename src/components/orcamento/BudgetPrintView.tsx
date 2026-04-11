@@ -54,7 +54,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
             "MDF Branco TX (Internos)",
             "Dobradiças Click Slow",
             "Corrediças Telespópicas",
-            "Puxadores Perfil/Embutir"
+            ""
         ];
     });
 
@@ -293,50 +293,34 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                     ))}
                                 </div>
                             </div>
-                            
-                            {/* CAMPO DE ASSINATURA */}
-                            <div className="pt-10 flex gap-10">
-                                <div className="flex-1 text-center">
-                                    <div className="h-[1px] bg-slate-200 w-full mb-3" />
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">ASSINATURA DO CLIENTE</p>
-                                </div>
-                                <div className="flex-1 text-center">
-                                    <div className="h-[1px] bg-slate-200 w-full mb-3" />
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">BJL PLANEJADOS</p>
-                                </div>
-                            </div>
                         </div>
 
-                        {/* Direita: Cartão de Totais Glamour */}
-                        <div className="w-[380px]">
-                            <div className="bg-[#0f172a] text-white p-12 rounded-[3.5rem] shadow-[0_25px_50px_-12px_rgba(15,23,42,0.3)] relative overflow-hidden group border border-white/5">
-                                <div className="relative z-10 flex flex-col gap-10">
-                                    <div>
-                                        <p className="text-[11px] font-black uppercase text-amber-500/50 tracking-[0.3em] mb-3">VALOR TOTAL À VISTA</p>
-                                        <h4 className="text-5xl font-black tabular-nums tracking-tighter">{formatCurrency(displayTotal)}</h4>
+                        {/* Direita: Cartão de Totais Glamour Compacto */}
+                        <div className="w-[300px]">
+                            <div className="bg-[#0f172a] text-white p-8 rounded-[2rem] shadow-xl relative overflow-hidden border border-white/5">
+                                <div className="relative z-10 flex flex-col gap-6">
+                                    <div className="border-l-2 border-[#f59e0b] pl-4">
+                                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">TOTAL À VISTA</p>
+                                        <h4 className="text-2xl font-black tabular-nums">{formatCurrency(displayTotal)}</h4>
                                     </div>
                                     
-                                    <div className="h-[2px] bg-gradient-to-r from-[#f59e0b]/0 via-[#f59e0b]/20 to-[#f59e0b]/0 w-full" />
+                                    <div className="h-[1px] bg-white/5 w-full" />
                                     
-                                    <div>
-                                        <p className="text-[11px] font-black uppercase text-slate-400 tracking-[0.3em] mb-4">OPÇÃO DE PARCELAMENTO</p>
-                                        <div className="flex items-center gap-2 mb-3">
-                                             <CheckCircle2 size={12} className="text-amber-500" />
-                                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ATÉ 10X S/ JUROS NO CARTÃO</p>
-                                        </div>
-                                        <h5 className="text-4xl font-black text-[#f59e0b] tabular-nums tracking-tighter">{formatCurrency(cardValue)}</h5>
-                                        <div className="mt-12 flex flex-col items-center gap-2">
-                                            <div className="w-16 h-1 bg-white/5 rounded-full" />
-                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.5em] text-center">PROPOSTA EXCLUSIVA</p>
-                                        </div>
+                                    <div className="border-l-2 border-slate-600 pl-4">
+                                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">PARCELADO (10X)</p>
+                                        <h5 className="text-xl font-black text-[#f59e0b] tabular-nums">{formatCurrency(cardValue)}</h5>
                                     </div>
+                                    
+                                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest text-center mt-2">Validade: 07 Dias</p>
                                 </div>
-                                <div className="absolute -top-10 -right-10 opacity-[0.03] pointer-events-none transition-transform group-hover:scale-110 duration-700">
-                                    <Printer size={250} />
+                                <div className="absolute top-2 right-2 opacity-[0.03] pointer-events-none">
+                                    <Printer size={60} />
                                 </div>
                             </div>
-                            <p className="text-center text-[9px] font-black uppercase text-slate-400 mt-10 tracking-[0.5em] opacity-50">BJL PLANEJADOS • MARMORARIA & MARCENARIA</p>
+                            <p className="text-[7px] font-black uppercase text-slate-300 mt-4 tracking-[0.4em] text-center">BJL PLANEJADOS</p>
                         </div>
+                    </div>
+                </div>
                     </div>
                 </div>
                 
