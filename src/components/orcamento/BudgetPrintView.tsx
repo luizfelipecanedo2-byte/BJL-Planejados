@@ -125,39 +125,39 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                 @media print {
                     @page {
                         size: A4 portrait;
-                        margin: 10mm;
+                        margin: 0;
                     }
 
                     /* General Print Reset */
                     html, body {
-                        background-color: white !important;
-                        color: black !important;
+                        background: white !important;
                         margin: 0 !important;
                         padding: 0 !important;
-                        width: 100% !important;
-                        height: auto !important;
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
-                        overflow: visible !important;
                     }
 
                     /* Hide UI elements */
-                    body {
-                        visibility: hidden !important;
-                        background: white !important;
+                    .print-hidden, 
+                    button, 
+                    .print\:hidden,
+                    nav,
+                    header:not(.budget-print-container header),
+                    footer:not(.budget-print-container footer) {
+                        display: none !important;
                     }
                     
-                    .budget-print-overlay, 
-                    .budget-print-overlay * {
-                        visibility: visible !important;
+                    /* Reset everything except our target */
+                    body > *:not(.budget-print-overlay) {
+                        display: none !important;
                     }
 
                     .budget-print-overlay {
                         position: absolute !important;
                         top: 0 !important;
                         left: 0 !important;
-                        width: 100% !important;
-                        height: auto !important;
+                        width: 210mm !important;
+                        min-height: 100% !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         background: white !important;
@@ -167,38 +167,51 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     }
 
                     .budget-print-container {
-                        position: relative !important;
-                        width: 100% !important;
-                        height: auto !important;
+                        width: 210mm !important;
                         min-height: 297mm !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         background: white !important;
+                        display: flex !important;
+                        flex-direction: column !important;
                         overflow: visible !important;
-                        display: block !important;
                     }
 
-                    /* Inner content margins for print safety */
+                    /* Ensure backgrounds print */
+                    .bg-slate-950 { background-color: #020617 !important; }
+                    .bg-amber-500 { background-color: #f59e0b !important; }
+                    .bg-amber-400\/50 { background-color: rgba(251, 191, 36, 0.5) !important; }
+                    .bg-slate-900 { background-color: #0f172a !important; }
+                    .bg-black { background-color: #000000 !important; }
+                    .bg-white { background-color: #ffffff !important; }
+                    .bg-slate-50 { background-color: #f8fafc !important; }
+                    .text-white { color: white !important; }
+                    .text-amber-500 { color: #f59e0b !important; }
+
+                    /* Header adjustments for print */
                     .px-12 {
-                        padding-left: 10mm !important;
-                        padding-right: 10mm !important;
-                        display: block !important;
-                        height: auto !important;
+                        padding-left: 15mm !important;
+                        padding-right: 15mm !important;
                     }
 
                     .relative.h-48 {
-                        height: 120px !important; /* Move header content up */
+                        height: 180px !important;
+                        -webkit-print-color-adjust: exact !important;
                     }
+                    
                     .bg-slate-950.h-24 {
-                        height: 60px !important;
+                        height: 90px !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        -webkit-print-color-adjust: exact !important;
                     }
 
-                    /* Better table handling */
+                    /* Table and content */
                     .budget-print-container table { 
                         display: table !important; 
                         width: 100% !important; 
                         border-collapse: collapse !important;
-                        table-layout: auto !important;
                     }
                     
                     .budget-print-container thead {
@@ -209,26 +222,17 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         display: table-row !important; 
                         page-break-inside: avoid !important;
                     }
-                    
-                    .budget-print-container td, .budget-print-container th { 
-                        display: table-cell !important; 
-                    }
 
-                    /* Elements that should stay together */
                     .footer-totals {
                         page-break-inside: avoid !important;
-                        margin-top: 20px !important;
-                        display: grid !important;
-                        grid-template-columns: repeat(5, 1fr) !important;
+                        margin-top: auto !important;
+                        padding-top: 20px !important;
                     }
 
-                    /* Hide interactive buttons during print */
-                    .print-hidden, 
-                    button, 
-                    .print\:hidden {
-                        display: none !important;
-                        visibility: hidden !important;
-                    }
+                    /* Fix for absolute elements inside header */
+                    .absolute.top-16 { top: 60px !important; }
+                    .absolute.top-4 { top: 15px !important; }
+                    .absolute.bottom-4 { bottom: 10px !important; }
                 }
             `}} />
 
