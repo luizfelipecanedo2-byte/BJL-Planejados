@@ -125,10 +125,10 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                 @media print {
                     @page {
                         size: A4 portrait;
-                        margin: 0;
+                        margin: 10mm;
                     }
 
-                    /* General Print Reset */
+                    /* General Reset */
                     html, body {
                         background: white !important;
                         margin: 0 !important;
@@ -137,9 +137,9 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         print-color-adjust: exact !important;
                     }
 
-                    /* Bulletproof isolation */
+                    /* Simple isolation: Hide everything by default, then show our target */
                     body * {
-                        visibility: hidden;
+                        visibility: hidden !important;
                     }
                     
                     .budget-print-overlay, 
@@ -151,110 +151,89 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         position: absolute !important;
                         left: 0 !important;
                         top: 0 !important;
-                        width: 210mm !important;
-                        background: white !important;
-                        z-index: 999999 !important;
+                        width: 100% !important;
+                        height: auto !important;
                         display: block !important;
                     }
 
                     .budget-print-container {
-                        width: 210mm !important;
-                        background: white !important;
-                        display: block !important;
-                        padding-top: 45mm !important; /* Space for header */
-                        position: relative !important;
-                    }
-
-                    /* Header Print Fix */
-                    .budget-print-container > div:first-child {
-                        position: absolute !important;
-                        top: 0 !important;
-                        left: 0 !important;
                         width: 100% !important;
-                        height: 45mm !important;
                         display: block !important;
-                        background: #020617 !important;
-                        box-shadow: inset 0 0 0 1000px #020617 !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                        border-radius: 0 !important;
                     }
 
-                    .bg-slate-950.h-24 {
-                        background: #020617 !important;
+                    /* Header: Static and Solid */
+                    .budget-print-container > div:first-child {
+                        height: 150px !important;
+                        background-color: #020617 !important;
                         box-shadow: inset 0 0 0 1000px #020617 !important;
-                        height: 20mm !important;
+                        color: white !important;
+                        display: block !important;
+                        position: relative !important;
+                        margin-bottom: 20px !important;
+                    }
+                    
+                    .bg-slate-950.h-24 {
+                        background: transparent !important;
+                        box-shadow: none !important;
+                        height: 80px !important;
                         display: flex !important;
                         align-items: center !important;
                         justify-content: center !important;
-                        position: absolute !important;
-                        top: 0 !important;
-                        left: 0 !important;
-                        width: 100% !important;
-                        z-index: 20 !important;
                     }
                     
                     .bg-slate-950.h-24 h1 {
                         color: white !important;
-                        display: block !important;
-                        font-family: inherit !important;
+                        font-size: 24pt !important;
                         font-weight: 900 !important;
+                        display: block !important;
+                        visibility: visible !important;
                     }
 
                     /* Golden Waves */
                     .bg-amber-500 {
                         position: absolute !important;
-                        top: 15mm !important;
+                        top: 80px !important;
                         left: 0 !important;
                         width: 100% !important;
-                        height: 25mm !important;
+                        height: 40px !important;
                         background: #f59e0b !important;
                         box-shadow: inset 0 0 0 1000px #f59e0b !important;
-                        z-index: 5 !important;
-                    }
-                    
-                    /* Logo and Info */
-                    .absolute.top-4.left-12 {
-                        top: 4mm !important;
-                        left: 12mm !important;
-                        z-index: 30 !important;
                         display: block !important;
                     }
-
-                    .absolute.top-4.right-12 {
-                        top: 4mm !important;
-                        right: 12mm !important;
-                        z-index: 30 !important;
-                        display: flex !important;
-                        flex-direction: column !important;
-                    }
-
-                    .absolute.bottom-4.right-12 {
-                        top: 32mm !important;
-                        right: 12mm !important;
-                        z-index: 30 !important;
-                        display: flex !important;
-                    }
-
-                    /* Force Colors */
-                    .bg-slate-900 { box-shadow: inset 0 0 0 1000px #0f172a !important; background-color: #0f172a !important; }
-                    .bg-black { box-shadow: inset 0 0 0 1000px #000000 !important; background-color: #000000 !important; }
                     
-                    .text-white { color: white !important; }
-                    .text-amber-500 { color: #f59e0b !important; }
-                    .text-slate-800 { color: #1e293b !important; }
+                    /* Logo and Contacts */
+                    .absolute.top-4.left-12 { top: 10px !important; left: 20px !important; position: absolute !important; }
+                    .absolute.top-4.right-12 { top: 10px !important; right: 20px !important; position: absolute !important; display: flex !important; flex-direction: column !important; }
+                    .absolute.bottom-4.right-12 { top: 100px !important; right: 20px !important; position: absolute !important; display: flex !important; }
 
-                    .px-12 { 
-                        padding-left: 15mm !important; 
-                        padding-right: 15mm !important; 
-                        display: block !important;
+                    /* Proposal Info */
+                    .px-12 { padding: 0 !important; display: block !important; }
+                    .budget-print-container table { 
+                        width: 100% !important; 
+                        margin-top: 20px !important;
+                        border-collapse: collapse !important;
                     }
+                    .budget-print-container tr { page-break-inside: avoid !important; }
 
+                    /* THE PAGE BREAK - FORCE IT */
                     .footer-totals {
                         page-break-before: always !important;
-                        padding-top: 30mm !important;
+                        break-before: page !important;
+                        display: grid !important;
+                        grid-template-columns: repeat(5, 1fr) !important;
+                        padding-top: 50px !important;
                     }
 
-                    .print-hidden, button, .print\:hidden {
-                        display: none !important;
+                    .footer-totals .bg-slate-900 {
+                        box-shadow: inset 0 0 0 1000px #0f172a !important;
+                        background: #0f172a !important;
+                        color: white !important;
                     }
+
+                    .print-hidden, button, .print\:hidden { display: none !important; }
                 }
             `}} />
 
