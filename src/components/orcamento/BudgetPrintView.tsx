@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, Instagram, MapPin, Printer, X, Pencil, RotateCcw, Plus, Trash2, Save } from 'lucide-react';
+import { Phone, Instagram, MapPin, Printer, X, Plus, Trash2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface BudgetPrintViewProps {
@@ -10,18 +10,15 @@ interface BudgetPrintViewProps {
     initialTab?: 'commercial' | 'technical';
 }
 
-const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber, initialTab = 'commercial' }: BudgetPrintViewProps) => {
+const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber }: BudgetPrintViewProps) => {
     const [budget, setBudget] = useState({...initialBudget});
     const [isSaving, setIsSaving] = useState(false);
     
-    // We only keep the manual ambientes/serviços view
     const [ambientes, setAmbientes] = useState(() => {
         try {
             if (initialBudget.notes) {
                 const parsed = JSON.parse(initialBudget.notes);
-                if (parsed.ambientes && Array.isArray(parsed.ambientes)) {
-                    return parsed.ambientes;
-                }
+                if (parsed.ambientes && Array.isArray(parsed.ambientes)) return parsed.ambientes;
             }
         } catch (e) {}
         
@@ -65,10 +62,6 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
         return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
     };
 
-    const handlePrint = () => {
-        window.print();
-    };
-
     const handleAmbienteChange = (id: string, field: string, value: any) => {
         setAmbientes(ambientes.map(amb => amb.id === id ? { ...amb, [field]: value } : amb));
     };
@@ -82,440 +75,239 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
     };
 
     const displayTotal = ambientes.reduce((acc: number, curr: any) => acc + (parseFloat(curr.value) || 0), 0);
+    const cardValue = displayTotal * (1 + (parseFloat(budget.card_fee_percent) || 11) / 100);
 
     const handleSave = async () => {
         if (!onSave) return;
-        
         setIsSaving(true);
         try {
-            const totalCostAtVista = displayTotal;
-            const cardFeePercent = parseFloat(budget.card_fee_percent) || 0;
-            const totalValueWithCardFee = totalCostAtVista * (1 + cardFeePercent / 100);
-            
-            const budgetMarkupFactor = budget.markup_factor || 1;
-            
-            const notesObj = {
-                ambientes,
-                paymentTerms,
-                techSpecs
-            };
-
+            const notesObj = { ambientes, paymentTerms, techSpecs };
             const updatedBudget = {
                 ...budget,
                 notes: JSON.stringify(notesObj),
-                total_value: totalValueWithCardFee, 
-                total_cost: totalCostAtVista / budgetMarkupFactor 
+                total_value: cardValue, 
+                total_cost: displayTotal
             };
-
             await onSave(updatedBudget, initialBudget.budget_items || []);
         } catch (error) {
-            console.error("Error saving budget from view:", error);
-            toast.error("Erro ao salvar as alterações");
+            console.error("Error saving budget:", error);
+            toast.error("Erro ao salvar");
         } finally {
             setIsSaving(false);
         }
     };
 
-    const cardValue = displayTotal * (1 + (parseFloat(budget.card_fee_percent) || 11) / 100);
-
     return (
-        <div className="budget-print-overlay fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-sm overflow-y-auto p-4 md:p-10 print:p-0 print:bg-white print:relative print:z-0 print:overflow-visible">
-            {/* Custom Print Styles Injection */}
+        <div className="budget-print-overlay fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-sm overflow-y-auto p-4 md:p-10 print:p-0 print:bg-white print:relative print:overflow-visible flex justify-center">
+            
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
-                    @page {
-                        size: A4 portrait;
-                        margin: 10mm;
-                    }
-
-                    /* General Reset */
-                    html, body {
-                        background: white !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        height: auto !important;
-                        min-height: 0 !important;
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                    }
-
-                    /* Simple isolation: Hide everything by default, then show our target */
-                    body * {
-                        visibility: hidden !important;
-                    }
-                    
-                    .budget-print-overlay, 
-                    .budget-print-overlay * {
-                        visibility: visible !important;
-                    }
-
-                    .budget-print-overlay {
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 100% !important;
-                        height: auto !important;
-                        min-height: 0 !important;
-                        display: block !important;
-                        padding: 0 !important;
-                        background: white !important;
-                    }
-
-                    .budget-print-container {
-                        width: 100% !important;
-                        height: auto !important;
-                        min-height: 0 !important;
-                        display: block !important;
-                        box-shadow: none !important;
-                        border: none !important;
-                        border-radius: 0 !important;
-                        overflow: visible !important;
-                    }
-
-                    /* Header: Static and Solid */
-                    .budget-print-container > div:first-child {
-                        height: 180px !important;
-                        background-color: #020617 !important;
-                        box-shadow: inset 0 0 0 1000px #020617 !important;
-                        color: white !important;
-                        display: block !important;
-                        position: relative !important;
-                        margin-bottom: 30px !important;
-                    }
-                    
-                    .bg-slate-950.h-24 {
-                        background: transparent !important;
-                        box-shadow: none !important;
-                        height: 90px !important;
-                        display: flex !important;
-                        align-items: center !important;
-                        justify-content: center !important;
-                    }
-                    
-                    .bg-slate-950.h-24 h1 {
-                        color: white !important;
-                        font-size: 36pt !important;
-                        font-weight: 900 !important;
-                        display: block !important;
-                        visibility: visible !important;
-                        margin-top: 15px !important;
-                        letter-spacing: 0.1em !important;
-                    }
-
-                    /* Header Wave (The one inside h-48) */
-                    .h-48 .bg-amber-500 {
-                        position: absolute !important;
-                        top: 100px !important;
-                        left: 0 !important;
-                        width: 100% !important;
-                        height: 60px !important;
-                        background: #f59e0b !important;
-                        box-shadow: inset 0 0 0 1000px #f59e0b !important;
-                        display: block !important;
-                        z-index: 0 !important;
-                    }
-                    
-                    /* Logo and Contacts */
-                    .absolute.top-4.left-12 { top: 15px !important; left: 30px !important; position: absolute !important; }
-                    .absolute.top-4.right-12 { top: 15px !important; right: 30px !important; position: absolute !important; display: flex !important; flex-direction: column !important; }
-                    .absolute.bottom-4.right-12 { top: 115px !important; right: 30px !important; position: absolute !important; display: flex !important; }
-
-                    /* Proposal Info */
-                    /* Proposal Info area */
-                    .budget-main-content { padding: 40px !important; display: block !important; height: auto !important; }
-                    
-                    /* Text sizes */
-                    .budget-print-container table th { font-size: 11pt !important; color: #64748b !important; }
-                    .budget-print-container table td { font-size: 13pt !important; color: #0f172a !important; padding: 15px 0 !important; }
-                    .text-[9px] { font-size: 10pt !important; }
-                    .text-[8px] { font-size: 9pt !important; }
-                    .text-xs { font-size: 11pt !important; }
-                    
-                    .budget-print-container table { 
+                    @page { size: A4; margin: 0; }
+                    body { background: white !important; margin: 0 !important; }
+                    .budget-print-overlay { padding: 0 !important; display: block !important; position: static !important; }
+                    .budget-print-container { 
+                        box-shadow: none !important; 
+                        margin: 0 !important; 
                         width: 100% !important; 
-                        margin-top: 30px !important;
-                        border-collapse: collapse !important;
+                        max-width: none !important;
+                        border-radius: 0 !important;
                     }
-                    .budget-print-container tr { page-break-inside: avoid !important; border-bottom: 1px solid #f1f5f9 !important; }
-
-                    /* THE PAGE BREAKS */
-                    .footer-totals {
-                        page-break-before: always !important;
-                        break-before: page !important;
-                        margin-top: 50px !important;
-                        display: grid !important;
-                        grid-template-columns: repeat(5, 1fr) !important;
-                        gap: 20px !important;
-                    }
-
-                    .print-hidden, button, .print\:hidden { display: none !important; }
-                    
-                    /* Force visible elements and allow growth */
-                    .overflow-hidden { overflow: visible !important; }
-                    .flex-1 { flex: none !important; height: auto !important; }
-                    .budget-print-container { height: auto !important; min-height: 0 !important; }
-                    
-                    /* Specific text for conditions and specs */
-                    .col-span-3 .text-[10px], .col-span-3 .text-[9px], .col-span-3 .text-slate-500, .col-span-3 .text-slate-400 {
-                        font-size: 12pt !important;
-                        color: #475569 !important;
-                        line-height: 1.6 !important;
-                    }
-
-                    /* Fix for inputs and textareas in print */
-                    input, textarea { display: none !important; }
-                    .print-show { display: block !important; visibility: visible !important; }
+                    .no-print { display: none !important; }
+                    .force-break-before { page-break-before: always !important; }
+                    .page-container { padding: 40px !important; }
                 }
             `}} />
 
-            <div className="budget-print-container bg-white min-h-[1123px] print:min-h-0 w-full max-w-[800px] mx-auto shadow-2xl relative print:shadow-none print:m-0 print:max-w-none rounded-[3rem] print:rounded-none flex flex-col print:overflow-visible">
+            <div className="budget-print-container bg-white w-full max-w-[850px] shadow-2xl flex flex-col print:shadow-none min-h-screen">
                 
-                {/* Header with Black Bar and Gold Wave */}
-                <div className="relative h-48 shrink-0">
-                    {/* Black Top Bar */}
-                    <div className="bg-slate-950 h-24 w-full flex items-center justify-center px-4 md:px-12 relative z-10">
-                         <div className="flex flex-col items-center">
-                            <h1 className="text-sm md:text-xl font-black uppercase tracking-widest md:tracking-[0.3em] text-white leading-none whitespace-nowrap">BJL PLANEJADOS</h1>
+                {/* 1. CABEÇALHO ROBUSTO */}
+                <div className="bg-slate-950 text-white p-8 flex justify-between items-center border-b-[8px] border-amber-500">
+                    <div className="flex items-center gap-6">
+                        <div className="h-32 w-32 rounded-full overflow-hidden bg-white flex items-center justify-center p-1 shadow-lg border-2 border-amber-500">
+                            <img src="/logo-bjl.png" alt="Logo" className="w-full h-full object-contain" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-black uppercase tracking-tighter leading-none">BJL Planejados</h1>
+                            <p className="text-amber-500 font-bold uppercase tracking-widest text-xs mt-2">Qualidade & Precisão em Marcenaria</p>
                         </div>
                     </div>
-
-                    {/* Golden Wave Shape */}
-                    <div className="absolute top-16 left-0 w-full h-32 bg-amber-500 z-0" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 40%, 0 100%)' }} />
-                    <div className="absolute top-16 left-0 w-full h-32 bg-amber-400/50 z-0" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 70%, 0 85%)' }} />
-                    
-                    {/* Logo - Moved up */}
-                    <div className="absolute top-4 left-12 z-20 scale-75 origin-top-left">
-                        <div className="h-44 w-44 rounded-full overflow-hidden bg-black flex items-center justify-center border-8 border-white shadow-2xl">
-                            <img src="/logo-bjl.png" alt="BJL Logo" className="w-full h-full object-contain p-2" />
+                    <div className="text-right space-y-1">
+                        <div className="flex items-center justify-end gap-2 text-sm font-bold opacity-90">
+                            <Phone size={14} className="text-amber-500" /> (22) 99703-9852
                         </div>
-                    </div>
-
-                    {/* Contact Info - Visible for Print */}
-                    <div className="absolute top-4 right-12 z-20 flex flex-col gap-1.5 items-end print:flex !important">
-                        <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg border border-slate-200/50 text-slate-800 print:text-white font-black text-[9px] uppercase tracking-widest shadow-sm print:flex !important">
-                            < Phone size={10} className="text-amber-500" />
-                            <span className="print:inline-block !important">(22) 99703-9852</span>
+                        <div className="flex items-center justify-end gap-2 text-sm font-bold opacity-90">
+                            <Instagram size={14} className="text-amber-500" /> @bjlmoveisplanejados
                         </div>
-                        <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg border border-slate-200/50 text-slate-800 print:text-white font-black text-[9px] uppercase tracking-widest shadow-sm print:flex !important">
-                            <Instagram size={10} className="text-amber-500" />
-                            <span className="print:inline-block !important">@bjlmoveisplanejados</span>
+                        <div className="flex items-center justify-end gap-2 text-xs opacity-70 mt-4 max-w-[200px]">
+                            Rua Maria Vitipó Raposo, n°138, Barão de Macaubas <MapPin size={12} />
                         </div>
-                    </div>
-
-                    <div className="absolute bottom-4 right-12 z-20 flex items-center gap-2 text-slate-800 print:text-slate-900 font-black text-[8px] uppercase tracking-widest max-w-[250px] text-right print:flex !important">
-                        <span className="print:inline-block !important">Rua Maria Vitipó Raposo, n°138, Barão de Macaubas</span>
-                        <MapPin size={12} className="text-slate-900 shrink-0" />
                     </div>
                 </div>
 
-                <div className="budget-main-content px-12 pb-20 flex-1 flex flex-col">
-                    <div className="flex justify-between items-start mt-6 mb-10">
+                {/* 2. INFORMAÇÕES DO CLIENTE */}
+                <div className="p-10 pb-4">
+                    <div className="flex justify-between items-end border-b-2 border-slate-100 pb-6">
                         <div className="flex-1">
-                             <div className="bg-amber-500 text-white px-8 py-5 rounded-[1.5rem] shadow-xl shadow-amber-500/10 group relative overflow-hidden text-left">
-                                <h2 className="text-[9px] font-black uppercase tracking-[0.2em] mb-1 opacity-80 flex items-center gap-2">
-                                    Proposta para
-                                </h2>
-                                <input 
-                                    value={budget.client_name}
-                                    onChange={(e) => setBudget({...budget, client_name: e.target.value})}
-                                    className="bg-transparent text-2xl font-black uppercase tracking-tighter leading-none w-full border-none focus:ring-0 focus:outline-none placeholder:text-white/50 print:hidden"
-                                    placeholder="NOME DO CLIENTE"
-                                />
-                                <div className="hidden print:block text-3xl font-black uppercase tracking-tighter leading-none mt-1">
-                                    {budget.client_name}
-                                </div>
-                             </div>
+                            <h2 className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-2">Proposta para Cliente</h2>
+                            <textarea 
+                                value={budget.client_name}
+                                onChange={(e) => setBudget({...budget, client_name: e.target.value})}
+                                rows={1}
+                                className="w-full bg-transparent border-none p-0 text-3xl font-black uppercase tracking-tight text-slate-900 focus:ring-0 resize-none overflow-hidden"
+                            />
                         </div>
-                        <div className="text-right pl-8 pt-1">
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary mb-1">Orçamento Ref.</p>
-                            <p className="text-xl font-black text-slate-900 tracking-tighter leading-none">#{budgetNumber || budget.id.substring(0, 6).toUpperCase()}</p>
-                            <div className="mt-4">
-                                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Emitido em</p>
-                                <p className="text-sm font-black text-slate-900 tabular-nums">{new Date(budget.created_at || new Date()).toLocaleDateString('pt-BR')}</p>
-                            </div>
+                        <div className="text-right">
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Orçamento Ref.</p>
+                            <p className="text-xl font-black text-slate-900">#{budgetNumber || "0000"}</p>
+                            <p className="text-[10px] font-bold text-slate-500 mt-2">{new Date().toLocaleDateString('pt-BR')}</p>
                         </div>
                     </div>
+                </div>
 
-                    {/* Commercial View (Proposta) is now the only view */}
-                    <div className="mb-8 overflow-hidden print:overflow-visible rounded-[1.5rem] border border-slate-100">
-                            <div className="bg-slate-900 text-white px-6 py-5 flex justify-between items-center group relative">
-                                <span className="text-[10px] md:text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3">
-                                    Descrição dos Ambientes e Serviços
-                                </span>
-                                <button 
-                                    onClick={addAmbiente}
-                                    className="p-1 px-3 bg-white/10 hover:bg-amber-500 hover:text-black rounded-md transition-all text-[9px] font-black uppercase print:hidden"
-                                >
-                                    <Plus size={10} className="inline mr-1" /> Novo Ambiente
-                                </button>
-                            </div>
-                            <table className="w-full text-left border-collapse bg-white">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-200">
-                                        <th className="pl-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 w-[70%]">Ambiente / Detalhamento</th>
-                                        <th className="pr-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Investimento (À Vista)</th>
-                                        <th className="w-8 print:hidden"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {ambientes.map((amb) => (
-                                        <tr key={amb.id} className="hover:bg-amber-50/20 group">
-                                            <td className="pl-6 py-5">
-                                                <textarea 
-                                                    value={amb.description}
-                                                    rows={1}
-                                                    onChange={(e) => handleAmbienteChange(amb.id, 'description', e.target.value)}
-                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 font-black text-slate-800 uppercase text-[12px] md:text-[14px] tracking-tight placeholder:text-slate-200 resize-y min-h-[24px] print:hidden"
-                                                    placeholder="Descreva o ambiente e o que será feito..."
-                                                />
-                                                <div className="hidden print:block print-show font-black text-slate-800 uppercase text-[14px] leading-relaxed">
-                                                    {amb.description}
-                                                </div>
-                                            </td>
-                                            <td className="pr-6 py-5 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <span className="text-[10px] font-bold text-slate-300 print:hidden">R$</span>
-                                                    <input 
-                                                        type="number"
-                                                        value={amb.value}
-                                                        onChange={(e) => handleAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
-                                                        className="w-24 bg-transparent border-none focus:ring-0 p-0 text-right font-black text-slate-600 text-[14px] print:hidden"
-                                                    />
-                                                    <div className="hidden print:block print-show font-black text-slate-900 text-[16px]">
-                                                        {formatCurrency(amb.value)}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="pr-2 print:hidden">
-                                                <button 
-                                                    onClick={() => removeAmbiente(amb.id)}
-                                                    className="p-1 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
-                                                >
-                                                    <Trash2 size={12} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                            </tbody>
-                        </table>
+                {/* 3. LISTA DE ITENS (AMBIEBTES) */}
+                <div className="p-10 flex-1">
+                    <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center rounded-t-xl">
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Descrição detalhada dos serviços</span>
+                        <button onClick={addAmbiente} className="no-print p-2 bg-amber-500 text-black rounded text-[10px] font-bold uppercase flex items-center gap-1">
+                            <Plus size={12} /> Novo Ambiente
+                        </button>
                     </div>
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-200">
+                                <th className="p-4 text-left text-[10px] font-black uppercase text-slate-500 w-[75%]">Ambiente / Detalhamento</th>
+                                <th className="p-4 text-right text-[10px] font-black uppercase text-slate-500">Valor (À Vista)</th>
+                                <th className="w-8 no-print"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {ambientes.map((amb) => (
+                                <tr key={amb.id} className="border-b border-slate-100 hover:bg-slate-50 group">
+                                    <td className="p-4">
+                                        <textarea 
+                                            value={amb.description}
+                                            onChange={(e) => handleAmbienteChange(amb.id, 'description', e.target.value)}
+                                            rows={1}
+                                            className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-800 uppercase focus:ring-0 resize-y min-h-[30px]"
+                                            placeholder="Descreva o ambiente e o serviço..."
+                                        />
+                                    </td>
+                                    <td className="p-4 text-right align-top">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <span className="no-print text-xs text-slate-300">R$</span>
+                                            <input 
+                                                type="number"
+                                                value={amb.value}
+                                                onChange={(e) => handleAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
+                                                className="w-24 bg-transparent border-none p-0 text-right text-base font-black text-slate-900 focus:ring-0 print-hidden-input"
+                                            />
+                                            {/* Versão para Impressão */}
+                                            <span className="hidden print:inline text-lg font-black text-slate-900">
+                                                {formatCurrency(amb.value)}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="p-2 no-print">
+                                        <button onClick={() => removeAmbiente(amb.id)} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
 
-                    <div className="flex-1 min-h-[40px]" />
-
-                    {/* Footer and Totals */}
-                    <div className="grid grid-cols-5 gap-8 items-start pt-8 border-t border-slate-100 footer-totals">
-                        <div className="col-span-3 space-y-8">
+                {/* 4. RODAPÉ DE TOTAIS E CONDIÇÕES (EM NOVA PÁGINA SE NECESSÁRIO) */}
+                <div className="force-break-before p-10 bg-slate-50 border-t border-slate-200">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
+                        {/* Termos e Condições */}
+                        <div className="md:col-span-3 space-y-10">
                             <div>
-                                <h4 className="flex items-center gap-2 text-[10px] font-black uppercase text-amber-600 tracking-widest mb-4">
-                                    <div className="h-1.5 w-1.5 bg-amber-500 rounded-full" />
-                                    Condições de Pagamento
-                                </h4>
-                                <div className="space-y-3 text-[10px] font-black text-slate-500 uppercase tracking-tight pl-4 border-l-2 border-slate-100">
+                                <h3 className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-4 flex items-center gap-2">
+                                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span> Condições de Pagamento
+                                </h3>
+                                <div className="space-y-4 pl-4 border-l-2 border-amber-100">
                                     {paymentTerms.map((term, i) => (
-                                        <div key={`term-${i}`} className="flex items-center gap-2 group">
-                                            <span className="text-amber-500/30 shrink-0">0{i+1}.</span>
-                                            <input 
-                                                value={term}
-                                                onChange={(e) => {
-                                                    const newTerms = [...paymentTerms];
-                                                    newTerms[i] = e.target.value;
-                                                    setPaymentTerms(newTerms);
-                                                }}
-                                                className="w-full bg-transparent border-none focus:ring-0 p-0 text-slate-500 print:hidden"
-                                            />
-                                            <div className="hidden print:block text-slate-600 text-[12px]">
-                                                {term}
-                                            </div>
-                                        </div>
+                                        <input 
+                                            key={`pt-${i}`}
+                                            value={term}
+                                            onChange={(e) => {
+                                                const newTerms = [...paymentTerms];
+                                                newTerms[i] = e.target.value;
+                                                setPaymentTerms(newTerms);
+                                            }}
+                                            className="w-full bg-transparent border-none p-0 text-xs font-bold text-slate-700 uppercase focus:ring-0 mb-1"
+                                        />
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <h4 className="flex items-center gap-2 text-[10px] font-black uppercase text-amber-600 tracking-widest mb-4">
-                                    <div className="h-1.5 w-1.5 bg-amber-500 rounded-full" />
-                                    Especificações Técnicas
-                                </h4>
-                                <div className="grid grid-cols-2 gap-y-3 gap-x-8 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-4 border-l-2 border-slate-100">
+                                <h3 className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-4 flex items-center gap-2">
+                                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span> Especificações Técnicas
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-amber-100">
                                     {techSpecs.map((spec, i) => (
-                                        <div key={`spec-${i}`} className="flex items-center gap-2 group">
-                                            <div className="h-0.5 w-2 bg-slate-200 shrink-0" />
-                                            <input 
-                                                value={spec}
-                                                onChange={(e) => {
-                                                    const newSpecs = [...techSpecs];
-                                                    newSpecs[i] = e.target.value;
-                                                    setTechSpecs(newSpecs);
-                                                }}
-                                                className="w-full bg-transparent border-none focus:ring-0 p-0 text-slate-400 print:hidden"
-                                            />
-                                            <div className="hidden print:block text-slate-500 text-[11px]">
-                                                {spec}
-                                            </div>
-                                        </div>
+                                        <input 
+                                            key={`ts-${i}`}
+                                            value={spec}
+                                            onChange={(e) => {
+                                                const newSpecs = [...techSpecs];
+                                                newSpecs[i] = e.target.value;
+                                                setTechSpecs(newSpecs);
+                                            }}
+                                            className="w-full bg-transparent border-none p-0 text-[10px] font-bold text-slate-500 uppercase focus:ring-0"
+                                        />
                                     ))}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="col-span-2 space-y-4">
-                            <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white space-y-6 shadow-xl relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-4 opacity-5">
-                                    <Printer size={60} />
+                        {/* Quadros de Totais */}
+                        <div className="md:col-span-2">
+                            <div className="bg-slate-950 text-white p-8 rounded-2xl shadow-xl flex flex-col gap-6 relative overflow-hidden">
+                                <div className="z-10">
+                                    <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest mb-2">Total à Vista</p>
+                                    <h4 className="text-4xl font-black tabular-nums">{formatCurrency(displayTotal)}</h4>
                                 </div>
-                                <div className="relative z-10">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500 mb-2">Total À Vista</p>
-                                    <p className="text-4xl font-black text-white tracking-tighter leading-none tabular-nums">{formatCurrency(displayTotal)}</p>
-                                </div>
-                                <div className="pt-6 border-t border-white/10 relative z-10">
+                                <div className="border-t border-white/10 pt-6 z-10">
                                     <div className="flex justify-between items-center mb-2">
-                                        <div className="flex flex-col">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Parcelado</p>
-                                            <p className="text-[8px] font-black uppercase tracking-[0.1em] text-slate-500 mt-1">Em até 10x no cartão</p>
-                                        </div>
-                                        <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md print:hidden">
+                                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Opção Parcelada</p>
+                                        <div className="flex items-center gap-1 no-print">
                                             <input 
                                                 type="number"
                                                 value={budget.card_fee_percent || 11}
                                                 onChange={(e) => setBudget({...budget, card_fee_percent: parseFloat(e.target.value) || 0})}
-                                                className="w-8 bg-transparent border-none focus:ring-0 p-0 text-[12px] font-black text-amber-500 text-center"
+                                                className="w-8 bg-transparent text-amber-500 font-bold text-right focus:ring-0 border-none p-0"
                                             />
-                                            <span className="text-[10px] font-black text-slate-600">%</span>
+                                            <span className="text-xs text-slate-600">%</span>
                                         </div>
                                     </div>
-                                    <p className="text-3xl font-black text-amber-500 tracking-tighter leading-none tabular-nums">{formatCurrency(cardValue)}</p>
-                                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-4 tracking-[0.2em] text-right">Validade: 07 Dias</p>
+                                    <h5 className="text-2xl font-black text-amber-500 tabular-nums">{formatCurrency(cardValue)}</h5>
+                                    <p className="text-[9px] text-slate-500 uppercase mt-2">Em até 10x s/ juros no cartão</p>
                                 </div>
+                                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                                    <Printer size={80} />
+                                </div>
+                                <p className="text-[9px] font-bold text-center mt-6 text-slate-500 uppercase tracking-[0.2em]">Validade da Proposta: 07 Dias</p>
                             </div>
-                            <p className="text-[10px] text-center text-slate-400 font-black uppercase tracking-[0.1em] opacity-40">BJL PLANEJADOS • QUALIDADE & PRECISÃO</p>
+                            <p className="text-center text-[8px] font-black uppercase text-slate-300 mt-6 tracking-widest">BJL Planejados • Qualidade & Precisão</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Float Controls */}
-            <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex gap-4 print:hidden z-[99999] bg-slate-900/40 backdrop-blur-2xl p-3 rounded-[2.5rem] border border-white/10 shadow-2xl scale-90">
-                <button
-                    onClick={onClose}
-                    className="px-6 h-10 rounded-xl bg-white/10 text-white font-black uppercase text-[9px] tracking-widest hover:bg-rose-500 transition-all flex items-center gap-2"
-                >
-                    <X size={14} />
-                    Sair
+            {/* CONTROLES FLUTUANTES NO-PRINT */}
+            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex gap-4 no-print z-[99999] bg-slate-900/60 backdrop-blur-md p-4 rounded-full border border-white/10 shadow-2xl">
+                <button onClick={onClose} className="px-6 py-2 bg-white/10 text-white rounded-full font-bold uppercase text-xs hover:bg-rose-500 transition-all flex items-center gap-2">
+                    <X size={16} /> Fechar
                 </button>
-                <div className="w-[1px] h-10 bg-white/10" />
-                <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="px-10 h-10 rounded-xl bg-emerald-500 text-white font-black uppercase text-[9px] tracking-widest shadow-xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50 disabled:scale-100"
-                >
-                    <Save size={16} />
-                    {isSaving ? "Salvando..." : "Salvar Alterações"}
+                <div className="w-[1px] h-8 bg-white/20" />
+                <button onClick={handleSave} disabled={isSaving} className="px-8 py-2 bg-emerald-500 text-white rounded-full font-bold uppercase text-xs hover:scale-105 transition-all flex items-center gap-2">
+                    <Save size={16} /> {isSaving ? "Salvando..." : "Salvar"}
                 </button>
-                <button
-                    onClick={() => window.print()}
-                    className="px-10 h-10 rounded-xl bg-amber-500 text-black font-black uppercase text-[9px] tracking-widest shadow-xl shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
-                >
-                    <Printer size={16} />
-                    Imprimir/PDF
+                <button onClick={() => window.print()} className="px-10 py-2 bg-amber-500 text-black rounded-full font-bold uppercase text-xs hover:scale-105 transition-all flex items-center gap-2">
+                    <Printer size={16} /> Gerar PDF / Imprimir
                 </button>
             </div>
         </div>
