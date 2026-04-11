@@ -121,7 +121,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
             <div className="budget-print-container bg-white w-full max-w-[850px] shadow-2xl flex flex-col print:shadow-none min-h-screen">
                 
                 {/* 1. CABEÇALHO ROBUSTO */}
-                <div className="bg-slate-950 text-white p-8 flex justify-between items-center border-b-[8px] border-amber-500">
+                <div className="bg-emerald-600 text-white p-8 flex justify-between items-center border-b-[8px] border-amber-500">
                     <div className="flex items-center gap-6">
                         <div className="h-32 w-32 rounded-full overflow-hidden bg-white flex items-center justify-center p-1 shadow-lg border-2 border-amber-500">
                             <img src="/logo-bjl.png" alt="Logo" className="w-full h-full object-contain" />
