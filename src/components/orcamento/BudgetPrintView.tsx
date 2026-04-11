@@ -170,9 +170,11 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         border: none !important;
                         border-radius: 0 !important;
                         overflow: visible !important;
-                                    /* Header: Static and Solid */
+                    }
+
+                    /* Header: Static and Solid */
                     .budget-print-container > div:first-child {
-                        height: 160px !important;
+                        height: 180px !important;
                         background-color: #020617 !important;
                         box-shadow: inset 0 0 0 1000px #020617 !important;
                         color: white !important;
@@ -192,15 +194,16 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     
                     .bg-slate-950.h-24 h1 {
                         color: white !important;
-                        font-size: 28pt !important;
+                        font-size: 36pt !important;
                         font-weight: 900 !important;
                         display: block !important;
                         visibility: visible !important;
-                        margin-top: 10px !important;
+                        margin-top: 15px !important;
+                        letter-spacing: 0.1em !important;
                     }
 
-                    /* Golden Waves */
-                    .bg-amber-500 {
+                    /* Header Wave (The one inside h-48) */
+                    .h-48 .bg-amber-500 {
                         position: absolute !important;
                         top: 100px !important;
                         left: 0 !important;
@@ -209,6 +212,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         background: #f59e0b !important;
                         box-shadow: inset 0 0 0 1000px #f59e0b !important;
                         display: block !important;
+                        z-index: 0 !important;
                     }
                     
                     /* Logo and Contacts */
@@ -217,7 +221,8 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     .absolute.bottom-4.right-12 { top: 115px !important; right: 30px !important; position: absolute !important; display: flex !important; }
 
                     /* Proposal Info */
-                    .px-12 { padding: 40px !important; display: block !important; height: auto !important; }
+                    /* Proposal Info area */
+                    .budget-main-content { padding: 40px !important; display: block !important; height: auto !important; }
                     
                     /* Text sizes */
                     .budget-print-container table th { font-size: 11pt !important; color: #64748b !important; }
@@ -303,7 +308,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     </div>
                 </div>
 
-                <div className="px-12 pb-20 flex-1 flex flex-col">
+                <div className="budget-main-content px-12 pb-20 flex-1 flex flex-col">
                     <div className="flex justify-between items-start mt-6 mb-10">
                         <div className="flex-1">
                              <div className="bg-amber-500 text-white px-8 py-5 rounded-[1.5rem] shadow-xl shadow-amber-500/10 group relative overflow-hidden text-left">
@@ -363,7 +368,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                                     className="w-full bg-transparent border-none focus:ring-0 p-0 font-black text-slate-800 uppercase text-[12px] md:text-[14px] tracking-tight placeholder:text-slate-200 resize-y min-h-[24px] print:hidden"
                                                     placeholder="Descreva o ambiente e o que será feito..."
                                                 />
-                                                <div className="hidden print:block font-black text-slate-800 uppercase text-[14px] leading-relaxed">
+                                                <div className="hidden print:block print-show font-black text-slate-800 uppercase text-[14px] leading-relaxed">
                                                     {amb.description}
                                                 </div>
                                             </td>
@@ -376,7 +381,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                                         onChange={(e) => handleAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
                                                         className="w-24 bg-transparent border-none focus:ring-0 p-0 text-right font-black text-slate-600 text-[14px] print:hidden"
                                                     />
-                                                    <div className="hidden print:block font-black text-slate-900 text-[16px]">
+                                                    <div className="hidden print:block print-show font-black text-slate-900 text-[16px]">
                                                         {formatCurrency(amb.value)}
                                                     </div>
                                                 </div>
@@ -483,7 +488,6 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                             </div>
                             <p className="text-[10px] text-center text-slate-400 font-black uppercase tracking-[0.1em] opacity-40">BJL PLANEJADOS • QUALIDADE & PRECISÃO</p>
                         </div>
-                    </div>
                     </div>
                 </div>
             </div>
