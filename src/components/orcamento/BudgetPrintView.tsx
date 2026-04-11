@@ -133,29 +133,21 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         background: white !important;
                         margin: 0 !important;
                         padding: 0 !important;
+                        width: 210mm !important;
+                        height: auto !important;
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                     }
 
-                    /* Hide UI elements */
-                    .print-hidden, 
-                    button, 
-                    .print\:hidden,
-                    nav,
-                    header:not(.budget-print-container header),
-                    footer:not(.budget-print-container footer) {
+                    /* Hide EVERYTHING else definitively */
+                    #root > *:not(.budget-print-overlay),
+                    .budget-print-overlay ~ *,
+                    div[data-radix-portal] {
                         display: none !important;
                     }
                     
-                    /* Reset everything except our target */
-                    body {
-                        visibility: hidden !important;
-                        background: white !important;
-                    }
-                    
-                    .budget-print-overlay, 
-                    .budget-print-overlay * {
-                        visibility: visible !important;
+                    body > *:not(#root):not(.budget-print-overlay) {
+                        display: none !important;
                     }
 
                     .budget-print-overlay {
@@ -164,82 +156,68 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         left: 0 !important;
                         width: 210mm !important;
                         min-height: 100% !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
                         background: white !important;
                         display: block !important;
-                        overflow: visible !important;
                         z-index: 999999 !important;
-                        visibility: visible !important;
                     }
 
                     .budget-print-container {
                         width: 210mm !important;
                         min-height: 297mm !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
                         background: white !important;
                         display: flex !important;
                         flex-direction: column !important;
                         overflow: visible !important;
                     }
 
-                    /* Ensure backgrounds print */
-                    .bg-slate-950 { background-color: #020617 !important; }
-                    .bg-amber-500 { background-color: #f59e0b !important; }
-                    .bg-amber-400\/50 { background-color: rgba(251, 191, 36, 0.5) !important; }
-                    .bg-slate-900 { background-color: #0f172a !important; }
-                    .bg-black { background-color: #000000 !important; }
-                    .bg-white { background-color: #ffffff !important; }
-                    .bg-slate-50 { background-color: #f8fafc !important; }
+                    /* Box-shadow hack to force backgrounds even if setting is off */
+                    .bg-slate-950 { box-shadow: inset 0 0 0 1000px #020617 !important; background-color: #020617 !important; }
+                    .bg-amber-500 { box-shadow: inset 0 0 0 1000px #f59e0b !important; background-color: #f59e0b !important; }
+                    .bg-amber-400\/50 { box-shadow: inset 0 0 0 1000px rgba(251, 191, 36, 0.5) !important; background-color: rgba(251, 191, 36, 0.5) !important; }
+                    .bg-slate-900 { box-shadow: inset 0 0 0 1000px #0f172a !important; background-color: #0f172a !important; }
+                    .bg-black { box-shadow: inset 0 0 0 1000px #000000 !important; background-color: #000000 !important; }
+                    .bg-white { box-shadow: inset 0 0 0 1000px #ffffff !important; background-color: #ffffff !important; }
+                    .bg-slate-50 { box-shadow: inset 0 0 0 1000px #f8fafc !important; background-color: #f8fafc !important; }
+                    
                     .text-white { color: white !important; }
+                    .text-slate-900 { color: #0f172a !important; }
+                    .text-slate-800 { color: #1e293b !important; }
                     .text-amber-500 { color: #f59e0b !important; }
 
-                    /* Header adjustments for print */
-                    .px-12 {
-                        padding-left: 15mm !important;
-                        padding-right: 15mm !important;
-                    }
+                    /* Header and Content */
+                    .px-12 { padding-left: 15mm !important; padding-right: 15mm !important; }
+                    .relative.h-48 { height: 180px !important; }
+                    .bg-slate-950.h-24 { height: 90px !important; display: flex !important; }
 
-                    .relative.h-48 {
-                        height: 180px !important;
-                        -webkit-print-color-adjust: exact !important;
-                    }
+                    /* Ensure items table is visible */
+                    .mb-8.overflow-hidden { overflow: visible !important; }
                     
-                    .bg-slate-950.h-24 {
-                        height: 90px !important;
-                        display: flex !important;
-                        align-items: center !important;
-                        justify-content: center !important;
-                        -webkit-print-color-adjust: exact !important;
-                    }
-
-                    /* Table and content */
                     .budget-print-container table { 
                         display: table !important; 
                         width: 100% !important; 
                         border-collapse: collapse !important;
+                        page-break-inside: auto !important;
                     }
                     
-                    .budget-print-container thead {
-                        display: table-header-group !important;
-                    }
-
-                    .budget-print-container tr { 
-                        display: table-row !important; 
-                        page-break-inside: avoid !important;
-                    }
+                    .budget-print-container thead { display: table-header-group !important; }
+                    .budget-print-container tr { display: table-row !important; page-break-inside: avoid !important; }
+                    .budget-print-container td, .budget-print-container th { display: table-cell !important; }
 
                     .footer-totals {
                         page-break-inside: avoid !important;
                         margin-top: auto !important;
-                        padding-top: 20px !important;
+                        padding-top: 40px !important;
                     }
 
-                    /* Fix for absolute elements inside header */
-                    .absolute.top-16 { top: 60px !important; }
+                    /* Interactive elements removal */
+                    .print-hidden, button, .print\:hidden { display: none !important; }
+                    
+                    /* Correct absolute positions */
+                    .absolute.top-16 { top: 65px !important; }
                     .absolute.top-4 { top: 15px !important; }
                     .absolute.bottom-4 { bottom: 10px !important; }
+                    .absolute.left-12 { left: 15mm !important; }
+                    .absolute.right-12 { right: 15mm !important; }
                 }
             `}} />
 
