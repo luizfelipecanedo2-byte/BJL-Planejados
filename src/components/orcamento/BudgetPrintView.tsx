@@ -131,8 +131,8 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                 {/* 1. CABEÇALHO ESTILIZADO (IGUAL IMAGEM) */}
                 <div className="relative">
                     <div className="bg-[#0f172a] text-white h-16 flex items-center justify-center px-10 relative">
-                        <div className="absolute left-10 top-2 h-32 w-32 rounded-full bg-white p-1 shadow-xl z-20 logo-container flex items-center justify-center overflow-hidden border-2 border-[#f59e0b]">
-                            <img src="/logo-bjl.png" alt="BJL" className="w-[85%] h-[85%] object-contain" />
+                        <div className="absolute left-10 top-2 h-32 w-32 rounded-full bg-black shadow-xl z-20 logo-container flex items-center justify-center overflow-hidden border-2 border-[#f59e0b]">
+                            <img src="/logo-bjl.png" alt="BJL" className="w-full h-full object-cover" />
                         </div>
                         <h1 className="text-xl font-black uppercase tracking-[0.2em] ml-28">BJL PLANEJADOS</h1>
                         <div className="absolute right-10 flex flex-col items-end gap-1">
