@@ -170,6 +170,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     /* Force Colors */
                     .bg-slate-950 { box-shadow: inset 0 0 0 1000px #020617 !important; background-color: #020617 !important; }
                     .bg-amber-500 { box-shadow: inset 0 0 0 1000px #f59e0b !important; background-color: #f59e0b !important; }
+                    .bg-amber-400\/50 { box-shadow: inset 0 0 0 1000px rgba(251, 191, 36, 0.5) !important; background-color: rgba(251, 191, 36, 0.5) !important; }
                     .bg-slate-900 { box-shadow: inset 0 0 0 1000px #0f172a !important; background-color: #0f172a !important; }
                     .bg-black { box-shadow: inset 0 0 0 1000px #000000 !important; background-color: #000000 !important; }
                     .bg-white { box-shadow: inset 0 0 0 1000px #ffffff !important; background-color: #ffffff !important; }
@@ -177,9 +178,21 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     .text-white { color: white !important; }
                     .text-amber-500 { color: #f59e0b !important; }
 
+                    /* Header Restoration */
+                    .relative.h-48 { height: 192px !important; display: block !important; position: relative !important; overflow: visible !important; }
+                    .bg-slate-950.h-24 { height: 96px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+                    
+                    /* Correct absolute positions for print */
+                    .absolute.top-16 { top: 64px !important; height: 128px !important; }
+                    .absolute.top-4 { top: 16px !important; }
+                    .absolute.bottom-4 { bottom: 16px !important; }
+                    .absolute.left-12 { left: 15mm !important; }
+                    .absolute.right-12 { right: 15mm !important; }
+
                     .px-12 { padding-left: 15mm !important; padding-right: 15mm !important; }
 
                     /* Fix Table and Item List */
+                    .mb-8.overflow-hidden { overflow: visible !important; }
                     .budget-print-container table { 
                         display: table !important; 
                         width: 100% !important; 
