@@ -1046,13 +1046,14 @@ const Orcamento = () => {
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="h-10 w-10 rounded-xl border border-border/50 text-slate-400"
+                                                    className="h-10 w-10 rounded-xl border border-border/50 text-slate-400 hover:text-amber-500 hover:border-amber-500/50 transition-all"
                                                     onClick={() => {
+                                                        toast.info("Preparando visualização para impressão...");
                                                         setPrintingBudget(orc);
                                                         setPrintingTab('commercial');
                                                     }}
                                                 >
-                                                    <FileText size={16} />
+                                                    <Printer size={16} />
                                                 </Button>
                                                 <Button 
                                                     variant="ghost" 

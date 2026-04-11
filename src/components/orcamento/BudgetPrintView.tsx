@@ -10,7 +10,7 @@ interface BudgetPrintViewProps {
     initialTab?: 'commercial' | 'technical';
 }
 
-const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber }: BudgetPrintViewProps) => {
+const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber, initialTab = 'commercial' }: BudgetPrintViewProps) => {
     const [budget, setBudget] = useState({...initialBudget});
     const [isSaving, setIsSaving] = useState(false);
     
