@@ -205,38 +205,38 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                                 <th className="w-8 no-print"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="space-y-4">
                             {ambientes.map((amb, index) => (
-                                <tr key={amb.id} className="group hover:bg-slate-50/50 transition-all">
-                                    <td className="py-8 px-6">
+                                <tr key={amb.id} className="group transition-all bg-slate-50/80 rounded-2xl overflow-hidden block mb-4 border border-slate-100">
+                                    <td className="py-6 px-8 block md:table-cell">
                                         <div className="flex gap-4">
                                             <span className="text-[10px] font-black text-[#f59e0b] opacity-40">0{index+1}.</span>
                                             <textarea 
                                                 value={amb.description}
                                                 onChange={(e) => handleAmbienteChange(amb.id, 'description', e.target.value)}
                                                 rows={1}
-                                                className="w-full bg-transparent border-none p-0 text-[15px] font-black text-slate-800 uppercase focus:ring-0 resize-y min-h-[24px] leading-relaxed"
+                                                className="w-full bg-transparent border-none p-0 text-[14px] font-black text-slate-800 uppercase focus:ring-0 resize-y min-h-[24px] leading-relaxed"
                                                 placeholder="DESCREVA O AMBIENTE..."
                                             />
                                         </div>
                                     </td>
-                                    <td className="py-8 px-6 text-right align-top">
+                                    <td className="py-6 px-8 text-right align-top block md:table-cell border-t md:border-t-0 border-slate-100 bg-slate-100/20 md:bg-transparent">
                                         <div className="flex items-center justify-end gap-2">
                                             <span className="text-[10px] font-black text-slate-300 no-print">R$</span>
                                             <input 
                                                 type="number"
                                                 value={amb.value}
                                                 onChange={(e) => handleAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
-                                                className="w-28 bg-transparent border-none p-0 text-right text-lg font-black text-slate-900 focus:ring-0 no-print"
+                                                className="w-28 bg-transparent border-none p-0 text-right text-base font-black text-slate-900 focus:ring-0 no-print"
                                             />
-                                            <span className="hidden print:inline text-lg font-black text-slate-900">
+                                            <span className="hidden print:inline text-base font-black text-slate-900">
                                                 {formatCurrency(amb.value).replace('R$', '').trim()}
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="p-2 no-print">
-                                        <button onClick={() => removeAmbiente(amb.id)} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-3 hover:bg-rose-50 rounded-2xl">
-                                            <Trash2 size={18} />
+                                    <td className="p-2 no-print absolute right-2 top-2">
+                                        <button onClick={() => removeAmbiente(amb.id)} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-2 hover:bg-rose-50 rounded-xl">
+                                            <Trash2 size={16} />
                                         </button>
                                     </td>
                                 </tr>
