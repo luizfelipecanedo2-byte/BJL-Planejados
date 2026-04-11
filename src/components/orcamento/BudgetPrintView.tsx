@@ -125,7 +125,7 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                 @media print {
                     @page {
                         size: A4 portrait;
-                        margin: 0 !important;
+                        margin: 10mm;
                     }
 
                     /* General Print Reset */
@@ -134,11 +134,11 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         color: black !important;
                         margin: 0 !important;
                         padding: 0 !important;
-                        width: 210mm !important;
-                        height: 297mm !important;
+                        width: 100% !important;
+                        height: auto !important;
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
-                        overflow: hidden !important;
+                        overflow: visible !important;
                     }
 
                     /* Hide UI elements */
@@ -153,46 +153,44 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     }
 
                     .budget-print-overlay {
-                        position: fixed !important;
+                        position: absolute !important;
                         top: 0 !important;
                         left: 0 !important;
-                        right: 0 !important;
-                        bottom: 0 !important;
-                        width: 210mm !important;
-                        height: 297mm !important;
+                        width: 100% !important;
+                        height: auto !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         background: white !important;
                         display: block !important;
-                        overflow: hidden !important;
+                        overflow: visible !important;
                         z-index: 999999 !important;
                     }
 
                     .budget-print-container {
-                        position: absolute !important;
-                        top: 0 !important;
-                        left: 0 !important;
-                        width: 210mm !important;
-                        height: 297mm !important;
+                        position: relative !important;
+                        width: 100% !important;
+                        height: auto !important;
+                        min-height: 297mm !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         background: white !important;
-                        overflow: hidden !important;
-                        display: flex !important;
-                        flex-direction: column !important;
+                        overflow: visible !important;
+                        display: block !important;
                     }
 
                     /* Inner content margins for print safety */
                     .px-12 {
-                        padding-left: 15mm !important;
-                        padding-right: 15mm !important;
+                        padding-left: 10mm !important;
+                        padding-right: 10mm !important;
+                        display: block !important;
+                        height: auto !important;
                     }
 
                     .relative.h-48 {
-                        height: 140px !important; /* Move header content up */
+                        height: 120px !important; /* Move header content up */
                     }
                     .bg-slate-950.h-24 {
-                        height: 80px !important;
+                        height: 60px !important;
                     }
 
                     /* Better table handling */
@@ -200,24 +198,28 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                         display: table !important; 
                         width: 100% !important; 
                         border-collapse: collapse !important;
-                        page-break-inside: auto !important;
+                        table-layout: auto !important;
                     }
+                    
+                    .budget-print-container thead {
+                        display: table-header-group !important;
+                    }
+
                     .budget-print-container tr { 
                         display: table-row !important; 
                         page-break-inside: avoid !important;
-                        page-break-after: auto !important;
                     }
+                    
                     .budget-print-container td, .budget-print-container th { 
                         display: table-cell !important; 
-                    }
-
-                    thead {
-                        display: table-header-group !important;
                     }
 
                     /* Elements that should stay together */
                     .footer-totals {
                         page-break-inside: avoid !important;
+                        margin-top: 20px !important;
+                        display: grid !important;
+                        grid-template-columns: repeat(5, 1fr) !important;
                     }
 
                     /* Hide interactive buttons during print */

@@ -188,6 +188,7 @@ const Financeiro = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   const [showRecentlyAdded, setShowRecentlyAdded] = useState(false);
+  const [showRecentlyPaid, setShowRecentlyPaid] = useState(false);
 
   // Dashboard State
   const [selectedYear, setSelectedYear] = useState<string>("2026");
@@ -276,8 +277,11 @@ const Financeiro = () => {
         return tDate.getDate() === day && tDate.getMonth() === month && tDate.getFullYear() === year && t.status === 'paid';
       });
 
-      const income = dayTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-      const expense = dayTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+      const incomeTransactions = dayTransactions.filter(t => t.type === 'income');
+      const expenseTransactions = dayTransactions.filter(t => t.type === 'expense');
+
+      const income = incomeTransactions.reduce((acc, t) => acc + t.amount, 0);
+      const expense = expenseTransactions.reduce((acc, t) => acc + t.amount, 0);
       const dailyBalance = income - expense;
       runningBalance += dailyBalance;
 
@@ -286,7 +290,9 @@ const Financeiro = () => {
         income,
         expense,
         dailyBalance,
-        accumulatedBalance: runningBalance
+        accumulatedBalance: runningBalance,
+        incomeTransactions,
+        expenseTransactions
       });
     }
 
@@ -324,6 +330,7 @@ const Financeiro = () => {
         (t.orderService && t.orderService.toLowerCase().includes(searchTerm.toLowerCase()));
 
       if (showRecentlyAdded) return matchesSearch;
+      if (showRecentlyPaid) return matchesSearch && t.status === 'paid';
 
       const matchesType = typeFilter === "all" || t.type === typeFilter;
       const matchesStatus = statusFilter === "all" || t.status === statusFilter;
@@ -346,8 +353,9 @@ const Financeiro = () => {
     });
 
     if (showRecentlyAdded) return result.slice(0, 50);
+    if (showRecentlyPaid) return result.sort((a,b) => new Date(b.paymentDate || b.dueDate).getTime() - new Date(a.paymentDate || a.dueDate).getTime()).slice(0, 50);
     return result;
-  }, [transactions, searchTerm, typeFilter, statusFilter, selectedYear, selectedFilterMonth, dateFilterType, osFilter, paymentMethodFilter, showOverdueOnly, showRecentlyAdded]);
+  }, [transactions, searchTerm, typeFilter, statusFilter, selectedYear, selectedFilterMonth, dateFilterType, osFilter, paymentMethodFilter, showOverdueOnly, showRecentlyAdded, showRecentlyPaid]);
 
   const metrics = useMemo(() => {
     const income = filteredTransactions
@@ -1017,7 +1025,7 @@ const Financeiro = () => {
             </div>
             <div className="flex gap-2">
               <Button
-                onClick={() => { setShowRecentlyAdded(!showRecentlyAdded); setShowOverdueOnly(false); }}
+                onClick={() => { setShowRecentlyAdded(!showRecentlyAdded); setShowRecentlyPaid(false); setShowOverdueOnly(false); }}
                 variant={showRecentlyAdded ? "default" : "outline"}
                 className={cn(
                   "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
@@ -1027,7 +1035,17 @@ const Financeiro = () => {
                 {showRecentlyAdded ? "Filtro Normal" : "Últimas Lançadas"}
               </Button>
               <Button
-                onClick={() => { setShowOverdueOnly(!showOverdueOnly); setShowRecentlyAdded(false); }}
+                onClick={() => { setShowRecentlyPaid(!showRecentlyPaid); setShowRecentlyAdded(false); setShowOverdueOnly(false); }}
+                variant={showRecentlyPaid ? "default" : "outline"}
+                className={cn(
+                  "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
+                  showRecentlyPaid && "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 border-none"
+                )}
+              >
+                {showRecentlyPaid ? "Filtro Normal" : "Últimas Pagas"}
+              </Button>
+              <Button
+                onClick={() => { setShowOverdueOnly(!showOverdueOnly); setShowRecentlyAdded(false); setShowRecentlyPaid(false); }}
                 variant={showOverdueOnly ? "destructive" : "outline"}
                 className={cn(
                   "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",

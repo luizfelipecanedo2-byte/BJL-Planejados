@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Building2, Banknote, CreditCard, Coins } from "lucide-react";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 
 interface ConciliationTabProps {
@@ -21,6 +22,8 @@ interface ConciliationTabProps {
             expense: number;
             dailyBalance: number;
             accumulatedBalance: number;
+            incomeTransactions?: any[];
+            expenseTransactions?: any[];
         }[];
     };
     formatCurrency: (value: number) => string;
@@ -187,15 +190,49 @@ const ConciliationTab = ({
                         <div className="grid grid-cols-2 gap-4">
                             <div className="flex flex-col">
                                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Entradas</span>
-                                <span className={cn("font-bold text-sm", day.income > 0 ? "text-emerald-400" : "text-slate-600")}>
-                                    {day.income > 0 ? formatCurrency(day.income) : '—'}
-                                </span>
+                                <HoverCard>
+                                    <HoverCardTrigger asChild>
+                                        <span className={cn("font-bold text-sm cursor-help", day.income > 0 ? "text-emerald-400" : "text-slate-600")}>
+                                            {day.income > 0 ? formatCurrency(day.income) : '—'}
+                                        </span>
+                                    </HoverCardTrigger>
+                                    {day.income > 0 && day.incomeTransactions && day.incomeTransactions.length > 0 && (
+                                        <HoverCardContent className="w-80 bg-slate-900 border-emerald-500/30">
+                                            <div className="space-y-2">
+                                                <h4 className="text-sm font-bold text-emerald-400">Detalhes (Entradas)</h4>
+                                                {day.incomeTransactions.map((t, i) => (
+                                                    <div key={i} className="flex justify-between items-center text-xs">
+                                                        <span className="text-slate-300 truncate max-w-[180px]">{t.description}</span>
+                                                        <span className="font-bold text-emerald-500">{formatCurrency(t.amount)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </HoverCardContent>
+                                    )}
+                                </HoverCard>
                             </div>
                             <div className="flex flex-col text-right">
                                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Saídas</span>
-                                <span className={cn("font-bold text-sm", day.expense > 0 ? "text-rose-400" : "text-slate-600")}>
-                                    {day.expense > 0 ? formatCurrency(day.expense) : '—'}
-                                </span>
+                                <HoverCard>
+                                    <HoverCardTrigger asChild>
+                                        <span className={cn("font-bold text-sm cursor-help", day.expense > 0 ? "text-rose-400" : "text-slate-600")}>
+                                            {day.expense > 0 ? formatCurrency(day.expense) : '—'}
+                                        </span>
+                                    </HoverCardTrigger>
+                                    {day.expense > 0 && day.expenseTransactions && day.expenseTransactions.length > 0 && (
+                                        <HoverCardContent className="w-80 bg-slate-900 border-rose-500/30">
+                                            <div className="space-y-2">
+                                                <h4 className="text-sm font-bold text-rose-400">Detalhes (Saídas)</h4>
+                                                {day.expenseTransactions.map((t, i) => (
+                                                    <div key={i} className="flex justify-between items-center text-xs">
+                                                        <span className="text-slate-300 truncate max-w-[180px]">{t.description}</span>
+                                                        <span className="font-bold text-rose-500">{formatCurrency(t.amount)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </HoverCardContent>
+                                    )}
+                                </HoverCard>
                             </div>
                         </div>
 
@@ -249,15 +286,49 @@ const ConciliationTab = ({
                                         </td>
 
                                         <td className="p-4 text-right border-r border-slate-900/50">
-                                            <span className={`font-bold ${day.income > 0 ? "text-emerald-400" : "text-slate-700"}`}>
-                                                {day.income > 0 ? formatCurrency(day.income) : '—'}
-                                            </span>
+                                            <HoverCard>
+                                                <HoverCardTrigger asChild>
+                                                    <span className={`font-bold cursor-help ${day.income > 0 ? "text-emerald-400" : "text-slate-700"}`}>
+                                                        {day.income > 0 ? formatCurrency(day.income) : '—'}
+                                                    </span>
+                                                </HoverCardTrigger>
+                                                {day.income > 0 && day.incomeTransactions && day.incomeTransactions.length > 0 && (
+                                                    <HoverCardContent className="w-80 bg-slate-900 border-emerald-500/30 z-[100] relative">
+                                                        <div className="space-y-2">
+                                                            <h4 className="text-sm font-bold text-emerald-400 text-left">Detalhes (Entradas)</h4>
+                                                            {day.incomeTransactions.map((t, i) => (
+                                                                <div key={i} className="flex justify-between items-center text-xs">
+                                                                    <span className="text-slate-300 truncate max-w-[180px] text-left">{t.description}</span>
+                                                                    <span className="font-bold text-emerald-500">{formatCurrency(t.amount)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </HoverCardContent>
+                                                )}
+                                            </HoverCard>
                                         </td>
 
                                         <td className="p-4 text-right border-r border-slate-900/50">
-                                            <span className={`font-bold ${day.expense > 0 ? "text-rose-400" : "text-slate-700"}`}>
-                                                {day.expense > 0 ? formatCurrency(day.expense) : '—'}
-                                            </span>
+                                            <HoverCard>
+                                                <HoverCardTrigger asChild>
+                                                    <span className={`font-bold cursor-help ${day.expense > 0 ? "text-rose-400" : "text-slate-700"}`}>
+                                                        {day.expense > 0 ? formatCurrency(day.expense) : '—'}
+                                                    </span>
+                                                </HoverCardTrigger>
+                                                {day.expense > 0 && day.expenseTransactions && day.expenseTransactions.length > 0 && (
+                                                    <HoverCardContent className="w-80 bg-slate-900 border-rose-500/30 z-[100] relative">
+                                                        <div className="space-y-2">
+                                                            <h4 className="text-sm font-bold text-rose-400 text-left">Detalhes (Saídas)</h4>
+                                                            {day.expenseTransactions.map((t, i) => (
+                                                                <div key={i} className="flex justify-between items-center text-xs">
+                                                                    <span className="text-slate-300 truncate max-w-[180px] text-left">{t.description}</span>
+                                                                    <span className="font-bold text-rose-500">{formatCurrency(t.amount)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </HoverCardContent>
+                                                )}
+                                            </HoverCard>
                                         </td>
 
                                         <td className="p-4 text-right border-r border-slate-900/50">
