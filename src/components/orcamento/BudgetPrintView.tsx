@@ -235,9 +235,9 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
 
                     /* THE PAGE BREAKS */
                     .footer-totals {
-                        page-break-inside: avoid !important;
-                        break-inside: avoid !important;
-                        margin-top: 40px !important;
+                        page-break-before: always !important;
+                        break-before: page !important;
+                        margin-top: 50px !important;
                         display: grid !important;
                         grid-template-columns: repeat(5, 1fr) !important;
                         gap: 20px !important;
@@ -250,6 +250,13 @@ const BudgetPrintView = ({ budget: initialBudget, onClose, onSave, budgetNumber,
                     .flex-1 { flex: none !important; height: auto !important; }
                     .budget-print-container { height: auto !important; min-height: 0 !important; }
                     
+                    /* Specific text for conditions and specs */
+                    .col-span-3 .text-[10px], .col-span-3 .text-[9px], .col-span-3 .text-slate-500, .col-span-3 .text-slate-400 {
+                        font-size: 12pt !important;
+                        color: #475569 !important;
+                        line-height: 1.6 !important;
+                    }
+
                     /* Fix for inputs and textareas in print */
                     input, textarea { display: none !important; }
                     .print-show { display: block !important; visibility: visible !important; }
