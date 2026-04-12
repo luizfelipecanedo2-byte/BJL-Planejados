@@ -27,12 +27,16 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     handleAmbienteChange: externalHandleAmbienteChange,
     removeAmbiente: externalRemoveAmbiente,
     budgetNumber,
+    initialTab,
     onClose,
     onSave
 }) => {
-    const [budget, setLocalBudget] = React.useState(initialBudget);
+    // Defesa contra budget indefinido
+    if (!initialBudget) return null;
+
+    const [budget, setLocalBudget] = React.useState(initialBudget || {});
     const [ambientes, setLocalAmbientes] = React.useState<Ambiente[]>(initialAmbientes || [
-        { id: '1', description: 'MARCENARIA SOB MEDIDA', value: initialBudget.total_value || 0 }
+        { id: '1', description: 'MARCENARIA SOB MEDIDA', value: initialBudget?.total_value || 0 }
     ]);
 
     const handleBudgetChange = (newBudget: any) => {
@@ -49,21 +53,21 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     };
 
     const handleLocalRemoveAmbiente = (id: string) => {
-        const newAmbientes = ambientes.filter(amb => amb.id !== id);
+        const newAmbientes = (ambientes || []).filter(amb => amb.id !== id);
         setLocalAmbientes(newAmbientes);
         if (externalRemoveAmbiente) externalRemoveAmbiente(id);
     };
 
     const addAmbiente = () => {
         const newAmbiente = {
-            id: Math.random().toString(36).substr(2, 9),
+            id: Math.random().toString(36).substring(2, 9),
             description: '',
             value: 0
         };
-        setLocalAmbientes([...ambientes, newAmbiente]);
+        setLocalAmbientes([...(ambientes || []), newAmbiente]);
     };
 
-    const totalValue = ambientes.reduce((acc, curr) => acc + curr.value, 0);
+    const totalValue = (ambientes || []).reduce((acc, curr) => acc + (curr?.value || 0), 0);
     const installmentValue = totalValue * 1.11; // 11% fee for installments
 
     const paymentTerms = [
@@ -81,7 +85,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     return (
         <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-100/95 backdrop-blur-sm py-12 px-4 no-print flex justify-center animate-in fade-in duration-300">
             {/* DOCUMENT CONTAINER */}
-            <div className="bg-white shadow-[0_0_50px_rgba(0,0,0,0.1)] w-full max-w-[210mm] min-h-[297mm] text-slate-900 relative print:shadow-none print:m-0 print:w-full font-['Outfit'] overflow-hidden">
+            <div className="bg-white shadow-[0_0_50px_rgba(0,0,0,0.1)] w-full max-w-[210mm] min-h-[297mm] text-slate-900 relative print:shadow-none print-area print:w-full font-['Outfit'] overflow-hidden">
                 
                 {/* 1. CABEÇALHO PREMIUM */}
                 <div className="relative">
@@ -145,13 +149,13 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
 
                     <table className="w-full border-separate border-spacing-0">
                         <tbody className="space-y-4">
-                            {ambientes.map((amb, index) => (
-                                <tr key={amb.id} className="group transition-all bg-slate-50/80 rounded-2xl overflow-hidden block mb-4 border border-slate-100">
+                            {(ambientes || []).map((amb, index) => (
+                                <tr key={amb.id || index} className="group transition-all bg-slate-50/80 rounded-2xl overflow-hidden block mb-4 border border-slate-100 relative">
                                     <td className="py-6 px-8 block md:table-cell">
                                         <div className="flex gap-4">
                                             <span className="text-[10px] font-black text-[#f59e0b] opacity-40">0{index+1}.</span>
                                             <textarea 
-                                                value={amb.description}
+                                                value={amb.description || ''}
                                                 onChange={(e) => handleLocalAmbienteChange(amb.id, 'description', e.target.value)}
                                                 rows={1}
                                                 className="w-full bg-transparent border-none p-0 text-[15px] font-black text-slate-800 uppercase focus:ring-0 resize-y min-h-[24px] leading-relaxed"
@@ -164,12 +168,12 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                             <span className="text-[10px] font-black text-slate-300 no-print">R$</span>
                                             <input 
                                                 type="number"
-                                                value={amb.value}
+                                                value={amb.value || 0}
                                                 onChange={(e) => handleLocalAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
                                                 className="w-28 bg-transparent border-none p-0 text-right text-base font-black text-slate-900 focus:ring-0 no-print"
                                             />
                                             <span className="hidden print:inline text-base font-black text-slate-900">
-                                                {formatCurrency(amb.value)}
+                                                {formatCurrency(amb.value || 0)}
                                             </span>
                                         </div>
                                     </td>
@@ -286,12 +290,11 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
             </div>
 
             <style dangerouslySetInnerHTML={{ __html: `
-                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&display=swap');
                 @media print {
                     @page { size: A4; margin: 0; }
-                    body * { visibility: hidden; }
-                    .print\\:m-0, .print\\:m-0 * { visibility: visible; }
-                    .print\\:m-0 { position: absolute; left: 0; top: 0; width: 100%; margin: 0 !important; padding: 0 !important; }
+                    body * { visibility: hidden !important; }
+                    .print-area, .print-area * { visibility: visible !important; }
+                    .print-area { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
                     .no-print { display: none !important; }
                     textarea { border: none !important; resize: none !important; }
                     .break-inside-avoid { break-inside: avoid; }
