@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/salesUtils';
 import { Award, Trash2 } from 'lucide-react';
 
 interface Ambiente {
@@ -10,21 +10,59 @@ interface Ambiente {
 
 interface BudgetPrintViewProps {
     budget: any;
-    ambientes: Ambiente[];
-    setBudget: (budget: any) => void;
-    handleAmbienteChange: (id: string, field: string, value: any) => void;
-    removeAmbiente: (id: string) => void;
-    budgetNumber?: string;
+    ambientes?: Ambiente[];
+    setBudget?: (budget: any) => void;
+    handleAmbienteChange?: (id: string, field: string, value: any) => void;
+    removeAmbiente?: (id: string) => void;
+    budgetNumber?: string | number;
+    initialTab?: 'commercial' | 'technical';
+    onClose?: () => void;
+    onSave?: (budget: any, items: any[]) => void;
 }
 
-export const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
-    budget,
-    ambientes,
-    setBudget,
-    handleAmbienteChange,
-    removeAmbiente,
-    budgetNumber
+const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
+    budget: initialBudget,
+    ambientes: initialAmbientes,
+    setBudget: externalSetBudget,
+    handleAmbienteChange: externalHandleAmbienteChange,
+    removeAmbiente: externalRemoveAmbiente,
+    budgetNumber,
+    onClose,
+    onSave
 }) => {
+    const [budget, setLocalBudget] = React.useState(initialBudget);
+    const [ambientes, setLocalAmbientes] = React.useState<Ambiente[]>(initialAmbientes || [
+        { id: '1', description: 'MARCENARIA SOB MEDIDA', value: initialBudget.total_value || 0 }
+    ]);
+
+    const handleBudgetChange = (newBudget: any) => {
+        setLocalBudget(newBudget);
+        if (externalSetBudget) externalSetBudget(newBudget);
+    };
+
+    const handleLocalAmbienteChange = (id: string, field: string, value: any) => {
+        const newAmbientes = ambientes.map(amb => 
+            amb.id === id ? { ...amb, [field]: value } : amb
+        );
+        setLocalAmbientes(newAmbientes);
+        if (externalHandleAmbienteChange) externalHandleAmbienteChange(id, field, value);
+    };
+
+    const handleLocalRemoveAmbiente = (id: string) => {
+        const newAmbientes = ambientes.filter(amb => amb.id !== id);
+        setLocalAmbientes(newAmbientes);
+        if (externalRemoveAmbiente) externalRemoveAmbiente(id);
+    };
+
+    const addAmbiente = () => {
+        const newAmbiente = {
+            id: Math.random().toString(36).substr(2, 9),
+            description: '',
+            value: 0
+        };
+        setLocalAmbientes([...ambientes, newAmbiente]);
+    };
+
     const totalValue = ambientes.reduce((acc, curr) => acc + curr.value, 0);
     const installmentValue = totalValue * 1.11; // 11% fee for installments
 
@@ -41,7 +79,7 @@ export const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     ];
 
     return (
-        <div className="min-h-screen bg-slate-100 py-12 px-4 no-print flex justify-center">
+        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-100/95 backdrop-blur-sm py-12 px-4 no-print flex justify-center animate-in fade-in duration-300">
             {/* DOCUMENT CONTAINER */}
             <div className="bg-white shadow-[0_0_50px_rgba(0,0,0,0.1)] w-full max-w-[210mm] min-h-[297mm] text-slate-900 relative print:shadow-none print:m-0 print:w-full font-['Outfit'] overflow-hidden">
                 
@@ -79,7 +117,7 @@ export const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                         </div>
                         <textarea 
                             value={budget.client_name}
-                            onChange={(e) => setBudget({...budget, client_name: e.target.value})}
+                            onChange={(e) => handleBudgetChange({...budget, client_name: e.target.value})}
                             rows={1}
                             className="w-full bg-transparent border-none p-0 text-4xl font-black uppercase tracking-tight text-white focus:ring-0 resize-none overflow-hidden placeholder:text-white/30"
                             placeholder="NOME DO CLIENTE"
@@ -114,7 +152,7 @@ export const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                             <span className="text-[10px] font-black text-[#f59e0b] opacity-40">0{index+1}.</span>
                                             <textarea 
                                                 value={amb.description}
-                                                onChange={(e) => handleAmbienteChange(amb.id, 'description', e.target.value)}
+                                                onChange={(e) => handleLocalAmbienteChange(amb.id, 'description', e.target.value)}
                                                 rows={1}
                                                 className="w-full bg-transparent border-none p-0 text-[15px] font-black text-slate-800 uppercase focus:ring-0 resize-y min-h-[24px] leading-relaxed"
                                                 placeholder="DESCREVA O AMBIENTE..."
@@ -127,7 +165,7 @@ export const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                             <input 
                                                 type="number"
                                                 value={amb.value}
-                                                onChange={(e) => handleAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
+                                                onChange={(e) => handleLocalAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
                                                 className="w-28 bg-transparent border-none p-0 text-right text-base font-black text-slate-900 focus:ring-0 no-print"
                                             />
                                             <span className="hidden print:inline text-base font-black text-slate-900">
@@ -136,7 +174,7 @@ export const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                         </div>
                                     </td>
                                     <td className="p-2 no-print absolute right-2 top-2">
-                                        <button onClick={() => removeAmbiente(amb.id)} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-2 hover:bg-rose-50 rounded-xl">
+                                        <button onClick={() => handleLocalRemoveAmbiente(amb.id)} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-2 hover:bg-rose-50 rounded-xl">
                                             <Trash2 size={16} />
                                         </button>
                                     </td>
@@ -144,6 +182,14 @@ export const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                             ))}
                         </tbody>
                     </table>
+                    <div className="mt-4 no-print flex justify-center">
+                        <button 
+                            onClick={addAmbiente}
+                            className="text-[10px] font-black uppercase text-primary hover:bg-primary/5 px-6 py-2 rounded-full border border-primary/20 transition-all"
+                        >
+                            + Adicionar Ambiente
+                        </button>
+                    </div>
                 </div>
 
                 {/* 4. TOTAIS E CONDIÇÕES - DESIGN IMPACTANTE */}
@@ -205,17 +251,42 @@ export const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                     <h1 className="text-[200px] font-black">BJL</h1>
                 </div>
 
-                <div className="text-center py-12 no-print">
-                    <button 
-                        onClick={() => window.print()}
-                        className="bg-[#0f172a] text-white px-12 py-5 rounded-full font-black uppercase tracking-[0.3em] hover:scale-105 transition-all shadow-2xl shadow-slate-900/20 active:scale-95"
-                    >
-                        GERAR PROPOSTA PDF
-                    </button>
+                <div className="text-center py-12 no-print flex flex-col items-center gap-6">
+                    <div className="flex gap-4">
+                        {onClose && (
+                            <button 
+                                onClick={onClose}
+                                className="bg-slate-200 text-slate-600 px-12 py-5 rounded-full font-black uppercase tracking-[0.3em] hover:bg-slate-300 transition-all active:scale-95"
+                            >
+                                Voltar
+                            </button>
+                        )}
+                        <button 
+                            onClick={() => window.print()}
+                            className="bg-[#0f172a] text-white px-12 py-5 rounded-full font-black uppercase tracking-[0.3em] hover:scale-105 transition-all shadow-2xl shadow-slate-900/20 active:scale-95"
+                        >
+                            IMPRIMIR PROPOSTA
+                        </button>
+                    </div>
+                    
+                    {onSave && (
+                        <button 
+                            onClick={() => onSave(budget, ambientes.map(a => ({ 
+                                material_name: a.description, 
+                                quantity: 1, 
+                                unit_price_at_time: a.value, 
+                                total_price: a.value 
+                            })))}
+                            className="bg-emerald-600 text-white px-12 py-4 rounded-full font-black uppercase tracking-[0.3em] hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-900/20 active:scale-95 text-xs"
+                        >
+                            Salvar Alterações no Orçamento
+                        </button>
+                    )}
                 </div>
             </div>
 
             <style dangerouslySetInnerHTML={{ __html: `
+                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&display=swap');
                 @media print {
                     @page { size: A4; margin: 0; }
                     body * { visibility: hidden; }
@@ -229,3 +300,5 @@ export const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
         </div>
     );
 };
+
+export default BudgetPrintView;
