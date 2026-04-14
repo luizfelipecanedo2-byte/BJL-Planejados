@@ -72,7 +72,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     ];
 
     return (
-        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-100 py-12 px-4 flex justify-center pb-40 print:p-0 print:bg-transparent print:pb-0">
+        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-100 py-12 px-4 flex justify-center pb-40 print:absolute print:top-0 print:left-0 print:block print:w-full print:h-auto print:overflow-visible print:p-0 print:bg-transparent print:pb-0">
             {/* Botão flutuante de fechar para garantir que o usuário consiga sair */}
             <button 
                 onClick={onClose}
@@ -247,7 +247,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                     }
                     body * { visibility: hidden !important; }
                     .print-area, .print-area * { visibility: visible !important; }
-                    .print-area { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+                    .print-area { width: 100% !important; margin: 0 !important; padding: 0 !important; position: relative !important; }
                     .no-print { display: none !important; }
                 }
             `}} />
