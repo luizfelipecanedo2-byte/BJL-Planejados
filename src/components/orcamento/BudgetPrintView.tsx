@@ -91,8 +91,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                             <img src="/logo-bjl.png" alt="BJL" className="w-full h-full object-cover" />
                         </div>
                         <div className="ml-24 flex flex-col items-center">
-                            <h1 className="text-2xl font-black uppercase tracking-[0.4em] leading-none mb-1">BJL PLANEJADOS</h1>
-                            <p className="text-[10px] font-black text-[#f59e0b] tracking-[0.6em] uppercase opacity-80">Marcenaria de Alto Padrão</p>
+                            <h1 className="text-2xl font-black uppercase tracking-[0.4em] leading-none">BJL PLANEJADOS</h1>
                         </div>
                     </div>
                     <div className="h-8 bg-[#f59e0b] w-full"></div>
@@ -237,7 +236,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
 
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
-                    @page { size: A4; margin: 0; }
+                    @page { size: A4; margin: 5mm; }
                     html, body {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
@@ -245,6 +244,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                     body * { visibility: hidden !important; }
                     .print-area, .print-area * { visibility: visible !important; }
                     .print-area { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+                    .no-print { display: none !important; }
                 }
             `}} />
         </div>
