@@ -72,7 +72,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     ];
 
     return (
-        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-100 py-12 px-4 flex justify-center print:p-0 print:bg-transparent">
+        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-100 py-12 px-4 flex justify-center pb-40 print:p-0 print:bg-transparent print:pb-0">
             {/* Botão flutuante de fechar para garantir que o usuário consiga sair */}
             <button 
                 onClick={onClose}
@@ -82,7 +82,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                 <X size={24} />
             </button>
 
-            <div className="bg-white shadow-2xl w-full max-w-[210mm] min-h-[297mm] text-slate-900 relative print:shadow-none print-area print:w-full font-sans overflow-hidden">
+            <div className="bg-white shadow-2xl w-full max-w-[210mm] min-h-[297mm] text-slate-900 relative print:shadow-none print-area print:w-full font-sans overflow-visible mb-10 print:mb-0">
                 
                 {/* 1. CABEÇALHO */}
                 <div className="relative">
@@ -202,22 +202,18 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div className="text-center py-12 no-print flex flex-col items-center gap-6">
-                    <div className="flex gap-4">
-                        <button 
-                            onClick={onClose}
-                            className="bg-slate-200 text-slate-600 px-12 py-5 rounded-full font-black uppercase tracking-[0.2em] hover:bg-slate-300"
-                        >
-                            Voltar
-                        </button>
-                        <button 
-                            onClick={() => window.print()}
-                            className="bg-[#0f172a] text-white px-12 py-5 rounded-full font-black uppercase tracking-[0.2em] shadow-xl"
-                        >
-                            IMPRIMIR
-                        </button>
-                    </div>
+            {/* BARRA DE AÇÕES FIXA NO RODAPÉ DA TELA */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-6 no-print flex justify-center items-center gap-6 z-[10000] shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
+                <div className="flex flex-wrap justify-center gap-4">
+                    <button 
+                        onClick={onClose}
+                        className="bg-slate-200 text-slate-700 px-8 py-4 rounded-full font-black uppercase tracking-[0.2em] hover:bg-slate-300 transition-all text-xs"
+                    >
+                        Voltar
+                    </button>
+                    
                     {onSave && (
                         <button 
                             onClick={() => onSave(budget, ambientes.map(a => ({ 
@@ -226,11 +222,19 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                 unit_price_at_time: a.value, 
                                 total_price: a.value 
                             })))}
-                            className="text-emerald-600 font-black uppercase text-[10px] tracking-widest hover:underline"
+                            className="bg-emerald-500 text-white px-8 py-4 rounded-full font-black uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 text-xs"
                         >
                             Salvar Alterações
                         </button>
                     )}
+
+                    <button 
+                        onClick={() => window.print()}
+                        className="bg-[#0f172a] text-white px-8 py-4 rounded-full font-black uppercase tracking-[0.2em] shadow-xl hover:bg-[#1e293b] transition-all text-xs flex items-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        Imprimir / PDF
+                    </button>
                 </div>
             </div>
 
