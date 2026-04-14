@@ -238,10 +238,13 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
                     @page { size: A4; margin: 0; }
+                    html, body {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
                     body * { visibility: hidden !important; }
                     .print-area, .print-area * { visibility: visible !important; }
                     .print-area { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-                    .no-print { display: none !important; }
                 }
             `}} />
         </div>
