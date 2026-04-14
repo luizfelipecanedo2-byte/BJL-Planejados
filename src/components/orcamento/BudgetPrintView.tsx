@@ -72,7 +72,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     ];
 
     return (
-        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-100 py-12 px-4 no-print flex justify-center">
+        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-100 py-12 px-4 flex justify-center print:p-0 print:bg-transparent">
             {/* Botão flutuante de fechar para garantir que o usuário consiga sair */}
             <button 
                 onClick={onClose}
