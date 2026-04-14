@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Award, Trash2, X } from 'lucide-react';
 
 interface Ambiente {
@@ -71,8 +72,8 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
         "03. PRAZO DE ENTREGA: A DEFINIR CONFORME CRONOGRAMA."
     ];
 
-    return (
-        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-100 py-12 px-4 flex justify-center pb-40 print:absolute print:top-0 print:left-0 print:block print:w-full print:h-auto print:overflow-visible print:p-0 print:bg-transparent print:pb-0">
+    const content = (
+        <div className="print-container fixed inset-0 z-[9999] overflow-y-auto bg-slate-100 py-12 px-4 flex justify-center pb-40 print:absolute print:top-0 print:left-0 print:block print:w-full print:h-auto print:overflow-visible print:p-0 print:bg-transparent print:pb-0">
             {/* Botão flutuante de fechar para garantir que o usuário consiga sair */}
             <button 
                 onClick={onClose}
@@ -244,15 +245,17 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                     html, body {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
+                        background: white !important;
                     }
-                    body * { visibility: hidden !important; }
-                    .print-area, .print-area * { visibility: visible !important; }
+                    body > *:not(.print-container) { display: none !important; }
                     .print-area { width: 100% !important; margin: 0 !important; padding: 0 !important; position: relative !important; }
                     .no-print { display: none !important; }
                 }
             `}} />
         </div>
     );
+
+    return createPortal(content, document.body);
 };
 
 export default BudgetPrintView;
