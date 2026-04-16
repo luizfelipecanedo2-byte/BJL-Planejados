@@ -68,11 +68,16 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     const totalValue = (ambientes || []).reduce((acc, curr) => acc + (Number(curr?.value) || 0), 0);
     const installmentValue = totalValue * 1.11;
 
-    const paymentTerms = [
-        "01. ENTRADA DE 60% NO FECHAMENTO DO CONTRATO.",
-        "02. SALDO RESTANTE DE 40% NA DATA DA ENTREGA TÉCNICA.",
-        "03. PRAZO DE ENTREGA: A DEFINIR CONFORME CRONOGRAMA."
-    ];
+    const defaultPaymentTerms = "01. ENTRADA DE 60% NO FECHAMENTO DO CONTRATO.\n02. SALDO RESTANTE DE 40% NA DATA DA ENTREGA TÉCNICA.\n03. PRAZO DE ENTREGA: A DEFINIR CONFORME CRONOGRAMA.";
+    
+    const [paymentTerms, setLocalPaymentTerms] = React.useState<string>(budget.notes || defaultPaymentTerms);
+
+    // Sync budget.notes with local state
+    React.useEffect(() => {
+        if (paymentTerms !== budget.notes) {
+            setLocalBudget((prev: any) => ({ ...prev, notes: paymentTerms }));
+        }
+    }, [paymentTerms]);
 
     const content = (
         <div className="print-container fixed inset-0 z-[9999] overflow-y-auto bg-slate-100 py-12 px-4 flex justify-center pb-40 print:absolute print:top-0 print:left-0 print:block print:w-full print:h-auto print:overflow-visible print:p-0 print:bg-transparent print:pb-0">
@@ -182,10 +187,14 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                         <div className="flex-1 space-y-6">
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                                 <h3 className="text-[10px] font-black uppercase text-[#f59e0b] tracking-[0.2em] mb-4">CONDIÇÕES DE PAGAMENTO</h3>
-                                <div className="space-y-2 text-[10px] text-slate-600 font-bold">
-                                    {paymentTerms.map((term, i) => (
-                                        <div key={i}>{term}</div>
-                                    ))}
+                                <div className="text-[10px] text-slate-600 font-bold">
+                                    <textarea 
+                                        value={paymentTerms}
+                                        onChange={(e) => setLocalPaymentTerms(e.target.value)}
+                                        rows={4}
+                                        className="w-full bg-transparent border-none p-0 text-[10px] text-slate-600 font-bold focus:ring-0 resize-y uppercase font-sans leading-relaxed"
+                                        placeholder="INSIRA AS CONDIÇÕES DE PAGAMENTO..."
+                                    />
                                 </div>
                             </div>
                         </div>
