@@ -327,7 +327,8 @@ const Orcamento = () => {
                 material_id: item.material_id || fallbackMaterial,
                 quantity: parseFloat(item.quantity) || 0,
                 unit_price_at_time: parseFloat(item.unit_price_at_time) || 0,
-                total_price: parseFloat(item.total_price) || 0
+                total_price: parseFloat(item.total_price) || 0,
+                custom_description: item.material_name
             }));
 
         if (finalItems.length === 0) {
@@ -335,7 +336,20 @@ const Orcamento = () => {
             return;
         }
 
-        const result = await saveBudget(updatedBudget, finalItems);
+        // Recalcular os totais para garantir que a capa do orçamento (tabela budgets) fique correta
+        const newTotalValue = finalItems.reduce((acc, item) => acc + item.total_price, 0);
+        
+        // Estimar o custo total (total_cost) baseado no markup_factor se existir, ou apenas usar o total_value
+        const markup = updatedBudget.markup_factor || 1.25;
+        const newTotalCost = newTotalValue / markup;
+
+        const budgetToSave = {
+            ...updatedBudget,
+            total_value: newTotalValue,
+            total_cost: newTotalCost
+        };
+
+        const result = await saveBudget(budgetToSave, finalItems);
         if (result) {
             setPrintingBudget(null);
             refreshBudgets();
@@ -1320,6 +1334,11 @@ const Orcamento = () => {
             {printingBudget && (
                 <BudgetPrintView 
                     budget={printingBudget} 
+                    ambientes={printingBudget.budget_items?.map((item: any) => ({
+                        id: item.id,
+                        description: item.custom_description || item.budget_materials?.name || "MARCENARIA SOB MEDIDA",
+                        value: item.unit_price_at_time
+                    }))}
                     initialTab={printingTab}
                     onClose={() => setPrintingBudget(null)} 
                     onSave={handleSaveFromPrintView}

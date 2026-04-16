@@ -36,9 +36,11 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
 }) => {
     // Estado interno para garantir que o componente funcione mesmo sem props externas
     const [budget, setLocalBudget] = React.useState(initialBudget || {});
-    const [ambientes, setLocalAmbientes] = React.useState<Ambiente[]>(initialAmbientes || [
-        { id: '1', description: 'MARCENARIA SOB MEDIDA', value: initialBudget?.total_value || 0 }
-    ]);
+    const [ambientes, setLocalAmbientes] = React.useState<Ambiente[]>(
+        (initialAmbientes && initialAmbientes.length > 0) ? initialAmbientes : [
+            { id: '1', description: 'MARCENARIA SOB MEDIDA', value: initialBudget?.total_value || 0 }
+        ]
+    );
 
     if (!initialBudget) {
         return null;

@@ -17,6 +17,7 @@ export interface BudgetItem {
     quantity: number;
     unit_price_at_time: number;
     total_price: number;
+    custom_description?: string;
     material?: Material;
 }
 
@@ -212,6 +213,7 @@ export function useBudgets() {
                 quantity: item.quantity,
                 unit_price_at_time: item.unit_price_at_time,
                 total_price: item.total_price,
+                custom_description: item.custom_description || null,
                 budget_id: budgetData.id
             }));
 
