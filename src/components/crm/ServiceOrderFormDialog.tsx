@@ -105,40 +105,72 @@ const ServiceOrderFormDialog = ({
     }, []);
 
     useEffect(() => {
-        if (editingOrder) {
-            setForm({
-                ticketNumber: editingOrder.ticketNumber,
-                client: editingOrder.client,
-                clientId: editingOrder.clientId || "",
-                type: editingOrder.type,
-                action: editingOrder.action,
-                status: editingOrder.status,
-                openDate: new Date(editingOrder.openDate).toISOString().split("T")[0],
-                forecastDate: new Date(editingOrder.forecastDate).toISOString().split("T")[0],
-                completionDate: editingOrder.completionDate
-                    ? new Date(editingOrder.completionDate).toISOString().split("T")[0]
-                    : "",
-                notes: editingOrder.notes || "",
-                attachments: editingOrder.attachments || [],
-                amount: editingOrder.amount || 0,
-                laborLogs: editingOrder.laborLogs || [],
-            });
-        } else {
-            setForm({
-                ticketNumber: "",
-                client: "",
-                clientId: "",
-                type: "Fabricação",
-                action: "",
-                status: "Plano de corte",
-                openDate: new Date().toISOString().split("T")[0],
-                forecastDate: "",
-                completionDate: "",
-                notes: "",
-                attachments: [],
-                amount: 0,
-                laborLogs: [],
-            });
+        const initializeForm = async () => {
+            if (editingOrder) {
+                setForm({
+                    ticketNumber: editingOrder.ticketNumber,
+                    client: editingOrder.client,
+                    clientId: editingOrder.clientId || "",
+                    type: editingOrder.type,
+                    action: editingOrder.action,
+                    status: editingOrder.status,
+                    openDate: new Date(editingOrder.openDate).toISOString().split("T")[0],
+                    forecastDate: new Date(editingOrder.forecastDate).toISOString().split("T")[0],
+                    completionDate: editingOrder.completionDate
+                        ? new Date(editingOrder.completionDate).toISOString().split("T")[0]
+                        : "",
+                    notes: editingOrder.notes || "",
+                    attachments: editingOrder.attachments || [],
+                    amount: editingOrder.amount || 0,
+                    laborLogs: editingOrder.laborLogs || [],
+                });
+            } else if (open) {
+                let nextNum = 16;
+                try {
+                    const { data, error } = await supabase
+                        .from('service_orders')
+                        .select('ticket_number')
+                        .order('created_at', { ascending: false });
+
+                    if (!error && data && data.length > 0) {
+                        const numbers = data
+                            .map(o => {
+                                const match = (o.ticket_number || "").match(/OS-(\d+)/);
+                                return match ? parseInt(match[1], 10) : 0;
+                            })
+                            .filter(n => n > 0);
+                        
+                        if (numbers.length > 0) {
+                            const maxNum = Math.max(...numbers);
+                            nextNum = Math.max(16, maxNum + 1);
+                        } else {
+                            nextNum = Math.max(16, data.length + 1);
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error determining next OS number:", err);
+                }
+
+                setForm({
+                    ticketNumber: `OS-${nextNum.toString().padStart(3, '0')}`,
+                    client: "",
+                    clientId: "",
+                    type: "Fabricação",
+                    action: "",
+                    status: "Plano de corte",
+                    openDate: new Date().toISOString().split("T")[0],
+                    forecastDate: "",
+                    completionDate: "",
+                    notes: "",
+                    attachments: [],
+                    amount: 0,
+                    laborLogs: [],
+                });
+            }
+        };
+
+        if (open) {
+            initializeForm();
         }
     }, [editingOrder, open]);
 
