@@ -389,7 +389,7 @@ const OrdemServico = () => {
         const ticket = order.ticketNumber;
         const action = order.action;
 
-        const message = `Olá ${firstName}! 🏠 Aqui é da BJL Planejados.\n\nPassando para avisar que sua Ordem de Serviço *${ticket}* (${action}) acaba de entrar na fase de: *${status}*.\n\nEstamos cuidando de tudo com o máximo de carinho e precisão! Logo traremos mais novidades. 🔨✨`;
+        const message = `Oi, ${firstName}! Notícia boa! 🎉 O seu sonho na BJL Planejados está ganhando forma. Sua Ordem de Serviço (*${ticket}*) acaba de entrar na etapa de: *${status}*. Estamos muito animados com o progresso! Qualquer dúvida, conte conosco. 🔨💎`;
         
         const encodedMessage = encodeURIComponent(message);
         const phone = order.clientPhone.replace(/\D/g, "");
