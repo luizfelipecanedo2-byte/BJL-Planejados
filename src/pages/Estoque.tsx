@@ -142,6 +142,42 @@ const Estoque = () => {
         }
     };
 
+    const handleOrderProduct = async (product: Product) => {
+        try {
+            // Pergunta a quantidade desejada
+            const quantityStr = window.prompt(`Quantas unidades de "${product.name}" deseja pedir?`, "1");
+            if (quantityStr === null) return; // Cancelou
+            
+            const quantity = parseInt(quantityStr);
+            if (isNaN(quantity) || quantity <= 0) {
+                toast.error("Quantidade inválida.");
+                return;
+            }
+
+            const newOrder = {
+                product: product.name,
+                quantity: quantity,
+                unit_price: product.unitPrice,
+                total_value: product.unitPrice * quantity,
+                client: 'REPOSIÇÃO MANUAL',
+                supplier: 'A DEFINIR',
+                order_date: new Date().toISOString().split('T')[0],
+                status: 'pendente'
+            };
+
+            const { error } = await supabase
+                .from('weekly_orders')
+                .insert([newOrder]);
+
+            if (error) throw error;
+
+            toast.success(`Pedido de ${quantity}x "${product.name}" enviado para a lista da semana!`);
+        } catch (error) {
+            console.error('Error ordering product:', error);
+            toast.error("Erro ao registrar pedido.");
+        }
+    };
+
     const filteredProducts = showOnlyLowStock
         ? products.filter(p => p.quantity < p.minStockLevel)
         : products;
@@ -239,6 +275,7 @@ const Estoque = () => {
                         products={filteredProducts}
                         onEdit={handleEditProduct}
                         onDelete={handleDeleteProduct}
+                        onOrder={handleOrderProduct}
                     />
                 </CardContent>
             </Card>

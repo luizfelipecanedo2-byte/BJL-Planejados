@@ -15,9 +15,10 @@ interface ProductTableProps {
     products: Product[];
     onEdit: (product: Product) => void;
     onDelete: (id: string) => void;
+    onOrder?: (product: Product) => void;
 }
 
-const ProductTable = ({ products, onEdit, onDelete }: ProductTableProps) => {
+const ProductTable = ({ products, onEdit, onDelete, onOrder }: ProductTableProps) => {
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
             style: "currency",
@@ -52,6 +53,17 @@ const ProductTable = ({ products, onEdit, onDelete }: ProductTableProps) => {
                                     <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => onEdit(product)}>
                                         <Pencil className="h-4 w-4 text-primary" />
                                     </Button>
+                                    {onOrder && (
+                                        <Button 
+                                            variant="outline" 
+                                            size="icon" 
+                                            className="h-9 w-9 text-emerald-500 border-emerald-200 hover:bg-emerald-50" 
+                                            onClick={() => onOrder(product)}
+                                            title="Pedir mais"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                     <Button variant="outline" size="icon" className="h-9 w-9 text-red-500 border-red-200 hover:bg-red-50" onClick={() => onDelete(product.id)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -138,9 +150,22 @@ const ProductTable = ({ products, onEdit, onDelete }: ProductTableProps) => {
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors" onClick={() => onDelete(product.id)}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        <div className="flex justify-end gap-1">
+                                            {onOrder && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" 
+                                                    onClick={() => onOrder(product)}
+                                                    title="Pedir mais"
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                            <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors" onClick={() => onDelete(product.id)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             );
