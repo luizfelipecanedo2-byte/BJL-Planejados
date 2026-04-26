@@ -347,26 +347,26 @@ const Dashboard = ({ sales }: DashboardProps) => {
     ];
 
     return (
-      <div className="space-y-6" onMouseMove={handleMouseMove}>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
+      <div className="space-y-8" onMouseMove={handleMouseMove}>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
           {cards.map((card) => (
             <Card
               key={card.title}
-              className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl transition-all duration-300 hover:border-primary/50 group overflow-hidden rounded-3xl spotlight-card tilt-card border-beam-card"
+              className="glass-card transition-all duration-500 hover:border-primary/40 group overflow-hidden rounded-[2rem] spotlight-card tilt-card border-beam-card luxury-shadow"
             >
-              <CardContent className="p-5 relative">
-                <div className={`absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 ${card.color}`}>
-                  <card.icon size={80} />
+              <CardContent className="p-6 relative">
+                <div className={`absolute -right-6 -bottom-6 opacity-[0.03] group-hover:opacity-[0.08] group-hover:scale-150 transition-all duration-700 ${card.color}`}>
+                  <card.icon size={100} />
                 </div>
-                <div className="flex items-center gap-3 relative z-10">
-                  <div className={`p-2.5 rounded-xl ${card.bgColor} shadow-sm`}>
-                    <card.icon className={`h-5 w-5 ${card.color}`} />
+                <div className="flex flex-col gap-4 relative z-10">
+                  <div className={`p-3 rounded-2xl ${card.bgColor} shadow-xl w-fit group-hover:scale-110 transition-transform duration-500`}>
+                    <card.icon className={`h-6 w-6 ${card.color}`} />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] text-muted-foreground uppercase font-black tracking-tighter truncate opacity-80 mb-0.5">
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.2em] opacity-60 text-luxury">
                       {card.title}
                     </p>
-                    <div className={cn("text-xl font-black tracking-tighter", card.color)}>
+                    <div className={cn("text-3xl font-black tracking-tighter text-luxury", card.color)}>
                       <AnimatedCounter 
                         value={card.value} 
                         formatter={(v) => {
@@ -383,18 +383,35 @@ const Dashboard = ({ sales }: DashboardProps) => {
           ))}
         </div>
 
-        <Card className="border border-white/10 backdrop-blur-xl bg-card/60 shadow-xl rounded-[2.5rem]">
-          <CardContent className="p-6">
-            <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
-              {isDaily ? "Vendas por Dia" : "Vendas por Mês"} ({titleSuffix})
-            </h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+        <Card className="glass-card rounded-[2.5rem] luxury-shadow overflow-hidden group">
+          <CardContent className="p-8">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                 <div className="p-2 bg-primary/10 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-primary" />
+                 </div>
+                 <h3 className="text-sm font-bold text-luxury uppercase tracking-[0.3em] text-primary/80">
+                   Desempenho de Vendas ({titleSuffix})
+                 </h3>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={chartData} barGap={8}>
+                <defs>
+                  <linearGradient id="colorFechado" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.2}/>
+                  </linearGradient>
+                  <linearGradient id="colorPrimary" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="white" strokeOpacity={0.05} vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} stroke="transparent" />
                 <YAxis
-                  tick={{ fontSize: 12 }}
-                  stroke="hsl(var(--muted-foreground))"
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  stroke="transparent"
                   tickFormatter={(v) =>
                     v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toString()
                   }
@@ -402,18 +419,21 @@ const Dashboard = ({ sales }: DashboardProps) => {
                 <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "var(--radius)",
+                    backgroundColor: "rgba(20, 20, 20, 0.9)",
+                    backdropFilter: "blur(12px)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    borderRadius: "16px",
                     fontSize: 12,
+                    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.5)"
                   }}
+                  cursor={{ fill: 'white', fillOpacity: 0.05 }}
                 />
-                <Legend />
-                <Bar dataKey="Fechado" fill="hsl(var(--kanban-fechado))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Em Andamento" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Congelado" fill="hsl(var(--kanban-congelado))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Pós Venda" fill="hsl(var(--kanban-pos_venda))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Não Fechou" fill="hsl(var(--kanban-nao_fechou))" radius={[4, 4, 0, 0]} />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
+                <Bar dataKey="Fechado" fill="url(#colorFechado)" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="Em Andamento" fill="url(#colorPrimary)" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="Congelado" fill="hsl(var(--kanban-congelado))" fillOpacity={0.5} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="Pós Venda" fill="hsl(var(--kanban-pos_venda))" fillOpacity={0.6} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="Não Fechou" fill="hsl(var(--kanban-nao_fechou))" fillOpacity={0.4} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

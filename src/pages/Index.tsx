@@ -33,33 +33,38 @@ const Index = () => {
 
   return (
 
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Vendas</h2>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Gestão de Negociações High-End</p>
+    <div className="space-y-8 animate-in fade-in duration-700">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h2 className="text-5xl font-black tracking-tighter text-luxury shimmer-gold text-glow">Vendas</h2>
+          <div className="flex items-center gap-2">
+            <div className="h-1 w-12 bg-primary/60 rounded-full" />
+            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary/60">Gestão de Negociações Premium</p>
+          </div>
         </div>
-        <MagicButton onClick={handleNewSale} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
-          <Plus className="h-4 w-4" />
-          Nova Venda
+        <MagicButton onClick={handleNewSale} className="gap-2.5 h-12 px-8 shadow-2xl shadow-primary/20 hover:scale-105 transition-transform duration-500 rounded-2xl">
+          <Plus className="h-5 w-5" />
+          <span className="text-luxury font-bold">Nova Venda</span>
         </MagicButton>
       </div>
 
-      <Tabs defaultValue="dashboard" className="space-y-6">
-        <TabsList className="bg-white/50 backdrop-blur-xl border border-white/40 p-1.5 rounded-full h-auto shadow-sm inline-flex">
-          <TabsTrigger value="dashboard" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
-            <LayoutDashboard className="h-4 w-4" />
-            Dashboard
-          </TabsTrigger>
-          <TabsTrigger value="table" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
-            <Table2 className="h-4 w-4" />
-            Tabela
-          </TabsTrigger>
-          <TabsTrigger value="kanban" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
-            <Columns3 className="h-4 w-4" />
-            Kanban
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="dashboard" className="space-y-8">
+        <div className="flex justify-center sm:justify-start">
+          <TabsList className="bg-white/5 backdrop-blur-2xl border border-white/5 p-1.5 rounded-[2rem] h-auto shadow-2xl inline-flex luxury-shadow">
+            <TabsTrigger value="dashboard" className="gap-2.5 rounded-[1.5rem] px-8 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all duration-500 font-bold text-luxury text-sm">
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="table" className="gap-2.5 rounded-[1.5rem] px-8 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all duration-500 font-bold text-luxury text-sm">
+              <Table2 className="h-4 w-4" />
+              Tabela
+            </TabsTrigger>
+            <TabsTrigger value="kanban" className="gap-2.5 rounded-[1.5rem] px-8 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all duration-500 font-bold text-luxury text-sm">
+              <Columns3 className="h-4 w-4" />
+              Kanban
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="dashboard">
           <Dashboard sales={sales} />

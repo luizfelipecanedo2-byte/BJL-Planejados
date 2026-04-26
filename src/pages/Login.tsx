@@ -37,40 +37,43 @@ export default function Login() {
             
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black pointer-events-none"></div>
 
-            <Card className="w-full max-w-md relative shadow-2xl border border-white/10 backdrop-blur-3xl bg-black/40 rounded-[2.5rem] p-4 overflow-hidden spotlight-card border-beam-card z-10">
-                <div className="absolute -top-24 -left-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
-                <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl" />
+            <Card className="w-full max-w-md glass-card rounded-[3rem] p-4 overflow-hidden spotlight-card border-beam-card z-10 luxury-shadow">
+                <div className="absolute -top-32 -left-32 w-64 h-64 bg-primary/10 rounded-full blur-[100px]" />
+                <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-amber-500/10 rounded-full blur-[100px]" />
 
-                <CardHeader className="space-y-4 flex flex-col items-center pt-8 pb-4 relative z-10">
+                <CardHeader className="space-y-6 flex flex-col items-center pt-10 pb-6 relative z-10">
                     <div className="relative group">
-                        <div className="absolute -inset-4 bg-primary/20 rounded-full blur-xl group-hover:bg-primary/30 transition-all duration-700 opacity-50" />
+                        <div className="absolute inset-0 bg-primary/30 rounded-full blur-3xl group-hover:bg-primary/50 transition-all duration-1000 opacity-30 animate-pulse" />
                         <img
                             src="/logo-bjl.png"
                             alt="BJL Planejados"
-                            className="h-32 w-auto object-contain relative z-10 drop-shadow-[0_0_25px_rgba(255,215,0,0.3)] hover:scale-105 transition-transform duration-500"
+                            className="h-36 w-auto object-contain relative z-10 drop-shadow-[0_0_30px_rgba(var(--primary),0.3)] group-hover:scale-110 transition-transform duration-700"
                         />
                     </div>
                     
                     <div className="text-center space-y-2">
-                        <h1 className="text-xl sm:text-4xl font-black tracking-tighter shimmer-gold whitespace-nowrap">
+                        <h1 className="text-2xl sm:text-5xl font-black tracking-tighter text-luxury shimmer-gold leading-none">
                             BJL PLANEJADOS
                         </h1>
-                        <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-muted-foreground/60 leading-none">
-                            High-End Management System
-                        </p>
+                        <div className="flex items-center justify-center gap-2">
+                           <div className="h-0.5 w-8 bg-primary/40 rounded-full" />
+                           <p className="text-[10px] uppercase font-black tracking-[0.4em] text-primary/60">Edição de Luxo</p>
+                           <div className="h-0.5 w-8 bg-primary/40 rounded-full" />
+                        </div>
                     </div>
                 </CardHeader>
 
-                <CardContent className="px-6 pb-8 relative z-10">
-                    <form onSubmit={handleLogin} className="space-y-5">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">E-mail</label>
+                <CardContent className="px-8 pb-10 relative z-10">
+                    <form onSubmit={handleLogin} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-primary/60 uppercase tracking-[0.3em] ml-2 text-luxury">Acesso Restrito</label>
                             <div className="relative group/input">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within/input:text-primary transition-colors z-[60]" />
+                                <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-md opacity-0 group-focus-within/input:opacity-100 transition-opacity" />
+                                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within/input:text-primary transition-colors z-[60]" />
                                 <Input
                                     type="email"
                                     placeholder="seu@email.com"
-                                    className="pl-12 h-14 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all text-base font-medium relative z-50 cursor-text"
+                                    className="pl-14 h-16 bg-white/[0.03] border-white/5 rounded-2xl text-white placeholder:text-white/10 focus:border-primary/40 focus:ring-0 transition-all text-base font-medium relative z-50 cursor-text text-luxury"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
@@ -79,14 +82,15 @@ export default function Login() {
                             </div>
                         </div>
 
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Senha</label>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-primary/60 uppercase tracking-[0.3em] ml-2 text-luxury">Chave de Segurança</label>
                             <div className="relative group/input">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within/input:text-primary transition-colors z-[60]" />
+                                <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-md opacity-0 group-focus-within/input:opacity-100 transition-opacity" />
+                                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within/input:text-primary transition-colors z-[60]" />
                                 <Input
                                     type="password"
                                     placeholder="••••••••"
-                                    className="pl-12 h-14 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all text-base font-medium relative z-50 cursor-text"
+                                    className="pl-14 h-16 bg-white/[0.03] border-white/5 rounded-2xl text-white placeholder:text-white/10 focus:border-primary/40 focus:ring-0 transition-all text-base font-medium relative z-50 cursor-text text-luxury"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
@@ -95,25 +99,25 @@ export default function Login() {
                         </div>
 
                         <Button 
-                            className="w-full h-14 text-base font-black uppercase tracking-widest bg-primary hover:bg-primary/80 text-primary-foreground rounded-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all relative overflow-hidden group" 
+                            className="w-full h-16 text-sm font-black uppercase tracking-[0.3em] bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all relative overflow-hidden group/btn" 
                             type="submit" 
                             disabled={loading}
                         >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite] transition-transform" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_2s_infinite] transition-transform" />
                             {loading ? (
                                 <div className="flex items-center gap-3">
                                     <Loader2 className="h-5 w-5 animate-spin" />
-                                    <span>Acessando...</span>
+                                    <span className="text-luxury">Autenticando...</span>
                                 </div>
                             ) : (
-                                "Entrar no Sistema"
+                                <span className="text-luxury">Acessar Sistema</span>
                             )}
                         </Button>
                     </form>
                     
-                    <div className="mt-10 text-center">
-                        <p className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-[0.2em]">
-                            BJL Planejados &copy; {new Date().getFullYear()} • Edição de Luxo
+                    <div className="mt-12 text-center">
+                        <p className="text-[9px] font-bold text-muted-foreground/30 uppercase tracking-[0.3em] text-luxury">
+                            BJL Planejados &copy; {new Date().getFullYear()} • Powered by Lovable
                         </p>
                     </div>
                 </CardContent>
