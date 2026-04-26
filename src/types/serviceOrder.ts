@@ -15,6 +15,7 @@ export interface ServiceOrder {
     openDate: Date;
     clientId?: string;
     client: string;
+    clientPhone?: string;
     type: ServiceType;
     action: string;
     status: ServiceStatus;

@@ -69,12 +69,10 @@ const OrdemServico = () => {
             setIsLoading(true);
             const { data, error } = await supabase
                 .from('service_orders')
-                .select('*')
+                .select('*, clients(phone)')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-
-
 
             const mappedOrders: ServiceOrder[] = (data || []).map(o => ({
                 id: o.id,
@@ -82,6 +80,7 @@ const OrdemServico = () => {
                 openDate: parseDate(o.open_date),
                 clientId: o.client_id,
                 client: o.client || "Não informado",
+                clientPhone: (o.clients as any)?.phone || "",
                 type: o.type as any || "Fabricação",
                 action: o.action || "",
                 status: o.status as any || "Plano de corte",
@@ -379,6 +378,29 @@ const OrdemServico = () => {
         toast.success("OS enviada para produção!");
     };
 
+    const handleNotifyClient = (order: ServiceOrder) => {
+        if (!order.clientPhone) {
+            toast.error("Cliente sem telefone cadastrado.");
+            return;
+        }
+
+        const firstName = order.client.split(' ')[0];
+        const status = order.status;
+        const ticket = order.ticketNumber;
+        const action = order.action;
+
+        const message = `Olá ${firstName}! 🏠 Aqui é da BJL Planejados.\n\nPassando para avisar que sua Ordem de Serviço *${ticket}* (${action}) acaba de entrar na fase de: *${status}*.\n\nEstamos cuidando de tudo com o máximo de carinho e precisão! Logo traremos mais novidades. 🔨✨`;
+        
+        const encodedMessage = encodeURIComponent(message);
+        const phone = order.clientPhone.replace(/\D/g, "");
+        // Garante o código do país se não houver
+        const formattedPhone = phone.length <= 11 ? `55${phone}` : phone;
+        const url = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
+        
+        window.open(url, '_blank');
+        toast.info("WhatsApp iniciado.");
+    };
+
     const inProgressStatuses: ServiceStatus[] = [
         "Plano de corte",
         "Pronto para produção",
@@ -633,6 +655,7 @@ const OrdemServico = () => {
                                         order={order}
                                         index={index}
                                         onEdit={handleEditOrder}
+                                        onNotify={handleNotifyClient}
                                         onUpdate={handleUpdate}
                                         getStatusColor={getStatusColor}
                                         getStatusProgress={getStatusProgress}
@@ -709,6 +732,7 @@ interface SortableItemProps {
     order: ServiceOrder;
     index: number;
     onEdit: (order: ServiceOrder) => void;
+    onNotify: (order: ServiceOrder) => void;
     onUpdate: (id: string, updates: Partial<ServiceOrder>) => void;
     getStatusColor: (status: any) => string;
     getStatusProgress: (status: any) => number;
@@ -718,6 +742,7 @@ const SortableServiceOrderCard = ({
     order, 
     index, 
     onEdit, 
+    onNotify,
     onUpdate, 
     getStatusColor, 
     getStatusProgress 
@@ -816,7 +841,18 @@ const SortableServiceOrderCard = ({
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <Button variant="outline" size="sm" onClick={() => onEdit(order)} className="text-[10px] font-black uppercase rounded-xl h-8">Detalhes</Button>
+                                {order.clientPhone && (
+                                    <Button 
+                                        variant="default" 
+                                        size="sm" 
+                                        onClick={() => onNotify(order)} 
+                                        className="text-[10px] font-black uppercase rounded-xl h-8 bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 shadow-lg shadow-emerald-900/20"
+                                    >
+                                        <MessageSquare className="h-3 w-3 text-emerald-200" />
+                                        Notificar
+                                    </Button>
+                                )}
+                                <Button variant="outline" size="sm" onClick={() => onEdit(order)} className="text-[10px] font-black uppercase rounded-xl h-8 border-white/10 hover:bg-white/5">Detalhes</Button>
                             </div>
                         </div>
                     </div>
