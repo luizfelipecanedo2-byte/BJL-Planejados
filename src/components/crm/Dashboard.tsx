@@ -522,24 +522,27 @@ const Dashboard = ({ sales }: DashboardProps) => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <h3 className="text-lg font-medium">Dashboard de Vendas</h3>
+    <div className="space-y-8 animate-in fade-in duration-1000">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+           <div className="space-y-1">
+              <h3 className="text-xl font-black text-luxury tracking-tight shimmer-gold">Performance Analítica</h3>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-60">Visão Geral de Resultados & ROI</p>
+           </div>
           <Tabs value={viewType} onValueChange={(v) => setViewType(v as any)}>
-            <TabsList className="bg-muted/50 h-9">
-              <TabsTrigger value="monthly" className="text-xs h-7">Mensal</TabsTrigger>
-              <TabsTrigger value="yearly" className="text-xs h-7">Anual</TabsTrigger>
+            <TabsList className="bg-white/5 border border-white/5 h-12 p-1 rounded-xl luxury-shadow backdrop-blur-md">
+              <TabsTrigger value="monthly" className="text-[10px] font-black uppercase tracking-widest px-6 h-full rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Mensal</TabsTrigger>
+              <TabsTrigger value="yearly" className="text-[10px] font-black uppercase tracking-widest px-6 h-full rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Anual</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
         <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-[120px]">
+          <SelectTrigger className="w-[140px] h-12 glass-card border-white/5 rounded-xl font-black text-[11px] uppercase tracking-widest luxury-shadow">
             <SelectValue placeholder="Ano" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="glass-card border-white/10 backdrop-blur-xl">
             {years.map(y => (
-              <SelectItem key={y} value={y}>{y}</SelectItem>
+              <SelectItem key={y} value={y} className="font-bold text-[11px] uppercase">{y}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -547,9 +550,9 @@ const Dashboard = ({ sales }: DashboardProps) => {
 
       {viewType === "monthly" ? (
         <Tabs defaultValue={String(new Date().getMonth())} className="w-full">
-          <TabsList className="w-full justify-start overflow-x-auto h-12 mb-6 bg-muted/50">
+          <TabsList className="w-full justify-start overflow-x-auto h-16 mb-8 bg-white/5 border border-white/5 p-2 rounded-2xl luxury-shadow backdrop-blur-md hide-scrollbar">
             {MONTH_NAMES.map((month, index) => (
-              <TabsTrigger key={month} value={String(index)} className="min-w-[60px]">
+              <TabsTrigger key={month} value={String(index)} className="min-w-[80px] h-full rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300">
                 {month}
               </TabsTrigger>
             ))}

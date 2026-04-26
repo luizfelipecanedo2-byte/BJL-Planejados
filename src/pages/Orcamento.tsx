@@ -357,20 +357,26 @@ const Orcamento = () => {
     };
 
     return (
-        <div className="space-y-8 animate-fade-in pb-10">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-4xl font-black tracking-tighter text-primary uppercase">Maré de Orçamentos</h2>
-                    <div className="flex items-center gap-2 mt-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                        <p className="text-muted-foreground font-black uppercase text-[10px] tracking-widest opacity-60">Checklist Técnico Completo (Estilo Planilha)</p>
+        <div className="flex flex-col gap-10 min-h-screen animate-in fade-in duration-1000 pb-20">
+            <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-2">
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-3 mb-1">
+                         <div className="h-8 w-1 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
+                         <h1 className="text-4xl font-black text-luxury tracking-tighter shimmer-gold">Orcamentos</h1>
                     </div>
+                    <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-[10px] opacity-60">Maré de Orçamentos & Engenharia de Valor</p>
                 </div>
 
-                <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setActiveTab(activeTab === "materiais" ? "orcamentos" : "materiais")} className="rounded-2xl h-14 px-6 font-black uppercase tracking-widest text-[10px] border-primary/20 text-primary hover:bg-primary/5 gap-2">
-                        {activeTab === "materiais" ? <HistoryIcon className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
-                        {activeTab === "materiais" ? "Histórico" : "Editar Lista de Preços"}
+                <div className="flex flex-wrap items-center gap-3">
+                    <Button 
+                        variant="ghost" 
+                        onClick={() => setActiveTab(activeTab === "materiais" ? "orcamentos" : "materiais")} 
+                        className="h-14 px-8 rounded-2xl glass-card border-white/5 luxury-shadow hover:bg-primary/5 hover:text-primary transition-all group overflow-hidden relative"
+                    >
+                        {activeTab === "materiais" ? <HistoryIcon className="mr-3 h-5 w-5 group-hover:rotate-180 transition-transform duration-500" /> : <Settings2 className="mr-3 h-5 w-5 group-hover:rotate-90 transition-transform duration-500" />}
+                        <span className="font-black text-[11px] uppercase tracking-widest text-luxury">
+                            {activeTab === "materiais" ? "Histórico de Propostas" : "Gerenciar Tabela de Preços"}
+                        </span>
                     </Button>
 
                     <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -383,10 +389,12 @@ const Orcamento = () => {
                         }
                     }}>
                         <DialogTrigger asChild>
-                            <MagicButton className="font-black uppercase tracking-widest text-xs h-14 rounded-2xl shadow-2xl shadow-primary/30 group">
-                                <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
-                                Novo Orçamento
-                            </MagicButton>
+                            <Button 
+                                className="h-14 px-10 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs shadow-[0_0_30px_rgba(var(--primary),0.3)] hover:shadow-[0_0_50px_rgba(var(--primary),0.5)] transition-all group hover:scale-105 active:scale-95"
+                            >
+                                <Plus className="mr-3 h-5 w-5 group-hover:rotate-90 transition-transform duration-500" />
+                                Novo Levantamento
+                            </Button>
                         </DialogTrigger>
                         <DialogContent className="w-[95vw] sm:max-w-[1100px] max-h-[95vh] border-none shadow-2xl rounded-[1.5rem] sm:rounded-[3rem] overflow-hidden p-0 flex flex-col">
                             <div className="bg-primary p-8 text-primary-foreground relative shrink-0">

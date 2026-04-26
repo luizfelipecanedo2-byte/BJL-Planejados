@@ -862,44 +862,84 @@ const Financeiro = () => {
 
   return (
     <div className={cn(
-      "space-y-6 transition-all duration-1000 min-h-screen p-4 -m-4",
-      activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "bg-purple-950/30" : 
-      activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-950/30" : ""
+      "space-y-10 transition-all duration-1000 min-h-screen p-2 animate-in fade-in",
+      activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "bg-purple-950/10" : 
+      activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-950/10" : ""
     )}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-           <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Financeiro</h2>
-           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Gestão de Fluxo e Ativos High-End</p>
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-2">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-3 mb-1">
+             <div className="h-8 w-1 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
+             <h1 className="text-4xl font-black text-luxury tracking-tighter shimmer-gold">Financeiro</h1>
+          </div>
+          <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-[10px] opacity-60">Gestão de Fluxo de Caixa & Patrimônio Premium</p>
         </div>
-      </div>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <Button 
+            variant="ghost" 
+            className="h-14 px-8 rounded-2xl glass-card border-white/5 luxury-shadow hover:bg-primary/5 hover:text-primary transition-all group overflow-hidden relative"
+            onClick={handleNewTransaction}
+          >
+            <Plus className="mr-3 h-5 w-5 group-hover:scale-125 transition-transform" />
+             <span className="font-black text-[11px] uppercase tracking-widest text-luxury">Novo Lançamento</span>
+          </Button>
+          <Button 
+            variant="ghost"
+            className="h-14 px-8 rounded-2xl glass-card border-white/5 luxury-shadow hover:bg-emerald-500/5 hover:text-emerald-500 transition-all group overflow-hidden relative"
+            onClick={handleNewTransfer}
+          >
+            <TrendingUp className="mr-3 h-5 w-5 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" />
+            <span className="font-black text-[11px] uppercase tracking-widest text-luxury">Transferência</span>
+          </Button>
+        </div>
+      </header>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <div className="overflow-x-auto pb-2 scrollbar-hide">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-10">
+        <div className="px-2 overflow-x-auto hide-scrollbar">
           <TabsList className={cn(
-            "w-full sm:w-auto justify-start h-14 p-1.5 rounded-2xl border backdrop-blur-md transition-all duration-700",
+            "h-20 w-max min-w-full lg:min-w-0 p-2 glass-card rounded-[2rem] luxury-shadow border-white/5 backdrop-blur-3xl transition-all duration-700",
             activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "bg-purple-900/30 border-purple-500/20" :
             activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-900/30 border-emerald-500/20" :
-            "bg-muted/20 border-border/40"
+            "bg-white/[0.03]"
           )}>
-            <TabsTrigger value="dashboard" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Dashboard</TabsTrigger>
-            <TabsTrigger value="dda_analysis" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:shadow-lg active:scale-95 transition-all text-blue-400 data-[state=active]:text-white">
-              <FileSearch className="h-3 w-3 mr-2" />
-              Buscador DDA
+            <TabsTrigger value="dashboard" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <TrendingUp className="mr-3 h-4 w-4" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Dashboard</span>
             </TabsTrigger>
-            <TabsTrigger value="lancamentos" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Lançamentos</TabsTrigger>
-            <TabsTrigger value="dre" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">DRE</TabsTrigger>
-            <TabsTrigger value="gastos_servicos" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Gastos Projeto</TabsTrigger>
+            <TabsTrigger value="dda_analysis" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-2xl transition-all duration-500 text-blue-400">
+              <FileSearch className="mr-3 h-4 w-4" />
+              <span className="font-black text-[10px] uppercase tracking-widest">DDA</span>
+            </TabsTrigger>
+            <TabsTrigger value="lancamentos" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <DollarSign className="mr-3 h-4 w-4" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Lançamentos</span>
+            </TabsTrigger>
+            <TabsTrigger value="dre" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <Receipt className="mr-3 h-4 w-4" />
+              <span className="font-black text-[10px] uppercase tracking-widest">DRE</span>
+            </TabsTrigger>
+            <TabsTrigger value="gastos_servicos" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <Users className="mr-3 h-4 w-4" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Serviços</span>
+            </TabsTrigger>
             <TabsTrigger value="conciliacao" className={cn(
-              "rounded-xl px-6 font-bold text-xs uppercase tracking-widest active:scale-95 transition-all",
+              "rounded-[1.5rem] px-8 h-full transition-all duration-500",
               activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "data-[state=active]:bg-purple-600 data-[state=active]:text-white" :
               activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "data-[state=active]:bg-emerald-600 data-[state=active]:text-white" :
-              "data-[state=active]:bg-primary data-[state=active]:shadow-lg"
-            )}>Conciliação</TabsTrigger>
-            <TabsTrigger value="notas_fiscais" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">
-              <Receipt className="h-3 w-3 mr-2" />
-              Notas Fiscais
+              "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            )}>
+              <AlertTriangle className="mr-3 h-4 w-4" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Conciliação</span>
             </TabsTrigger>
-            <TabsTrigger value="patrimonio" className="rounded-xl px-6 font-bold text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:shadow-lg active:scale-95 transition-all">Em Ativos</TabsTrigger>
+            <TabsTrigger value="notas_fiscais" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <Receipt className="mr-3 h-4 w-4" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Notas</span>
+            </TabsTrigger>
+            <TabsTrigger value="patrimonio" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <Package className="mr-3 h-4 w-4" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Ativos</span>
+            </TabsTrigger>
           </TabsList>
         </div>
 
