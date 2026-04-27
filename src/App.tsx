@@ -15,7 +15,6 @@ import PedidosSemana from "./pages/PedidosSemana";
 import Clientes from "./pages/Clientes";
 import Orcamento from "./pages/Orcamento";
 import Login from "./pages/Login";
-import ProducaoFabrica from "./pages/ProducaoFabrica";
 
 const queryClient = new QueryClient();
 
@@ -124,14 +123,13 @@ const App = () => {
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
 
             <Route path="/" element={session ? <MainLayout /> : <Navigate to="/login" />}>
-              <Route index element={isAdmin ? <Index /> : <Navigate to="/producao-fabrica" />} />
-              <Route path="financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/producao-fabrica" />} />
-              <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="/producao-fabrica" />} />
-              <Route path="ordem-servico" element={isAdmin ? <OrdemServico /> : <Navigate to="/producao-fabrica" />} />
-              <Route path="orcamento" element={isAdmin ? <Orcamento /> : <Navigate to="/producao-fabrica" />} />
+              <Route index element={isAdmin ? <Index /> : <Navigate to="/pedidos-semana" />} />
+              <Route path="financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/pedidos-semana" />} />
+              <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="/pedidos-semana" />} />
+              <Route path="ordem-servico" element={isAdmin ? <OrdemServico /> : <Navigate to="/pedidos-semana" />} />
+              <Route path="orcamento" element={isAdmin ? <Orcamento /> : <Navigate to="/pedidos-semana" />} />
               <Route path="estoque" element={<Estoque />} />
               <Route path="pedidos-semana" element={<PedidosSemana />} />
-              <Route path="producao-fabrica" element={<ProducaoFabrica />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>

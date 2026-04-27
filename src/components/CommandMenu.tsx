@@ -13,7 +13,6 @@ import {
   DollarSign,
   ClipboardList,
   Package,
-  Hammer,
   FileText
 } from "lucide-react";
 import {
@@ -81,10 +80,6 @@ export function CommandMenu() {
           <CommandItem onSelect={() => runCommand(() => navigate("/estoque"))}>
             <Package className="mr-2 h-4 w-4 text-primary" />
             <span className="text-luxury">Estoque</span>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => navigate("/producao-fabrica"))}>
-            <Hammer className="mr-2 h-4 w-4 text-primary" />
-            <span className="text-luxury">Fábrica</span>
           </CommandItem>
         </CommandGroup>
         
