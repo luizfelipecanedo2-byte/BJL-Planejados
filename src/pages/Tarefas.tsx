@@ -2,17 +2,18 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, isToday, isTomorrow, addDays, startOfWeek, endOfWeek, isWithinInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Task {
     id: string;
@@ -24,6 +25,8 @@ interface Task {
     completed_at: string | null;
     priority: string;
     created_by: string;
+    project_name: string | null;
+    due_date: string;
 }
 
 interface Profile {
@@ -43,8 +46,12 @@ const Tarefas = () => {
     // Form state
     const [newTitle, setNewTitle] = useState("");
     const [newDescription, setNewDescription] = useState("");
+    const [newProject, setNewProject] = useState("");
+    const [newDueDate, setNewDueDate] = useState(format(new Date(), "yyyy-MM-dd"));
     const [newAssignedTo, setNewAssignedTo] = useState<string | "all">("all");
     const [newPriority, setNewPriority] = useState("normal");
+
+    const [activeView, setActiveView] = useState("hoje");
 
     useEffect(() => {
         fetchInitialData();
@@ -76,7 +83,8 @@ const Tarefas = () => {
         const { data, error } = await supabase
             .from('tasks')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('due_date', { ascending: true })
+            .order('project_name', { ascending: true });
 
         if (error) {
             toast.error("Erro ao carregar tarefas");
@@ -90,8 +98,6 @@ const Tarefas = () => {
             .from('profiles')
             .select('id, role');
         
-        // Profiles table might not have emails, so we just use IDs for now
-        // or we could fetch them if we have access to auth.users (usually restricted)
         if (!error) {
             setProfiles(data || []);
         }
@@ -108,6 +114,8 @@ const Tarefas = () => {
             const taskData = {
                 title: newTitle,
                 description: newDescription,
+                project_name: newProject || "Geral",
+                due_date: newDueDate,
                 assigned_to: newAssignedTo === "all" ? null : newAssignedTo,
                 priority: newPriority,
                 created_by: user.id,
@@ -122,6 +130,8 @@ const Tarefas = () => {
             setIsDialogOpen(false);
             setNewTitle("");
             setNewDescription("");
+            setNewProject("");
+            setNewDueDate(format(new Date(), "yyyy-MM-dd"));
             setNewAssignedTo("all");
             setNewPriority("normal");
             fetchTasks();
@@ -172,154 +182,314 @@ const Tarefas = () => {
         }
     };
 
+    const filterTasksByView = () => {
+        const now = new Date();
+        const today = format(now, "yyyy-MM-dd");
+        const tomorrow = format(addDays(now, 1), "yyyy-MM-dd");
+        const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+
+        switch (activeView) {
+            case "hoje":
+                return tasks.filter(t => 
+                    (t.due_date === today) || 
+                    (t.due_date < today && t.status === 'pending')
+                );
+            case "amanha":
+                return tasks.filter(t => t.due_date === tomorrow);
+            case "semana":
+                return tasks.filter(t => {
+                    const date = parseISO(t.due_date);
+                    return isWithinInterval(date, { start: weekStart, end: weekEnd });
+                });
+            case "todas":
+                return tasks;
+            default:
+                return tasks;
+        }
+    };
+
+    const filteredTasks = filterTasksByView();
+    
+    // Grouping by Project
+    const groupedTasks = filteredTasks.reduce((acc: { [key: string]: Task[] }, task) => {
+        const project = task.project_name || "Geral";
+        if (!acc[project]) acc[project] = [];
+        acc[project].push(task);
+        return acc;
+    }, {});
+
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="space-y-8 animate-in fade-in duration-700">
+            {/* Header Section */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div>
-                    <h2 className="text-3xl font-black tracking-tighter text-luxury shimmer-gold uppercase">Tarefas Diárias</h2>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Gerenciamento de atividades e metas</p>
+                    <h2 className="text-4xl font-black tracking-tighter text-luxury shimmer-gold uppercase">CRM de Tarefas</h2>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground mt-2 opacity-60">Operação & Planejamento Estratégico</p>
                 </div>
                 
-                {userRole === 'admin' && (
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="gap-2 bg-primary hover:bg-primary/80 text-white font-bold rounded-xl shadow-lg shadow-primary/20">
-                                <Plus className="h-4 w-4" />
-                                Nova Tarefa
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="glass-card border-white/10 text-white">
-                            <DialogHeader>
-                                <DialogTitle className="text-xl font-black uppercase tracking-tighter text-luxury">Criar Nova Tarefa</DialogTitle>
-                            </DialogHeader>
-                            <form onSubmit={handleCreateTask} className="space-y-4 mt-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Título</Label>
-                                    <Input 
-                                        placeholder="Ex: Limpar bancada, Organizar estoque..." 
-                                        value={newTitle}
-                                        onChange={(e) => setNewTitle(e.target.value)}
-                                        className="bg-white/5 border-white/10 rounded-xl"
-                                        required
-                                    />
+                <div className="flex flex-wrap items-center gap-3">
+                    <Tabs value={activeView} onValueChange={setActiveView} className="bg-white/5 border border-white/10 p-1 rounded-2xl h-12 shadow-inner">
+                        <TabsList className="bg-transparent h-full">
+                            <TabsTrigger value="hoje" className="px-5 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[9px] tracking-widest transition-all">Hoje</TabsTrigger>
+                            <TabsTrigger value="amanha" className="px-5 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[9px] tracking-widest transition-all">Amanhã</TabsTrigger>
+                            <TabsTrigger value="semana" className="px-5 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[9px] tracking-widest transition-all">Semana</TabsTrigger>
+                            <TabsTrigger value="todas" className="px-5 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[9px] tracking-widest transition-all">Todas</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+
+                    {userRole === 'admin' && (
+                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="h-12 px-8 bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all hover:scale-105 active:scale-95 gap-2">
+                                    <Plus className="h-4 w-4" />
+                                    Nova Tarefa
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="glass-card border-white/10 text-white max-w-lg rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
+                                <div className="bg-primary p-8 text-primary-foreground">
+                                    <DialogHeader>
+                                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Planejar Atividade</DialogTitle>
+                                        <p className="text-[10px] opacity-70 font-bold uppercase tracking-widest mt-1">Defina metas e responsabilidades</p>
+                                    </DialogHeader>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Descrição (Opcional)</Label>
-                                    <Textarea 
-                                        placeholder="Detalhes da tarefa..." 
-                                        value={newDescription}
-                                        onChange={(e) => setNewDescription(e.target.value)}
-                                        className="bg-white/5 border-white/10 rounded-xl min-h-[100px]"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <form onSubmit={handleCreateTask} className="p-8 space-y-6">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Atribuir a</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Projeto / Ambiente</Label>
+                                        <div className="relative">
+                                            <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-50" />
+                                            <Input 
+                                                placeholder="Ex: Closet de Karol, Cozinha Gourmet..." 
+                                                value={newProject}
+                                                onChange={(e) => setNewProject(e.target.value)}
+                                                className="bg-white/5 border-white/10 rounded-xl h-12 pl-12 font-bold"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Título da Tarefa</Label>
+                                        <Input 
+                                            placeholder="O que precisa ser feito?" 
+                                            value={newTitle}
+                                            onChange={(e) => setNewTitle(e.target.value)}
+                                            className="bg-white/5 border-white/10 rounded-xl h-12 font-bold"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Data de Execução</Label>
+                                            <Input 
+                                                type="date"
+                                                value={newDueDate}
+                                                onChange={(e) => setNewDueDate(e.target.value)}
+                                                className="bg-white/5 border-white/10 rounded-xl h-12 font-bold text-white [color-scheme:dark]"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Prioridade</Label>
+                                            <Select value={newPriority} onValueChange={setNewPriority}>
+                                                <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-slate-900 border-white/10">
+                                                    <SelectItem value="low">Baixa</SelectItem>
+                                                    <SelectItem value="normal">Normal</SelectItem>
+                                                    <SelectItem value="high">Alta</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Atribuir a</Label>
                                         <Select value={newAssignedTo} onValueChange={setNewAssignedTo}>
-                                            <SelectTrigger className="bg-white/5 border-white/10 rounded-xl">
+                                            <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12">
                                                 <SelectValue placeholder="Selecione um funcionário" />
                                             </SelectTrigger>
                                             <SelectContent className="bg-slate-900 border-white/10">
-                                                <SelectItem value="all">Todos</SelectItem>
+                                                <SelectItem value="all">Equipe Inteira</SelectItem>
                                                 {profiles.map(p => (
                                                     <SelectItem key={p.id} value={p.id}>
-                                                        {p.role === 'admin' ? 'Admin' : `Colaborador (${p.id.slice(0,4)})`}
+                                                        {p.role === 'admin' ? 'Administrador' : `Colaborador (${p.id.slice(0,4)})`}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
+
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Prioridade</Label>
-                                        <Select value={newPriority} onValueChange={setNewPriority}>
-                                            <SelectTrigger className="bg-white/5 border-white/10 rounded-xl">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-slate-900 border-white/10">
-                                                <SelectItem value="low">Baixa</SelectItem>
-                                                <SelectItem value="normal">Normal</SelectItem>
-                                                <SelectItem value="high">Alta</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Detalhes (Opcional)</Label>
+                                        <Textarea 
+                                            placeholder="Instruções adicionais..." 
+                                            value={newDescription}
+                                            onChange={(e) => setNewDescription(e.target.value)}
+                                            className="bg-white/5 border-white/10 rounded-xl min-h-[100px] font-medium"
+                                        />
                                     </div>
-                                </div>
-                                <Button type="submit" className="w-full bg-primary hover:bg-primary/80 text-white font-bold h-12 rounded-xl mt-4">
-                                    Salvar Tarefa
-                                </Button>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
-                )}
+
+                                    <Button type="submit" className="w-full bg-primary hover:bg-primary/80 text-white font-black h-14 rounded-2xl mt-4 uppercase tracking-widest text-sm shadow-xl shadow-primary/20">
+                                        Lançar no Sistema
+                                    </Button>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    )}
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Tasks Container */}
+            <div className="space-y-12">
                 {loading ? (
-                    <div className="col-span-full py-12 flex justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <div className="py-20 flex justify-center">
+                        <div className="relative">
+                            <div className="h-16 w-16 rounded-full border-4 border-primary/20 animate-pulse" />
+                            <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-t-4 border-primary animate-spin" />
+                        </div>
                     </div>
-                ) : tasks.length === 0 ? (
-                    <div className="col-span-full py-20 text-center glass-card rounded-3xl border-dashed border-2 border-white/5">
-                        <CheckCircle2 className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
-                        <p className="text-muted-foreground font-bold uppercase tracking-widest text-sm">Nenhuma tarefa pendente</p>
+                ) : Object.keys(groupedTasks).length === 0 ? (
+                    <div className="py-32 text-center glass-card rounded-[3rem] border-dashed border-2 border-white/5 max-w-2xl mx-auto">
+                        <CheckCircle2 className="h-20 w-20 text-primary opacity-10 mx-auto mb-6" />
+                        <h3 className="text-xl font-black text-luxury uppercase tracking-widest mb-2">Tudo em dia!</h3>
+                        <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Nenhuma atividade pendente para este período</p>
                     </div>
                 ) : (
-                    tasks.map((task) => (
-                        <Card key={task.id} className={`glass-card border-white/5 transition-all duration-300 hover:border-white/10 ${task.status === 'completed' ? 'opacity-60 grayscale-[0.5]' : ''}`}>
-                            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
-                                <div className="flex items-center gap-3">
-                                    <button 
-                                        onClick={() => handleToggleStatus(task)}
-                                        className="transition-transform active:scale-90"
-                                    >
-                                        {task.status === 'completed' ? (
-                                            <CheckCircle2 className="h-6 w-6 text-emerald-500" />
-                                        ) : (
-                                            <Circle className="h-6 w-6 text-muted-foreground" />
-                                        )}
-                                    </button>
-                                    <div className="space-y-1">
-                                        <CardTitle className={`text-lg font-black tracking-tight text-luxury ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
-                                            {task.title}
-                                        </CardTitle>
-                                        <Badge className={`${getPriorityColor(task.priority)} text-[8px] font-black uppercase tracking-widest px-1.5 py-0`}>
-                                            {task.priority === 'high' ? 'Alta' : task.priority === 'normal' ? 'Normal' : 'Baixa'}
+                    Object.entries(groupedTasks).map(([project, projectTasks]) => (
+                        <div key={project} className="space-y-6">
+                            <div className="flex items-center gap-4 group">
+                                <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-lg">
+                                    <LayoutGrid className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-luxury uppercase tracking-tight group-hover:text-primary transition-colors">{project}</h3>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <Badge variant="outline" className="text-[8px] font-black uppercase border-white/10 text-muted-foreground">
+                                            {projectTasks.length} {projectTasks.length === 1 ? 'ATIVIDADE' : 'ATIVIDADES'}
                                         </Badge>
+                                        <div className="h-1 w-1 rounded-full bg-white/20" />
+                                        <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">Organizado por Projeto</span>
                                     </div>
                                 </div>
-                                {userRole === 'admin' && (
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-8 w-8 text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg"
-                                        onClick={() => handleDeleteTask(task.id)}
+                                <div className="flex-1 h-[1px] bg-gradient-to-r from-white/10 to-transparent ml-4" />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {projectTasks.map((task) => (
+                                    <Card 
+                                        key={task.id} 
+                                        className={cn(
+                                            "glass-card border-white/5 transition-all duration-500 group/card relative overflow-hidden rounded-[2.5rem]",
+                                            task.status === 'completed' ? 'opacity-50 grayscale' : 'hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1'
+                                        )}
                                     >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                )}
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {task.description && (
-                                    <p className="text-xs text-white/60 font-medium leading-relaxed">
-                                        {task.description}
-                                    </p>
-                                )}
-                                <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                                        <UserIcon className="h-3 w-3" />
-                                        <span>{task.assigned_to ? 'Atribuída' : 'Todos'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                                        <CalendarIcon className="h-3 w-3" />
-                                        <span>{format(new Date(task.created_at), "dd 'de' MMM", { locale: ptBR })}</span>
-                                    </div>
-                                </div>
-                                {task.completed_at && (
-                                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-500 flex items-center gap-1.5 bg-emerald-500/10 px-2 py-1 rounded-md w-fit">
-                                        Concluída em {format(new Date(task.completed_at), "dd/MM HH:mm")}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                                        <div className={cn(
+                                            "absolute top-0 left-0 w-1.5 h-full transition-all duration-500",
+                                            getPriorityColor(task.priority),
+                                            task.status === 'completed' && 'bg-slate-500'
+                                        )} />
+
+                                        <CardHeader className="pb-4 pt-8 px-8 flex flex-row items-start justify-between space-y-0">
+                                            <div className="flex items-center gap-4">
+                                                <button 
+                                                    onClick={() => handleToggleStatus(task)}
+                                                    className="relative flex items-center justify-center group/check"
+                                                >
+                                                    {task.status === 'completed' ? (
+                                                        <div className="h-7 w-7 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                                                            <CheckCircle2 className="h-5 w-5" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="h-7 w-7 rounded-xl border-2 border-white/20 flex items-center justify-center text-transparent group-hover/check:border-primary group-hover/check:bg-primary/10 transition-all">
+                                                            <Circle className="h-4 w-4" />
+                                                        </div>
+                                                    )}
+                                                </button>
+                                                <div className="space-y-1.5">
+                                                    <CardTitle className={cn(
+                                                        "text-[15px] font-black tracking-tight text-white leading-tight uppercase",
+                                                        task.status === 'completed' && 'line-through text-muted-foreground'
+                                                    )}>
+                                                        {task.title}
+                                                    </CardTitle>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[8px] font-black text-muted-foreground/60 uppercase tracking-widest">{task.priority === 'high' ? 'Crítico' : task.priority === 'normal' ? 'Padrão' : 'Baixo'}</span>
+                                                        <div className="h-1 w-1 rounded-full bg-white/10" />
+                                                        <span className="text-[8px] font-black text-primary uppercase tracking-widest">Atividade</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {userRole === 'admin' && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+                                                    onClick={() => handleDeleteTask(task.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                        </CardHeader>
+
+                                        <CardContent className="px-8 pb-8 space-y-6">
+                                            {task.description && (
+                                                <p className="text-[11px] text-white/50 font-bold leading-relaxed">
+                                                    {task.description}
+                                                </p>
+                                            )}
+                                            
+                                            <div className="pt-6 border-t border-white/5 flex flex-col gap-4">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="h-6 w-6 rounded-lg bg-white/5 flex items-center justify-center">
+                                                            <UserIcon className="h-3 w-3 text-muted-foreground" />
+                                                        </div>
+                                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">
+                                                            {task.assigned_to ? 'Responsável' : 'Equipe BJL'}
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[9px] font-black text-white/80 uppercase">
+                                                        {task.assigned_to ? `ID: ${task.assigned_to.slice(0,6)}` : 'Geral'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="h-6 w-6 rounded-lg bg-white/5 flex items-center justify-center">
+                                                            <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                                                        </div>
+                                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Prazo</span>
+                                                    </div>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className={cn(
+                                                            "text-[10px] font-black uppercase tracking-tighter",
+                                                            isToday(parseISO(task.due_date)) ? "text-primary" : 
+                                                            isTomorrow(parseISO(task.due_date)) ? "text-amber-500" : "text-white/80"
+                                                        )}>
+                                                            {isToday(parseISO(task.due_date)) ? 'Hoje' : 
+                                                             isTomorrow(parseISO(task.due_date)) ? 'Amanhã' : 
+                                                             format(parseISO(task.due_date), "dd 'de' MMMM", { locale: ptBR })}
+                                                        </span>
+                                                        <span className="text-[8px] font-bold text-muted-foreground/30 uppercase">{format(parseISO(task.due_date), "EEEE", { locale: ptBR })}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {task.completed_at && (
+                                                <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-2 rounded-2xl border border-emerald-500/20">
+                                                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">
+                                                        Entregue em {format(new Date(task.completed_at), "dd/MM 'às' HH:mm")}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
                     ))
                 )}
             </div>

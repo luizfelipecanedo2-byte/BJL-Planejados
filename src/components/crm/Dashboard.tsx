@@ -50,6 +50,8 @@ interface Task {
   title: string;
   status: string;
   priority: string;
+  project_name?: string;
+  due_date?: string;
 }
 
 interface DashboardProps {
@@ -64,15 +66,20 @@ const Dashboard = ({ sales }: DashboardProps) => {
 
   useEffect(() => {
     const fetchTasks = async () => {
-      const { data, count } = await supabase
+      const { data } = await supabase
         .from('tasks')
-        .select('*', { count: 'exact' })
+        .select('*')
         .eq('status', 'pending')
-        .order('created_at', { ascending: false })
+        .order('due_date', { ascending: true })
         .limit(3);
       
-      if (data) setRecentTasks(data);
-      if (count !== null) setTotalPendingTasks(count);
+      const { count } = await supabase
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+        
+      setRecentTasks(data || []);
+      setTotalPendingTasks(count || 0);
     };
     fetchTasks();
   }, []);
@@ -576,12 +583,15 @@ const Dashboard = ({ sales }: DashboardProps) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {recentTasks.length > 0 ? (
                 recentTasks.map((task) => (
-                  <div key={task.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-emerald-500/20 transition-all group/task">
+                  <div key={task.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-emerald-500/20 transition-all group/task flex flex-col justify-between h-full">
                     <div className="flex items-start gap-3">
                       <Circle className="h-5 w-5 text-muted-foreground mt-0.5 group-hover/task:text-emerald-500 transition-colors" />
                       <div className="space-y-1">
-                        <p className="text-sm font-bold text-luxury group-hover/task:text-primary transition-colors">{task.title}</p>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black uppercase text-primary tracking-widest mb-0.5">{task.project_name || "Geral"}</span>
+                            <p className="text-sm font-bold text-luxury group-hover/task:text-primary transition-colors leading-tight">{task.title}</p>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
                           <span className={cn(
                             "text-[8px] font-black uppercase tracking-widest px-1.5 py-0 rounded",
                             task.priority === 'high' ? 'bg-rose-500 text-white' : 
@@ -589,6 +599,11 @@ const Dashboard = ({ sales }: DashboardProps) => {
                           )}>
                             {task.priority}
                           </span>
+                          {task.due_date && (
+                             <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                               {task.due_date}
+                             </span>
+                          )}
                         </div>
                       </div>
                     </div>
