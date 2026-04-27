@@ -123,11 +123,11 @@ const App = () => {
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
 
             <Route path="/" element={session ? <MainLayout /> : <Navigate to="/login" />}>
-              <Route index element={isAdmin ? <Index /> : <Navigate to="/pedidos-semana" />} />
-              <Route path="financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/pedidos-semana" />} />
-              <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="/pedidos-semana" />} />
-              <Route path="ordem-servico" element={isAdmin ? <OrdemServico /> : <Navigate to="/pedidos-semana" />} />
-              <Route path="orcamento" element={isAdmin ? <Orcamento /> : <Navigate to="/pedidos-semana" />} />
+              <Route index element={isAdmin ? <Index /> : <Navigate to="/estoque" />} />
+              <Route path="financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/estoque" />} />
+              <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="/estoque" />} />
+              <Route path="ordem-servico" element={isAdmin ? <OrdemServico /> : <Navigate to="/estoque" />} />
+              <Route path="orcamento" element={isAdmin ? <Orcamento /> : <Navigate to="/estoque" />} />
               <Route path="estoque" element={<Estoque />} />
               <Route path="pedidos-semana" element={<PedidosSemana />} />
               <Route path="*" element={<NotFound />} />

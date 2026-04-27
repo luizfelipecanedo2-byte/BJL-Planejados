@@ -7,16 +7,43 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import ProductionTimeline from "@/components/crm/ProductionTimeline";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
-import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Settings2, CalendarDays, MessageSquare, Play } from "lucide-react";
+import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
+import { 
+    DndContext, 
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { GripVertical } from "lucide-react";
 
 const OrdemServico = () => {
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
     const [orders, setOrders] = useState<ServiceOrder[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
@@ -310,7 +337,41 @@ const OrdemServico = () => {
         }
     };
 
+    const handleDragEnd = async (event: any) => {
+        const { active, over } = event;
 
+        if (active.id !== over.id) {
+            const oldIndex = productionQueue.findIndex((item) => item.id === active.id);
+            const newIndex = productionQueue.findIndex((item) => item.id === over.id);
+
+            const newQueue = arrayMove(productionQueue, oldIndex, newIndex);
+            
+            // Atualizar localmente para responsividade imediata
+            const updatedOrders = orders.map(order => {
+                const queueItemIndex = newQueue.findIndex(item => item.id === order.id);
+                if (queueItemIndex !== -1) {
+                    // Inverter a lógica pois ordenamos por b.priority - a.priority
+                    // Então o primeiro item da lista (index 0) deve ter a MAIOR prioridade
+                    return { ...order, productionPriority: newQueue.length - queueItemIndex };
+                }
+                return order;
+            });
+            setOrders(updatedOrders);
+
+            // Persistir todas as mudanças de prioridade no banco
+            for (let i = 0; i < newQueue.length; i++) {
+                const orderId = newQueue[i].id;
+                const newPrio = newQueue.length - i;
+                
+                // Chamada silenciosa (sem toast para cada item)
+                await supabase
+                    .from('service_orders')
+                    .update({ production_priority: newPrio })
+                    .eq('id', orderId);
+            }
+            toast.success("Ordem da fila atualizada!");
+        }
+    };
 
     const handleStartOrder = async (order: ServiceOrder) => {
         await handleUpdate(order.id, { status: 'Plano de corte' });
@@ -362,6 +423,18 @@ const OrdemServico = () => {
         return isClosed && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
     }).length;
     
+    const productionQueue = orders
+        .filter(o => inProgressStatuses.includes(o.status))
+        .sort((a, b) => {
+            const aIsFinished = a.status === "Entregue e Finalizado";
+            const bIsFinished = b.status === "Entregue e Finalizado";
+            
+            if (aIsFinished && !bIsFinished) return 1;
+            if (!aIsFinished && bIsFinished) return -1;
+            
+            return (b.productionPriority || 0) - (a.productionPriority || 0);
+        });
+
     const defineList = orders.filter(o => o.status === "A Definir");
 
     const getStatusProgress = (status: ServiceStatus) => {
@@ -492,13 +565,16 @@ const OrdemServico = () => {
                 </Card>
             </div>
 
-            <Tabs defaultValue="todos" className="w-full">
+            <Tabs defaultValue="producao" className="w-full">
                 <TabsList className="bg-white/5 border border-white/10 rounded-2xl p-1 mb-6">
                     <TabsTrigger value="definir" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-primary data-[state=active]:text-white">
                         <Settings2 className="h-3 w-3 mr-2" />
                         Definir (Aguardando Pauta)
                     </TabsTrigger>
-
+                    <TabsTrigger value="producao" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+                         <Hammer className="h-3 w-3 mr-2" />
+                        Fila de Produção
+                    </TabsTrigger>
                     <TabsTrigger value="todos" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-slate-700 data-[state=active]:text-white">
                         <RefreshCw className="h-3 w-3 mr-2" />
                         Todas OSs
@@ -546,7 +622,7 @@ const OrdemServico = () => {
                                                         onClick={() => handleStartOrder(order)}
                                                     >
                                                         <Play className="h-4 w-4 mr-2" />
-                                                        Liberar Produção
+                                                        Mandar p/ Produção
                                                     </Button>
                                                 </div>
                                             </div>
@@ -559,6 +635,38 @@ const OrdemServico = () => {
                             )}
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                <TabsContent value="producao" className="space-y-4">
+                    <DndContext 
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                        modifiers={[restrictToVerticalAxis]}
+                    >
+                        <SortableContext 
+                            items={productionQueue.map(o => o.id)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            <div className="grid grid-cols-1 gap-4">
+                                {productionQueue.map((order, index) => (
+                                    <SortableServiceOrderCard 
+                                        key={order.id}
+                                        order={order}
+                                        index={index}
+                                        onEdit={handleEditOrder}
+                                        onNotify={handleNotifyClient}
+                                        onUpdate={handleUpdate}
+                                        getStatusColor={getStatusColor}
+                                        getStatusProgress={getStatusProgress}
+                                    />
+                                ))}
+                                {productionQueue.length === 0 && (
+                                     <div className="p-12 text-center text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Fila vazia. Libere OSs na aba Definir.</div>
+                                )}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
                 </TabsContent>
 
                 <TabsContent value="todos">
@@ -618,4 +726,148 @@ const OrdemServico = () => {
 };
 
 export default OrdemServico;
+
+// Componente Interno para Itens Arrastáveis
+interface SortableItemProps {
+    order: ServiceOrder;
+    index: number;
+    onEdit: (order: ServiceOrder) => void;
+    onNotify: (order: ServiceOrder) => void;
+    onUpdate: (id: string, updates: Partial<ServiceOrder>) => void;
+    getStatusColor: (status: any) => string;
+    getStatusProgress: (status: any) => number;
+}
+
+const SortableServiceOrderCard = ({ 
+    order, 
+    index, 
+    onEdit, 
+    onNotify,
+    onUpdate, 
+    getStatusColor, 
+    getStatusProgress 
+}: SortableItemProps) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: order.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 0,
+        opacity: isDragging ? 0.6 : 1,
+    };
+
+    const isUrgent = order.priorityLevel === 'urgente';
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            <Card 
+                className={cn(
+                    "border transition-all duration-300 backdrop-blur-3xl overflow-hidden group relative",
+                    isUrgent ? "border-rose-500/30 bg-rose-500/5 shadow-[0_0_30px_rgba(244,63,94,0.1)]" : "border-white/5 bg-white/[0.02]",
+                    order.status === "Entregue e Finalizado" && "bg-emerald-600/90 border-emerald-400/50"
+                )}
+            >
+                {/* Background Progress Fill */}
+                {order.status !== "Entregue e Finalizado" && (
+                    <div 
+                        className={cn("absolute inset-0 transition-all duration-1000 opacity-[0.08] pointer-events-none", getStatusColor(order.status))}
+                        style={{ width: `${getStatusProgress(order.status)}%` }}
+                    />
+                )}
+
+                <div className="p-2 flex flex-col md:flex-row items-stretch md:items-center gap-4 relative z-10">
+                    {/* Botão de Arraste */}
+                    <div 
+                        {...attributes} 
+                        {...listeners} 
+                        className="flex md:flex-col items-center justify-center p-2 bg-white/5 rounded-2xl gap-2 min-w-[50px] cursor-grab active:cursor-grabbing hover:bg-white/10 transition-colors"
+                    >
+                        <GripVertical className="h-5 w-5 text-white/30" />
+                        <div className="text-[10px] font-black text-white/40">#{index + 1}</div>
+                    </div>
+
+                    <div className="flex-1 p-4">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Select value={order.status} onValueChange={(val) => onUpdate(order.id, { status: val as any })}>
+                                        <SelectTrigger className={cn("h-6 border-none shadow-none text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full", getStatusColor(order.status), "text-white")}>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-900 border-white/10 text-[10px] uppercase font-bold">
+                                            <SelectItem value="Plano de corte">Plano de corte</SelectItem>
+                                            <SelectItem value="Pronto para produção">Pronto para produção</SelectItem>
+                                            <SelectItem value="Corte da caixa">Corte da caixa</SelectItem>
+                                            <SelectItem value="Fita">Fita</SelectItem>
+                                            <SelectItem value="Montagem das caixas">Montagem das caixas</SelectItem>
+                                            <SelectItem value="Corte das portas + Tamponados">Corte das portas + Tamponados</SelectItem>
+                                            <SelectItem value="Colocação dos tamponados">Colocação dos tamponados</SelectItem>
+                                            <SelectItem value="Embalagem">Embalagem</SelectItem>
+                                            <SelectItem value="Pronto para entrega">Pronto para entrega</SelectItem>
+                                            <SelectItem value="Instalação">Instalação</SelectItem>
+                                            <SelectItem value="Entregue e Finalizado">Entregue e Finalizado</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    
+                                    <span className={cn("text-[8px] font-black uppercase tracking-wider", isUrgent ? "text-rose-500" : "text-slate-400")}>
+                                        Prioridade: {order.priorityLevel || 'normal'}
+                                    </span>
+                                    <span className="text-[8px] font-black uppercase tracking-wider text-primary/80 flex items-center gap-1 ml-2">
+                                        <CalendarDays className="h-2 w-2" />
+                                        Previsão: {order.forecastDate.toLocaleDateString()}
+                                    </span>
+                                </div>
+                                <h4 className="text-lg font-black tracking-tight text-white uppercase group-hover:text-primary transition-colors">
+                                    {order.client}
+                                </h4>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                    {order.ticketNumber} - {order.action}
+                                </p>
+                                
+                                {/* Barra de Progresso compacta no fundo */}
+                                <div className="mt-4 w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                    <div 
+                                        className={cn("h-full transition-all duration-1000", order.status === "Entregue e Finalizado" ? "bg-white" : getStatusColor(order.status))}
+                                        style={{ width: `${getStatusProgress(order.status)}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {order.clientPhone && (
+                                    <Button 
+                                        variant="default" 
+                                        size="sm" 
+                                        onClick={() => onNotify(order)} 
+                                        className="text-[10px] font-black uppercase rounded-xl h-8 bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 shadow-lg shadow-emerald-900/20"
+                                    >
+                                        <MessageSquare className="h-3 w-3 text-emerald-200" />
+                                        Notificar
+                                    </Button>
+                                )}
+                                <Button variant="outline" size="sm" onClick={() => onEdit(order)} className="text-[10px] font-black uppercase rounded-xl h-8 border-white/10 hover:bg-white/5">Detalhes</Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {order.productionNotes && (
+                    <div className="px-6 py-3 bg-white/[0.01] border-t border-white/5">
+                        <div className="flex items-center gap-2 mb-1">
+                            <MessageSquare className="h-2.5 w-2.5 text-primary/40" />
+                            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30">Instruções de Produção</span>
+                        </div>
+                        <p className="text-[11px] text-white/60 font-medium italic">"{order.productionNotes}"</p>
+                    </div>
+                )}
+            </Card>
+        </div>
+    );
+};
 
