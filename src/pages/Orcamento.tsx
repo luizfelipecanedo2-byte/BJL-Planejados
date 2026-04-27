@@ -764,7 +764,7 @@ const Orcamento = () => {
                         </DialogContent>
                     </Dialog>
                 </div>
-            </div>
+            </header>
 
             {activeTab === "orcamentos" ? (
                 <>
