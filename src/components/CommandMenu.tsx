@@ -13,7 +13,8 @@ import {
   DollarSign,
   ClipboardList,
   Package,
-  FileText
+  FileText,
+  CheckSquare
 } from "lucide-react";
 import {
   CommandDialog,
@@ -80,6 +81,10 @@ export function CommandMenu() {
           <CommandItem onSelect={() => runCommand(() => navigate("/estoque"))}>
             <Package className="mr-2 h-4 w-4 text-primary" />
             <span className="text-luxury">Estoque</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => navigate("/tarefas"))}>
+            <CheckSquare className="mr-2 h-4 w-4 text-primary" />
+            <span className="text-luxury">Tarefas</span>
           </CommandItem>
         </CommandGroup>
         

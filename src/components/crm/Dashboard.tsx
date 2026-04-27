@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { Sale, STATUS_LABELS, SaleStatus } from "@/types/sale";
 import { formatCurrency, getMetrics } from "@/lib/salesUtils";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DollarSign,
   TrendingUp,
@@ -12,6 +12,11 @@ import {
   BarChart3,
   Receipt,
   Target,
+  CheckSquare,
+  Circle,
+  CheckCircle2,
+  Clock,
+  ArrowRight
 } from "lucide-react";
 import {
   BarChart,
@@ -35,9 +40,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { Link } from "react-router-dom";
+
+interface Task {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+}
 
 interface DashboardProps {
   sales: Sale[];
@@ -46,6 +59,23 @@ interface DashboardProps {
 const Dashboard = ({ sales }: DashboardProps) => {
   const [viewType, setViewType] = useState<"monthly" | "yearly">("monthly");
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+  const [recentTasks, setRecentTasks] = useState<Task[]>([]);
+  const [totalPendingTasks, setTotalPendingTasks] = useState(0);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      const { data, count } = await supabase
+        .from('tasks')
+        .select('*', { count: 'exact' })
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(3);
+      
+      if (data) setRecentTasks(data);
+      if (count !== null) setTotalPendingTasks(count);
+    };
+    fetchTasks();
+  }, []);
 
   // Spotlight effect tracker
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -343,6 +373,14 @@ const Dashboard = ({ sales }: DashboardProps) => {
         icon: XCircle,
         color: "text-rose-500",
         bgColor: "bg-rose-500/10",
+      },
+      {
+        title: "Tarefas Pendentes",
+        value: totalPendingTasks,
+        icon: CheckSquare,
+        color: "text-emerald-500",
+        bgColor: "bg-emerald-500/10",
+        isTask: true,
       }
     ];
 
@@ -517,6 +555,53 @@ const Dashboard = ({ sales }: DashboardProps) => {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="glass-card rounded-[2.5rem] luxury-shadow overflow-hidden group">
+          <CardHeader className="p-8 pb-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/10 rounded-lg">
+                  <CheckSquare className="h-5 w-5 text-emerald-500" />
+                </div>
+                <h3 className="text-sm font-bold text-luxury uppercase tracking-[0.3em] text-emerald-500/80">
+                  Próximas Tarefas
+                </h3>
+              </div>
+              <Link to="/tarefas" className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary/80 flex items-center gap-2 transition-colors">
+                Ver Todas <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="p-8 pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {recentTasks.length > 0 ? (
+                recentTasks.map((task) => (
+                  <div key={task.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-emerald-500/20 transition-all group/task">
+                    <div className="flex items-start gap-3">
+                      <Circle className="h-5 w-5 text-muted-foreground mt-0.5 group-hover/task:text-emerald-500 transition-colors" />
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-luxury group-hover/task:text-primary transition-colors">{task.title}</p>
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "text-[8px] font-black uppercase tracking-widest px-1.5 py-0 rounded",
+                            task.priority === 'high' ? 'bg-rose-500 text-white' : 
+                            task.priority === 'normal' ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'
+                          )}>
+                            {task.priority}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full py-8 text-center bg-white/5 rounded-2xl border border-dashed border-white/10">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Nenhuma tarefa pendente no momento</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   };

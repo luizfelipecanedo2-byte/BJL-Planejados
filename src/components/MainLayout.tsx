@@ -13,7 +13,8 @@ import {
     Calculator,
     Armchair,
     Sofa,
-    Ruler
+    Ruler,
+    CheckSquare
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -79,6 +80,7 @@ const MainLayout = () => {
         { icon: ClipboardList, label: "Ordem de Serviço", path: "/ordem-servico", roles: ['admin'], emoji: "📋" },
         { icon: Package, label: "Estoque", path: "/estoque", roles: ['admin', 'colaborador'], emoji: "📦" },
         { icon: Calendar, label: "Pedidos da Semana", path: "/pedidos-semana", roles: ['admin', 'colaborador'], emoji: "🗓️" },
+        { icon: CheckSquare, label: "Tarefas", path: "/tarefas", roles: ['admin', 'colaborador'], emoji: "✅" },
     ];
 
     const menuItems = allMenuItems.filter(item => {
