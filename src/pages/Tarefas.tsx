@@ -3,7 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send, Pencil } from "lucide-react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { format, isToday, isTomorrow, addDays, startOfWeek, endOfWeek, isWithinInterval, parseISO } from "date-fns";
@@ -29,6 +32,7 @@ interface Task {
     project_name: string | null;
     environment_name: string | null;
     due_date: string;
+    order_index?: number;
 }
 
 interface Profile {
@@ -44,6 +48,7 @@ const Tarefas = () => {
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [userRole, setUserRole] = useState<string | null>(null);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
 
     // Form state
     const [newTitle, setNewTitle] = useState("");
@@ -93,9 +98,55 @@ const Tarefas = () => {
 
         if (error) {
             toast.error("Erro ao carregar tarefas");
+            return;
+        }
+
+        const today = format(new Date(), "yyyy-MM-dd");
+        
+        const tasksToUpdate = (data || []).filter(t => t.status === 'pending' && t.due_date < today);
+        
+        if (tasksToUpdate.length > 0) {
+            // Fire background update
+            Promise.all(
+                tasksToUpdate.map(t => 
+                    supabase.from('tasks').update({ due_date: today }).eq('id', t.id)
+                )
+            ).catch(err => console.error("Error updating overdue tasks:", err));
+            
+            // Optimistically update local data
+            const updatedData = (data || []).map(t => {
+                if (t.status === 'pending' && t.due_date < today) {
+                    return { ...t, due_date: today };
+                }
+                return t;
+            });
+            setTasks(updatedData);
         } else {
             setTasks(data || []);
         }
+    };
+
+    const resetForm = () => {
+        setEditingTask(null);
+        setNewTitle("");
+        setNewDescription("");
+        setNewProject("");
+        setNewEnvironment("");
+        setNewDueDate(format(new Date(), "yyyy-MM-dd"));
+        setNewAssignedTo("all");
+        setNewPriority("normal");
+    };
+
+    const handleEditClick = (task: Task) => {
+        setEditingTask(task);
+        setNewTitle(task.title);
+        setNewDescription(task.description || "");
+        setNewProject(task.project_name || "");
+        setNewEnvironment(task.environment_name || "");
+        setNewDueDate(task.due_date);
+        setNewAssignedTo(task.assigned_to || "all");
+        setNewPriority(task.priority);
+        setIsDialogOpen(true);
     };
 
     const fetchProfiles = async () => {
@@ -125,26 +176,25 @@ const Tarefas = () => {
                 assigned_to: newAssignedTo === "all" ? null : newAssignedTo,
                 priority: newPriority,
                 created_by: user.id,
-                status: 'pending'
+                status: editingTask ? editingTask.status : 'pending'
             };
 
-            const { error } = await supabase.from('tasks').insert([taskData]);
+            if (editingTask) {
+                const { error } = await supabase.from('tasks').update(taskData).eq('id', editingTask.id);
+                if (error) throw error;
+                toast.success("Tarefa atualizada com sucesso!");
+            } else {
+                const { error } = await supabase.from('tasks').insert([taskData]);
+                if (error) throw error;
+                toast.success("Tarefa criada com sucesso!");
+            }
 
-            if (error) throw error;
-
-            toast.success("Tarefa criada com sucesso!");
             setIsDialogOpen(false);
-            setNewTitle("");
-            setNewDescription("");
-            setNewProject("");
-            setNewEnvironment("");
-            setNewDueDate(format(new Date(), "yyyy-MM-dd"));
-            setNewAssignedTo("all");
-            setNewPriority("normal");
+            resetForm();
             fetchTasks();
         } catch (error) {
-            console.error("Error creating task:", error);
-            toast.error("Erro ao criar tarefa");
+            console.error("Error saving task:", error);
+            toast.error("Erro ao salvar tarefa");
         }
     };
 
@@ -287,14 +337,84 @@ const Tarefas = () => {
         );
     };
 
-    const TaskCard = ({ title, tasks, onUpdate }: { title: string, tasks: Task[], onUpdate: () => void }) => {
+    const SortableTaskItem = ({ task, onEdit, onToggleStatus, onDelete }: any) => {
+        const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
+        
+        const style = {
+            transform: CSS.Transform.toString(transform),
+            transition,
+        };
+
+        return (
+            <div ref={setNodeRef} style={style} className="flex items-start gap-3 group/item bg-transparent relative z-10">
+                <div {...attributes} {...listeners} className="mt-1 cursor-grab active:cursor-grabbing opacity-30 hover:opacity-100 flex items-center justify-center shrink-0">
+                    <LayoutGrid className="h-3 w-3 text-white" />
+                </div>
+                <button 
+                    onClick={() => onToggleStatus(task)}
+                    className="mt-0.5 h-4 w-4 rounded-md border border-white/20 flex items-center justify-center hover:border-primary transition-all shrink-0"
+                >
+                    <Circle className="h-2.5 w-2.5 text-transparent group-hover/item:text-primary/40" />
+                </button>
+                <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-white/80 leading-snug break-words">{task.title}</p>
+                </div>
+                <button 
+                    onClick={() => onEdit(task)}
+                    className="opacity-0 group-hover/item:opacity-100 h-4 w-4 text-blue-500/40 hover:text-blue-500 transition-all shrink-0 mr-1"
+                >
+                    <Pencil className="h-3 w-3" />
+                </button>
+                <button 
+                    onClick={() => onDelete(task.id)}
+                    className="opacity-0 group-hover/item:opacity-100 h-4 w-4 text-rose-500/40 hover:text-rose-500 transition-all shrink-0"
+                >
+                    <Trash2 className="h-3 w-3" />
+                </button>
+            </div>
+        );
+    };
+
+    const TaskCard = ({ title, tasks, onUpdate, onEdit }: { title: string, tasks: Task[], onUpdate: () => void, onEdit: (task: Task) => void }) => {
         const [showCompleted, setShowCompleted] = useState(false);
-        const pendingTasks = tasks.filter(t => t.status === 'pending');
+        const [pendingTasks, setPendingTasks] = useState(() => 
+            tasks.filter(t => t.status === 'pending').sort((a,b) => (a.order_index || 0) - (b.order_index || 0))
+        );
         const completedTasks = tasks.filter(t => t.status === 'completed');
         const [projectName, environmentName] = title.split(' - ');
         
-        // Find the most common or first due date from pending tasks to use as default
+        useEffect(() => {
+            setPendingTasks(tasks.filter(t => t.status === 'pending').sort((a,b) => (a.order_index || 0) - (b.order_index || 0)));
+        }, [tasks]);
+
         const defaultDate = pendingTasks.length > 0 ? pendingTasks[0].due_date : format(new Date(), "yyyy-MM-dd");
+
+        const sensors = useSensors(
+            useSensor(PointerSensor),
+            useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+        );
+
+        const handleDragEnd = (event: any) => {
+            const { active, over } = event;
+            if (over && active.id !== over.id) {
+                setPendingTasks((items) => {
+                    const oldIndex = items.findIndex((i) => i.id === active.id);
+                    const newIndex = items.findIndex((i) => i.id === over.id);
+                    const newItems = arrayMove(items, oldIndex, newIndex);
+                    
+                    const updates = newItems.map((item, index) => ({
+                        id: item.id,
+                        order_index: index
+                    }));
+                    
+                    Promise.all(updates.map(u => 
+                        supabase.from('tasks').update({ order_index: u.order_index }).eq('id', u.id)
+                    )).catch(e => console.log('Error updating order', e));
+
+                    return newItems;
+                });
+            }
+        };
 
         return (
             <Card className="glass-card border-white/5 rounded-[2rem] overflow-hidden flex flex-col h-full hover:border-primary/20 transition-all group/card">
@@ -313,25 +433,19 @@ const Tarefas = () => {
                 
                 <CardContent className="p-6 pt-2 flex-1 flex flex-col">
                     <div className="space-y-2 flex-1">
-                        {pendingTasks.map(task => (
-                            <div key={task.id} className="flex items-start gap-3 group/item">
-                                <button 
-                                    onClick={() => handleToggleStatus(task)}
-                                    className="mt-0.5 h-4 w-4 rounded-md border border-white/20 flex items-center justify-center hover:border-primary transition-all shrink-0"
-                                >
-                                    <Circle className="h-2.5 w-2.5 text-transparent group-hover/item:text-primary/40" />
-                                </button>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] font-bold text-white/80 leading-snug break-words">{task.title}</p>
-                                </div>
-                                <button 
-                                    onClick={() => handleDeleteTask(task.id)}
-                                    className="opacity-0 group-hover/item:opacity-100 h-4 w-4 text-rose-500/40 hover:text-rose-500 transition-all shrink-0"
-                                >
-                                    <Trash2 className="h-3 w-3" />
-                                </button>
-                            </div>
-                        ))}
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                            <SortableContext items={pendingTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                                {pendingTasks.map(task => (
+                                    <SortableTaskItem 
+                                        key={task.id} 
+                                        task={task} 
+                                        onEdit={onEdit}
+                                        onToggleStatus={handleToggleStatus}
+                                        onDelete={handleDeleteTask}
+                                    />
+                                ))}
+                            </SortableContext>
+                        </DndContext>
 
                         {completedTasks.length > 0 && (
                             <div className="mt-4 pt-4 border-t border-white/5">
@@ -393,7 +507,10 @@ const Tarefas = () => {
                     </Tabs>
 
                     {userRole === 'admin' && (
-                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                            if (!open) resetForm();
+                            setIsDialogOpen(open);
+                        }}>
                             <DialogTrigger asChild>
                                 <Button className="h-12 px-8 bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all hover:scale-105 active:scale-95 gap-2">
                                     <Plus className="h-4 w-4" />
@@ -403,7 +520,9 @@ const Tarefas = () => {
                             <DialogContent className="glass-card border-white/10 text-white max-w-lg rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
                                 <div className="bg-primary p-8 text-primary-foreground">
                                     <DialogHeader>
-                                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Planejar Atividade</DialogTitle>
+                                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter">
+                                            {editingTask ? "Editar Atividade" : "Planejar Atividade"}
+                                        </DialogTitle>
                                         <p className="text-[10px] opacity-70 font-bold uppercase tracking-widest mt-1">Defina metas e responsabilidades</p>
                                     </DialogHeader>
                                 </div>
@@ -506,7 +625,7 @@ const Tarefas = () => {
                                     </div>
 
                                     <Button type="submit" className="w-full bg-primary hover:bg-primary/80 text-white font-black h-14 rounded-2xl mt-4 uppercase tracking-widest text-sm shadow-xl shadow-primary/20">
-                                        Lançar no Sistema
+                                        {editingTask ? "Salvar Alterações" : "Lançar no Sistema"}
                                     </Button>
                                 </form>
                             </DialogContent>
@@ -538,6 +657,7 @@ const Tarefas = () => {
                                 title={key} 
                                 tasks={tasks} 
                                 onUpdate={fetchTasks} 
+                                onEdit={handleEditClick}
                             />
                         ))}
                     </div>
