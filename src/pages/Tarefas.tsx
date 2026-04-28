@@ -391,7 +391,6 @@ const Tarefas = () => {
                 </div>
             </div>
         );
-        );
     };
 
     const TaskCard = ({ title, tasks, onUpdate, onEdit }: { title: string, tasks: Task[], onUpdate: () => void, onEdit: (task: Task) => void }) => {
