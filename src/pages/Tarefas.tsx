@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { format, isToday, isTomorrow, addDays, startOfWeek, endOfWeek, isWithinInterval, parseISO } from "date-fns";
@@ -218,17 +218,144 @@ const Tarefas = () => {
 
     const filteredTasks = filterTasksByView();
     
-    // Grouping by Project and then Environment
-    const groupedTasks = filteredTasks.reduce((acc: { [project: string]: { [environment: string]: Task[] } }, task) => {
-        const project = task.project_name || "Geral";
-        const environment = task.environment_name || "Geral";
-        
-        if (!acc[project]) acc[project] = {};
-        if (!acc[project][environment]) acc[project][environment] = [];
-        
-        acc[project][environment].push(task);
+    const groupedTasks = filteredTasks.reduce((acc: { [key: string]: Task[] }, task) => {
+        const key = `${task.project_name || "Geral"} - ${task.environment_name || "Geral"}`;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(task);
         return acc;
     }, {});
+
+    const QuickAddTask = ({ project, environment, onCreated }: { project: string, environment: string, onCreated: () => void }) => {
+        const [title, setTitle] = useState("");
+        const [isSubmitting, setIsSubmitting] = useState(false);
+
+        const handleSubmit = async (e: React.FormEvent) => {
+            e.preventDefault();
+            if (!title.trim() || isSubmitting) return;
+
+            setIsSubmitting(true);
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const taskData = {
+                    title: title,
+                    project_name: project,
+                    environment_name: environment,
+                    due_date: format(new Date(), "yyyy-MM-dd"),
+                    created_by: user.id,
+                    status: 'pending',
+                    priority: 'normal'
+                };
+
+                const { error } = await supabase.from('tasks').insert([taskData]);
+                if (error) throw error;
+
+                setTitle("");
+                onCreated();
+            } catch (error) {
+                toast.error("Erro ao adicionar tarefa rápida");
+            } finally {
+                setIsSubmitting(false);
+            }
+        };
+
+        return (
+            <form onSubmit={handleSubmit} className="mt-4 flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/5 focus-within:border-primary/50 transition-all">
+                <Input 
+                    placeholder="Nova tarefa..." 
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="bg-transparent border-none h-8 text-[11px] font-bold focus-visible:ring-0 placeholder:text-muted-foreground/30"
+                />
+                <Button type="submit" size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0" disabled={!title.trim() || isSubmitting}>
+                    <Plus className="h-4 w-4" />
+                </Button>
+            </form>
+        );
+    };
+
+    const TaskCard = ({ title, tasks, onUpdate }: { title: string, tasks: Task[], onUpdate: () => void }) => {
+        const [showCompleted, setShowCompleted] = useState(false);
+        const pendingTasks = tasks.filter(t => t.status === 'pending');
+        const completedTasks = tasks.filter(t => t.status === 'completed');
+        const [projectName, environmentName] = title.split(' - ');
+
+        return (
+            <Card className="glass-card border-white/5 rounded-[2rem] overflow-hidden flex flex-col h-full hover:border-primary/20 transition-all group/card">
+                <CardHeader className="p-6 pb-2">
+                    <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                            <h3 className="text-sm font-black text-white/90 uppercase tracking-tight">{title}</h3>
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                                <CalendarIcon className="h-2.5 w-2.5" />
+                                {format(new Date(), "dd/MM/yyyy")}
+                            </p>
+                        </div>
+                        <LayoutGrid className="h-4 w-4 text-primary/40 group-hover/card:text-primary transition-colors" />
+                    </div>
+                </CardHeader>
+                
+                <CardContent className="p-6 pt-2 flex-1 flex flex-col">
+                    <div className="space-y-2 flex-1">
+                        {pendingTasks.map(task => (
+                            <div key={task.id} className="flex items-start gap-3 group/item">
+                                <button 
+                                    onClick={() => handleToggleStatus(task)}
+                                    className="mt-0.5 h-4 w-4 rounded-md border border-white/20 flex items-center justify-center hover:border-primary transition-all shrink-0"
+                                >
+                                    <Circle className="h-2.5 w-2.5 text-transparent group-hover/item:text-primary/40" />
+                                </button>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] font-bold text-white/80 leading-snug break-words">{task.title}</p>
+                                </div>
+                                <button 
+                                    onClick={() => handleDeleteTask(task.id)}
+                                    className="opacity-0 group-hover/item:opacity-100 h-4 w-4 text-rose-500/40 hover:text-rose-500 transition-all shrink-0"
+                                >
+                                    <Trash2 className="h-3 w-3" />
+                                </button>
+                            </div>
+                        ))}
+
+                        {completedTasks.length > 0 && (
+                            <div className="mt-4 pt-4 border-t border-white/5">
+                                <button 
+                                    onClick={() => setShowCompleted(!showCompleted)}
+                                    className="flex items-center gap-2 text-[10px] font-black text-muted-foreground/50 uppercase tracking-widest hover:text-muted-foreground transition-colors"
+                                >
+                                    {showCompleted ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                    {completedTasks.length} {completedTasks.length === 1 ? 'item concluído' : 'itens concluídos'}
+                                </button>
+                                
+                                {showCompleted && (
+                                    <div className="mt-2 space-y-2">
+                                        {completedTasks.map(task => (
+                                            <div key={task.id} className="flex items-start gap-3 opacity-40">
+                                                <button 
+                                                    onClick={() => handleToggleStatus(task)}
+                                                    className="mt-0.5 h-4 w-4 rounded-md bg-emerald-500 flex items-center justify-center text-white shrink-0"
+                                                >
+                                                    <CheckCircle2 className="h-3 w-3" />
+                                                </button>
+                                                <p className="text-[11px] font-bold text-white line-through leading-snug break-words">{task.title}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    <QuickAddTask 
+                        project={projectName} 
+                        environment={environmentName} 
+                        onCreated={onUpdate} 
+                    />
+                </CardContent>
+            </Card>
+        );
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
@@ -388,154 +515,17 @@ const Tarefas = () => {
                         <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Nenhuma atividade pendente para este período</p>
                     </div>
                 ) : (
-                    Object.entries(groupedTasks).map(([project, environments]) => (
-                        <div key={project} className="space-y-10 bg-white/[0.02] p-8 rounded-[3rem] border border-white/5">
-                            <div className="flex items-center gap-4 group">
-                                <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-xl shadow-primary/10">
-                                    <LayoutGrid className="h-6 w-6" />
-                                </div>
-                                <div>
-                                    <h3 className="text-2xl font-black text-luxury uppercase tracking-tight group-hover:text-primary transition-colors">{project}</h3>
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                        <Badge variant="outline" className="text-[8px] font-black uppercase border-white/10 text-muted-foreground">
-                                            {Object.values(environments).flat().length} ATIVIDADES TOTAIS
-                                        </Badge>
-                                        <div className="h-1 w-1 rounded-full bg-white/20" />
-                                        <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">Projeto Estrutural</span>
-                                    </div>
-                                </div>
-                                <div className="flex-1 h-[1px] bg-gradient-to-r from-white/10 to-transparent ml-4" />
-                            </div>
-
-                            <div className="space-y-12">
-                                {Object.entries(environments).map(([environment, tasks]) => (
-                                    <div key={environment} className="space-y-6 pl-6 border-l-2 border-white/5">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-xl bg-white/5 flex items-center justify-center text-primary/60">
-                                                <LayoutGrid className="h-4 w-4" />
-                                            </div>
-                                            <h4 className="text-sm font-black text-white/80 uppercase tracking-widest">{environment}</h4>
-                                            <Badge variant="secondary" className="bg-white/5 text-[8px] font-black text-muted-foreground">{tasks.length} {tasks.length === 1 ? 'TAREFA' : 'TAREFAS'}</Badge>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            {tasks.map((task) => (
-                                                <Card 
-                                                    key={task.id} 
-                                                    className={cn(
-                                                        "glass-card border-white/5 transition-all duration-500 group/card relative overflow-hidden rounded-[2.5rem]",
-                                                        task.status === 'completed' ? 'opacity-50 grayscale' : 'hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1'
-                                                    )}
-                                                >
-                                                    <div className={cn(
-                                                        "absolute top-0 left-0 w-1.5 h-full transition-all duration-500",
-                                                        getPriorityColor(task.priority),
-                                                        task.status === 'completed' && 'bg-slate-500'
-                                                    )} />
-
-                                                    <CardHeader className="pb-4 pt-8 px-8 flex flex-row items-start justify-between space-y-0">
-                                                        <div className="flex items-center gap-4">
-                                                            <button 
-                                                                onClick={() => handleToggleStatus(task)}
-                                                                className="relative flex items-center justify-center group/check"
-                                                            >
-                                                                {task.status === 'completed' ? (
-                                                                    <div className="h-7 w-7 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
-                                                                        <CheckCircle2 className="h-5 w-5" />
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="h-7 w-7 rounded-xl border-2 border-white/20 flex items-center justify-center text-transparent group-hover/check:border-primary group-hover/check:bg-primary/10 transition-all">
-                                                                        <Circle className="h-4 w-4" />
-                                                                    </div>
-                                                                )}
-                                                            </button>
-                                                            <div className="space-y-1.5">
-                                                                <CardTitle className={cn(
-                                                                    "text-[15px] font-black tracking-tight text-white leading-tight uppercase",
-                                                                    task.status === 'completed' && 'line-through text-muted-foreground'
-                                                                )}>
-                                                                    {task.title}
-                                                                </CardTitle>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-[8px] font-black text-muted-foreground/60 uppercase tracking-widest">{task.priority === 'high' ? 'Crítico' : task.priority === 'normal' ? 'Padrão' : 'Baixo'}</span>
-                                                                    <div className="h-1 w-1 rounded-full bg-white/10" />
-                                                                    <span className="text-[8px] font-black text-primary uppercase tracking-widest">Atividade</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        {userRole === 'admin' && (
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                size="icon" 
-                                                                className="h-8 w-8 text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
-                                                                onClick={() => handleDeleteTask(task.id)}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        )}
-                                                    </CardHeader>
-
-                                                    <CardContent className="px-8 pb-8 space-y-6">
-                                                        {task.description && (
-                                                            <p className="text-[11px] text-white/50 font-bold leading-relaxed">
-                                                                {task.description}
-                                                            </p>
-                                                        )}
-                                                        
-                                                        <div className="pt-6 border-t border-white/5 flex flex-col gap-4">
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="h-6 w-6 rounded-lg bg-white/5 flex items-center justify-center">
-                                                                        <UserIcon className="h-3 w-3 text-muted-foreground" />
-                                                                    </div>
-                                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">
-                                                                        {task.assigned_to ? 'Responsável' : 'Equipe BJL'}
-                                                                    </span>
-                                                                </div>
-                                                                <span className="text-[9px] font-black text-white/80 uppercase">
-                                                                    {task.assigned_to ? `ID: ${task.assigned_to.slice(0,6)}` : 'Geral'}
-                                                                </span>
-                                                            </div>
-
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="h-6 w-6 rounded-lg bg-white/5 flex items-center justify-center">
-                                                                        <CalendarIcon className="h-3 w-3 text-muted-foreground" />
-                                                                    </div>
-                                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Prazo</span>
-                                                                </div>
-                                                                <div className="flex flex-col items-end">
-                                                                    <span className={cn(
-                                                                        "text-[10px] font-black uppercase tracking-tighter",
-                                                                        isToday(parseISO(task.due_date)) ? "text-primary" : 
-                                                                        isTomorrow(parseISO(task.due_date)) ? "text-amber-500" : "text-white/80"
-                                                                    )}>
-                                                                        {isToday(parseISO(task.due_date)) ? 'Hoje' : 
-                                                                         isTomorrow(parseISO(task.due_date)) ? 'Amanhã' : 
-                                                                         format(parseISO(task.due_date), "dd 'de' MMMM", { locale: ptBR })}
-                                                                    </span>
-                                                                    <span className="text-[8px] font-bold text-muted-foreground/30 uppercase">{format(parseISO(task.due_date), "EEEE", { locale: ptBR })}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {task.completed_at && (
-                                                            <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-2 rounded-2xl border border-emerald-500/20">
-                                                                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                                                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">
-                                                                    Entregue em {format(new Date(task.completed_at), "dd/MM 'às' HH:mm")}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {Object.entries(groupedTasks).map(([key, tasks]) => (
+                            <TaskCard 
+                                key={key} 
+                                title={key} 
+                                tasks={tasks} 
+                                onUpdate={fetchTasks} 
+                            />
+                        ))}
+                    </div>
+                )}
                 )}
             </div>
         </div>
