@@ -312,14 +312,14 @@ const Tarefas = () => {
         };
 
         return (
-            <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-2 bg-white/5 p-2 rounded-xl border border-white/5 focus-within:border-primary/50 transition-all">
+            <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 bg-primary/5 p-3 rounded-[1.5rem] border border-primary/10 focus-within:border-primary/30 transition-all shadow-inner">
                 <div className="flex items-center gap-2 px-1">
-                    <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                    <CalendarIcon className="h-3.5 w-3.5 text-primary/60" />
                     <Input 
                         type="date"
                         value={dueDate}
                         onChange={(e) => setDueDate(e.target.value)}
-                        className="bg-transparent border-none h-6 p-0 text-xs w-28 focus-visible:ring-0 text-muted-foreground [color-scheme:dark] shadow-none"
+                        className="bg-transparent border-none h-6 p-0 text-[10px] font-black uppercase tracking-tighter w-28 focus-visible:ring-0 text-muted-foreground [color-scheme:dark] shadow-none"
                     />
                 </div>
                 <div className="flex items-center gap-2">
@@ -327,10 +327,10 @@ const Tarefas = () => {
                         placeholder="Nova tarefa..." 
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="bg-transparent border-none h-8 text-sm font-bold focus-visible:ring-0 placeholder:text-muted-foreground/30 flex-1 px-1"
+                        className="bg-transparent border-none h-8 text-sm font-bold focus-visible:ring-0 placeholder:text-muted-foreground/30 flex-1 px-1 text-white"
                     />
-                    <Button type="submit" size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0" disabled={!title.trim() || isSubmitting}>
-                        <Plus className="h-4 w-4" />
+                    <Button type="submit" size="icon" className="h-9 w-9 bg-primary hover:bg-primary/80 text-black rounded-xl shrink-0 shadow-lg shadow-primary/20" disabled={!title.trim() || isSubmitting}>
+                        <Plus className="h-5 w-5" />
                     </Button>
                 </div>
             </form>
@@ -346,37 +346,68 @@ const Tarefas = () => {
         };
 
         return (
-            <div ref={setNodeRef} style={style} className="flex items-start gap-3 group/item bg-transparent relative z-10">
-                <div {...attributes} {...listeners} className="mt-1 cursor-grab active:cursor-grabbing opacity-30 hover:opacity-100 flex items-center justify-center shrink-0">
-                    <LayoutGrid className="h-3 w-3 text-white" />
+            <div 
+                ref={setNodeRef} 
+                style={style} 
+                className="flex items-center gap-3 group/item bg-white/[0.03] backdrop-blur-md hover:bg-white/[0.07] p-3.5 rounded-[1.2rem] border border-white/5 hover:border-primary/30 transition-all duration-300 relative z-10 luxury-shadow mb-3"
+            >
+                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing opacity-0 group-hover/item:opacity-40 hover:!opacity-100 flex items-center justify-center shrink-0 transition-opacity">
+                    <LayoutGrid className="h-3.5 w-3.5 text-white" />
                 </div>
+                
                 <button 
                     onClick={() => onToggleStatus(task)}
-                    className="mt-0.5 h-4 w-4 rounded-md border border-white/20 flex items-center justify-center hover:border-primary transition-all shrink-0"
+                    className="h-6 w-6 rounded-full border-2 border-white/10 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-all shrink-0 group/check"
                 >
-                    <Circle className="h-2.5 w-2.5 text-transparent group-hover/item:text-primary/40" />
+                    <Circle className="h-3 w-3 text-transparent group-hover/check:text-primary/60 transition-colors" />
                 </button>
+
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white/90 leading-snug break-words">{task.title}</p>
+                    <div className="flex items-center gap-2 mb-0.5">
+                        <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", 
+                            task.priority === 'high' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 
+                            task.priority === 'normal' ? 'bg-amber-500' : 'bg-emerald-500'
+                        )} />
+                        <p className="text-[13px] font-bold text-white/90 leading-tight break-words font-['Outfit']">{task.title}</p>
+                    </div>
+                    {task.description && (
+                        <p className="text-[10px] text-muted-foreground/60 line-clamp-1 pl-3.5 italic">{task.description}</p>
+                    )}
                 </div>
-                <button 
-                    onClick={() => onEdit(task)}
-                    className="opacity-0 group-hover/item:opacity-100 h-4 w-4 text-blue-500/40 hover:text-blue-500 transition-all shrink-0 mr-1"
-                >
-                    <Pencil className="h-3 w-3" />
-                </button>
-                <button 
-                    onClick={() => onDelete(task.id)}
-                    className="opacity-0 group-hover/item:opacity-100 h-4 w-4 text-rose-500/40 hover:text-rose-500 transition-all shrink-0"
-                >
-                    <Trash2 className="h-3 w-3" />
-                </button>
+
+                <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                    <button 
+                        onClick={() => onEdit(task)}
+                        className="h-7 w-7 flex items-center justify-center rounded-lg text-blue-400/60 hover:text-blue-400 hover:bg-blue-400/10 transition-all shrink-0"
+                    >
+                        <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button 
+                        onClick={() => onDelete(task.id)}
+                        className="h-7 w-7 flex items-center justify-center rounded-lg text-rose-400/60 hover:text-rose-400 hover:bg-rose-400/10 transition-all shrink-0"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                </div>
             </div>
+        );
         );
     };
 
     const TaskCard = ({ title, tasks, onUpdate, onEdit }: { title: string, tasks: Task[], onUpdate: () => void, onEdit: (task: Task) => void }) => {
         const [showCompleted, setShowCompleted] = useState(false);
+        const cardRef = (window as any).useRef?.() || { current: null }; // Workaround if useRef isn't imported, but it is in React
+        
+        // Spotlight effect logic
+        const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+            const card = e.currentTarget;
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            card.style.setProperty("--mouse-x", `${x}px`);
+            card.style.setProperty("--mouse-y", `${y}px`);
+        };
+
         const [pendingTasks, setPendingTasks] = useState(() => 
             tasks.filter(t => t.status === 'pending').sort((a,b) => (a.order_index || 0) - (b.order_index || 0))
         );
@@ -417,57 +448,74 @@ const Tarefas = () => {
         };
 
         return (
-            <Card className="glass-card border-white/5 rounded-[2rem] overflow-hidden flex flex-col h-full hover:border-primary/20 transition-all group/card">
-                <CardHeader className="p-6 pb-2">
+            <Card 
+                onMouseMove={handleMouseMove}
+                className="glass-card border-white/5 rounded-[2.5rem] overflow-hidden flex flex-col h-full hover:border-primary/30 transition-all duration-700 group/card luxury-shadow spotlight-card tilt-card"
+            >
+                <CardHeader className="p-7 pb-4">
                     <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                            <h3 className="text-base font-black text-white/90 uppercase tracking-tight">{title}</h3>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                                <CalendarIcon className="h-2.5 w-2.5" />
-                                {format(new Date(), "dd/MM/yyyy")}
-                            </p>
+                        <div className="space-y-1.5">
+                            <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                                {title}
+                            </h3>
+                            <div className="flex items-center gap-3">
+                                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full">
+                                    <CalendarIcon className="h-2.5 w-2.5 text-primary/60" />
+                                    {format(new Date(), "dd MMM", { locale: ptBR })}
+                                </p>
+                                <p className="text-[9px] font-black text-primary/60 uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded-full">
+                                    {pendingTasks.length} {pendingTasks.length === 1 ? 'Pendente' : 'Pendentes'}
+                                </p>
+                            </div>
                         </div>
-                        <LayoutGrid className="h-4 w-4 text-primary/40 group-hover/card:text-primary transition-colors" />
+                        <div className="h-10 w-10 rounded-2xl bg-white/[0.03] flex items-center justify-center border border-white/5 group-hover/card:border-primary/40 group-hover/card:bg-primary/10 transition-all duration-500">
+                            <LayoutGrid className="h-5 w-5 text-primary/40 group-hover/card:text-primary transition-colors" />
+                        </div>
                     </div>
                 </CardHeader>
                 
-                <CardContent className="p-6 pt-2 flex-1 flex flex-col">
-                    <div className="space-y-2 flex-1">
+                <CardContent className="p-7 pt-2 flex-1 flex flex-col">
+                    <div className="flex-1">
                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                             <SortableContext items={pendingTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                                {pendingTasks.map(task => (
-                                    <SortableTaskItem 
-                                        key={task.id} 
-                                        task={task} 
-                                        onEdit={onEdit}
-                                        onToggleStatus={handleToggleStatus}
-                                        onDelete={handleDeleteTask}
-                                    />
-                                ))}
+                                <div className="space-y-1">
+                                    {pendingTasks.map(task => (
+                                        <SortableTaskItem 
+                                            key={task.id} 
+                                            task={task} 
+                                            onEdit={onEdit}
+                                            onToggleStatus={handleToggleStatus}
+                                            onDelete={handleDeleteTask}
+                                        />
+                                    ))}
+                                </div>
                             </SortableContext>
                         </DndContext>
 
                         {completedTasks.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-white/5">
+                            <div className="mt-6 pt-5 border-t border-white/5">
                                 <button 
                                     onClick={() => setShowCompleted(!showCompleted)}
-                                    className="flex items-center gap-2 text-xs font-black text-muted-foreground/50 uppercase tracking-widest hover:text-muted-foreground transition-colors"
+                                    className="flex items-center gap-2 text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] hover:text-primary/60 transition-colors group/completed"
                                 >
-                                    {showCompleted ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                    <div className="h-4 w-4 rounded-full border border-white/10 flex items-center justify-center group-hover/completed:border-primary/40 transition-colors">
+                                        {showCompleted ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+                                    </div>
                                     {completedTasks.length} {completedTasks.length === 1 ? 'item concluído' : 'itens concluídos'}
                                 </button>
                                 
                                 {showCompleted && (
-                                    <div className="mt-2 space-y-2">
+                                    <div className="mt-4 space-y-3">
                                         {completedTasks.map(task => (
-                                            <div key={task.id} className="flex items-start gap-3 opacity-40">
+                                            <div key={task.id} className="flex items-center gap-3 bg-emerald-500/[0.03] p-3 rounded-[1rem] border border-emerald-500/5 opacity-40 hover:opacity-60 transition-opacity">
                                                 <button 
                                                     onClick={() => handleToggleStatus(task)}
-                                                    className="mt-0.5 h-4 w-4 rounded-md bg-emerald-500 flex items-center justify-center text-white shrink-0"
+                                                    className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center text-black shrink-0"
                                                 >
                                                     <CheckCircle2 className="h-3 w-3" />
                                                 </button>
-                                                <p className="text-sm font-bold text-white line-through leading-snug break-words">{task.title}</p>
+                                                <p className="text-xs font-bold text-white line-through leading-tight font-['Outfit']">{task.title}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -492,17 +540,17 @@ const Tarefas = () => {
             {/* Header Section */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div>
-                    <h2 className="text-4xl font-black tracking-tighter text-luxury shimmer-gold uppercase">CRM de Tarefas</h2>
+                    <h2 className="text-5xl font-black tracking-tighter text-luxury shimmer-gold uppercase leading-none">Gestão de Operações</h2>
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground mt-2 opacity-60">Operação & Planejamento Estratégico</p>
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3">
                     <Tabs value={activeView} onValueChange={setActiveView} className="bg-white/5 border border-white/10 p-1 rounded-2xl h-12 shadow-inner">
                         <TabsList className="bg-transparent h-full">
-                            <TabsTrigger value="hoje" className="px-5 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[9px] tracking-widest transition-all">Hoje</TabsTrigger>
-                            <TabsTrigger value="amanha" className="px-5 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[9px] tracking-widest transition-all">Amanhã</TabsTrigger>
-                            <TabsTrigger value="semana" className="px-5 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[9px] tracking-widest transition-all">Semana</TabsTrigger>
-                            <TabsTrigger value="todas" className="px-5 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[9px] tracking-widest transition-all">Todas</TabsTrigger>
+                            <TabsTrigger value="hoje" className="px-6 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all">Hoje</TabsTrigger>
+                            <TabsTrigger value="amanha" className="px-6 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all">Amanhã</TabsTrigger>
+                            <TabsTrigger value="semana" className="px-6 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all">Semana</TabsTrigger>
+                            <TabsTrigger value="todas" className="px-6 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all">Todas</TabsTrigger>
                         </TabsList>
                     </Tabs>
 
