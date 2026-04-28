@@ -349,10 +349,10 @@ const Tarefas = () => {
             <div 
                 ref={setNodeRef} 
                 style={style} 
-                className="flex items-center gap-3 group/item bg-white/[0.03] backdrop-blur-md hover:bg-white/[0.07] p-3.5 rounded-[1.2rem] border border-white/5 hover:border-primary/30 transition-all duration-300 relative z-10 luxury-shadow mb-3"
+                className="flex items-center gap-4 group/item bg-[#1a1a1a]/60 backdrop-blur-xl hover:bg-[#252525]/80 p-4 rounded-[1.5rem] border border-white/10 hover:border-primary/40 transition-all duration-500 relative z-10 shadow-[0_8px_20px_rgba(0,0,0,0.4)] mb-4 hover:-translate-y-1 active:scale-[0.98]"
             >
-                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing opacity-0 group-hover/item:opacity-40 hover:!opacity-100 flex items-center justify-center shrink-0 transition-opacity">
-                    <LayoutGrid className="h-3.5 w-3.5 text-white" />
+                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing opacity-20 group-hover/item:opacity-100 flex items-center justify-center shrink-0 transition-opacity p-1 hover:bg-white/5 rounded-lg">
+                    <LayoutGrid className="h-4 w-4 text-primary/60" />
                 </div>
                 
                 <button 
