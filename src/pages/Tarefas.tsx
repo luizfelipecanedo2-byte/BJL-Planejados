@@ -225,8 +225,9 @@ const Tarefas = () => {
         return acc;
     }, {});
 
-    const QuickAddTask = ({ project, environment, onCreated }: { project: string, environment: string, onCreated: () => void }) => {
+    const QuickAddTask = ({ project, environment, defaultDate, onCreated }: { project: string, environment: string, defaultDate: string, onCreated: () => void }) => {
         const [title, setTitle] = useState("");
+        const [dueDate, setDueDate] = useState(defaultDate);
         const [isSubmitting, setIsSubmitting] = useState(false);
 
         const handleSubmit = async (e: React.FormEvent) => {
@@ -242,7 +243,7 @@ const Tarefas = () => {
                     title: title,
                     project_name: project,
                     environment_name: environment,
-                    due_date: format(new Date(), "yyyy-MM-dd"),
+                    due_date: dueDate,
                     created_by: user.id,
                     status: 'pending',
                     priority: 'normal'
@@ -261,16 +262,27 @@ const Tarefas = () => {
         };
 
         return (
-            <form onSubmit={handleSubmit} className="mt-4 flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/5 focus-within:border-primary/50 transition-all">
-                <Input 
-                    placeholder="Nova tarefa..." 
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="bg-transparent border-none h-8 text-[11px] font-bold focus-visible:ring-0 placeholder:text-muted-foreground/30"
-                />
-                <Button type="submit" size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0" disabled={!title.trim() || isSubmitting}>
-                    <Plus className="h-4 w-4" />
-                </Button>
+            <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-2 bg-white/5 p-2 rounded-xl border border-white/5 focus-within:border-primary/50 transition-all">
+                <div className="flex items-center gap-2 px-1">
+                    <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                    <Input 
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        className="bg-transparent border-none h-6 p-0 text-[10px] w-24 focus-visible:ring-0 text-muted-foreground [color-scheme:dark] shadow-none"
+                    />
+                </div>
+                <div className="flex items-center gap-2">
+                    <Input 
+                        placeholder="Nova tarefa..." 
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="bg-transparent border-none h-8 text-[11px] font-bold focus-visible:ring-0 placeholder:text-muted-foreground/30 flex-1 px-1"
+                    />
+                    <Button type="submit" size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0" disabled={!title.trim() || isSubmitting}>
+                        <Plus className="h-4 w-4" />
+                    </Button>
+                </div>
             </form>
         );
     };
@@ -280,6 +292,9 @@ const Tarefas = () => {
         const pendingTasks = tasks.filter(t => t.status === 'pending');
         const completedTasks = tasks.filter(t => t.status === 'completed');
         const [projectName, environmentName] = title.split(' - ');
+        
+        // Find the most common or first due date from pending tasks to use as default
+        const defaultDate = pendingTasks.length > 0 ? pendingTasks[0].due_date : format(new Date(), "yyyy-MM-dd");
 
         return (
             <Card className="glass-card border-white/5 rounded-[2rem] overflow-hidden flex flex-col h-full hover:border-primary/20 transition-all group/card">
@@ -350,6 +365,7 @@ const Tarefas = () => {
                     <QuickAddTask 
                         project={projectName} 
                         environment={environmentName} 
+                        defaultDate={defaultDate}
                         onCreated={onUpdate} 
                     />
                 </CardContent>
