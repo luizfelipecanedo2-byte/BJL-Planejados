@@ -319,7 +319,7 @@ const Tarefas = () => {
                         type="date"
                         value={dueDate}
                         onChange={(e) => setDueDate(e.target.value)}
-                        className="bg-transparent border-none h-6 p-0 text-[10px] w-24 focus-visible:ring-0 text-muted-foreground [color-scheme:dark] shadow-none"
+                        className="bg-transparent border-none h-6 p-0 text-xs w-28 focus-visible:ring-0 text-muted-foreground [color-scheme:dark] shadow-none"
                     />
                 </div>
                 <div className="flex items-center gap-2">
@@ -327,7 +327,7 @@ const Tarefas = () => {
                         placeholder="Nova tarefa..." 
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="bg-transparent border-none h-8 text-[11px] font-bold focus-visible:ring-0 placeholder:text-muted-foreground/30 flex-1 px-1"
+                        className="bg-transparent border-none h-8 text-sm font-bold focus-visible:ring-0 placeholder:text-muted-foreground/30 flex-1 px-1"
                     />
                     <Button type="submit" size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0" disabled={!title.trim() || isSubmitting}>
                         <Plus className="h-4 w-4" />
@@ -357,7 +357,7 @@ const Tarefas = () => {
                     <Circle className="h-2.5 w-2.5 text-transparent group-hover/item:text-primary/40" />
                 </button>
                 <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-bold text-white/80 leading-snug break-words">{task.title}</p>
+                    <p className="text-sm font-bold text-white/90 leading-snug break-words">{task.title}</p>
                 </div>
                 <button 
                     onClick={() => onEdit(task)}
@@ -421,8 +421,8 @@ const Tarefas = () => {
                 <CardHeader className="p-6 pb-2">
                     <div className="flex justify-between items-start">
                         <div className="space-y-1">
-                            <h3 className="text-sm font-black text-white/90 uppercase tracking-tight">{title}</h3>
-                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                            <h3 className="text-base font-black text-white/90 uppercase tracking-tight">{title}</h3>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                                 <CalendarIcon className="h-2.5 w-2.5" />
                                 {format(new Date(), "dd/MM/yyyy")}
                             </p>
@@ -451,7 +451,7 @@ const Tarefas = () => {
                             <div className="mt-4 pt-4 border-t border-white/5">
                                 <button 
                                     onClick={() => setShowCompleted(!showCompleted)}
-                                    className="flex items-center gap-2 text-[10px] font-black text-muted-foreground/50 uppercase tracking-widest hover:text-muted-foreground transition-colors"
+                                    className="flex items-center gap-2 text-xs font-black text-muted-foreground/50 uppercase tracking-widest hover:text-muted-foreground transition-colors"
                                 >
                                     {showCompleted ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                                     {completedTasks.length} {completedTasks.length === 1 ? 'item concluído' : 'itens concluídos'}
@@ -467,7 +467,7 @@ const Tarefas = () => {
                                                 >
                                                     <CheckCircle2 className="h-3 w-3" />
                                                 </button>
-                                                <p className="text-[11px] font-bold text-white line-through leading-snug break-words">{task.title}</p>
+                                                <p className="text-sm font-bold text-white line-through leading-snug break-words">{task.title}</p>
                                             </div>
                                         ))}
                                     </div>
