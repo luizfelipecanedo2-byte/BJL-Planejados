@@ -349,10 +349,10 @@ const Tarefas = () => {
             <div 
                 ref={setNodeRef} 
                 style={style} 
-                className="flex items-center gap-4 group/item bg-[#1a1a1a]/60 backdrop-blur-xl hover:bg-[#252525]/80 p-4 rounded-[1.5rem] border border-white/10 hover:border-primary/40 transition-all duration-500 relative z-10 shadow-[0_8px_20px_rgba(0,0,0,0.4)] mb-4 hover:-translate-y-1 active:scale-[0.98]"
+                className="flex items-center gap-4 group/item bg-gradient-to-br from-[#1a1a1a]/80 to-[#121212]/90 backdrop-blur-2xl hover:from-[#252525]/90 hover:to-[#1a1a1a]/95 p-4 rounded-full border border-white/10 hover:border-primary/50 transition-all duration-500 relative z-10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] mb-4 hover:-translate-y-1.5 active:scale-[0.97] group/bubble"
             >
-                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing opacity-20 group-hover/item:opacity-100 flex items-center justify-center shrink-0 transition-opacity p-1 hover:bg-white/5 rounded-lg">
-                    <LayoutGrid className="h-4 w-4 text-primary/60" />
+                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing opacity-20 group-hover/item:opacity-100 flex items-center justify-center shrink-0 transition-opacity p-1.5 hover:bg-white/10 rounded-full">
+                    <LayoutGrid className="h-4 w-4 text-primary/60 group-hover/bubble:text-primary transition-colors" />
                 </div>
                 
                 <button 
