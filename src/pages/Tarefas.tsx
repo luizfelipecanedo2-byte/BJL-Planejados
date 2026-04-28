@@ -526,7 +526,6 @@ const Tarefas = () => {
                         ))}
                     </div>
                 )}
-                )}
             </div>
         </div>
     );
