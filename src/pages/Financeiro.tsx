@@ -30,7 +30,6 @@ import DRETab from "@/components/financeiro/DRETab";
 import ConciliationTab from "@/components/financeiro/ConciliationTab";
 import AssetsTab from "@/components/financeiro/AssetsTab";
 import ServiceExpensesTab from "@/components/financeiro/ServiceExpensesTab";
-import DDAAnalysisTab from "@/components/financeiro/DDAAnalysisTab";
 import NotaFiscalTab from "@/components/financeiro/NotaFiscalTab";
 
 const Financeiro = () => {
@@ -907,10 +906,6 @@ const Financeiro = () => {
               <TrendingUp className="mr-3 h-4 w-4" />
               <span className="font-black text-[10px] uppercase tracking-widest">Dashboard</span>
             </TabsTrigger>
-            <TabsTrigger value="dda_analysis" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-2xl transition-all duration-500 text-blue-400">
-              <FileSearch className="mr-3 h-4 w-4" />
-              <span className="font-black text-[10px] uppercase tracking-widest">DDA</span>
-            </TabsTrigger>
             <TabsTrigger value="lancamentos" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
               <DollarSign className="mr-3 h-4 w-4" />
               <span className="font-black text-[10px] uppercase tracking-widest">Lançamentos</span>
@@ -960,10 +955,6 @@ const Financeiro = () => {
             formatCurrency={formatCurrency}
             handleEditTransaction={handleEditTransaction}
           />
-        </TabsContent>
-
-        <TabsContent value="dda_analysis">
-          <DDAAnalysisTab onTransactionUpdate={fetchTransactions} />
         </TabsContent>
 
         <TabsContent value="lancamentos" className="space-y-6">
