@@ -31,3 +31,13 @@ create policy "Allow all access to sales for authenticated users"
   on public.sales for all
   using (true)
   with check (true);
+
+-- 4. Corrige acesso às tarefas (RLS)
+alter table public.tasks enable row level security;
+
+drop policy if exists "Allow all access to tasks for authenticated users" on public.tasks;
+
+create policy "Allow all access to tasks for authenticated users"
+  on public.tasks for all
+  using (true)
+  with check (true);
