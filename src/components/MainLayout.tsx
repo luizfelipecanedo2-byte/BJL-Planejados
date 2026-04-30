@@ -26,6 +26,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { CommandMenu } from "./CommandMenu";
 import { Search } from "lucide-react";
+import { NotificationBell } from "./notifications/NotificationBell";
+import { checkAndNotifyOverdueTasks } from "@/lib/notifications";
 
 const MainLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -64,6 +66,7 @@ const MainLayout = () => {
             }
         };
         fetchUserProfile();
+        checkAndNotifyOverdueTasks();
     }, []);
 
     const handleLogout = async () => {
@@ -73,14 +76,14 @@ const MainLayout = () => {
     };
 
     const allMenuItems = [
-        { icon: TrendingUp, label: "CRM", path: "/", roles: ['admin'], emoji: "📊" },
-        { icon: Calculator, label: "Orçamento", path: "/orcamento", roles: ['admin'], emoji: "💰" },
-        { icon: Users, label: "Cliente e Fornecedores", path: "/clientes", roles: ['admin'], emoji: "👥" },
-        { icon: DollarSign, label: "Financeiro", path: "/financeiro", roles: ['admin'], emoji: "🏦" },
-        { icon: ClipboardList, label: "Ordem de Serviço", path: "/ordem-servico", roles: ['admin'], emoji: "📋" },
-        { icon: Package, label: "Estoque", path: "/estoque", roles: ['admin', 'colaborador'], emoji: "📦" },
-        { icon: Calendar, label: "Pedidos da Semana", path: "/pedidos-semana", roles: ['admin', 'colaborador'], emoji: "🗓️" },
-        { icon: CheckSquare, label: "Tarefas", path: "/tarefas", roles: ['admin', 'colaborador'], emoji: "✅" },
+        { icon: TrendingUp, label: "CRM", path: "/admin", roles: ['admin'], emoji: "📊" },
+        { icon: Calculator, label: "Orçamento", path: "/admin/orcamento", roles: ['admin'], emoji: "💰" },
+        { icon: Users, label: "Cliente e Fornecedores", path: "/admin/clientes", roles: ['admin'], emoji: "👥" },
+        { icon: DollarSign, label: "Financeiro", path: "/admin/financeiro", roles: ['admin'], emoji: "🏦" },
+        { icon: ClipboardList, label: "Ordem de Serviço", path: "/admin/ordem-servico", roles: ['admin'], emoji: "📋" },
+        { icon: Package, label: "Estoque", path: "/admin/estoque", roles: ['admin', 'colaborador'], emoji: "📦" },
+        { icon: Calendar, label: "Pedidos da Semana", path: "/admin/pedidos-semana", roles: ['admin', 'colaborador'], emoji: "🗓️" },
+        { icon: CheckSquare, label: "Tarefas", path: "/admin/tarefas", roles: ['admin', 'colaborador'], emoji: "✅" },
     ];
 
     const menuItems = allMenuItems.filter(item => {
@@ -224,6 +227,7 @@ const MainLayout = () => {
                         </div>
                         
                         <div className="flex items-center gap-2">
+                             <NotificationBell />
                              <Button
                                 variant="ghost"
                                 size="icon"

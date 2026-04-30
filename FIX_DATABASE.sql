@@ -41,3 +41,32 @@ create policy "Allow all access to tasks for authenticated users"
   on public.tasks for all
   using (true)
   with check (true);
+
+-- 5. Sistema de Notificações
+create table if not exists public.notifications (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id),
+  title text not null,
+  message text not null,
+  type text default 'info',
+  read boolean default false,
+  link text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.notifications enable row level security;
+
+drop policy if exists "Users can view their own notifications" on public.notifications;
+create policy "Users can view their own notifications"
+  on public.notifications for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can update their own notifications" on public.notifications;
+create policy "Users can update their own notifications"
+  on public.notifications for update
+  using (auth.uid() = user_id);
+
+drop policy if exists "Anyone can create notifications" on public.notifications;
+create policy "Anyone can create notifications"
+  on public.notifications for insert
+  with check (true);

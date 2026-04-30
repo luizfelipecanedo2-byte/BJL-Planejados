@@ -16,6 +16,7 @@ import Clientes from "./pages/Clientes";
 import Orcamento from "./pages/Orcamento";
 import Login from "./pages/Login";
 import Tarefas from "./pages/Tarefas";
+import LandingPage from "./pages/LandingPage";
 
 const queryClient = new QueryClient();
 
@@ -121,19 +122,21 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={!session ? <Login /> : <Navigate to="/admin" />} />
 
-            <Route path="/" element={session ? <MainLayout /> : <Navigate to="/login" />}>
-              <Route index element={isAdmin ? <Index /> : <Navigate to="/estoque" />} />
-              <Route path="financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/estoque" />} />
-              <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="/estoque" />} />
-              <Route path="ordem-servico" element={isAdmin ? <OrdemServico /> : <Navigate to="/estoque" />} />
-              <Route path="orcamento" element={isAdmin ? <Orcamento /> : <Navigate to="/estoque" />} />
+            <Route path="/admin" element={session ? <MainLayout /> : <Navigate to="/login" />}>
+              <Route index element={isAdmin ? <Index /> : <Navigate to="estoque" />} />
+              <Route path="financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="estoque" />} />
+              <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="estoque" />} />
+              <Route path="ordem-servico" element={isAdmin ? <OrdemServico /> : <Navigate to="estoque" />} />
+              <Route path="orcamento" element={isAdmin ? <Orcamento /> : <Navigate to="estoque" />} />
               <Route path="estoque" element={<Estoque />} />
               <Route path="pedidos-semana" element={<PedidosSemana />} />
               <Route path="tarefas" element={<Tarefas />} />
               <Route path="*" element={<NotFound />} />
             </Route>
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>

@@ -8,14 +8,19 @@ import { Client } from "@/types/client";
 import ClientTable from "@/components/crm/ClientTable";
 import ClientFormDialog from "@/components/crm/ClientFormDialog";
 import { supabase } from "@/lib/supabase";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MagicButton } from "@/components/ui/magic-button";
+import ClientTimeline from "@/components/crm/ClientTimeline";
+import ClientFilesDialog from "@/components/crm/ClientFilesDialog";
 
 const Clientes = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<Client | null>(null);
     const [activeTab, setActiveTab] = useState("cliente");
+    const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+    const [selectedTimelineClient, setSelectedTimelineClient] = useState<Client | null>(null);
+    const [isFilesOpen, setIsFilesOpen] = useState(false);
+    const [selectedFilesClient, setSelectedFilesClient] = useState<Client | null>(null);
 
     useEffect(() => {
         fetchClients();
@@ -60,6 +65,16 @@ const Clientes = () => {
     const handleEditClient = (client: Client) => {
         setEditingClient(client);
         setIsDialogOpen(true);
+    };
+
+    const handleViewTimeline = (client: Client) => {
+        setSelectedTimelineClient(client);
+        setIsTimelineOpen(true);
+    };
+
+    const handleViewFiles = (client: Client) => {
+        setSelectedFilesClient(client);
+        setIsFilesOpen(true);
     };
 
     const handleDeleteClient = async (id: string) => {
@@ -206,6 +221,8 @@ const Clientes = () => {
                                 clients={clients.filter(c => c.type === 'cliente')}
                                 onEdit={handleEditClient}
                                 onDelete={handleDeleteClient}
+                                onViewTimeline={handleViewTimeline}
+                                onViewFiles={handleViewFiles}
                             />
                         </CardContent>
                     </Card>
@@ -221,6 +238,8 @@ const Clientes = () => {
                                 clients={clients.filter(c => c.type === 'fornecedor')}
                                 onEdit={handleEditClient}
                                 onDelete={handleDeleteClient}
+                                onViewTimeline={handleViewTimeline}
+                                onViewFiles={handleViewFiles}
                             />
                         </CardContent>
                     </Card>
@@ -234,6 +253,18 @@ const Clientes = () => {
                 onUpdate={handleUpdate}
                 editingClient={editingClient}
                 initialType={activeTab as "cliente" | "fornecedor"}
+            />
+
+            <ClientTimeline
+                client={selectedTimelineClient}
+                open={isTimelineOpen}
+                onOpenChange={setIsTimelineOpen}
+            />
+
+            <ClientFilesDialog
+                client={selectedFilesClient}
+                open={isFilesOpen}
+                onOpenChange={setIsFilesOpen}
             />
         </div>
     );

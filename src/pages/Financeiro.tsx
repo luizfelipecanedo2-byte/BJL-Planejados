@@ -32,6 +32,7 @@ import AssetsTab from "@/components/financeiro/AssetsTab";
 import ServiceExpensesTab from "@/components/financeiro/ServiceExpensesTab";
 import NotaFiscalTab from "@/components/financeiro/NotaFiscalTab";
 import PartialPaymentDialog from "@/components/financeiro/PartialPaymentDialog";
+import ProfitabilityTab from "@/components/financeiro/ProfitabilityTab";
 
 const Financeiro = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -984,6 +985,10 @@ const Financeiro = () => {
               <Receipt className="mr-3 h-4 w-4" />
               <span className="font-black text-[10px] uppercase tracking-widest">Notas</span>
             </TabsTrigger>
+            <TabsTrigger value="profitability" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <Target className="mr-3 h-4 w-4" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Rentabilidade</span>
+            </TabsTrigger>
             <TabsTrigger value="patrimonio" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
               <Package className="mr-3 h-4 w-4" />
               <span className="font-black text-[10px] uppercase tracking-widest">Ativos</span>
@@ -1164,6 +1169,7 @@ const Financeiro = () => {
         <TabsContent value="gastos_servicos"><ServiceExpensesTab serviceExpenses={serviceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="conciliacao"><ConciliationTab selectedAccount={selectedAccount} setSelectedAccount={setSelectedAccount} currentDateReconciliation={currentDateReconciliation} handlePrevMonth={handlePrevMonth} handleNextMonth={handleNextMonth} totalAccountBalance={totalAccountBalance} reconciliationDailyData={reconciliationDailyData} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="notas_fiscais"><NotaFiscalTab /></TabsContent>
+        <TabsContent value="profitability"><ProfitabilityTab /></TabsContent>
         <TabsContent value="patrimonio"><AssetsTab assets={assets} handleNewAsset={handleNewAsset} formatCurrency={formatCurrency} /></TabsContent>
       </Tabs>
 
