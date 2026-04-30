@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, FileImage } from "lucide-react";
+import { Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, FileImage, Split } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ interface TransactionTableProps {
     onSelectAll: (ids: string[]) => void;
     onEdit: (transaction: Transaction) => void;
     onDelete: (id: string) => void;
+    onPartialPayment?: (transaction: Transaction) => void;
 }
 
 const TransactionTable = ({
@@ -30,7 +31,8 @@ const TransactionTable = ({
     onSelect,
     onSelectAll,
     onEdit,
-    onDelete
+    onDelete,
+    onPartialPayment
 }: TransactionTableProps) => {
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
@@ -86,6 +88,17 @@ const TransactionTable = ({
                                             onClick={() => window.open(transaction.boletoUrl, '_blank')}
                                         >
                                             <FileImage className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                    {!isPaid && onPartialPayment && (
+                                        <Button 
+                                            variant="outline" 
+                                            size="icon" 
+                                            className="h-9 w-9 text-amber-500 border-amber-100" 
+                                            onClick={() => onPartialPayment(transaction)}
+                                            title="Baixa Parcial"
+                                        >
+                                            <Split className="h-4 w-4" />
                                         </Button>
                                     )}
                                     <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => onEdit(transaction)}>
@@ -237,6 +250,17 @@ const TransactionTable = ({
                                                     title="Ver Boleto"
                                                 >
                                                     <FileImage className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                            {!isPaid && onPartialPayment && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-amber-500 hover:text-amber-600 hover:bg-amber-50"
+                                                    onClick={() => onPartialPayment(transaction)}
+                                                    title="Baixa Parcial"
+                                                >
+                                                    <Split className="h-4 w-4" />
                                                 </Button>
                                             )}
                                             <Button

@@ -31,6 +31,7 @@ import ConciliationTab from "@/components/financeiro/ConciliationTab";
 import AssetsTab from "@/components/financeiro/AssetsTab";
 import ServiceExpensesTab from "@/components/financeiro/ServiceExpensesTab";
 import NotaFiscalTab from "@/components/financeiro/NotaFiscalTab";
+import PartialPaymentDialog from "@/components/financeiro/PartialPaymentDialog";
 
 const Financeiro = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -176,6 +177,9 @@ const Financeiro = () => {
   const [editingServiceExpense, setEditingServiceExpense] = useState<ServiceExpense | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
 
+  const [isPartialPaymentOpen, setIsPartialPaymentOpen] = useState(false);
+  const [selectedPartialTransaction, setSelectedPartialTransaction] = useState<Transaction | null>(null);
+
   // Filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all");
@@ -238,6 +242,55 @@ const Financeiro = () => {
     } catch (error) {
       console.error('Error in bulk payment:', error);
       toast.error("Erro ao realizar pagamento em massa.");
+    }
+  };
+
+  const handlePartialPaymentSubmit = async (paidAmount: number, paymentDate: string) => {
+    if (!selectedPartialTransaction) return;
+
+    try {
+      const originalTrans = selectedPartialTransaction;
+      const remainingAmount = originalTrans.amount - paidAmount;
+
+      if (remainingAmount > 0) {
+        // Criar o novo lançamento pendente com o valor restante
+        const newTransData = {
+          description: `${originalTrans.description} (Restante)`,
+          amount: remainingAmount,
+          type: originalTrans.type,
+          category: originalTrans.category,
+          subcategory: originalTrans.subcategory,
+          service: originalTrans.service,
+          contact: originalTrans.contact,
+          financial_institution: originalTrans.financialInstitution,
+          payment_method: originalTrans.paymentMethod,
+          competence_date: originalTrans.competenceDate.toISOString().split('T')[0],
+          due_date: originalTrans.dueDate.toISOString().split('T')[0], // Mantém a data de vencimento original
+          status: 'pending',
+          invoice_number: originalTrans.invoiceNumber,
+          order_service: originalTrans.orderService,
+          boleto_url: originalTrans.boletoUrl
+        };
+
+        const { error: insertError } = await supabase.from('transactions').insert([newTransData]);
+        if (insertError) throw insertError;
+      }
+
+      // Atualizar o original para pago
+      const updateData = {
+        amount: paidAmount,
+        status: 'paid',
+        payment_date: paymentDate
+      };
+
+      const { error: updateError } = await supabase.from('transactions').update(updateData).eq('id', originalTrans.id);
+      if (updateError) throw updateError;
+
+      toast.success("Baixa parcial realizada com sucesso!");
+      fetchTransactions();
+    } catch (error) {
+      console.error('Error in partial payment:', error);
+      toast.error("Erro ao realizar baixa parcial.");
     }
   };
 
@@ -1099,6 +1152,10 @@ const Financeiro = () => {
               onSelectAll={toggleSelectAll}
               onEdit={handleEditTransaction}
               onDelete={handleDeleteTransaction}
+              onPartialPayment={(transaction) => {
+                setSelectedPartialTransaction(transaction);
+                setIsPartialPaymentOpen(true);
+              }}
             />
           </Card>
         </TabsContent>
@@ -1113,6 +1170,13 @@ const Financeiro = () => {
       <TransactionFormDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} onSubmit={handleSubmit} onUpdate={handleUpdate} editingTransaction={editingTransaction} initialType={dialogInitialType} />
       <AssetFormDialog open={isAssetDialogOpen} onOpenChange={setIsAssetDialogOpen} onSubmit={handleAssetSubmit} onUpdate={() => { }} editingAsset={editingAsset} />
       <ServiceExpenseFormDialog open={isServiceExpenseDialogOpen} onOpenChange={setIsServiceExpenseDialogOpen} onSubmit={handleServiceExpenseSubmit} onUpdate={handleUpdateServiceExpense} editingExpense={editingServiceExpense} />
+      
+      <PartialPaymentDialog
+        open={isPartialPaymentOpen}
+        onOpenChange={setIsPartialPaymentOpen}
+        transaction={selectedPartialTransaction}
+        onSubmit={handlePartialPaymentSubmit}
+      />
 
       {/* Sidebar de Ações em Massa */}
       {selectedIds.length > 0 && (
