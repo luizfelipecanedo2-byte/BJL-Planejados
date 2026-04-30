@@ -986,7 +986,7 @@ const Financeiro = () => {
               <span className="font-black text-[10px] uppercase tracking-widest">Notas</span>
             </TabsTrigger>
             <TabsTrigger value="profitability" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <Target className="mr-3 h-4 w-4" />
+              <DollarSign className="mr-3 h-4 w-4" />
               <span className="font-black text-[10px] uppercase tracking-widest">Rentabilidade</span>
             </TabsTrigger>
             <TabsTrigger value="patrimonio" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
@@ -1169,7 +1169,7 @@ const Financeiro = () => {
         <TabsContent value="gastos_servicos"><ServiceExpensesTab serviceExpenses={serviceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="conciliacao"><ConciliationTab selectedAccount={selectedAccount} setSelectedAccount={setSelectedAccount} currentDateReconciliation={currentDateReconciliation} handlePrevMonth={handlePrevMonth} handleNextMonth={handleNextMonth} totalAccountBalance={totalAccountBalance} reconciliationDailyData={reconciliationDailyData} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="notas_fiscais"><NotaFiscalTab /></TabsContent>
-        <TabsContent value="profitability"><ProfitabilityTab /></TabsContent>
+        <TabsContent value="profitability"><div>Teste Rentabilidade</div></TabsContent>
         <TabsContent value="patrimonio"><AssetsTab assets={assets} handleNewAsset={handleNewAsset} formatCurrency={formatCurrency} /></TabsContent>
       </Tabs>
 
