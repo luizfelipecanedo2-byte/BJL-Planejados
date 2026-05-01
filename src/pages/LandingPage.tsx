@@ -18,9 +18,13 @@ import { MagicButton } from "@/components/ui/magic-button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+
 
 const LandingPage = () => {
+    const { settings } = useCompanySettings();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+
     const [scrolled, setScrolled] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -76,8 +80,9 @@ const LandingPage = () => {
             )}>
                 <div className="flex items-center gap-3">
                     <img src="/logo-bjl.png" alt="BJL Logo" className="h-10 w-10 object-contain rounded-full border border-primary/30" />
-                    <span className="text-xl font-black tracking-tighter uppercase shimmer-gold">BJL Planejados</span>
+                    <span className="text-xl font-black tracking-tighter uppercase shimmer-gold">{settings?.name || "BJL Planejados"}</span>
                 </div>
+
 
                 <nav className="hidden lg:flex items-center gap-10">
                     {["Início", "Sobre", "Projetos", "Depoimentos", "Contato"].map((item) => (
@@ -252,7 +257,7 @@ const LandingPage = () => {
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Ligue para nós</span>
-                                    <span className="text-xl font-bold">(11) 9999-9999</span>
+                                    <span className="text-xl font-bold">{settings?.phone || "(11) 9999-9999"}</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-6 group">
@@ -261,22 +266,36 @@ const LandingPage = () => {
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Nossa Sede</span>
-                                    <span className="text-xl font-bold">Av. Luxury, 1000 - SP</span>
+                                    <span className="text-xl font-bold">{settings?.address || "Av. Luxury, 1000 - SP"}</span>
                                 </div>
                             </div>
+
                         </div>
 
                         <div className="flex gap-4">
-                            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 hover:text-primary transition-all">
-                                <Instagram className="h-5 w-5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 hover:text-primary transition-all">
-                                <Facebook className="h-5 w-5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 hover:text-primary transition-all">
-                                <MessageCircle className="h-5 w-5" />
-                            </Button>
+                            {settings?.instagram && (
+                                <a href={`https://instagram.com/${settings.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
+                                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 hover:text-primary transition-all">
+                                        <Instagram className="h-5 w-5" />
+                                    </Button>
+                                </a>
+                            )}
+                            {settings?.facebook && (
+                                <a href={settings.facebook} target="_blank" rel="noopener noreferrer">
+                                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 hover:text-primary transition-all">
+                                        <Facebook className="h-5 w-5" />
+                                    </Button>
+                                </a>
+                            )}
+                            {settings?.phone && (
+                                <a href={`https://wa.me/55${settings.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
+                                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 hover:text-primary transition-all">
+                                        <MessageCircle className="h-5 w-5" />
+                                    </Button>
+                                </a>
+                            )}
                         </div>
+
                     </div>
 
                     <form onSubmit={handleFormSubmit} className="bg-white/5 border border-white/10 p-10 rounded-[2.5rem] space-y-6 relative overflow-hidden backdrop-blur-xl">
@@ -337,23 +356,26 @@ const LandingPage = () => {
                 <div className="flex flex-col items-center gap-4">
                     <div className="flex items-center gap-3">
                         <img src="/logo-bjl.png" alt="BJL Logo" className="h-8 w-8 object-contain rounded-full opacity-50 grayscale" />
-                        <span className="text-sm font-black uppercase tracking-[0.5em] text-white/30">BJL Planejados</span>
+                        <span className="text-sm font-black uppercase tracking-[0.5em] text-white/30">{settings?.name || "BJL Planejados"}</span>
                     </div>
+
                     <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest max-w-sm mx-auto leading-relaxed">
-                        © 2026 BJL Móveis Planejados Ltda. Todos os direitos reservados. <br />
+                        © 2026 {settings?.name || "BJL Móveis Planejados"} Ltda. Todos os direitos reservados. <br />
                         Design & Tecnologia para Viver Melhor.
                     </p>
+
                 </div>
             </footer>
 
             {/* Floating WhatsApp */}
             <a 
-                href="https://wa.me/5511999999999" 
+                href={`https://wa.me/55${(settings?.phone || "11999999999").replace(/\D/g, '')}`} 
                 target="_blank" 
                 className="fixed bottom-10 right-10 z-50 h-16 w-16 bg-emerald-500 rounded-full flex items-center justify-center shadow-2xl shadow-emerald-500/40 hover:scale-110 transition-transform cursor-pointer"
             >
                 <MessageCircle className="h-8 w-8 text-white" />
             </a>
+
         </div>
     );
 };
