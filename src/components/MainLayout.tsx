@@ -28,13 +28,10 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { CommandMenu } from "./CommandMenu";
 import { Search } from "lucide-react";
-<<<<<<< HEAD
 import { NotificationBell } from "./notifications/NotificationBell";
 import { checkAndNotifyOverdueTasks } from "@/lib/notifications";
-=======
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 
->>>>>>> 70d195e (Update_company_settings)
 
 const MainLayout = () => {
     const { settings } = useCompanySettings();
