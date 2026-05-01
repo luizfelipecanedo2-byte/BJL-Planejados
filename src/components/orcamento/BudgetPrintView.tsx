@@ -1,6 +1,8 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { Award, Trash2, X } from 'lucide-react';
+import { Award, Trash2, X, Phone, Mail, MapPin, Globe } from 'lucide-react';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+
 
 interface Ambiente {
     id: string;
@@ -34,8 +36,10 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     onClose,
     onSave
 }) => {
+    const { settings } = useCompanySettings();
     // Estado interno para garantir que o componente funcione mesmo sem props externas
     const [budget, setLocalBudget] = React.useState(initialBudget || {});
+
     const [ambientes, setLocalAmbientes] = React.useState<Ambiente[]>(
         (initialAmbientes && initialAmbientes.length > 0) ? initialAmbientes : [
             { id: '1', description: 'MARCENARIA SOB MEDIDA', value: initialBudget?.total_value || 0 }
@@ -99,8 +103,12 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                             <img src="/logo-bjl.png" alt="BJL" className="w-full h-full object-cover" />
                         </div>
                         <div className="ml-24 flex flex-col items-center">
-                            <h1 className="text-2xl font-black uppercase tracking-[0.4em] leading-none">BJL PLANEJADOS</h1>
+                            <h1 className="text-2xl font-black uppercase tracking-[0.4em] leading-none">{settings?.name || "BJL PLANEJADOS"}</h1>
+                            {settings?.cnpj && (
+                                <p className="text-[8px] font-bold text-white/50 tracking-widest mt-1">CNPJ: {settings.cnpj}</p>
+                            )}
                         </div>
+
                     </div>
                     <div className="h-8 bg-[#f59e0b] w-full"></div>
                 </div>
@@ -214,7 +222,48 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                         </div>
                     </div>
                 </div>
+
+                {/* 5. RODAPÉ / CONTATOS */}
+                <div className="px-16 py-8 border-t border-slate-100 flex justify-between items-center bg-slate-50">
+                    <div className="space-y-2">
+                        {settings?.address && (
+                            <div className="flex items-center gap-2 text-slate-500">
+                                <MapPin size={10} className="text-[#f59e0b]" />
+                                <span className="text-[9px] font-bold uppercase tracking-tight">{settings.address}</span>
+                            </div>
+                        )}
+                        <div className="flex gap-4">
+                            {settings?.phone && (
+                                <div className="flex items-center gap-2 text-slate-500">
+                                    <Phone size={10} className="text-[#f59e0b]" />
+                                    <span className="text-[9px] font-bold uppercase tracking-tight">{settings.phone}</span>
+                                </div>
+                            )}
+                            {settings?.email && (
+                                <div className="flex items-center gap-2 text-slate-500">
+                                    <Mail size={10} className="text-[#f59e0b]" />
+                                    <span className="text-[9px] font-bold uppercase tracking-tight">{settings.email}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex gap-4">
+                        {settings?.instagram && (
+                             <div className="flex items-center gap-2 text-slate-500">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-[#f59e0b]">Instagram</span>
+                                <span className="text-[9px] font-bold lowercase tracking-tight">{settings.instagram}</span>
+                            </div>
+                        )}
+                        {settings?.website && (
+                             <div className="flex items-center gap-2 text-slate-500">
+                                <Globe size={10} className="text-[#f59e0b]" />
+                                <span className="text-[9px] font-bold lowercase tracking-tight">{settings.website}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
+
 
             {/* BARRA DE AÇÕES FIXA NO RODAPÉ DA TELA */}
             <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-6 no-print flex justify-center items-center gap-6 z-[10000] shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">

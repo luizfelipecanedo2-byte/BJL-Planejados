@@ -17,6 +17,8 @@ import Orcamento from "./pages/Orcamento";
 import Login from "./pages/Login";
 import Tarefas from "./pages/Tarefas";
 import LandingPage from "./pages/LandingPage";
+import Configuracoes from "./pages/Configuracoes";
+
 
 const queryClient = new QueryClient();
 
@@ -134,7 +136,10 @@ const App = () => {
               <Route path="estoque" element={<Estoque />} />
               <Route path="pedidos-semana" element={<PedidosSemana />} />
               <Route path="tarefas" element={<Tarefas />} />
+              <Route path="configuracoes" element={session ? <Configuracoes /> : <Navigate to="/estoque" />} />
+
               <Route path="*" element={<NotFound />} />
+
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

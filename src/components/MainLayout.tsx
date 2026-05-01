@@ -14,8 +14,10 @@ import {
     Armchair,
     Sofa,
     Ruler,
-    CheckSquare
+    CheckSquare,
+    Settings
 } from "lucide-react";
+
 import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -26,11 +28,18 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { CommandMenu } from "./CommandMenu";
 import { Search } from "lucide-react";
+<<<<<<< HEAD
 import { NotificationBell } from "./notifications/NotificationBell";
 import { checkAndNotifyOverdueTasks } from "@/lib/notifications";
+=======
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+
+>>>>>>> 70d195e (Update_company_settings)
 
 const MainLayout = () => {
+    const { settings } = useCompanySettings();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
     const [role, setRole] = useState<string | null>('colaborador');
     const [userEmail, setUserEmail] = useState<string | null>(null);
     const location = useLocation();
@@ -84,7 +93,10 @@ const MainLayout = () => {
         { icon: Package, label: "Estoque", path: "/admin/estoque", roles: ['admin', 'colaborador'], emoji: "📦" },
         { icon: Calendar, label: "Pedidos da Semana", path: "/admin/pedidos-semana", roles: ['admin', 'colaborador'], emoji: "🗓️" },
         { icon: CheckSquare, label: "Tarefas", path: "/admin/tarefas", roles: ['admin', 'colaborador'], emoji: "✅" },
+        { icon: Settings, label: "Configurações", path: "/admin/configuracoes", roles: ['admin', 'colaborador'], emoji: "⚙️" },
+
     ];
+
 
     const menuItems = allMenuItems.filter(item => {
         if (role === 'admin') return true;
@@ -101,12 +113,13 @@ const MainLayout = () => {
                     <div className="flex items-center gap-4 w-full justify-center relative z-10 transition-transform duration-500 group-hover:scale-105">
                         <div className="relative">
                             <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
-                            <img src="/logo-bjl.png" alt="BJL Planejados" className="h-16 w-16 object-contain rounded-full border border-primary/30 shadow-[0_0_30px_rgba(var(--primary),0.2)] animate-pinball p-1 bg-black/40 relative z-10" />
+                            <img src={settings?.logo_url || "/logo-bjl.png"} alt={settings?.name || "BJL Planejados"} className="h-16 w-16 object-contain rounded-full border border-primary/30 shadow-[0_0_30px_rgba(var(--primary),0.2)] animate-pinball p-1 bg-black/40 relative z-10" />
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-2xl font-black tracking-tighter text-luxury shimmer-gold">BJL</span>
-                            <span className="text-[8px] uppercase tracking-[0.3em] font-bold text-primary/60">Planejados</span>
+                            <span className="text-2xl font-black tracking-tighter text-luxury shimmer-gold">{settings?.name?.split(' ')[0] || "BJL"}</span>
+                            <span className="text-[8px] uppercase tracking-[0.3em] font-bold text-primary/60">{settings?.name?.split(' ').slice(1).join(' ') || "Planejados"}</span>
                         </div>
+
                     </div>
                 </div>
 
@@ -182,12 +195,13 @@ const MainLayout = () => {
                 <header className="h-20 glass-card backdrop-blur-2xl flex items-center justify-between px-8 sticky top-0 z-30 border-b border-white/5 shadow-2xl">
                     <div className="flex items-center gap-8">
                         <div className="lg:hidden flex items-center gap-3">
-                            <img src="/logo-bjl.png" alt="BJL" className="h-10 w-10 object-contain rounded-full border border-primary/30" />
+                            <img src={settings?.logo_url || "/logo-bjl.png"} alt={settings?.name || "BJL"} className="h-10 w-10 object-contain rounded-full border border-primary/30" />
                             <div className="flex flex-col">
-                                <h1 className="text-xl font-black text-luxury shimmer-gold leading-none">BJL</h1>
-                                <span className="text-[7px] uppercase tracking-[0.2em] font-bold text-primary/60">Planejados</span>
+                                <h1 className="text-xl font-black text-luxury shimmer-gold leading-none">{settings?.name?.split(' ')[0] || "BJL"}</h1>
+                                <span className="text-[7px] uppercase tracking-[0.2em] font-bold text-primary/60">{settings?.name?.split(' ').slice(1).join(' ') || "Planejados"}</span>
                             </div>
                         </div>
+
                         <div className="hidden lg:flex flex-col">
                              <h2 className="text-sm font-bold text-primary/60 uppercase tracking-[0.3em] text-luxury">Sistema de Gestão Premium</h2>
                              <div className="h-0.5 w-12 bg-primary/40 mt-1 rounded-full" />
@@ -231,12 +245,21 @@ const MainLayout = () => {
                              <Button
                                 variant="ghost"
                                 size="icon"
+                                className="text-muted-foreground hover:text-primary rounded-xl transition-all"
+                                onClick={() => navigate("/configuracoes")}
+                            >
+                                <Settings className="h-5 w-5" />
+                            </Button>
+                             <Button
+                                variant="ghost"
+                                size="icon"
                                 className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all"
                                 onClick={handleLogout}
                             >
                                 <LogOut className="h-5 w-5" />
                             </Button>
                         </div>
+
                     </div>
                 </header>
 

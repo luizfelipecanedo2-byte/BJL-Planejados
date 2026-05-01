@@ -11,6 +11,8 @@ import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, C
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -44,8 +46,10 @@ const OrdemServico = () => {
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
+    const { settings } = useCompanySettings();
     const [orders, setOrders] = useState<ServiceOrder[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+
     const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
 
     const [isLoading, setIsLoading] = useState(true);
@@ -389,7 +393,9 @@ const OrdemServico = () => {
         const ticket = order.ticketNumber;
         const action = order.action;
 
-        const message = `Oi, ${firstName}! Notícia boa! 🎉 O seu sonho na BJL Planejados está ganhando forma. Sua Ordem de Serviço (*${ticket}*) acaba de entrar na etapa de: *${status}*. Estamos muito animados com o progresso! Qualquer dúvida, conte conosco. 🔨💎`;
+        const companyName = settings?.name || "BJL Planejados";
+        const message = `Oi, ${firstName}! Notícia boa! 🎉 O seu sonho na ${companyName} está ganhando forma. Sua Ordem de Serviço (*${ticket}*) acaba de entrar na etapa de: *${status}*. Estamos muito animados com o progresso! Qualquer dúvida, conte conosco. 🔨💎`;
+
         
         const encodedMessage = encodeURIComponent(message);
         const phone = order.clientPhone.replace(/\D/g, "");
