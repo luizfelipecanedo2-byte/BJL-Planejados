@@ -64,6 +64,11 @@ const TransactionFormDialog = ({
     const [recurringCount, setRecurringCount] = useState("12");
     const [isUploading, setIsUploading] = useState(false);
     const [destinationInstitution, setDestinationInstitution] = useState("");
+    const [isSplitPayment, setIsSplitPayment] = useState(false);
+    const [splits, setSplits] = useState([
+        { method: "Dinheiro", amount: "", institution: "Dinheiro" },
+        { method: "Pix", amount: "", institution: "Nubank" }
+    ]);
 
     const [clients, setClients] = useState<Client[]>([]);
     const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
@@ -180,6 +185,11 @@ const TransactionFormDialog = ({
             setIsRecurring(false);
             setRecurringCount("12");
             setDestinationInstitution("");
+            setIsSplitPayment(false);
+            setSplits([
+                { method: "Dinheiro", amount: "", institution: "Dinheiro" },
+                { method: "Pix", amount: "", institution: "Nubank" }
+            ]);
         }
     }, [editingTransaction, open, initialType]);
 
@@ -315,6 +325,21 @@ const TransactionFormDialog = ({
                         boletoUrl: i === 0 ? baseSubmitData.boletoUrl : undefined,
                     });
                 }
+                onSubmit(transactions);
+            } else if (isSplitPayment) {
+                const totalSplitAmount = splits.reduce((acc, split) => acc + Number(split.amount), 0);
+                if (Math.abs(totalSplitAmount - amount) > 0.01) {
+                    alert(`A soma das partes (${totalSplitAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) deve ser igual ao valor total (${amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
+                    return;
+                }
+
+                const transactions = splits.map((split) => ({
+                    ...baseSubmitData,
+                    amount: Number(split.amount),
+                    paymentMethod: split.method,
+                    financialInstitution: split.institution,
+                    description: `${form.description} (${split.method})`,
+                }));
                 onSubmit(transactions);
             } else {
                 onSubmit(baseSubmitData);
@@ -555,6 +580,123 @@ const TransactionFormDialog = ({
                         </div>
                     )}
 
+                    {/* Seção Split Payment */}
+                    {!editingTransaction && (
+                        <div className={`p-4 border rounded-lg space-y-4 ${isSplitPayment ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-muted/20'} ${(isInstallment || isRecurring) && 'opacity-50 pointer-events-none'}`}>
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <Label className="text-sm font-bold text-indigo-600">Pagamento Dividido</Label>
+                                    <p className="text-[10px] text-muted-foreground">Ex: Parte no Dinheiro, parte no Pix</p>
+                                </div>
+                                <Switch
+                                    checked={isSplitPayment}
+                                    onCheckedChange={(checked) => {
+                                        setIsSplitPayment(checked);
+                                        if (checked) {
+                                            // Pre-fill first split with total amount
+                                            setSplits([
+                                                { method: form.paymentMethod || "Dinheiro", amount: form.amount, institution: form.financialInstitution || "Dinheiro" },
+                                                { method: "Pix", amount: "", institution: "Nubank" }
+                                            ]);
+                                        }
+                                    }}
+                                    disabled={isInstallment || isRecurring}
+                                    className="data-[state=checked]:bg-indigo-500"
+                                />
+                            </div>
+
+                            {isSplitPayment && (
+                                <div className="space-y-3 pt-2 border-t">
+                                    {splits.map((split, index) => (
+                                        <div key={index} className="flex gap-2 items-end bg-white/50 p-2 rounded border border-indigo-100">
+                                            <div className="flex-1">
+                                                <Label className="text-[10px]">Forma</Label>
+                                                <Select
+                                                    value={split.method}
+                                                    onValueChange={(v) => {
+                                                        const newSplits = [...splits];
+                                                        newSplits[index].method = v;
+                                                        setSplits(newSplits);
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="h-8 text-xs">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {PAYMENT_METHODS.map((method) => (
+                                                            <SelectItem key={method} value={method}>{method}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="flex-1">
+                                                <Label className="text-[10px]">Instituição</Label>
+                                                <Select
+                                                    value={split.institution}
+                                                    onValueChange={(v) => {
+                                                        const newSplits = [...splits];
+                                                        newSplits[index].institution = v;
+                                                        setSplits(newSplits);
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="h-8 text-xs">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Nubank">Nubank</SelectItem>
+                                                        <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                                                        <SelectItem value="Mercado Pago">Mercado Pago</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="w-24">
+                                                <Label className="text-[10px]">Valor (R$)</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={split.amount}
+                                                    onChange={(e) => {
+                                                        const newSplits = [...splits];
+                                                        newSplits[index].amount = e.target.value;
+                                                        setSplits(newSplits);
+                                                    }}
+                                                    className="h-8 text-xs font-bold"
+                                                    placeholder="0,00"
+                                                />
+                                            </div>
+                                            {splits.length > 2 && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-red-500"
+                                                    onClick={() => {
+                                                        setSplits(splits.filter((_, i) => i !== index));
+                                                    }}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <div className="flex justify-between items-center pt-1">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 text-[10px] border-indigo-200 text-indigo-600"
+                                            onClick={() => setSplits([...splits, { method: "Pix", amount: "", institution: "Nubank" }])}
+                                        >
+                                            + Adicionar Forma
+                                        </Button>
+                                        <div className={`text-[11px] font-bold ${Math.abs(splits.reduce((acc, s) => acc + Number(s.amount), 0) - Number(form.amount)) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
+                                            Total: {splits.reduce((acc, s) => acc + Number(s.amount), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} / {Number(form.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Seção 3: Detalhes de Pagamento */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -636,9 +778,11 @@ const TransactionFormDialog = ({
                             <Select
                                 value={form.financialInstitution}
                                 onValueChange={(v) => handleUpdateField("financialInstitution", v)}
+                                disabled={isSplitPayment}
+                                required={!isSplitPayment}
                             >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Selecione" />
+                                <SelectTrigger className={isSplitPayment ? "bg-muted text-muted-foreground" : ""}>
+                                    <SelectValue placeholder={isSplitPayment ? "Definido no Split" : "Selecione"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Nubank">Nubank</SelectItem>
@@ -668,9 +812,14 @@ const TransactionFormDialog = ({
                         )}
                         <div>
                             <Label>Forma de Pagamento</Label>
-                            <Select value={form.paymentMethod} onValueChange={(v) => handleUpdateField("paymentMethod", v)} required>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Selecione" />
+                            <Select 
+                                value={form.paymentMethod} 
+                                onValueChange={(v) => handleUpdateField("paymentMethod", v)} 
+                                required={!isSplitPayment}
+                                disabled={isSplitPayment}
+                            >
+                                <SelectTrigger className={isSplitPayment ? "bg-muted text-muted-foreground" : ""}>
+                                    <SelectValue placeholder={isSplitPayment ? "Definido no Split" : "Selecione"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {PAYMENT_METHODS.map((method) => (
