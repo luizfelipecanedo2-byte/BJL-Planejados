@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
     ChevronRight, 
     MessageCircle, 
@@ -11,7 +12,8 @@ import {
     ArrowRight,
     Menu,
     X,
-    Star
+    Star,
+    Lock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
@@ -22,6 +24,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 
 const LandingPage = () => {
+    const navigate = useNavigate();
     const { settings } = useCompanySettings();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -90,9 +93,19 @@ const LandingPage = () => {
                             {item}
                         </a>
                     ))}
-                    <Button variant="outline" className="rounded-full border-primary/30 text-primary hover:bg-primary/10 font-bold uppercase text-[10px] tracking-widest px-8">
-                        Portal do Cliente
-                    </Button>
+                    <div className="flex items-center gap-4">
+                        <Button 
+                            variant="ghost" 
+                            className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-primary transition-colors flex items-center gap-2"
+                            onClick={() => navigate('/login')}
+                        >
+                            <Lock className="h-3 w-3" />
+                            Área do Colaborador
+                        </Button>
+                        <Button variant="outline" className="rounded-full border-primary/30 text-primary hover:bg-primary/10 font-bold uppercase text-[10px] tracking-widest px-8">
+                            Portal do Cliente
+                        </Button>
+                    </div>
                 </nav>
 
                 <button className="lg:hidden text-white" onClick={() => setIsMenuOpen(!isMenuOpen)}>
@@ -113,6 +126,14 @@ const LandingPage = () => {
                             {item}
                         </a>
                     ))}
+                    <div className="h-px w-20 bg-white/10 my-4" />
+                    <button 
+                        className="text-lg font-black uppercase tracking-widest text-primary flex items-center gap-3"
+                        onClick={() => navigate('/login')}
+                    >
+                        <Lock className="h-5 w-5" />
+                        Área do Colaborador
+                    </button>
                 </div>
             )}
 
@@ -352,7 +373,7 @@ const LandingPage = () => {
             </section>
 
             {/* Footer */}
-            <footer className="py-20 border-t border-white/5 px-6 lg:px-20 text-center space-y-8">
+            <footer className="py-20 border-t border-white/5 px-6 lg:px-20 text-center space-y-12">
                 <div className="flex flex-col items-center gap-4">
                     <div className="flex items-center gap-3">
                         <img src="/logo-bjl.png" alt="BJL Logo" className="h-8 w-8 object-contain rounded-full opacity-50 grayscale" />
@@ -364,6 +385,16 @@ const LandingPage = () => {
                         Design & Tecnologia para Viver Melhor.
                     </p>
 
+                </div>
+
+                <div className="flex justify-center">
+                    <button 
+                        onClick={() => navigate('/login')}
+                        className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-primary transition-colors flex items-center gap-2 group"
+                    >
+                        <Lock className="h-3 w-3 opacity-50 group-hover:opacity-100" />
+                        Acesso Restrito
+                    </button>
                 </div>
             </footer>
 
@@ -380,4 +411,5 @@ const LandingPage = () => {
     );
 };
 
-export default LandingPage;
+const LandingPageExport = LandingPage;
+export default LandingPageExport;
