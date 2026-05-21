@@ -41,6 +41,7 @@ export function useSales() {
           notes: item.notes,
           createdAt: item.created_at,
           budget_id: item.budget_id,
+          temperature: item.temperature || 'morno',
         }));
         setSales(mappedSales);
       }
@@ -69,7 +70,8 @@ export function useSales() {
         contact_date: sale.contactDate || null,
         expected_close_date: sale.expectedCloseDate || null,
         closed_date: closedDate,
-        notes: sale.notes
+        notes: sale.notes,
+        temperature: sale.temperature || 'morno'
       };
 
       const { data, error } = await supabase
@@ -102,6 +104,7 @@ export function useSales() {
           notes: data.notes,
           createdAt: data.created_at,
           budget_id: data.budget_id,
+          temperature: data.temperature || 'morno',
         };
         setSales((prev) => [createdSale, ...prev]);
         toast.success("Venda adicionada com sucesso!");
@@ -127,6 +130,7 @@ export function useSales() {
       if (updates.contactDate !== undefined) updateData.contact_date = updates.contactDate;
       if (updates.expectedCloseDate !== undefined) updateData.expected_close_date = updates.expectedCloseDate;
       if (updates.notes !== undefined) updateData.notes = updates.notes;
+      if (updates.temperature !== undefined) updateData.temperature = updates.temperature;
 
       // Handle closedDate based on status
       const currentSale = sales.find(s => s.id === id);

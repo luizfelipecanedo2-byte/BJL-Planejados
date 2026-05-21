@@ -1,4 +1,4 @@
-import { Sale, STATUS_LABELS, SaleStatus, CHANNEL_LABELS } from "@/types/sale";
+import { Sale, STATUS_LABELS, SaleStatus, CHANNEL_LABELS, LeadTemperature, TEMPERATURE_LABELS } from "@/types/sale";
 import { formatCurrency, formatDate } from "@/lib/salesUtils";
 import {
   Table,
@@ -38,6 +38,12 @@ const statusBadgeVariants: Record<SaleStatus, string> = {
   pos_venda: "bg-indigo-500/10 text-indigo-500 border-indigo-200/50",
 };
 
+const temperatureBadgeStyles: Record<LeadTemperature, string> = {
+  quente: "bg-rose-500/10 text-rose-500 border-rose-500/20",
+  morno: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+  frio: "bg-sky-500/10 text-sky-500 border-sky-500/20",
+};
+
 const SalesTable = ({
   sales,
   onStatusChange,
@@ -74,13 +80,18 @@ const SalesTable = ({
                     {sale.clientName}
                   </h3>
                   <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-60 truncate">{sale.clientEmail}</p>
-                  {sale.budget_id && (
-                    <div className="mt-1 flex">
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {sale.budget_id && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                         Orçamento Ativo
                       </span>
-                    </div>
-                  )}
+                    )}
+                    {sale.temperature && (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border ${temperatureBadgeStyles[sale.temperature]}`}>
+                        {TEMPERATURE_LABELS[sale.temperature]}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Button variant="ghost" size="icon" className="h-10 w-10 bg-primary/5 hover:bg-primary/10 rounded-xl transition-all" onClick={() => onEdit(sale)}>
@@ -196,13 +207,18 @@ const SalesTable = ({
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-50">
                         {sale.clientEmail}
                       </p>
-                      {sale.budget_id && (
-                        <div className="mt-1 flex">
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {sale.budget_id && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                             Orçamento Ativo
                           </span>
-                        </div>
-                      )}
+                        )}
+                        {sale.temperature && (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border ${temperatureBadgeStyles[sale.temperature]}`}>
+                            {TEMPERATURE_LABELS[sale.temperature]}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>

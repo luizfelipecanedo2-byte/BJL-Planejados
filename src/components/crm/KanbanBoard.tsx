@@ -1,4 +1,4 @@
-import { Sale, STATUS_LABELS, SaleStatus } from "@/types/sale";
+import { Sale, STATUS_LABELS, SaleStatus, LeadTemperature, TEMPERATURE_LABELS } from "@/types/sale";
 import { formatCurrency } from "@/lib/salesUtils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Phone, Flame, Clock } from "lucide-react";
@@ -33,6 +33,12 @@ const dotColors: Record<SaleStatus, string> = {
   nao_fechou: "bg-kanban-nao_fechou",
   congelado: "bg-kanban-congelado",
   pos_venda: "bg-kanban-pos_venda",
+};
+
+const temperatureBadgeStyles: Record<LeadTemperature, string> = {
+  quente: "bg-rose-500/20 text-rose-400 border-rose-500/30",
+  morno: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  frio: "bg-sky-500/20 text-sky-400 border-sky-500/30",
 };
 
 const statusOrder: SaleStatus[] = [
@@ -177,13 +183,18 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit }: KanbanBoardProps) => {
                         <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest truncate">
                             {sale.product} {sale.quantity > 1 && `[×${sale.quantity}]`}
                         </p>
-                        {sale.budget_id && (
-                          <div className="mt-1.5">
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {sale.budget_id && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                               Orçamento Ativo
                             </span>
-                          </div>
-                        )}
+                          )}
+                          {sale.temperature && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border ${temperatureBadgeStyles[sale.temperature]}`}>
+                              {TEMPERATURE_LABELS[sale.temperature]}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="flex items-end justify-between gap-2 mt-auto">

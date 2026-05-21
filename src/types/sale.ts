@@ -9,6 +9,14 @@ export const CHANNEL_LABELS: Record<SaleChannel, string> = {
   indicacao: "Indicação",
 };
 
+export type LeadTemperature = "quente" | "morno" | "frio";
+
+export const TEMPERATURE_LABELS: Record<LeadTemperature, string> = {
+  quente: "🔥 Quente",
+  morno: "☕ Morno",
+  frio: "❄️ Frio",
+};
+
 export interface Sale {
   id: string;
   clientName: string;
@@ -26,6 +34,7 @@ export interface Sale {
   notes?: string;
   createdAt: string;
   budget_id?: string;
+  temperature?: LeadTemperature;
 }
 
 export const STATUS_LABELS: Record<SaleStatus, string> = {
