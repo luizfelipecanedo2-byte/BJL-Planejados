@@ -138,7 +138,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                 </div>
 
                 {/* 3. LISTA DE AMBIENTES */}
-                <div className="px-16 mt-4">
+                <div className="px-16 mt-4 print:hidden">
                     <div className="bg-[#0f172a] text-white px-10 py-5 rounded-2xl mb-8 flex justify-between shadow-xl">
                         <span className="text-[11px] font-black uppercase tracking-[0.3em]">DETALHAMENTO DOS AMBIENTES</span>
                         <span className="text-[11px] font-black uppercase tracking-[0.3em]">VALOR À VISTA</span>
