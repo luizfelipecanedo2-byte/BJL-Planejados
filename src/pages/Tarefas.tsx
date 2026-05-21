@@ -106,12 +106,12 @@ const Tarefas = () => {
         const tasksToUpdate = (data || []).filter(t => t.status === 'pending' && t.due_date < today);
         
         if (tasksToUpdate.length > 0) {
-            // Fire background update
-            Promise.all(
-                tasksToUpdate.map(t => 
-                    supabase.from('tasks').update({ due_date: today }).eq('id', t.id)
-                )
-            ).catch(err => console.error("Error updating overdue tasks:", err));
+            // Fire single background update
+            supabase.from('tasks')
+                .update({ due_date: today })
+                .eq('status', 'pending')
+                .lt('due_date', today)
+                .catch(err => console.error("Error updating overdue tasks:", err));
             
             // Optimistically update local data
             const updatedData = (data || []).map(t => {

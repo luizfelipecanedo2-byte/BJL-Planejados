@@ -1,18 +1,11 @@
-import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Client } from "@/types/client";
 import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
 
 export function useClients() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchClients();
-  }, []);
-
-  const fetchClients = async () => {
-    try {
+  const { data: clients = [], isLoading: loading, refetch } = useQuery<Client[]>({
+    queryKey: ["clients"],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
@@ -20,7 +13,7 @@ export function useClients() {
 
       if (error) throw error;
 
-      const mappedClients: Client[] = (data || []).map(item => ({
+      return (data || []).map(item => ({
         id: item.id,
         name: item.name,
         document: item.document || "",
@@ -34,14 +27,9 @@ export function useClients() {
         type: item.type || "cliente",
         createdAt: new Date(item.created_at)
       }));
+    },
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+  });
 
-      setClients(mappedClients);
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { clients, loading, refreshClients: fetchClients };
+  return { clients, loading, refreshClients: refetch };
 }

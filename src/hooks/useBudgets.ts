@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -42,42 +42,41 @@ export interface Budget {
 }
 
 export function useBudgets() {
-    const [materials, setMaterials] = useState<Material[]>([]);
-    const [budgets, setBudgets] = useState<Budget[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
 
-    useEffect(() => {
-        fetchMaterials();
-        fetchBudgets();
-    }, []);
+    // Fetch Materials using React Query
+    const { data: materials = [], refetch: fetchMaterials } = useQuery<Material[]>({
+        queryKey: ["materials"],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('budget_materials')
+                .select('*')
+                .order('category', { ascending: true });
+            if (error) {
+                console.error("Error fetching materials:", error);
+                throw error;
+            }
+            return data || [];
+        },
+        staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    });
 
-    const fetchMaterials = async () => {
-        const { data, error } = await supabase
-            .from('budget_materials')
-            .select('*')
-            .order('category', { ascending: true });
-
-        if (error) {
-            console.error("Error fetching materials:", error);
-        } else {
-            setMaterials(data || []);
-        }
-    };
-
-    const fetchBudgets = async () => {
-        setLoading(true);
-        const { data, error } = await supabase
-            .from('budgets')
-            .select('*, budget_items(*, budget_materials(*))')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error("Error fetching budgets:", error);
-        } else {
-            setBudgets(data || []);
-        }
-        setLoading(false);
-    };
+    // Fetch Budgets using React Query
+    const { data: budgets = [], isLoading: loading, refetch: fetchBudgets } = useQuery<Budget[]>({
+        queryKey: ["budgets"],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('budgets')
+                .select('*, budget_items(*, budget_materials(*))')
+                .order('created_at', { ascending: false });
+            if (error) {
+                console.error("Error fetching budgets:", error);
+                throw error;
+            }
+            return data || [];
+        },
+        staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    });
 
     const syncBudgetToSale = async (savedBudget: any) => {
         try {
@@ -171,7 +170,7 @@ export function useBudgets() {
             toast.error("Erro ao atualizar item");
             return false;
         } else {
-            setMaterials(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+            queryClient.invalidateQueries({ queryKey: ["materials"] });
             toast.success("Item atualizado");
             return true;
         }
@@ -188,7 +187,7 @@ export function useBudgets() {
             toast.error("Erro ao adicionar material: " + error.message);
             return null;
         } else {
-            setMaterials(prev => [...prev, data]);
+            queryClient.invalidateQueries({ queryKey: ["materials"] });
             toast.success("Material adicionado com sucesso");
             return data;
         }
@@ -208,7 +207,7 @@ export function useBudgets() {
             }
             return false;
         } else {
-            setMaterials(prev => prev.filter(m => m.id !== id));
+            queryClient.invalidateQueries({ queryKey: ["materials"] });
             toast.success("Material excluído com sucesso");
             return true;
         }
@@ -235,7 +234,7 @@ export function useBudgets() {
             return false;
         }
 
-        setBudgets(prev => prev.filter(b => b.id !== id));
+        queryClient.invalidateQueries({ queryKey: ["budgets"] });
         toast.success("Orçamento excluído com sucesso");
         return true;
     };
@@ -310,7 +309,8 @@ export function useBudgets() {
             // Sync to CRM
             await syncBudgetToSale(budgetData);
 
-            fetchBudgets();
+            queryClient.invalidateQueries({ queryKey: ["budgets"] });
+            queryClient.invalidateQueries({ queryKey: ["sales"] });
             return budgetData;
         } catch (error: any) {
             toast.error("Erro ao salvar orçamento: " + error.message);
@@ -336,7 +336,7 @@ export function useBudgets() {
             
             if (itemsToConvert.length === 0) {
                 toast.info("Este orçamento não tem materiais para pedir.");
-                fetchBudgets();
+                queryClient.invalidateQueries({ queryKey: ["budgets"] });
                 return true;
             }
 
@@ -363,7 +363,8 @@ export function useBudgets() {
             if (insertError) throw insertError;
 
             toast.success("Orçamento aprovado e materiais enviados para Pedidos da Semana!");
-            fetchBudgets();
+            queryClient.invalidateQueries({ queryKey: ["budgets"] });
+            queryClient.invalidateQueries({ queryKey: ["sales"] });
             return true;
         } catch (error: any) {
             console.error("Error converting to weekly orders:", error);
@@ -394,7 +395,8 @@ export function useBudgets() {
             if (deleteError) throw deleteError;
 
             toast.success("Aprovação removida e materiais retirados da lista de compras!");
-            fetchBudgets();
+            queryClient.invalidateQueries({ queryKey: ["budgets"] });
+            queryClient.invalidateQueries({ queryKey: ["sales"] });
             return true;
         } catch (error: any) {
             console.error("Error cancelling budget approval:", error);
@@ -414,7 +416,7 @@ export function useBudgets() {
             return false;
         }
         
-        setBudgets(prev => prev.map(b => b.id === budgetId ? { ...b, production_status: status as any } : b));
+        queryClient.invalidateQueries({ queryKey: ["budgets"] });
         toast.success("Status de produção atualizado!");
         return true;
     };
@@ -433,7 +435,7 @@ export function useBudgets() {
             return false;
         }
         
-        setBudgets(prev => prev.map(b => b.id === budgetId ? { ...b, ...updates } : b));
+        queryClient.invalidateQueries({ queryKey: ["budgets"] });
         return true;
     };
 

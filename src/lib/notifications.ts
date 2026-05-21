@@ -25,10 +25,6 @@ export async function createNotification(userId: string, title: string, message:
   }
 }
 
-/**
- * Checks for overdue tasks and creates notifications if they don't exist yet.
- * This is a simple implementation that runs on client side.
- */
 export async function checkAndNotifyOverdueTasks() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -45,28 +41,37 @@ export async function checkAndNotifyOverdueTasks() {
     if (tasksError) throw tasksError;
 
     if (tasks && tasks.length > 0) {
-      // Check which ones we already notified (to avoid spam)
-      // For simplicity, we could check if a notification with this title/task exists
-      for (const task of tasks) {
-        const title = `Tarefa Atrasada: ${task.title}`;
-        
-        // Check if notification already exists for today
-        const { data: existing } = await supabase
-          .from('notifications')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('title', title)
-          .limit(1);
+      const titles = tasks.map(task => `Tarefa Atrasada: ${task.title}`);
+      
+      // Batch check which notifications already exist
+      const { data: existing, error: existingError } = await supabase
+        .from('notifications')
+        .select('title')
+        .eq('user_id', user.id)
+        .in('title', titles);
 
-        if (!existing || existing.length === 0) {
-          await createNotification(
-            user.id,
-            title,
-            `A tarefa "${task.title}" venceu em ${task.due_date}. Por favor, verifique o status.`,
-            'warning',
-            '/tarefas'
-          );
-        }
+      if (existingError) throw existingError;
+
+      const existingTitlesSet = new Set((existing || []).map(n => n.title));
+
+      // Filter tasks that do not have a notification yet
+      const newNotifications = tasks
+        .filter(task => !existingTitlesSet.has(`Tarefa Atrasada: ${task.title}`))
+        .map(task => ({
+          user_id: user.id,
+          title: `Tarefa Atrasada: ${task.title}`,
+          message: `A tarefa "${task.title}" venceu em ${task.due_date}. Por favor, verifique o status.`,
+          type: 'warning' as const,
+          link: '/tarefas',
+          read: false
+        }));
+
+      if (newNotifications.length > 0) {
+        const { error: insertError } = await supabase
+          .from('notifications')
+          .insert(newNotifications);
+        
+        if (insertError) throw insertError;
       }
     }
   } catch (error) {
