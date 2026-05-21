@@ -177,6 +177,13 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit }: KanbanBoardProps) => {
                         <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest truncate">
                             {sale.product} {sale.quantity > 1 && `[×${sale.quantity}]`}
                         </p>
+                        {sale.budget_id && (
+                          <div className="mt-1.5">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                              Orçamento Ativo
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-end justify-between gap-2 mt-auto">

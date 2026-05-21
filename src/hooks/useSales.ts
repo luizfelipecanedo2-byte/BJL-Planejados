@@ -40,6 +40,7 @@ export function useSales() {
           closedDate: item.closed_date,
           notes: item.notes,
           createdAt: item.created_at,
+          budget_id: item.budget_id,
         }));
         setSales(mappedSales);
       }
@@ -100,6 +101,7 @@ export function useSales() {
           closedDate: data.closed_date,
           notes: data.notes,
           createdAt: data.created_at,
+          budget_id: data.budget_id,
         };
         setSales((prev) => [createdSale, ...prev]);
         toast.success("Venda adicionada com sucesso!");

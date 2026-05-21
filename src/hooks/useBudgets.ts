@@ -79,6 +79,88 @@ export function useBudgets() {
         setLoading(false);
     };
 
+    const syncBudgetToSale = async (savedBudget: any) => {
+        try {
+            // Find existing sale
+            const { data: existingSale, error: fetchError } = await supabase
+                .from('sales')
+                .select('id, status')
+                .eq('budget_id', savedBudget.id)
+                .maybeSingle();
+
+            if (fetchError) {
+                console.error("Error fetching existing sale:", fetchError);
+                return;
+            }
+
+            // Look up client phone and email from the clients table
+            let clientPhone = "";
+            let clientEmail = "";
+            try {
+                const { data: clientData } = await supabase
+                    .from('clients')
+                    .select('phone, email')
+                    .ilike('name', savedBudget.client_name || "")
+                    .maybeSingle();
+                if (clientData) {
+                    clientPhone = clientData.phone || "";
+                    clientEmail = clientData.email || "";
+                }
+            } catch (err) {
+                console.error("Error looking up client details for CRM sync:", err);
+            }
+
+            // Map status
+            let saleStatus: any = 'negociacao';
+            if (savedBudget.status === 'aprovado') {
+                saleStatus = 'fechado';
+            } else if (savedBudget.status === 'rejeitado') {
+                saleStatus = 'nao_fechou';
+            } else if (savedBudget.status === 'em_elaboracao') {
+                saleStatus = existingSale?.status || 'negociacao';
+            }
+
+            const saleData: any = {
+                client_name: savedBudget.client_name,
+                product: `Orçamento: ${savedBudget.project_name || "Marcenaria"}`,
+                quantity: 1,
+                unit_price: savedBudget.total_value,
+                total_value: savedBudget.total_value,
+                status: saleStatus,
+                notes: savedBudget.notes || "",
+                budget_id: savedBudget.id
+            };
+
+            if (clientPhone) saleData.client_phone = clientPhone;
+            if (clientEmail) saleData.client_email = clientEmail;
+
+            if (existingSale) {
+                const { error: updateError } = await supabase
+                    .from('sales')
+                    .update(saleData)
+                    .eq('id', existingSale.id);
+                if (updateError) {
+                    console.error("Error updating sale from budget sync:", updateError);
+                }
+            } else {
+                saleData.contact_date = new Date().toISOString().split('T')[0];
+                // Set expected close date to 15 days from now
+                const expectedDate = new Date();
+                expectedDate.setDate(expectedDate.getDate() + 15);
+                saleData.expected_close_date = expectedDate.toISOString().split('T')[0];
+                
+                const { error: insertError } = await supabase
+                    .from('sales')
+                    .insert([saleData]);
+                if (insertError) {
+                    console.error("Error inserting sale from budget sync:", insertError);
+                }
+            }
+        } catch (e) {
+            console.error("Error syncing budget to CRM:", e);
+        }
+    };
+
     const updateMaterial = async (id: string, updates: Partial<Material>) => {
         const { error } = await supabase
             .from('budget_materials')
@@ -224,6 +306,10 @@ export function useBudgets() {
             if (itemsError) throw itemsError;
 
             toast.success(budget.id ? "Orçamento atualizado!" : "Orçamento salvo com sucesso!");
+            
+            // Sync to CRM
+            await syncBudgetToSale(budgetData);
+
             fetchBudgets();
             return budgetData;
         } catch (error: any) {
@@ -241,6 +327,9 @@ export function useBudgets() {
                 .eq('id', budget.id);
 
             if (updateError) throw updateError;
+
+            // Sync to CRM
+            await syncBudgetToSale({ ...budget, status: 'aprovado' });
 
             // Use budget_items if mapped by Supabase query
             const itemsToConvert = budget.budget_items || budget.items || [];
@@ -292,6 +381,9 @@ export function useBudgets() {
                 .eq('id', budget.id);
 
             if (updateError) throw updateError;
+
+            // Sync to CRM
+            await syncBudgetToSale({ ...budget, status: 'em_elaboracao' });
 
             // Remove all weekly_orders linked to this budget
             const { error: deleteError } = await supabase

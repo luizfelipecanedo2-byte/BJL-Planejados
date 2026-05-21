@@ -25,6 +25,7 @@ export interface Sale {
   closedDate?: string;
   notes?: string;
   createdAt: string;
+  budget_id?: string;
 }
 
 export const STATUS_LABELS: Record<SaleStatus, string> = {

@@ -113,6 +113,18 @@ const SaleFormDialog = ({
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {editingSale?.budget_id && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 p-3.5 rounded-2xl flex items-center justify-between text-xs text-emerald-400">
+              <span className="font-medium">Esta venda está vinculada a um orçamento ativo.</span>
+              <a 
+                href="/orcamento" 
+                className="underline hover:text-emerald-300 font-black uppercase tracking-wider text-[10px]"
+                onClick={() => onOpenChange(false)}
+              >
+                Ver Orçamentos
+              </a>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <Label htmlFor="clientName">Nome do Cliente</Label>

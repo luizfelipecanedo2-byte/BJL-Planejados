@@ -74,6 +74,13 @@ const SalesTable = ({
                     {sale.clientName}
                   </h3>
                   <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-60 truncate">{sale.clientEmail}</p>
+                  {sale.budget_id && (
+                    <div className="mt-1 flex">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        Orçamento Ativo
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-2">
                   <Button variant="ghost" size="icon" className="h-10 w-10 bg-primary/5 hover:bg-primary/10 rounded-xl transition-all" onClick={() => onEdit(sale)}>
@@ -189,6 +196,13 @@ const SalesTable = ({
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-50">
                         {sale.clientEmail}
                       </p>
+                      {sale.budget_id && (
+                        <div className="mt-1 flex">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            Orçamento Ativo
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
