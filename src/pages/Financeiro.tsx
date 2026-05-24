@@ -209,6 +209,17 @@ const Financeiro = () => {
         if (e.items) items = [...items, ...e.items];
       });
 
+      const autoItems = osAllocations.map(a => {
+        const parentTx = transactions.find(t => t.id === a.transaction_id);
+        return {
+          description: `[Rateio] ${parentTx?.description || ''} ${a.description ? `(${a.description})` : ''}`.trim(),
+          unit: 'un',
+          quantity: 1,
+          unitValue: Number(a.amount),
+          totalValue: Number(a.amount)
+        };
+      });
+
       const expenseId = manualExpenses.length > 0 ? manualExpenses[0].id : `os-${os.id}`;
 
       return {
@@ -218,6 +229,7 @@ const Financeiro = () => {
         serviceValue: revenue,
         spentValue: allocCost + manualCost,
         items: items,
+        autoItems: autoItems,
         createdAt: os.openDate
       };
     });
