@@ -211,8 +211,9 @@ const Financeiro = () => {
 
       const autoItems = osAllocations.map(a => {
         const parentTx = transactions.find(t => t.id === a.transaction_id);
+        const nfText = parentTx?.invoiceNumber ? ` (NF: ${parentTx.invoiceNumber})` : '';
         return {
-          description: `[Rateio] ${parentTx?.description || ''} ${a.description ? `(${a.description})` : ''}`.trim(),
+          description: `[Rateio] ${parentTx?.description || ''}${nfText} ${a.description ? `(${a.description})` : ''}`.trim(),
           unit: 'un',
           quantity: 1,
           unitValue: Number(a.amount),
