@@ -767,6 +767,7 @@ const TransactionFormDialog = ({
                                                             <SelectValue placeholder="Selecione o projeto (OS)" />
                                                         </SelectTrigger>
                                                         <SelectContent>
+                                                            <SelectItem value="ESTOQUE">🏢 ESTOQUE GERAL</SelectItem>
                                                             {serviceOrders.map(os => (
                                                                 <SelectItem key={os.id} value={`${os.ticketNumber} - ${os.client} (${os.action})`}>
                                                                     {os.ticketNumber} - {os.client} ({os.action})
