@@ -39,13 +39,25 @@ const Financeiro = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [serviceExpenses, setServiceExpenses] = useState<ServiceExpense[]>([]);
+  const [transactionAllocations, setTransactionAllocations] = useState<any[]>([]);
 
   useEffect(() => {
     fetchTransactions();
     fetchAssets();
     fetchServiceOrders();
     fetchServiceExpenses();
+    fetchTransactionAllocations();
   }, []);
+
+  const fetchTransactionAllocations = async () => {
+    try {
+      const { data, error } = await supabase.from('transaction_allocations').select('*');
+      if (error) throw error;
+      setTransactionAllocations(data || []);
+    } catch (error) {
+      console.error('Error fetching allocations:', error);
+    }
+  };
 
   const fetchTransactions = async () => {
     try {
@@ -177,6 +189,51 @@ const Financeiro = () => {
   const [isServiceExpenseDialogOpen, setIsServiceExpenseDialogOpen] = useState(false);
   const [editingServiceExpense, setEditingServiceExpense] = useState<ServiceExpense | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  const combinedServiceExpenses = useMemo(() => {
+    const mappedProjects: ServiceExpense[] = serviceOrders.map(os => {
+      const osString = `${os.ticketNumber} - ${os.client} (${os.action})`;
+      const osAllocations = transactionAllocations.filter(a => a.client_name === osString || a.client_name === os.client);
+      const allocCost = osAllocations.reduce((acc, a) => acc + Number(a.amount), 0);
+
+      const manualExpenses = serviceExpenses.filter(e => 
+        (e.clientName === os.client && e.environment === os.action) || 
+        (e.clientName.includes(os.ticketNumber))
+      );
+      const manualCost = manualExpenses.reduce((acc, e) => acc + e.spentValue, 0);
+
+      const revenue = os.amount || manualExpenses.reduce((acc, e) => acc + e.serviceValue, 0);
+
+      let items: any[] = [];
+      manualExpenses.forEach(e => {
+        if (e.items) items = [...items, ...e.items];
+      });
+
+      const expenseId = manualExpenses.length > 0 ? manualExpenses[0].id : `os-${os.id}`;
+
+      return {
+        id: expenseId,
+        clientName: `${os.ticketNumber} - ${os.client}`,
+        environment: os.action,
+        serviceValue: revenue,
+        spentValue: allocCost + manualCost,
+        items: items,
+        createdAt: os.openDate
+      };
+    });
+
+    serviceExpenses.forEach(se => {
+      const matchesOS = serviceOrders.some(os => 
+        (se.clientName === os.client && se.environment === os.action) || 
+        (se.clientName.includes(os.ticketNumber))
+      );
+      if (!matchesOS) {
+        mappedProjects.push(se);
+      }
+    });
+
+    return mappedProjects;
+  }, [serviceOrders, serviceExpenses, transactionAllocations]);
 
   const [isPartialPaymentOpen, setIsPartialPaymentOpen] = useState(false);
   const [selectedPartialTransaction, setSelectedPartialTransaction] = useState<Transaction | null>(null);
@@ -884,6 +941,16 @@ const Financeiro = () => {
   const handleEditServiceExpense = (expense: ServiceExpense) => { setEditingServiceExpense(expense); setIsServiceExpenseDialogOpen(true); };
   const handleUpdateServiceExpense = async (id: string, updates: Partial<ServiceExpense>) => {
     try {
+      if (id.startsWith('os-')) {
+        const { data: insertedData, error } = await supabase.from('service_expenses').insert([{
+          client_name: updates.clientName, environment: updates.environment, service_value: updates.serviceValue, spent_value: updates.spentValue, items: updates.items
+        }]).select().single();
+        if (error) throw error;
+        setServiceExpenses([{ ...updates, id: insertedData.id, createdAt: new Date() } as ServiceExpense, ...serviceExpenses]);
+        toast.success("Gasto adicionado!");
+        return;
+      }
+
       console.log('Iniciando atualização de gasto:', id, updates);
 
       const updateData: any = {
@@ -921,6 +988,10 @@ const Financeiro = () => {
   };
 
   const handleDeleteServiceExpense = async (id: string) => {
+    if (id.startsWith('os-')) {
+        toast.error("Este projeto vem das Ordens de Serviço. Para remover os custos manuais atrelados a ele, clique em Editar e exclua os itens da lista.");
+        return;
+    }
     if (!window.confirm("Excluir?")) return;
     try {
       await supabase.from('service_expenses').delete().eq('id', id);
@@ -1183,7 +1254,7 @@ const Financeiro = () => {
         </TabsContent>
 
         <TabsContent value="dre"><DRETab selectedDREYear={selectedDREYear} setSelectedDREYear={setSelectedDREYear} dreData={dreData} detailedExpenses={detailedExpenses} formatCurrency={formatCurrency} /></TabsContent>
-        <TabsContent value="gastos_servicos"><ServiceExpensesTab serviceExpenses={serviceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
+        <TabsContent value="gastos_servicos"><ServiceExpensesTab serviceExpenses={combinedServiceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="conciliacao"><ConciliationTab selectedAccount={selectedAccount} setSelectedAccount={setSelectedAccount} currentDateReconciliation={currentDateReconciliation} handlePrevMonth={handlePrevMonth} handleNextMonth={handleNextMonth} totalAccountBalance={totalAccountBalance} reconciliationDailyData={reconciliationDailyData} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="notas_fiscais"><NotaFiscalTab /></TabsContent>
         <TabsContent value="profitability"><div>Teste Rentabilidade</div></TabsContent>
