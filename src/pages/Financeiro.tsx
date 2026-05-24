@@ -851,9 +851,11 @@ const Financeiro = () => {
   const handleDeleteTransaction = async (id: string) => {
     if (!window.confirm("Tem certeza que deseja excluir esta transação?")) return;
     try {
+      await supabase.from('transaction_allocations').delete().eq('transaction_id', id);
       const { error } = await supabase.from('transactions').delete().eq('id', id);
       if (error) throw error;
       setTransactions(transactions.filter(t => t.id !== id));
+      setTransactionAllocations(prev => prev.filter(a => a.transaction_id !== id));
       toast.success("Lançamento removido!");
     } catch (error) { toast.error("Erro ao remover lançamento."); }
   };
