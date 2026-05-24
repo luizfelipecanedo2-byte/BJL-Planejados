@@ -755,11 +755,13 @@ const TransactionFormDialog = ({
                                                         }}
                                                     >
                                                         <SelectTrigger className="h-8 text-xs">
-                                                            <SelectValue placeholder="Selecione o cliente" />
+                                                            <SelectValue placeholder="Selecione o projeto (OS)" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {clients.map(client => (
-                                                                <SelectItem key={client.id} value={client.name}>{client.name}</SelectItem>
+                                                            {serviceOrders.map(os => (
+                                                                <SelectItem key={os.id} value={`${os.ticketNumber} - ${os.client} (${os.action})`}>
+                                                                    {os.ticketNumber} - {os.client} ({os.action})
+                                                                </SelectItem>
                                                             ))}
                                                         </SelectContent>
                                                     </Select>
