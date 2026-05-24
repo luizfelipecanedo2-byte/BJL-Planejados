@@ -20,6 +20,14 @@ export interface Transaction {
     invoiceNumber: string;
     orderService?: string;
     boletoUrl?: string;
+    costSplits?: TransactionCostSplit[];
+}
+
+export interface TransactionCostSplit {
+    id?: string;
+    client: string;
+    amount: number;
+    description: string;
 }
 
 export const CATEGORIES = {

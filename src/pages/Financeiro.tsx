@@ -816,13 +816,30 @@ const Financeiro = () => {
       const { data: insertedData, error } = await supabase.from('transactions').insert(transactionsToInsert).select();
       if (error) throw error;
       if (insertedData) {
-        const newTrans: Transaction[] = insertedData.map(t => ({
+        // Handle cost splits
+        for (let i = 0; i < dataArray.length; i++) {
+          const item = dataArray[i];
+          const insertedRow = insertedData[i];
+          if (item.costSplits && item.costSplits.length > 0) {
+            const splitsToInsert = item.costSplits.map(split => ({
+              transaction_id: insertedRow.id,
+              client_name: split.client,
+              amount: split.amount,
+              description: split.description
+            }));
+            const { error: splitError } = await supabase.from('transaction_allocations').insert(splitsToInsert);
+            if (splitError) console.error("Error inserting cost splits:", splitError);
+          }
+        }
+
+        const newTrans: Transaction[] = insertedData.map((t, i) => ({
           id: t.id, description: t.description, amount: Number(t.amount), type: t.type as any,
           category: t.category, subcategory: t.subcategory, service: t.service, contact: t.contact,
           financialInstitution: t.financial_institution, paymentMethod: t.payment_method,
           competenceDate: new Date(t.competence_date + 'T12:00:00'), dueDate: new Date(t.due_date + 'T12:00:00'),
           paymentDate: t.payment_date ? new Date(t.payment_date + 'T12:00:00') : undefined,
-          status: t.status as any, invoiceNumber: t.invoice_number, orderService: t.order_service, boletoUrl: t.boleto_url
+          status: t.status as any, invoiceNumber: t.invoice_number, orderService: t.order_service, boletoUrl: t.boleto_url,
+          costSplits: dataArray[i].costSplits
         }));
         setTransactions(prev => [...newTrans, ...prev]);
       }
