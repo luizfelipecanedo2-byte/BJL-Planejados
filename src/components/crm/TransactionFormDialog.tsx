@@ -299,7 +299,7 @@ const TransactionFormDialog = ({
                 formattedSplits = costSplits.map(s => ({
                     client: s.client,
                     amount: Number(s.amount),
-                    description: s.description
+                    description: (s as any).color ? `${(s as any).color} ${s.description}`.trim() : s.description
                 }));
             }
 
@@ -777,6 +777,30 @@ const TransactionFormDialog = ({
                                                     </Select>
                                                 </div>
                                                 <div className="w-32">
+                                                    <Label className="text-[10px]">Cor na Nota</Label>
+                                                    <Select
+                                                        value={split.color}
+                                                        onValueChange={(v) => {
+                                                            const newSplits = [...costSplits];
+                                                            newSplits[index].color = v;
+                                                            setCostSplits(newSplits);
+                                                        }}
+                                                    >
+                                                        <SelectTrigger className="h-8 text-xs">
+                                                            <SelectValue placeholder="Cor" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="🔴">🔴 Vermelho</SelectItem>
+                                                            <SelectItem value="🟢">🟢 Verde</SelectItem>
+                                                            <SelectItem value="🔵">🔵 Azul</SelectItem>
+                                                            <SelectItem value="🟡">🟡 Amarelo</SelectItem>
+                                                            <SelectItem value="🟠">🟠 Laranja</SelectItem>
+                                                            <SelectItem value="🟣">🟣 Roxo</SelectItem>
+                                                            <SelectItem value="⚫">⚫ Preto</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="w-28">
                                                     <Label className="text-[10px]">Valor (R$)</Label>
                                                     <Input
                                                         type="number"
@@ -814,7 +838,7 @@ const TransactionFormDialog = ({
                                                         setCostSplits(newSplits);
                                                     }}
                                                     className="h-8 text-xs"
-                                                    placeholder="Ex: 2 Chapas de MDF Branco"
+                                                    placeholder="Ex: Itens marcados"
                                                 />
                                             </div>
                                         </div>
