@@ -289,6 +289,20 @@ const TransactionFormDialog = ({
             };
             onSubmit([transferOut, transferIn]);
         } else {
+            let formattedSplits: any[] | undefined = undefined;
+            if (isCostSplit && type === 'expense') {
+                const totalSplitAmount = costSplits.reduce((acc, split) => acc + Number(split.amount), 0);
+                if (Math.abs(totalSplitAmount - amount) > 0.01) {
+                    alert(`A soma dos rateios (${totalSplitAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) deve ser igual ao valor total (${amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
+                    return;
+                }
+                formattedSplits = costSplits.map(s => ({
+                    client: s.client,
+                    amount: Number(s.amount),
+                    description: s.description
+                }));
+            }
+
             if (isInstallment && Number(installmentsCount) > 1) {
                 const count = Number(installmentsCount);
                 const installmentValue = amount / count;
@@ -298,6 +312,7 @@ const TransactionFormDialog = ({
                     const dueDate = new Date(form.dueDate);
                     // Add i months to the due date
                     const newDueDate = addMonths(dueDate, i);
+                    const instSplits = formattedSplits ? formattedSplits.map(s => ({ ...s, amount: s.amount / count })) : undefined;
 
                     transactions.push({
                         ...baseSubmitData,
@@ -307,6 +322,7 @@ const TransactionFormDialog = ({
                         status: i === 0 ? status : 'pending', // Only first one takes the form status (e.g. paid), others pending
                         paymentDate: i === 0 ? baseSubmitData.paymentDate : undefined,
                         boletoUrl: i === 0 ? baseSubmitData.boletoUrl : undefined,
+                        costSplits: instSplits
                     });
                 }
                 onSubmit(transactions);
@@ -329,6 +345,7 @@ const TransactionFormDialog = ({
                         status: i === 0 ? status : 'pending', // Apenas o primeiro pode já ser pago, os próximos são contas a pagar
                         paymentDate: i === 0 ? baseSubmitData.paymentDate : undefined,
                         boletoUrl: i === 0 ? baseSubmitData.boletoUrl : undefined,
+                        costSplits: formattedSplits
                     });
                 }
                 onSubmit(transactions);
@@ -339,28 +356,21 @@ const TransactionFormDialog = ({
                     return;
                 }
 
-                const transactions = splits.map((split) => ({
-                    ...baseSubmitData,
-                    amount: Number(split.amount),
-                    paymentMethod: split.method,
-                    financialInstitution: split.institution,
-                    description: `${form.description} (${split.method})`,
-                }));
+                const transactions = splits.map((split) => {
+                    const ratio = Number(split.amount) / amount;
+                    const instSplits = formattedSplits ? formattedSplits.map(s => ({ ...s, amount: s.amount * ratio })) : undefined;
+                    return {
+                        ...baseSubmitData,
+                        amount: Number(split.amount),
+                        paymentMethod: split.method,
+                        financialInstitution: split.institution,
+                        description: `${form.description} (${split.method})`,
+                        costSplits: instSplits
+                    };
+                });
                 onSubmit(transactions);
-            } else if (isCostSplit && type === 'expense') {
-                const totalSplitAmount = costSplits.reduce((acc, split) => acc + Number(split.amount), 0);
-                if (Math.abs(totalSplitAmount - amount) > 0.01) {
-                    alert(`A soma dos rateios (${totalSplitAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) deve ser igual ao valor total (${amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
-                    return;
-                }
-                const formattedSplits = costSplits.map(s => ({
-                    client: s.client,
-                    amount: Number(s.amount),
-                    description: s.description
-                }));
-                onSubmit({ ...baseSubmitData, costSplits: formattedSplits });
             } else {
-                onSubmit(baseSubmitData);
+                onSubmit({ ...baseSubmitData, costSplits: formattedSplits });
             }
         }
         onOpenChange(false);
@@ -717,7 +727,7 @@ const TransactionFormDialog = ({
 
                     {/* Seção Cost Split (Rateio por Cliente) */}
                     {!editingTransaction && type === 'expense' && (
-                        <div className={`p-4 border rounded-lg space-y-4 ${isCostSplit ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-muted/20'} ${(isInstallment || isRecurring) && 'opacity-50 pointer-events-none'}`}>
+                        <div className={`p-4 border rounded-lg space-y-4 ${isCostSplit ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-muted/20'}`}>
                             <div className="flex items-center justify-between">
                                 <div className="space-y-0.5">
                                     <Label className="text-sm font-bold text-emerald-600">Dividir Custo entre Clientes</Label>
@@ -734,7 +744,6 @@ const TransactionFormDialog = ({
                                             ]);
                                         }
                                     }}
-                                    disabled={isInstallment || isRecurring}
                                     className="data-[state=checked]:bg-emerald-500"
                                 />
                             </div>
