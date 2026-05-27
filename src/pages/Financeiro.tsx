@@ -40,6 +40,7 @@ const Financeiro = () => {
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [serviceExpenses, setServiceExpenses] = useState<ServiceExpense[]>([]);
   const [transactionAllocations, setTransactionAllocations] = useState<any[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
 
   useEffect(() => {
     fetchTransactions();
@@ -47,7 +48,29 @@ const Financeiro = () => {
     fetchServiceOrders();
     fetchServiceExpenses();
     fetchTransactionAllocations();
+    fetchSales();
   }, []);
+
+  const fetchSales = async () => {
+    try {
+      const { data, error } = await supabase.from('sales').select('*');
+      if (error) throw error;
+      const mapped = (data || []).map((item: any) => ({
+        id: item.id,
+        clientName: item.client_name,
+        product: item.product,
+        quantity: item.quantity,
+        unitPrice: Number(item.unit_price),
+        totalValue: Number(item.total_value),
+        status: item.status,
+        closedDate: item.closed_date,
+        createdAt: item.created_at,
+      }));
+      setSales(mapped);
+    } catch (error) {
+      console.error('Error fetching sales:', error);
+    }
+  };
 
   const fetchTransactionAllocations = async () => {
     try {
@@ -1116,6 +1139,7 @@ const Financeiro = () => {
             formatCurrency={formatCurrency}
             handleEditTransaction={handleEditTransaction}
             transactions={transactions}
+            sales={sales}
           />
         </TabsContent>
 

@@ -62,6 +62,7 @@ interface DashboardTabProps {
     formatCurrency: (value: number) => string;
     handleEditTransaction: (t: any) => void;
     transactions?: any[];
+    sales?: any[];
 }
 
 const DashboardTab = ({
@@ -78,6 +79,7 @@ const DashboardTab = ({
     upcomingTransactions = [],
     handleEditTransaction,
     transactions = [],
+    sales = [],
 }: DashboardTabProps) => {
 
     // Suggestion 1: Fluxo de Caixa Diário (Próximos 15 dias)
@@ -110,20 +112,28 @@ const DashboardTab = ({
         return data;
     }, [transactions]);
 
-    // Suggestion 3: Evolução do Ticket Médio
+    // Suggestion 3: Evolução do Ticket Médio (pega as vendas fechadas do CRM)
     const ticketMedioData = useMemo(() => {
         const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const year = parseInt(selectedYear);
         return months.map((month, index) => {
-            const monthlyTrans = transactions.filter(t => {
-                if (!t.dueDate) return false;
-                const date = new Date(t.dueDate);
-                return date.getMonth() === index && date.getFullYear() === year;
+            const monthlySales = sales.filter(s => {
+                const dateStr = s.closedDate || s.createdAt;
+                if (!dateStr) return false;
+                const match = dateStr.match(/^(\d{4})-(\d{2})/);
+                if (match) {
+                    const y = parseInt(match[1]);
+                    const m = parseInt(match[2]) - 1;
+                    return y === year && m === index;
+                }
+                const date = new Date(dateStr);
+                return date.getFullYear() === year && date.getMonth() === index;
             });
 
-            const sales = monthlyTrans.filter(t => t.type === 'income' && t.category !== 'Transferência');
-            const total = sales.reduce((sum, t) => sum + t.amount, 0);
-            const count = sales.length;
+            // Consider closed sales
+            const closedSales = monthlySales.filter(s => s.status === "fechado" || s.status === "pos_venda");
+            const total = closedSales.reduce((sum, s) => sum + (s.totalValue || 0), 0);
+            const count = closedSales.length;
             const ticket = count > 0 ? total / count : 0;
 
             return {
@@ -131,7 +141,7 @@ const DashboardTab = ({
                 "Ticket Médio": ticket,
             };
         });
-    }, [transactions, selectedYear]);
+    }, [sales, selectedYear]);
 
     // Suggestion 5: Termômetro de Meta
     const [goal, setGoal] = useState(() => {
