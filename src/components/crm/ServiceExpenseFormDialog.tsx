@@ -29,6 +29,10 @@ const ServiceExpenseFormDialog = ({
     onUpdate,
     editingExpense,
 }: ServiceExpenseFormDialogProps) => {
+    const isLinkedToOS = !!editingExpense && (
+        editingExpense.id.startsWith('os-') || 
+        editingExpense.clientName.includes(' - ')
+    );
     const [form, setForm] = useState({
         clientName: "",
         environment: "",
@@ -184,18 +188,27 @@ const ServiceExpenseFormDialog = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="clientName">Nome do Cliente</Label>
-                            <Select value={form.clientName} onValueChange={(value) => update("clientName", value)} required>
-                                <SelectTrigger id="clientName" className="w-full">
-                                    <SelectValue placeholder="Selecione um cliente..." />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[200px]">
-                                    {clients.map((client, index) => (
-                                        <SelectItem key={index} value={client.name}>
-                                            {client.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            {isLinkedToOS ? (
+                                <Input
+                                    id="clientName"
+                                    value={form.clientName}
+                                    disabled
+                                    className="bg-muted text-muted-foreground font-semibold"
+                                />
+                            ) : (
+                                <Select value={form.clientName} onValueChange={(value) => update("clientName", value)} required>
+                                    <SelectTrigger id="clientName" className="w-full">
+                                        <SelectValue placeholder="Selecione um cliente..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[200px]">
+                                        {clients.map((client, index) => (
+                                            <SelectItem key={index} value={client.name}>
+                                                {client.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="environment">Ambiente</Label>
@@ -203,6 +216,8 @@ const ServiceExpenseFormDialog = ({
                                 id="environment"
                                 value={form.environment}
                                 onChange={(e) => update("environment", e.target.value)}
+                                disabled={isLinkedToOS}
+                                className={isLinkedToOS ? "bg-muted text-muted-foreground font-semibold" : ""}
                                 required
                             />
                         </div>
