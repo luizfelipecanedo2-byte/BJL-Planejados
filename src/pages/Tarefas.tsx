@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,33 @@ interface Profile {
     role: string;
     email?: string;
 }
+
+// Helper para verificar visibilidade da tarefa na aba ativa
+const checkTaskVisibility = (dueDate: string, status: string, activeView: string) => {
+    const now = new Date();
+    const today = format(now, "yyyy-MM-dd");
+    const tomorrow = format(addDays(now, 1), "yyyy-MM-dd");
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+
+    switch (activeView) {
+        case "hoje":
+            return (dueDate === today) || (dueDate < today && status === 'pending');
+        case "amanha":
+            return dueDate === tomorrow;
+        case "semana":
+            try {
+                const date = parseISO(dueDate);
+                return isWithinInterval(date, { start: weekStart, end: weekEnd });
+            } catch (e) {
+                return false;
+            }
+        case "todas":
+            return true;
+        default:
+            return true;
+    }
+};
 
 const Tarefas = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -112,7 +139,6 @@ const Tarefas = () => {
         }
 
         const today = format(new Date(), "yyyy-MM-dd");
-        
         const tasksToUpdate = (data || []).filter(t => t.status === 'pending' && t.due_date < today);
         
         if (tasksToUpdate.length > 0) {
@@ -171,7 +197,7 @@ const Tarefas = () => {
 
     const handleCreateTask = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newTitle) return;
+        if (!newTitle.trim()) return;
 
         try {
             const userId = currentUserId || (await supabase.auth.getSession()).data.session?.user?.id || (await supabase.auth.getUser()).data.user?.id;
@@ -180,11 +206,14 @@ const Tarefas = () => {
                 return;
             }
 
+            const cleanProject = (newProject || "Geral").trim();
+            const cleanEnvironment = (newEnvironment || "Geral").trim();
+
             const taskData = {
-                title: newTitle,
-                description: newDescription,
-                project_name: newProject || "Geral",
-                environment_name: newEnvironment || "Geral",
+                title: newTitle.trim(),
+                description: newDescription.trim(),
+                project_name: cleanProject,
+                environment_name: cleanEnvironment,
                 due_date: newDueDate,
                 assigned_to: newAssignedTo === "all" ? null : newAssignedTo,
                 priority: newPriority,
@@ -192,14 +221,26 @@ const Tarefas = () => {
                 status: editingTask ? editingTask.status : 'pending'
             };
 
+            const isVisible = checkTaskVisibility(newDueDate, taskData.status, activeView);
+
             if (editingTask) {
                 const { error } = await supabase.from('tasks').update(taskData).eq('id', editingTask.id);
                 if (error) throw error;
-                toast.success("Tarefa atualizada com sucesso!");
+                
+                if (isVisible) {
+                    toast.success("Tarefa atualizada com sucesso!");
+                } else {
+                    toast.success(`Tarefa atualizada! (Nota: Ela não aparece nesta aba pois está agendada para ${format(parseISO(newDueDate), "dd/MM/yyyy")})`);
+                }
             } else {
                 const { error } = await supabase.from('tasks').insert([taskData]);
                 if (error) throw error;
-                toast.success("Tarefa criada com sucesso!");
+                
+                if (isVisible) {
+                    toast.success("Tarefa criada com sucesso!");
+                } else {
+                    toast.success(`Tarefa criada com sucesso! (Nota: Ela não aparece nesta aba pois está agendada para ${format(parseISO(newDueDate), "dd/MM/yyyy")})`);
+                }
             }
 
             setIsDialogOpen(false);
@@ -243,15 +284,6 @@ const Tarefas = () => {
         }
     };
 
-    const getPriorityColor = (priority: string) => {
-        switch (priority) {
-            case 'high': return 'bg-rose-500';
-            case 'normal': return 'bg-amber-500';
-            case 'low': return 'bg-emerald-500';
-            default: return 'bg-slate-500';
-        }
-    };
-
     const filterTasksByView = () => {
         const now = new Date();
         const today = format(now, "yyyy-MM-dd");
@@ -269,8 +301,12 @@ const Tarefas = () => {
                 return tasks.filter(t => t.due_date === tomorrow);
             case "semana":
                 return tasks.filter(t => {
-                    const date = parseISO(t.due_date);
-                    return isWithinInterval(date, { start: weekStart, end: weekEnd });
+                    try {
+                        const date = parseISO(t.due_date);
+                        return isWithinInterval(date, { start: weekStart, end: weekEnd });
+                    } catch (e) {
+                        return false;
+                    }
                 });
             case "todas":
                 return tasks;
@@ -279,295 +315,29 @@ const Tarefas = () => {
         }
     };
 
-    const defaultDueDateForView = useState(() => {
-        const now = new Date();
-        if (activeView === 'amanha') {
-            return format(addDays(now, 1), "yyyy-MM-dd");
-        }
-        return format(now, "yyyy-MM-dd");
-    });
-
-    // Keep defaultDueDateForView synced with activeView
+    // Keep defaultDueDate synced with activeView
     const defaultDueDate = activeView === 'amanha' 
         ? format(addDays(new Date(), 1), "yyyy-MM-dd")
         : format(new Date(), "yyyy-MM-dd");
 
     const filteredTasks = filterTasksByView();
     
+    // Grouping robusto (case-insensitive e trim-insensitive nos nomes)
     const groupedTasks = filteredTasks.reduce((acc: { [key: string]: Task[] }, task) => {
-        const key = `${task.project_name || "Geral"} - ${task.environment_name || "Geral"}`;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(task);
+        const project = (task.project_name || "Geral").trim();
+        const environment = (task.environment_name || "Geral").trim();
+        
+        const canonicalKey = `${project.toLowerCase()} - ${environment.toLowerCase()}`;
+        const existingKey = Object.keys(acc).find(k => k.toLowerCase() === canonicalKey);
+        
+        if (existingKey) {
+            acc[existingKey].push(task);
+        } else {
+            const formattedKey = `${project} - ${environment}`;
+            acc[formattedKey] = [task];
+        }
         return acc;
     }, {});
-
-    const QuickAddTask = ({ project, environment, defaultDate, onCreated, currentUserId }: { project: string, environment: string, defaultDate: string, onCreated: () => void, currentUserId: string | null }) => {
-        const [title, setTitle] = useState("");
-        const [dueDate, setDueDate] = useState(defaultDate);
-        const [isSubmitting, setIsSubmitting] = useState(false);
-
-        useEffect(() => {
-            setDueDate(defaultDate);
-        }, [defaultDate]);
-
-        const handleSubmit = async (e: React.FormEvent) => {
-            e.preventDefault();
-            if (!title.trim() || isSubmitting) return;
-
-            setIsSubmitting(true);
-            try {
-                const userId = currentUserId || (await supabase.auth.getSession()).data.session?.user?.id || (await supabase.auth.getUser()).data.user?.id;
-                if (!userId) {
-                    toast.error("Usuário não autenticado. Por favor, faça login novamente.");
-                    return;
-                }
-
-                const taskData = {
-                    title: title,
-                    project_name: project,
-                    environment_name: environment,
-                    due_date: dueDate,
-                    created_by: userId,
-                    status: 'pending',
-                    priority: 'normal'
-                };
-
-                const { error } = await supabase.from('tasks').insert([taskData]);
-                if (error) throw error;
-
-                toast.success("Tarefa adicionada!");
-                setTitle("");
-                onCreated();
-            } catch (error) {
-                toast.error("Erro ao adicionar tarefa rápida");
-            } finally {
-                setIsSubmitting(false);
-            }
-        };
-
-        return (
-            <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 bg-primary/5 p-3 rounded-[1.5rem] border border-primary/10 focus-within:border-primary/30 transition-all shadow-inner">
-                <div className="flex items-center gap-2 px-1">
-                    <CalendarIcon className="h-3.5 w-3.5 text-primary/60" />
-                    <Input 
-                        type="date"
-                        value={dueDate}
-                        onChange={(e) => setDueDate(e.target.value)}
-                        className="bg-transparent border-none h-6 p-0 text-[10px] font-black uppercase tracking-tighter w-28 focus-visible:ring-0 text-muted-foreground [color-scheme:dark] shadow-none"
-                    />
-                </div>
-                <div className="flex items-center gap-2">
-                    <Input 
-                        placeholder="Nova tarefa..." 
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        className="bg-transparent border-none h-8 text-sm font-bold focus-visible:ring-0 placeholder:text-muted-foreground/30 flex-1 px-1 text-white"
-                    />
-                    <Button type="submit" size="icon" className="h-9 w-9 bg-primary hover:bg-primary/80 text-black rounded-xl shrink-0 shadow-lg shadow-primary/20" disabled={!title.trim() || isSubmitting}>
-                        <Plus className="h-5 w-5" />
-                    </Button>
-                </div>
-            </form>
-        );
-    };
-
-    const SortableTaskItem = ({ task, onEdit, onToggleStatus, onDelete }: any) => {
-        const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
-        
-        const style = {
-            transform: CSS.Transform.toString(transform),
-            transition,
-        };
-
-        return (
-            <div 
-                ref={setNodeRef} 
-                style={style} 
-                className="flex items-center gap-4 group/item bg-gradient-to-br from-[#1a1a1a]/80 to-[#121212]/90 backdrop-blur-2xl hover:from-[#252525]/90 hover:to-[#1a1a1a]/95 p-4 rounded-full border border-white/10 hover:border-primary/50 transition-all duration-500 relative z-10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] mb-4 hover:-translate-y-1.5 active:scale-[0.97] group/bubble"
-            >
-                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing opacity-20 group-hover/item:opacity-100 flex items-center justify-center shrink-0 transition-opacity p-1.5 hover:bg-white/10 rounded-full">
-                    <LayoutGrid className="h-4 w-4 text-primary/60 group-hover/bubble:text-primary transition-colors" />
-                </div>
-                
-                <button 
-                    onClick={() => onToggleStatus(task)}
-                    className="h-6 w-6 rounded-full border-2 border-white/10 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-all shrink-0 group/check"
-                >
-                    <Circle className="h-3 w-3 text-transparent group-hover/check:text-primary/60 transition-colors" />
-                </button>
-
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                        <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", 
-                            task.priority === 'high' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 
-                            task.priority === 'normal' ? 'bg-amber-500' : 'bg-emerald-500'
-                        )} />
-                        <p className="text-[13px] font-bold text-white/90 leading-tight break-words font-['Outfit']">{task.title}</p>
-                    </div>
-                    {task.description && (
-                        <p className="text-[10px] text-muted-foreground/60 line-clamp-1 pl-3.5 italic">{task.description}</p>
-                    )}
-                </div>
-
-                <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                    <button 
-                        onClick={() => onEdit(task)}
-                        className="h-7 w-7 flex items-center justify-center rounded-lg text-blue-400/60 hover:text-blue-400 hover:bg-blue-400/10 transition-all shrink-0"
-                    >
-                        <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button 
-                        onClick={() => onDelete(task.id)}
-                        className="h-7 w-7 flex items-center justify-center rounded-lg text-rose-400/60 hover:text-rose-400 hover:bg-rose-400/10 transition-all shrink-0"
-                    >
-                        <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
-    const TaskCard = ({ title, tasks, defaultDueDate, currentUserId, onUpdate, onEdit }: { title: string, tasks: Task[], defaultDueDate: string, currentUserId: string | null, onUpdate: () => void, onEdit: (task: Task) => void }) => {
-        const [showCompleted, setShowCompleted] = useState(false);
-        const cardRef = (window as any).useRef?.() || { current: null }; // Workaround if useRef isn't imported, but it is in React
-        
-        // Spotlight effect logic
-        const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-            const card = e.currentTarget;
-            const rect = card.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            card.style.setProperty("--mouse-x", `${x}px`);
-            card.style.setProperty("--mouse-y", `${y}px`);
-        };
-
-        const [pendingTasks, setPendingTasks] = useState(() => 
-            tasks.filter(t => t.status === 'pending').sort((a,b) => (a.order_index || 0) - (b.order_index || 0))
-        );
-        const completedTasks = tasks.filter(t => t.status === 'completed');
-        const [projectName, environmentName] = title.split(' - ');
-        
-        useEffect(() => {
-            setPendingTasks(tasks.filter(t => t.status === 'pending').sort((a,b) => (a.order_index || 0) - (b.order_index || 0)));
-        }, [tasks]);
-
-        const defaultDate = defaultDueDate;
-
-        const sensors = useSensors(
-            useSensor(PointerSensor),
-            useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-        );
-
-        const handleDragEnd = (event: any) => {
-            const { active, over } = event;
-            if (over && active.id !== over.id) {
-                setPendingTasks((items) => {
-                    const oldIndex = items.findIndex((i) => i.id === active.id);
-                    const newIndex = items.findIndex((i) => i.id === over.id);
-                    const newItems = arrayMove(items, oldIndex, newIndex);
-                    
-                    const updates = newItems.map((item, index) => ({
-                        id: item.id,
-                        order_index: index
-                    }));
-                    
-                    Promise.all(updates.map(u => 
-                        supabase.from('tasks').update({ order_index: u.order_index }).eq('id', u.id)
-                    )).catch(e => console.log('Error updating order', e));
-
-                    return newItems;
-                });
-            }
-        };
-
-        return (
-            <Card 
-                onMouseMove={handleMouseMove}
-                className="glass-card border-white/5 rounded-[2.5rem] overflow-hidden flex flex-col h-full hover:border-primary/30 transition-all duration-700 group/card luxury-shadow spotlight-card tilt-card"
-            >
-                <CardHeader className="p-7 pb-4">
-                    <div className="flex justify-between items-start">
-                        <div className="space-y-1.5">
-                            <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                                {title}
-                            </h3>
-                            <div className="flex items-center gap-3">
-                                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full">
-                                    <CalendarIcon className="h-2.5 w-2.5 text-primary/60" />
-                                    {format(new Date(), "dd MMM", { locale: ptBR })}
-                                </p>
-                                <p className="text-[9px] font-black text-primary/60 uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded-full">
-                                    {pendingTasks.length} {pendingTasks.length === 1 ? 'Pendente' : 'Pendentes'}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="h-10 w-10 rounded-2xl bg-white/[0.03] flex items-center justify-center border border-white/5 group-hover/card:border-primary/40 group-hover/card:bg-primary/10 transition-all duration-500">
-                            <LayoutGrid className="h-5 w-5 text-primary/40 group-hover/card:text-primary transition-colors" />
-                        </div>
-                    </div>
-                </CardHeader>
-                
-                <CardContent className="p-7 pt-2 flex-1 flex flex-col">
-                    <div className="flex-1">
-                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                            <SortableContext items={pendingTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                                <div className="space-y-1">
-                                    {pendingTasks.map(task => (
-                                        <SortableTaskItem 
-                                            key={task.id} 
-                                            task={task} 
-                                            onEdit={onEdit}
-                                            onToggleStatus={handleToggleStatus}
-                                            onDelete={handleDeleteTask}
-                                        />
-                                    ))}
-                                </div>
-                            </SortableContext>
-                        </DndContext>
-
-                        {completedTasks.length > 0 && (
-                            <div className="mt-6 pt-5 border-t border-white/5">
-                                <button 
-                                    onClick={() => setShowCompleted(!showCompleted)}
-                                    className="flex items-center gap-2 text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] hover:text-primary/60 transition-colors group/completed"
-                                >
-                                    <div className="h-4 w-4 rounded-full border border-white/10 flex items-center justify-center group-hover/completed:border-primary/40 transition-colors">
-                                        {showCompleted ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
-                                    </div>
-                                    {completedTasks.length} {completedTasks.length === 1 ? 'item concluído' : 'itens concluídos'}
-                                </button>
-                                
-                                {showCompleted && (
-                                    <div className="mt-4 space-y-3">
-                                        {completedTasks.map(task => (
-                                            <div key={task.id} className="flex items-center gap-3 bg-emerald-500/[0.03] p-3 rounded-[1rem] border border-emerald-500/5 opacity-40 hover:opacity-60 transition-opacity">
-                                                <button 
-                                                    onClick={() => handleToggleStatus(task)}
-                                                    className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center text-black shrink-0"
-                                                >
-                                                    <CheckCircle2 className="h-3 w-3" />
-                                                </button>
-                                                <p className="text-xs font-bold text-white line-through leading-tight font-['Outfit']">{task.title}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    <QuickAddTask 
-                        project={projectName} 
-                        environment={environmentName} 
-                        defaultDate={defaultDate}
-                        onCreated={onUpdate} 
-                        currentUserId={currentUserId}
-                    />
-                </CardContent>
-            </Card>
-        );
-    };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
@@ -590,7 +360,17 @@ const Tarefas = () => {
 
                     {userRole === 'admin' && (
                         <Dialog open={isDialogOpen} onOpenChange={(open) => {
-                            if (!open) resetForm();
+                            if (!open) {
+                                resetForm();
+                            } else {
+                                // Sincroniza a data inicial com base na aba ativa ao abrir
+                                const now = new Date();
+                                if (activeView === 'amanha') {
+                                    setNewDueDate(format(addDays(now, 1), "yyyy-MM-dd"));
+                                } else {
+                                    setNewDueDate(format(now, "yyyy-MM-dd"));
+                                }
+                            }
                             setIsDialogOpen(open);
                         }}>
                             <DialogTrigger asChild>
@@ -740,14 +520,325 @@ const Tarefas = () => {
                                 tasks={tasks} 
                                 defaultDueDate={defaultDueDate}
                                 currentUserId={currentUserId}
+                                activeView={activeView}
                                 onUpdate={fetchTasks} 
                                 onEdit={handleEditClick}
+                                onToggleStatus={handleToggleStatus}
+                                onDelete={handleDeleteTask}
                             />
                         ))}
                     </div>
                 )}
             </div>
         </div>
+    );
+};
+
+// Componente para adição rápida de tarefas
+interface QuickAddTaskProps {
+    project: string;
+    environment: string;
+    defaultDate: string;
+    activeView: string;
+    onCreated: () => void;
+    currentUserId: string | null;
+}
+
+const QuickAddTask = ({ project, environment, defaultDate, activeView, onCreated, currentUserId }: QuickAddTaskProps) => {
+    const [title, setTitle] = useState("");
+    const [dueDate, setDueDate] = useState(defaultDate);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        setDueDate(defaultDate);
+    }, [defaultDate]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!title.trim() || isSubmitting) return;
+
+        setIsSubmitting(true);
+        try {
+            const userId = currentUserId || (await supabase.auth.getSession()).data.session?.user?.id || (await supabase.auth.getUser()).data.user?.id;
+            if (!userId) {
+                toast.error("Usuário não autenticado. Por favor, faça login novamente.");
+                return;
+            }
+
+            const cleanProject = project.trim();
+            const cleanEnvironment = environment.trim();
+
+            const taskData = {
+                title: title.trim(),
+                project_name: cleanProject,
+                environment_name: cleanEnvironment,
+                due_date: dueDate,
+                created_by: userId,
+                status: 'pending',
+                priority: 'normal'
+            };
+
+            const { error } = await supabase.from('tasks').insert([taskData]);
+            if (error) throw error;
+
+            const isVisible = checkTaskVisibility(dueDate, 'pending', activeView);
+            if (isVisible) {
+                toast.success("Tarefa adicionada!");
+            } else {
+                toast.success(`Tarefa adicionada! (Nota: Ela não aparece nesta aba pois está agendada para ${format(parseISO(dueDate), "dd/MM/yyyy")})`);
+            }
+            
+            setTitle("");
+            onCreated();
+        } catch (error) {
+            toast.error("Erro ao adicionar tarefa rápida");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 bg-primary/5 p-3 rounded-[1.5rem] border border-primary/10 focus-within:border-primary/30 transition-all shadow-inner">
+            <div className="flex items-center gap-2 px-1">
+                <CalendarIcon className="h-3.5 w-3.5 text-primary/60" />
+                <Input 
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="bg-transparent border-none h-6 p-0 text-[10px] font-black uppercase tracking-tighter w-28 focus-visible:ring-0 text-muted-foreground [color-scheme:dark] shadow-none"
+                />
+            </div>
+            <div className="flex items-center gap-2">
+                <Input 
+                    placeholder="Nova tarefa..." 
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="bg-transparent border-none h-8 text-sm font-bold focus-visible:ring-0 placeholder:text-muted-foreground/30 flex-1 px-1 text-white"
+                />
+                <Button type="submit" size="icon" className="h-9 w-9 bg-primary hover:bg-primary/80 text-black rounded-xl shrink-0 shadow-lg shadow-primary/20" disabled={!title.trim() || isSubmitting}>
+                    <Plus className="h-5 w-5" />
+                </Button>
+            </div>
+        </form>
+    );
+};
+
+// Componente para item de tarefa ordenável
+interface SortableTaskItemProps {
+    task: Task;
+    onEdit: (task: Task) => void;
+    onToggleStatus: (task: Task) => void;
+    onDelete: (id: string) => void;
+}
+
+const SortableTaskItem = ({ task, onEdit, onToggleStatus, onDelete }: SortableTaskItemProps) => {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
+    
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div 
+            ref={setNodeRef} 
+            style={style} 
+            className="flex items-center gap-4 group/item bg-gradient-to-br from-[#1a1a1a]/80 to-[#121212]/90 backdrop-blur-2xl hover:from-[#252525]/90 hover:to-[#1a1a1a]/95 p-4 rounded-full border border-white/10 hover:border-primary/50 transition-all duration-500 relative z-10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] mb-4 hover:-translate-y-1.5 active:scale-[0.97] group/bubble"
+        >
+            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing opacity-20 group-hover/item:opacity-100 flex items-center justify-center shrink-0 transition-opacity p-1.5 hover:bg-white/10 rounded-full">
+                <LayoutGrid className="h-4 w-4 text-primary/60 group-hover/bubble:text-primary transition-colors" />
+            </div>
+            
+            <button 
+                onClick={() => onToggleStatus(task)}
+                className="h-6 w-6 rounded-full border-2 border-white/10 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-all shrink-0 group/check"
+            >
+                <Circle className="h-3 w-3 text-transparent group-hover/check:text-primary/60 transition-colors" />
+            </button>
+
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                    <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", 
+                        task.priority === 'high' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 
+                        task.priority === 'normal' ? 'bg-amber-500' : 'bg-emerald-500'
+                    )} />
+                    <p className="text-[13px] font-bold text-white/90 leading-tight break-words font-['Outfit']">{task.title}</p>
+                </div>
+                {task.description && (
+                    <p className="text-[10px] text-muted-foreground/60 line-clamp-1 pl-3.5 italic">{task.description}</p>
+                )}
+            </div>
+
+            <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                <button 
+                    onClick={() => onEdit(task)}
+                    className="h-7 w-7 flex items-center justify-center rounded-lg text-blue-400/60 hover:text-blue-400 hover:bg-blue-400/10 transition-all shrink-0"
+                >
+                    <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button 
+                    onClick={() => onDelete(task.id)}
+                    className="h-7 w-7 flex items-center justify-center rounded-lg text-rose-400/60 hover:text-rose-400 hover:bg-rose-400/10 transition-all shrink-0"
+                >
+                    <Trash2 className="h-3.5 w-3.5" />
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// Componente de Cartão de Grupo de Tarefas
+interface TaskCardProps {
+    title: string;
+    tasks: Task[];
+    defaultDueDate: string;
+    currentUserId: string | null;
+    activeView: string;
+    onUpdate: () => void;
+    onEdit: (task: Task) => void;
+    onToggleStatus: (task: Task) => void;
+    onDelete: (id: string) => void;
+}
+
+const TaskCard = ({ title, tasks, defaultDueDate, currentUserId, activeView, onUpdate, onEdit, onToggleStatus, onDelete }: TaskCardProps) => {
+    const [showCompleted, setShowCompleted] = useState(false);
+    
+    // Spotlight effect logic
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const card = e.currentTarget;
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        card.style.setProperty("--mouse-x", `${x}px`);
+        card.style.setProperty("--mouse-y", `${y}px`);
+    };
+
+    const [pendingTasks, setPendingTasks] = useState(() => 
+        tasks.filter(t => t.status === 'pending').sort((a,b) => (a.order_index || 0) - (b.order_index || 0))
+    );
+    const completedTasks = tasks.filter(t => t.status === 'completed');
+    const [projectName, environmentName] = title.split(' - ');
+    
+    useEffect(() => {
+        setPendingTasks(tasks.filter(t => t.status === 'pending').sort((a,b) => (a.order_index || 0) - (b.order_index || 0)));
+    }, [tasks]);
+
+    const defaultDate = defaultDueDate;
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const handleDragEnd = (event: any) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            setPendingTasks((items) => {
+                const oldIndex = items.findIndex((i) => i.id === active.id);
+                const newIndex = items.findIndex((i) => i.id === over.id);
+                const newItems = arrayMove(items, oldIndex, newIndex);
+                
+                const updates = newItems.map((item, index) => ({
+                    id: item.id,
+                    order_index: index
+                }));
+                
+                Promise.all(updates.map(u => 
+                    supabase.from('tasks').update({ order_index: u.order_index }).eq('id', u.id)
+                )).catch(e => console.log('Error updating order', e));
+
+                return newItems;
+            });
+        }
+    };
+
+    return (
+        <Card 
+            onMouseMove={handleMouseMove}
+            className="glass-card border-white/5 rounded-[2.5rem] overflow-hidden flex flex-col h-full hover:border-primary/30 transition-all duration-700 group/card luxury-shadow spotlight-card tilt-card"
+        >
+            <CardHeader className="p-7 pb-4">
+                <div className="flex justify-between items-start">
+                    <div className="space-y-1.5">
+                        <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                            {title}
+                        </h3>
+                        <div className="flex items-center gap-3">
+                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full">
+                                <CalendarIcon className="h-2.5 w-2.5 text-primary/60" />
+                                {format(new Date(), "dd MMM", { locale: ptBR })}
+                            </p>
+                            <p className="text-[9px] font-black text-primary/60 uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded-full">
+                                {pendingTasks.length} {pendingTasks.length === 1 ? 'Pendente' : 'Pendentes'}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="h-10 w-10 rounded-2xl bg-white/[0.03] flex items-center justify-center border border-white/5 group-hover/card:border-primary/40 group-hover/card:bg-primary/10 transition-all duration-500">
+                        <LayoutGrid className="h-5 w-5 text-primary/40 group-hover/card:text-primary transition-colors" />
+                    </div>
+                </div>
+            </CardHeader>
+            
+            <CardContent className="p-7 pt-2 flex-1 flex flex-col">
+                <div className="flex-1">
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={pendingTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            <div className="space-y-1">
+                                {pendingTasks.map(task => (
+                                    <SortableTaskItem 
+                                        key={task.id} 
+                                        task={task} 
+                                        onEdit={onEdit}
+                                        onToggleStatus={onToggleStatus}
+                                        onDelete={onDelete}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
+
+                    {completedTasks.length > 0 && (
+                        <div className="mt-6 pt-5 border-t border-white/5">
+                            <button 
+                                onClick={() => setShowCompleted(!showCompleted)}
+                                className="flex items-center gap-2 text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] hover:text-primary/60 transition-colors group/completed"
+                            >
+                                <div className="h-4 w-4 rounded-full border border-white/10 flex items-center justify-center group-hover/completed:border-primary/40 transition-colors">
+                                    {showCompleted ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+                                </div>
+                                {completedTasks.length} {completedTasks.length === 1 ? 'item concluído' : 'itens concluídos'}
+                            </button>
+                            
+                            {showCompleted && (
+                                <div className="mt-4 space-y-3">
+                                    {completedTasks.map(task => (
+                                        <div key={task.id} className="flex items-center gap-3 bg-emerald-500/[0.03] p-3 rounded-[1rem] border border-emerald-500/5 opacity-40 hover:opacity-60 transition-opacity">
+                                            <button 
+                                                onClick={() => onToggleStatus(task)}
+                                                className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center text-black shrink-0"
+                                            >
+                                                <CheckCircle2 className="h-3 w-3" />
+                                            </button>
+                                            <p className="text-xs font-bold text-white line-through leading-tight font-['Outfit']">{task.title}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <QuickAddTask 
+                    project={projectName} 
+                    environment={environmentName} 
+                    defaultDate={defaultDate}
+                    activeView={activeView}
+                    onCreated={onUpdate} 
+                    currentUserId={currentUserId}
+                />
+            </CardContent>
+        </Card>
     );
 };
 
