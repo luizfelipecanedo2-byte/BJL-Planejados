@@ -221,7 +221,7 @@ const Financeiro = () => {
 
       const manualExpenses = serviceExpenses.filter(e => 
         (e.clientName === os.client && e.environment === os.action) || 
-        (e.clientName.includes(os.ticketNumber))
+        (os.ticketNumber && os.ticketNumber !== "S/N" && e.clientName.startsWith(os.ticketNumber + ' - '))
       );
       const manualCost = manualExpenses.reduce((acc, e) => acc + e.spentValue, 0);
 
@@ -261,7 +261,7 @@ const Financeiro = () => {
     serviceExpenses.forEach(se => {
       const matchesOS = serviceOrders.some(os => 
         (se.clientName === os.client && se.environment === os.action) || 
-        (se.clientName.includes(os.ticketNumber))
+        (os.ticketNumber && os.ticketNumber !== "S/N" && se.clientName.startsWith(os.ticketNumber + ' - '))
       );
       if (!matchesOS) {
         mappedProjects.push(se);

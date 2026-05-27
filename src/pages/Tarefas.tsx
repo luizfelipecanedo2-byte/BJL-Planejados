@@ -266,6 +266,19 @@ const Tarefas = () => {
         }
     };
 
+    const defaultDueDateForView = useState(() => {
+        const now = new Date();
+        if (activeView === 'amanha') {
+            return format(addDays(now, 1), "yyyy-MM-dd");
+        }
+        return format(now, "yyyy-MM-dd");
+    });
+
+    // Keep defaultDueDateForView synced with activeView
+    const defaultDueDate = activeView === 'amanha' 
+        ? format(addDays(new Date(), 1), "yyyy-MM-dd")
+        : format(new Date(), "yyyy-MM-dd");
+
     const filteredTasks = filterTasksByView();
     
     const groupedTasks = filteredTasks.reduce((acc: { [key: string]: Task[] }, task) => {
@@ -275,10 +288,14 @@ const Tarefas = () => {
         return acc;
     }, {});
 
-    const QuickAddTask = ({ project, environment, defaultDate, onCreated }: { project: string, environment: string, defaultDate: string, onCreated: () => void }) => {
+    const QuickAddTask = ({ project, environment, defaultDate, onCreated, currentUserId }: { project: string, environment: string, defaultDate: string, onCreated: () => void, currentUserId: string | null }) => {
         const [title, setTitle] = useState("");
         const [dueDate, setDueDate] = useState(defaultDate);
         const [isSubmitting, setIsSubmitting] = useState(false);
+
+        useEffect(() => {
+            setDueDate(defaultDate);
+        }, [defaultDate]);
 
         const handleSubmit = async (e: React.FormEvent) => {
             e.preventDefault();
@@ -286,15 +303,17 @@ const Tarefas = () => {
 
             setIsSubmitting(true);
             try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
+                if (!currentUserId) {
+                    toast.error("Usuário não autenticado");
+                    return;
+                }
 
                 const taskData = {
                     title: title,
                     project_name: project,
                     environment_name: environment,
                     due_date: dueDate,
-                    created_by: user.id,
+                    created_by: currentUserId,
                     status: 'pending',
                     priority: 'normal'
                 };
@@ -302,6 +321,7 @@ const Tarefas = () => {
                 const { error } = await supabase.from('tasks').insert([taskData]);
                 if (error) throw error;
 
+                toast.success("Tarefa adicionada!");
                 setTitle("");
                 onCreated();
             } catch (error) {
@@ -393,7 +413,7 @@ const Tarefas = () => {
         );
     };
 
-    const TaskCard = ({ title, tasks, onUpdate, onEdit }: { title: string, tasks: Task[], onUpdate: () => void, onEdit: (task: Task) => void }) => {
+    const TaskCard = ({ title, tasks, defaultDueDate, currentUserId, onUpdate, onEdit }: { title: string, tasks: Task[], defaultDueDate: string, currentUserId: string | null, onUpdate: () => void, onEdit: (task: Task) => void }) => {
         const [showCompleted, setShowCompleted] = useState(false);
         const cardRef = (window as any).useRef?.() || { current: null }; // Workaround if useRef isn't imported, but it is in React
         
@@ -417,7 +437,7 @@ const Tarefas = () => {
             setPendingTasks(tasks.filter(t => t.status === 'pending').sort((a,b) => (a.order_index || 0) - (b.order_index || 0)));
         }, [tasks]);
 
-        const defaultDate = pendingTasks.length > 0 ? pendingTasks[0].due_date : format(new Date(), "yyyy-MM-dd");
+        const defaultDate = pendingTasks.length > 0 ? pendingTasks[0].due_date : defaultDueDate;
 
         const sensors = useSensors(
             useSensor(PointerSensor),
@@ -528,6 +548,7 @@ const Tarefas = () => {
                         environment={environmentName} 
                         defaultDate={defaultDate}
                         onCreated={onUpdate} 
+                        currentUserId={currentUserId}
                     />
                 </CardContent>
             </Card>
@@ -703,6 +724,8 @@ const Tarefas = () => {
                                 key={key} 
                                 title={key} 
                                 tasks={tasks} 
+                                defaultDueDate={defaultDueDate}
+                                currentUserId={currentUserId}
                                 onUpdate={fetchTasks} 
                                 onEdit={handleEditClick}
                             />
