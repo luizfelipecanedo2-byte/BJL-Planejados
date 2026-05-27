@@ -1115,6 +1115,7 @@ const Financeiro = () => {
             accumulatedData={accumulatedData}
             formatCurrency={formatCurrency}
             handleEditTransaction={handleEditTransaction}
+            transactions={transactions}
           />
         </TabsContent>
 
