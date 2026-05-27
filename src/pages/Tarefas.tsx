@@ -88,6 +88,7 @@ const Tarefas = () => {
 
     const [activeView, setActiveView] = useState("hoje");
     const { sales } = useSales();
+    const isAdmin = userRole === 'admin';
 
     useEffect(() => {
         fetchInitialData();
@@ -523,6 +524,7 @@ const Tarefas = () => {
                                 defaultDueDate={defaultDueDate}
                                 currentUserId={currentUserId}
                                 activeView={activeView}
+                                isAdmin={isAdmin}
                                 onUpdate={fetchTasks} 
                                 onEdit={handleEditClick}
                                 onToggleStatus={handleToggleStatus}
@@ -628,12 +630,13 @@ const QuickAddTask = ({ project, environment, defaultDate, activeView, onCreated
 // Componente para item de tarefa ordenável
 interface SortableTaskItemProps {
     task: Task;
+    isAdmin: boolean;
     onEdit: (task: Task) => void;
     onToggleStatus: (task: Task) => void;
     onDelete: (id: string) => void;
 }
 
-const SortableTaskItem = ({ task, onEdit, onToggleStatus, onDelete }: SortableTaskItemProps) => {
+const SortableTaskItem = ({ task, isAdmin, onEdit, onToggleStatus, onDelete }: SortableTaskItemProps) => {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
     
     const style = {
@@ -671,20 +674,22 @@ const SortableTaskItem = ({ task, onEdit, onToggleStatus, onDelete }: SortableTa
                 )}
             </div>
 
-            <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                <button 
-                    onClick={() => onEdit(task)}
-                    className="h-7 w-7 flex items-center justify-center rounded-lg text-blue-400/60 hover:text-blue-400 hover:bg-blue-400/10 transition-all shrink-0"
-                >
-                    <Pencil className="h-3.5 w-3.5" />
-                </button>
-                <button 
-                    onClick={() => onDelete(task.id)}
-                    className="h-7 w-7 flex items-center justify-center rounded-lg text-rose-400/60 hover:text-rose-400 hover:bg-rose-400/10 transition-all shrink-0"
-                >
-                    <Trash2 className="h-3.5 w-3.5" />
-                </button>
-            </div>
+            {isAdmin && (
+                <div className="flex items-center gap-1 lg:opacity-0 group-hover/item:opacity-100 transition-opacity">
+                    <button 
+                        onClick={() => onEdit(task)}
+                        className="h-7 w-7 flex items-center justify-center rounded-lg text-blue-400/60 hover:text-blue-400 hover:bg-blue-400/10 transition-all shrink-0"
+                    >
+                        <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button 
+                        onClick={() => onDelete(task.id)}
+                        className="h-7 w-7 flex items-center justify-center rounded-lg text-rose-400/60 hover:text-rose-400 hover:bg-rose-400/10 transition-all shrink-0"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
@@ -696,13 +701,14 @@ interface TaskCardProps {
     defaultDueDate: string;
     currentUserId: string | null;
     activeView: string;
+    isAdmin: boolean;
     onUpdate: () => void;
     onEdit: (task: Task) => void;
     onToggleStatus: (task: Task) => void;
     onDelete: (id: string) => void;
 }
 
-const TaskCard = ({ title, tasks, defaultDueDate, currentUserId, activeView, onUpdate, onEdit, onToggleStatus, onDelete }: TaskCardProps) => {
+const TaskCard = ({ title, tasks, defaultDueDate, currentUserId, activeView, isAdmin, onUpdate, onEdit, onToggleStatus, onDelete }: TaskCardProps) => {
     const [showCompleted, setShowCompleted] = useState(false);
     
     // Spotlight effect logic
@@ -791,6 +797,7 @@ const TaskCard = ({ title, tasks, defaultDueDate, currentUserId, activeView, onU
                                     <SortableTaskItem 
                                         key={task.id} 
                                         task={task} 
+                                        isAdmin={isAdmin}
                                         onEdit={onEdit}
                                         onToggleStatus={onToggleStatus}
                                         onDelete={onDelete}
@@ -815,14 +822,22 @@ const TaskCard = ({ title, tasks, defaultDueDate, currentUserId, activeView, onU
                             {showCompleted && (
                                 <div className="mt-4 space-y-3">
                                     {completedTasks.map(task => (
-                                        <div key={task.id} className="flex items-center gap-3 bg-emerald-500/[0.03] p-3 rounded-[1rem] border border-emerald-500/5 opacity-40 hover:opacity-60 transition-opacity">
+                                        <div key={task.id} className="flex items-center gap-3 bg-emerald-500/[0.03] p-3 rounded-[1rem] border border-emerald-500/5 opacity-40 hover:opacity-60 transition-opacity group/completed-item">
                                             <button 
                                                 onClick={() => onToggleStatus(task)}
                                                 className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center text-black shrink-0"
                                             >
                                                 <CheckCircle2 className="h-3 w-3" />
                                             </button>
-                                            <p className="text-xs font-bold text-white line-through leading-tight font-['Outfit']">{task.title}</p>
+                                            <p className="text-xs font-bold text-white line-through leading-tight font-['Outfit'] flex-1 min-w-0">{task.title}</p>
+                                            {isAdmin && (
+                                                <button 
+                                                    onClick={() => onDelete(task.id)}
+                                                    className="h-7 w-7 flex items-center justify-center rounded-lg text-rose-400/60 hover:text-rose-400 hover:bg-rose-400/10 transition-all shrink-0 lg:opacity-0 group-hover/completed-item:opacity-100"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
