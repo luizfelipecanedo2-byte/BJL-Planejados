@@ -1368,11 +1368,6 @@ const Orcamento = () => {
             {printingBudget && (
                 <BudgetPrintView 
                     budget={printingBudget} 
-                    ambientes={printingBudget.budget_items?.map((item: any) => ({
-                        id: item.id,
-                        description: item.custom_description || item.budget_materials?.name || "MARCENARIA SOB MEDIDA",
-                        value: item.unit_price_at_time
-                    }))}
                     initialTab={printingTab}
                     onClose={() => setPrintingBudget(null)} 
                     onSave={handleSaveFromPrintView}

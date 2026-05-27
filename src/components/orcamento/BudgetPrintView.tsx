@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { Award, Trash2, X, Phone, Mail, MapPin, Globe } from 'lucide-react';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-
+import { cn } from '@/lib/utils';
 
 interface Ambiente {
     id: string;
@@ -33,18 +33,47 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     budget: initialBudget,
     ambientes: initialAmbientes,
     budgetNumber,
+    initialTab,
     onClose,
     onSave
 }) => {
     const { settings } = useCompanySettings();
-    // Estado interno para garantir que o componente funcione mesmo sem props externas
     const [budget, setLocalBudget] = React.useState(initialBudget || {});
+    const [viewMode, setViewMode] = React.useState<'commercial' | 'technical'>(initialTab || 'commercial');
 
-    const [ambientes, setLocalAmbientes] = React.useState<Ambiente[]>(
-        (initialAmbientes && initialAmbientes.length > 0) ? initialAmbientes : [
-            { id: '1', description: 'MARCENARIA SOB MEDIDA', value: initialBudget?.total_value || 0 }
-        ]
-    );
+    // Analisa se o orçamento contém materiais técnicos específicos do catálogo
+    const isTechnicalBudget = React.useMemo(() => {
+        const items = initialBudget?.budget_items || [];
+        return items.some((item: any) => {
+            const cat = item.budget_materials?.category;
+            return cat && cat !== 'OUTROS' && cat !== 'SERVICOS';
+        });
+    }, [initialBudget]);
+
+    // Inicializa a lista de ambientes
+    const [ambientes, setLocalAmbientes] = React.useState<Ambiente[]>(() => {
+        if (initialAmbientes && initialAmbientes.length > 0) {
+            return initialAmbientes;
+        }
+        
+        const items = initialBudget?.budget_items || [];
+        
+        // Se for orçamento técnico ou vazio, consolida o projeto em uma única linha
+        if (isTechnicalBudget || items.length === 0) {
+            return [{
+                id: 'default',
+                description: (initialBudget?.project_name || "MARCENARIA SOB MEDIDA").toUpperCase(),
+                value: initialBudget?.total_value || 0
+            }];
+        } else {
+            // Se for comercial (já salvo como ambientes), carrega as linhas correspondentes
+            return items.map((item: any) => ({
+                id: item.id || Math.random().toString(36).substring(2, 9),
+                description: (item.custom_description || item.budget_materials?.name || "MARCENARIA SOB MEDIDA").toUpperCase(),
+                value: item.unit_price_at_time || item.total_price || 0
+            }));
+        }
+    });
 
     if (!initialBudget) {
         return null;
@@ -69,14 +98,18 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
         setLocalAmbientes(prev => [...prev, newAmbiente]);
     };
 
-    const totalValue = (ambientes || []).reduce((acc, curr) => acc + (Number(curr?.value) || 0), 0);
+    // O valor total exibido depende do modo de visualização
+    const totalValue = viewMode === 'commercial'
+        ? (ambientes || []).reduce((acc, curr) => acc + (Number(curr?.value) || 0), 0)
+        : (initialBudget.total_value || 0);
+
     const installmentValue = totalValue * 1.11;
 
     const defaultPaymentTerms = "01. ENTRADA DE 60% NO FECHAMENTO DO CONTRATO.\n02. SALDO RESTANTE DE 40% NA DATA DA ENTREGA TÉCNICA.\n03. PRAZO DE ENTREGA: A DEFINIR CONFORME CRONOGRAMA.";
     
     const [paymentTerms, setLocalPaymentTerms] = React.useState<string>(budget.notes || defaultPaymentTerms);
 
-    // Sync budget.notes with local state
+    // Sync budget.notes com estado local
     React.useEffect(() => {
         if (paymentTerms !== budget.notes) {
             setLocalBudget((prev: any) => ({ ...prev, notes: paymentTerms }));
@@ -137,56 +170,107 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                     </div>
                 </div>
 
-                {/* 3. LISTA DE AMBIENTES */}
-                <div className="px-16 mt-4 print:hidden">
+                {/* 3. CONTEÚDO IMPRESSO (AMBIENTES OU MATERIAIS) */}
+                <div className="px-16 mt-4">
                     <div className="bg-[#0f172a] text-white px-10 py-5 rounded-2xl mb-8 flex justify-between shadow-xl">
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em]">DETALHAMENTO DOS AMBIENTES</span>
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em]">VALOR À VISTA</span>
+                        {viewMode === 'commercial' ? (
+                            <>
+                                <span className="text-[11px] font-black uppercase tracking-[0.3em]">DETALHAMENTO DOS AMBIENTES</span>
+                                <span className="text-[11px] font-black uppercase tracking-[0.3em]">VALOR À VISTA</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="text-[11px] font-black uppercase tracking-[0.3em]">RELAÇÃO TÉCNICA DE MATERIAIS</span>
+                                <span className="text-[11px] font-black uppercase tracking-[0.3em]">VALOR TOTAL</span>
+                            </>
+                        )}
                     </div>
 
-                    <div className="space-y-4">
-                        {(ambientes || []).map((amb, index) => (
-                            <div key={amb.id} className="group transition-all bg-slate-50 rounded-2xl p-6 border border-slate-100 flex justify-between items-start relative">
-                                <div className="flex gap-4 flex-1">
-                                    <span className="text-[10px] font-black text-[#f59e0b] opacity-40">0{index+1}.</span>
-                                    <textarea 
-                                        value={amb.description || ''}
-                                        onChange={(e) => handleLocalAmbienteChange(amb.id, 'description', e.target.value)}
-                                        rows={1}
-                                        className="w-full bg-transparent border-none p-0 text-[15px] font-black text-slate-800 uppercase focus:ring-0 resize-y"
-                                        placeholder="DESCREVA O AMBIENTE..."
-                                    />
+                    {viewMode === 'commercial' ? (
+                        <div className="space-y-4">
+                            {(ambientes || []).map((amb, index) => (
+                                <div key={amb.id} className="group transition-all bg-slate-50 rounded-2xl p-6 border border-slate-100 flex justify-between items-start relative">
+                                    <div className="flex gap-4 flex-1">
+                                        <span className="text-[10px] font-black text-[#f59e0b] opacity-40">0{index+1}.</span>
+                                        <textarea 
+                                            value={amb.description || ''}
+                                            onChange={(e) => handleLocalAmbienteChange(amb.id, 'description', e.target.value)}
+                                            rows={1}
+                                            className="w-full bg-transparent border-none p-0 text-[15px] font-black text-slate-800 uppercase focus:ring-0 resize-y no-print"
+                                            placeholder="DESCREVA O AMBIENTE..."
+                                        />
+                                        <span className="hidden print:block text-[15px] font-black text-slate-800 uppercase whitespace-pre-wrap">
+                                            {amb.description || "AMBIENTE NÃO DESCRITO"}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 min-w-[150px] justify-end">
+                                        <span className="text-[10px] font-black text-slate-300 no-print">R$</span>
+                                        <input 
+                                            type="number"
+                                            value={amb.value || 0}
+                                            onChange={(e) => handleLocalAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
+                                            className="w-24 bg-transparent border-none p-0 text-right text-base font-black text-slate-900 focus:ring-0 no-print"
+                                        />
+                                        <span className="hidden print:inline text-base font-black">
+                                            {formatCurrency(amb.value || 0)}
+                                        </span>
+                                    </div>
+                                    <button 
+                                        onClick={() => handleLocalRemoveAmbiente(amb.id)} 
+                                        className="no-print absolute -right-2 -top-2 bg-white shadow-md text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-2 rounded-full border border-slate-100"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
                                 </div>
-                                <div className="flex items-center gap-2 min-w-[150px] justify-end">
-                                    <span className="text-[10px] font-black text-slate-300 no-print">R$</span>
-                                    <input 
-                                        type="number"
-                                        value={amb.value || 0}
-                                        onChange={(e) => handleLocalAmbienteChange(amb.id, 'value', parseFloat(e.target.value) || 0)}
-                                        className="w-24 bg-transparent border-none p-0 text-right text-base font-black text-slate-900 focus:ring-0 no-print"
-                                    />
-                                    <span className="hidden print:inline text-base font-black">
-                                        {formatCurrency(amb.value || 0)}
-                                    </span>
-                                </div>
+                            ))}
+
+                            <div className="mt-4 no-print flex justify-center">
                                 <button 
-                                    onClick={() => handleLocalRemoveAmbiente(amb.id)} 
-                                    className="no-print absolute -right-2 -top-2 bg-white shadow-md text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-2 rounded-full border border-slate-100"
+                                    onClick={addAmbiente}
+                                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-2 rounded-full font-black uppercase text-[10px] tracking-widest transition-all"
                                 >
-                                    <Trash2 size={14} />
+                                    + Adicionar Ambiente
                                 </button>
                             </div>
-                        ))}
-                    </div>
-
-                    <div className="mt-4 no-print flex justify-center">
-                        <button 
-                            onClick={addAmbiente}
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-2 rounded-full font-black uppercase text-[10px] tracking-widest transition-all"
-                        >
-                            + Adicionar Ambiente
-                        </button>
-                    </div>
+                        </div>
+                    ) : (
+                        // MODO TÉCNICO: RELAÇÃO DETALHADA DE MATERIAIS
+                        <div className="border border-slate-100 rounded-3xl overflow-hidden bg-slate-50/30">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-[#0f172a] text-[9px] font-black uppercase text-white/70 tracking-wider">
+                                        <th className="py-4 px-6">Material / Serviço</th>
+                                        <th className="py-4 px-4 text-center">Qtd</th>
+                                        <th className="py-4 px-4">Unidade</th>
+                                        <th className="py-4 px-4 text-right">Preço Unit.</th>
+                                        <th className="py-4 px-6 text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {(initialBudget.budget_items || []).map((item: any, idx: number) => {
+                                        const material = item.budget_materials || item.material;
+                                        const name = item.custom_description || material?.name || "Item não identificado";
+                                        return (
+                                            <tr key={item.id || idx} className="text-[11px] text-slate-700 font-bold hover:bg-slate-50/50">
+                                                <td className="py-4 px-6 uppercase">{name}</td>
+                                                <td className="py-4 px-4 text-center">{item.quantity}</td>
+                                                <td className="py-4 px-4 uppercase text-slate-400 text-[10px]">{material?.unit || 'UN'}</td>
+                                                <td className="py-4 px-4 text-right">{formatCurrency(item.unit_price_at_time)}</td>
+                                                <td className="py-4 px-6 text-right font-black text-slate-900">{formatCurrency(item.total_price)}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {(!initialBudget.budget_items || initialBudget.budget_items.length === 0) && (
+                                        <tr>
+                                            <td colSpan={5} className="py-8 text-center text-slate-400 italic">
+                                                Nenhum item cadastrado neste orçamento.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
 
                 {/* 4. TOTAIS */}
@@ -200,9 +284,12 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                         value={paymentTerms}
                                         onChange={(e) => setLocalPaymentTerms(e.target.value)}
                                         rows={4}
-                                        className="w-full bg-transparent border-none p-0 text-[10px] text-slate-600 font-bold focus:ring-0 resize-y uppercase font-sans leading-relaxed"
+                                        className="w-full bg-transparent border-none p-0 text-[10px] text-slate-600 font-bold focus:ring-0 resize-y uppercase font-sans leading-relaxed no-print"
                                         placeholder="INSIRA AS CONDIÇÕES DE PAGAMENTO..."
                                     />
+                                    <span className="hidden print:block text-[10px] text-slate-600 font-bold whitespace-pre-wrap uppercase font-sans leading-relaxed">
+                                        {paymentTerms}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -266,7 +353,34 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
 
 
             {/* BARRA DE AÇÕES FIXA NO RODAPÉ DA TELA */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-6 no-print flex justify-center items-center gap-6 z-[10000] shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
+            <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-6 no-print flex flex-col md:flex-row justify-between items-center px-12 z-[10000] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] gap-4">
+                
+                {/* Seletor de Modo (no-print) */}
+                <div className="flex gap-2 bg-slate-100 p-1 rounded-full border border-slate-200 shadow-inner">
+                    <button
+                        onClick={() => setViewMode('commercial')}
+                        className={cn(
+                            "px-6 py-2.5 rounded-full font-black uppercase text-[10px] tracking-widest transition-all",
+                            viewMode === 'commercial' 
+                                ? "bg-[#f59e0b] text-white shadow-md" 
+                                : "text-slate-600 hover:text-slate-950 hover:bg-slate-200/50"
+                        )}
+                    >
+                        Proposta Comercial
+                    </button>
+                    <button
+                        onClick={() => setViewMode('technical')}
+                        className={cn(
+                            "px-6 py-2.5 rounded-full font-black uppercase text-[10px] tracking-widest transition-all",
+                            viewMode === 'technical' 
+                                ? "bg-[#0f172a] text-white shadow-md" 
+                                : "text-slate-600 hover:text-slate-950 hover:bg-slate-200/50"
+                        )}
+                    >
+                        Relatório Técnico
+                    </button>
+                </div>
+
                 <div className="flex flex-wrap justify-center gap-4">
                     <button 
                         onClick={onClose}
@@ -275,7 +389,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                         Voltar
                     </button>
                     
-                    {onSave && (
+                    {onSave && viewMode === 'commercial' && (
                         <button 
                             onClick={() => onSave(budget, ambientes.map(a => ({ 
                                 material_name: a.description, 
