@@ -147,7 +147,9 @@ const Tarefas = () => {
                 .update({ due_date: today })
                 .eq('status', 'pending')
                 .lt('due_date', today)
-                .catch(err => console.error("Error updating overdue tasks:", err));
+                .then(({ error: err }) => {
+                    if (err) console.error("Error updating overdue tasks:", err);
+                });
             
             // Optimistically update local data
             const updatedData = (data || []).map(t => {
