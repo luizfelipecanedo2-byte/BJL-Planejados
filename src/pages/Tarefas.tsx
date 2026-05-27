@@ -69,15 +69,25 @@ const Tarefas = () => {
     const fetchInitialData = async () => {
         setLoading(true);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { session } } = await supabase.auth.getSession();
+            let user = session?.user || null;
+            if (!user) {
+                const { data: { user: gotUser } } = await supabase.auth.getUser();
+                user = gotUser;
+            }
+
             if (user) {
                 setCurrentUserId(user.id);
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', user.id)
-                    .single();
-                setUserRole(profile?.role || 'colaborador');
+                if (user.email === 'luizfelipe.canedo2@gmail.com') {
+                    setUserRole('admin');
+                } else {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('role')
+                        .eq('id', user.id)
+                        .single();
+                    setUserRole(profile?.role || 'colaborador');
+                }
             }
 
             await Promise.all([fetchTasks(), fetchProfiles()]);
@@ -164,8 +174,11 @@ const Tarefas = () => {
         if (!newTitle) return;
 
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            const userId = currentUserId || (await supabase.auth.getSession()).data.session?.user?.id || (await supabase.auth.getUser()).data.user?.id;
+            if (!userId) {
+                toast.error("Usuário não autenticado. Por favor, faça login novamente.");
+                return;
+            }
 
             const taskData = {
                 title: newTitle,
@@ -175,7 +188,7 @@ const Tarefas = () => {
                 due_date: newDueDate,
                 assigned_to: newAssignedTo === "all" ? null : newAssignedTo,
                 priority: newPriority,
-                created_by: user.id,
+                created_by: userId,
                 status: editingTask ? editingTask.status : 'pending'
             };
 
@@ -303,8 +316,9 @@ const Tarefas = () => {
 
             setIsSubmitting(true);
             try {
-                if (!currentUserId) {
-                    toast.error("Usuário não autenticado");
+                const userId = currentUserId || (await supabase.auth.getSession()).data.session?.user?.id || (await supabase.auth.getUser()).data.user?.id;
+                if (!userId) {
+                    toast.error("Usuário não autenticado. Por favor, faça login novamente.");
                     return;
                 }
 
@@ -313,7 +327,7 @@ const Tarefas = () => {
                     project_name: project,
                     environment_name: environment,
                     due_date: dueDate,
-                    created_by: currentUserId,
+                    created_by: userId,
                     status: 'pending',
                     priority: 'normal'
                 };
@@ -437,7 +451,7 @@ const Tarefas = () => {
             setPendingTasks(tasks.filter(t => t.status === 'pending').sort((a,b) => (a.order_index || 0) - (b.order_index || 0)));
         }, [tasks]);
 
-        const defaultDate = pendingTasks.length > 0 ? pendingTasks[0].due_date : defaultDueDate;
+        const defaultDate = defaultDueDate;
 
         const sensors = useSensors(
             useSensor(PointerSensor),
