@@ -39,12 +39,16 @@ const Financeiro = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [serviceExpenses, setServiceExpenses] = useState<ServiceExpense[]>([]);
+  const [transactionAllocations, setTransactionAllocations] = useState<any[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
 
   useEffect(() => {
     fetchTransactions();
     fetchAssets();
     fetchServiceOrders();
     fetchServiceExpenses();
+    fetchTransactionAllocations();
+    fetchSales();
 
     // Detectar se o usuário veio pelo alerta de contas vencidas
     const params = new URLSearchParams(window.location.search);
@@ -56,6 +60,37 @@ const Financeiro = () => {
     }
   }, []);
 
+  const fetchSales = async () => {
+    try {
+      const { data, error } = await supabase.from('sales').select('*');
+      if (error) throw error;
+      const mapped = (data || []).map((item: any) => ({
+        id: item.id,
+        clientName: item.client_name,
+        product: item.product,
+        quantity: item.quantity,
+        unitPrice: Number(item.unit_price),
+        totalValue: Number(item.total_value),
+        status: item.status,
+        closedDate: item.closed_date,
+        createdAt: item.created_at,
+      }));
+      setSales(mapped);
+    } catch (error) {
+      console.error('Error fetching sales:', error);
+    }
+  };
+
+  const fetchTransactionAllocations = async () => {
+    try {
+      const { data, error } = await supabase.from('transaction_allocations').select('*');
+      if (error) throw error;
+      setTransactionAllocations(data || []);
+    } catch (error) {
+      console.error('Error fetching allocations:', error);
+    }
+  };
+
   const fetchTransactions = async () => {
     try {
       const { data, error } = await supabase
@@ -65,12 +100,25 @@ const Financeiro = () => {
 
       if (error) throw error;
 
+      const { data: allocations, error: allocError } = await supabase
+        .from('transaction_allocations')
+        .select('*');
+
+      if (allocError) throw allocError;
+
       const mappedTransactions: Transaction[] = (data || []).map(t => {
         const parseDate = (dateStr: string | null) => {
           if (!dateStr) return undefined;
           const d = new Date(dateStr + 'T12:00:00');
           return isNaN(d.getTime()) ? undefined : d;
         };
+
+        const txAllocations = (allocations || []).filter((a: any) => a.transaction_id === t.id);
+        const costSplits = txAllocations.map((a: any) => ({
+          client: a.client_name,
+          amount: Number(a.amount),
+          description: a.description || ""
+        }));
 
         return {
           id: t.id,
@@ -89,7 +137,8 @@ const Financeiro = () => {
           status: t.status as any,
           invoiceNumber: t.invoice_number,
           orderService: t.order_service,
-          boletoUrl: t.boleto_url
+          boletoUrl: t.boleto_url,
+          costSplits: costSplits.length > 0 ? costSplits : undefined
         };
       });
 
@@ -186,6 +235,64 @@ const Financeiro = () => {
   const [isServiceExpenseDialogOpen, setIsServiceExpenseDialogOpen] = useState(false);
   const [editingServiceExpense, setEditingServiceExpense] = useState<ServiceExpense | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  const combinedServiceExpenses = useMemo(() => {
+    const mappedProjects: ServiceExpense[] = serviceOrders.map(os => {
+      const osString = `${os.ticketNumber} - ${os.client} (${os.action})`;
+      const osAllocations = transactionAllocations.filter(a => a.client_name === osString || a.client_name === os.client);
+      const allocCost = osAllocations.reduce((acc, a) => acc + Number(a.amount), 0);
+
+      const manualExpenses = serviceExpenses.filter(e => 
+        (e.clientName === os.client && e.environment === os.action) || 
+        (os.ticketNumber && os.ticketNumber !== "S/N" && e.clientName.startsWith(os.ticketNumber + ' - '))
+      );
+      const manualCost = manualExpenses.reduce((acc, e) => acc + e.spentValue, 0);
+
+      const revenue = os.amount || manualExpenses.reduce((acc, e) => acc + e.serviceValue, 0);
+
+      let items: any[] = [];
+      manualExpenses.forEach(e => {
+        if (e.items) items = [...items, ...e.items];
+      });
+
+      const autoItems = osAllocations.map(a => {
+        const parentTx = transactions.find(t => t.id === a.transaction_id);
+        const nfText = parentTx?.invoiceNumber ? ` (NF: ${parentTx.invoiceNumber})` : '';
+        return {
+          description: `[Rateio] ${parentTx?.description || ''}${nfText} ${a.description ? `(${a.description})` : ''}`.trim(),
+          unit: 'un',
+          quantity: 1,
+          unitValue: Number(a.amount),
+          totalValue: Number(a.amount)
+        };
+      });
+
+      const expenseId = manualExpenses.length > 0 ? manualExpenses[0].id : `os-${os.id}`;
+
+      return {
+        id: expenseId,
+        clientName: `${os.ticketNumber} - ${os.client}`,
+        environment: os.action,
+        serviceValue: revenue,
+        spentValue: allocCost + manualCost,
+        items: items,
+        autoItems: autoItems,
+        createdAt: os.openDate
+      };
+    });
+
+    serviceExpenses.forEach(se => {
+      const matchesOS = serviceOrders.some(os => 
+        (se.clientName === os.client && se.environment === os.action) || 
+        (os.ticketNumber && os.ticketNumber !== "S/N" && se.clientName.startsWith(os.ticketNumber + ' - '))
+      );
+      if (!matchesOS) {
+        mappedProjects.push(se);
+      }
+    });
+
+    return mappedProjects;
+  }, [serviceOrders, serviceExpenses, transactionAllocations]);
 
   const [isPartialPaymentOpen, setIsPartialPaymentOpen] = useState(false);
   const [selectedPartialTransaction, setSelectedPartialTransaction] = useState<Transaction | null>(null);
@@ -803,9 +910,11 @@ const Financeiro = () => {
   const handleDeleteTransaction = async (id: string) => {
     if (!window.confirm("Tem certeza que deseja excluir esta transação?")) return;
     try {
+      await supabase.from('transaction_allocations').delete().eq('transaction_id', id);
       const { error } = await supabase.from('transactions').delete().eq('id', id);
       if (error) throw error;
       setTransactions(transactions.filter(t => t.id !== id));
+      setTransactionAllocations(prev => prev.filter(a => a.transaction_id !== id));
       toast.success("Lançamento removido!");
     } catch (error) { toast.error("Erro ao remover lançamento."); }
   };
@@ -825,13 +934,30 @@ const Financeiro = () => {
       const { data: insertedData, error } = await supabase.from('transactions').insert(transactionsToInsert).select();
       if (error) throw error;
       if (insertedData) {
-        const newTrans: Transaction[] = insertedData.map(t => ({
+        // Handle cost splits
+        for (let i = 0; i < dataArray.length; i++) {
+          const item = dataArray[i];
+          const insertedRow = insertedData[i];
+          if (item.costSplits && item.costSplits.length > 0) {
+            const splitsToInsert = item.costSplits.map(split => ({
+              transaction_id: insertedRow.id,
+              client_name: split.client,
+              amount: split.amount,
+              description: split.description
+            }));
+            const { error: splitError } = await supabase.from('transaction_allocations').insert(splitsToInsert);
+            if (splitError) console.error("Error inserting cost splits:", splitError);
+          }
+        }
+
+        const newTrans: Transaction[] = insertedData.map((t, i) => ({
           id: t.id, description: t.description, amount: Number(t.amount), type: t.type as any,
           category: t.category, subcategory: t.subcategory, service: t.service, contact: t.contact,
           financialInstitution: t.financial_institution, paymentMethod: t.payment_method,
           competenceDate: new Date(t.competence_date + 'T12:00:00'), dueDate: new Date(t.due_date + 'T12:00:00'),
           paymentDate: t.payment_date ? new Date(t.payment_date + 'T12:00:00') : undefined,
-          status: t.status as any, invoiceNumber: t.invoice_number, orderService: t.order_service, boletoUrl: t.boleto_url
+          status: t.status as any, invoiceNumber: t.invoice_number, orderService: t.order_service, boletoUrl: t.boleto_url,
+          costSplits: dataArray[i].costSplits
         }));
         setTransactions(prev => [...newTrans, ...prev]);
       }
@@ -842,23 +968,48 @@ const Financeiro = () => {
   const handleUpdate = async (id: string, updates: Partial<Transaction>) => {
     try {
       const updateData: any = {};
-      if (updates.description) updateData.description = updates.description;
-      if (updates.amount) updateData.amount = updates.amount;
-      if (updates.type) updateData.type = updates.type;
-      if (updates.category) updateData.category = updates.category;
-      if (updates.subcategory) updateData.subcategory = updates.subcategory;
-      if (updates.contact) updateData.contact = updates.contact;
-      if (updates.status) updateData.status = updates.status;
-      if (updates.dueDate) updateData.due_date = updates.dueDate.toISOString().split('T')[0];
-      if (updates.paymentDate) updateData.payment_date = updates.paymentDate.toISOString().split('T')[0];
-      if (updates.financialInstitution) updateData.financial_institution = updates.financialInstitution;
-      if (updates.paymentMethod) updateData.payment_method = updates.paymentMethod;
+      if (updates.description !== undefined) updateData.description = updates.description;
+      if (updates.amount !== undefined) updateData.amount = updates.amount;
+      if (updates.type !== undefined) updateData.type = updates.type;
+      if (updates.category !== undefined) updateData.category = updates.category;
+      if (updates.subcategory !== undefined) updateData.subcategory = updates.subcategory;
+      if (updates.contact !== undefined) updateData.contact = updates.contact;
+      if (updates.status !== undefined) updateData.status = updates.status;
+      if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate.toISOString().split('T')[0];
+      if (updates.paymentDate !== undefined) updateData.payment_date = updates.paymentDate ? updates.paymentDate.toISOString().split('T')[0] : null;
+      if (updates.financialInstitution !== undefined) updateData.financial_institution = updates.financialInstitution;
+      if (updates.paymentMethod !== undefined) updateData.payment_method = updates.paymentMethod;
+      if (updates.invoiceNumber !== undefined) updateData.invoice_number = updates.invoiceNumber;
+      if (updates.orderService !== undefined) updateData.order_service = updates.orderService;
+      if (updates.service !== undefined) updateData.service = updates.service;
+      if (updates.boletoUrl !== undefined) updateData.boleto_url = updates.boletoUrl;
 
       const { error } = await supabase.from('transactions').update(updateData).eq('id', id);
       if (error) throw error;
+
+      if (updates.costSplits !== undefined) {
+        const { error: deleteError } = await supabase.from('transaction_allocations').delete().eq('transaction_id', id);
+        if (deleteError) throw deleteError;
+
+        if (updates.costSplits && updates.costSplits.length > 0) {
+          const splitsToInsert = updates.costSplits.map(split => ({
+            transaction_id: id,
+            client_name: split.client,
+            amount: split.amount,
+            description: split.description
+          }));
+          const { error: splitError } = await supabase.from('transaction_allocations').insert(splitsToInsert);
+          if (splitError) throw splitError;
+        }
+      }
+
       setTransactions(transactions.map(t => t.id === id ? { ...t, ...updates } : t));
+      fetchTransactionAllocations();
       toast.success("Lançamento atualizado!");
-    } catch (error) { toast.error("Erro ao atualizar lançamento."); }
+    } catch (error) {
+      console.error("Erro ao atualizar lançamento:", error);
+      toast.error("Erro ao atualizar lançamento.");
+    }
   };
 
   const handleNewAsset = () => { setEditingAsset(null); setIsAssetDialogOpen(true); };
@@ -876,6 +1027,16 @@ const Financeiro = () => {
   const handleEditServiceExpense = (expense: ServiceExpense) => { setEditingServiceExpense(expense); setIsServiceExpenseDialogOpen(true); };
   const handleUpdateServiceExpense = async (id: string, updates: Partial<ServiceExpense>) => {
     try {
+      if (id.startsWith('os-')) {
+        const { data: insertedData, error } = await supabase.from('service_expenses').insert([{
+          client_name: updates.clientName, environment: updates.environment, service_value: updates.serviceValue, spent_value: updates.spentValue, items: updates.items
+        }]).select().single();
+        if (error) throw error;
+        setServiceExpenses([{ ...updates, id: insertedData.id, createdAt: new Date() } as ServiceExpense, ...serviceExpenses]);
+        toast.success("Gasto adicionado!");
+        return;
+      }
+
       console.log('Iniciando atualização de gasto:', id, updates);
 
       const updateData: any = {
@@ -913,6 +1074,10 @@ const Financeiro = () => {
   };
 
   const handleDeleteServiceExpense = async (id: string) => {
+    if (id.startsWith('os-')) {
+        toast.error("Este projeto vem das Ordens de Serviço. Para remover os custos manuais atrelados a ele, clique em Editar e exclua os itens da lista.");
+        return;
+    }
     if (!window.confirm("Excluir?")) return;
     try {
       await supabase.from('service_expenses').delete().eq('id', id);
@@ -1021,6 +1186,8 @@ const Financeiro = () => {
             accumulatedData={accumulatedData}
             formatCurrency={formatCurrency}
             handleEditTransaction={handleEditTransaction}
+            transactions={transactions}
+            sales={sales}
           />
         </TabsContent>
 
@@ -1175,7 +1342,7 @@ const Financeiro = () => {
         </TabsContent>
 
         <TabsContent value="dre"><DRETab selectedDREYear={selectedDREYear} setSelectedDREYear={setSelectedDREYear} dreData={dreData} detailedExpenses={detailedExpenses} formatCurrency={formatCurrency} /></TabsContent>
-        <TabsContent value="gastos_servicos"><ServiceExpensesTab serviceExpenses={serviceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
+        <TabsContent value="gastos_servicos"><ServiceExpensesTab serviceExpenses={combinedServiceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="conciliacao"><ConciliationTab selectedAccount={selectedAccount} setSelectedAccount={setSelectedAccount} currentDateReconciliation={currentDateReconciliation} handlePrevMonth={handlePrevMonth} handleNextMonth={handleNextMonth} totalAccountBalance={totalAccountBalance} reconciliationDailyData={reconciliationDailyData} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="notas_fiscais"><NotaFiscalTab /></TabsContent>
         <TabsContent value="profitability"><div>Teste Rentabilidade</div></TabsContent>

@@ -1,5 +1,6 @@
+import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { DollarSign, Calendar, Rocket, Users } from "lucide-react";
+import { DollarSign, Calendar, Rocket, Users, Pencil, Check, X } from "lucide-react";
 import {
     ComposedChart,
     Line,
@@ -19,6 +20,7 @@ import {
 } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { toast } from "sonner";
 
 interface DashboardTabProps {
     selectedYear: string;
@@ -59,6 +61,8 @@ interface DashboardTabProps {
     accumulatedData: any[];
     formatCurrency: (value: number) => string;
     handleEditTransaction: (t: any) => void;
+    transactions?: any[];
+    sales?: any[];
 }
 
 const DashboardTab = ({
@@ -74,7 +78,94 @@ const DashboardTab = ({
     formatCurrency,
     upcomingTransactions = [],
     handleEditTransaction,
+    transactions = [],
+    sales = [],
 }: DashboardTabProps) => {
+
+    // Suggestion 1: Fluxo de Caixa Diário (Próximos 15 dias)
+    const dailyFlowData = useMemo(() => {
+        const data = [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        for (let i = 0; i < 15; i++) {
+            const currentDate = new Date(today);
+            currentDate.setDate(today.getDate() + i);
+            const displayDate = currentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+            const dayTrans = transactions.filter(t => {
+                if (!t.dueDate) return false;
+                const tDate = new Date(t.dueDate);
+                tDate.setHours(0, 0, 0, 0);
+                return tDate.getTime() === currentDate.getTime() && t.category !== 'Transferência';
+            });
+
+            const income = dayTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+            const expense = dayTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+
+            data.push({
+                name: displayDate,
+                Entradas: income,
+                Saídas: expense,
+            });
+        }
+        return data;
+    }, [transactions]);
+
+    // Suggestion 3: Evolução do Ticket Médio (pega as vendas fechadas do CRM)
+    const ticketMedioData = useMemo(() => {
+        const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        const year = parseInt(selectedYear);
+        return months.map((month, index) => {
+            const monthlySales = sales.filter(s => {
+                const dateStr = s.closedDate || s.createdAt;
+                if (!dateStr) return false;
+                const match = dateStr.match(/^(\d{4})-(\d{2})/);
+                if (match) {
+                    const y = parseInt(match[1]);
+                    const m = parseInt(match[2]) - 1;
+                    return y === year && m === index;
+                }
+                const date = new Date(dateStr);
+                return date.getFullYear() === year && date.getMonth() === index;
+            });
+
+            // Consider closed sales
+            const closedSales = monthlySales.filter(s => s.status === "fechado" || s.status === "pos_venda");
+            const total = closedSales.reduce((sum, s) => sum + (s.totalValue || 0), 0);
+            const count = closedSales.length;
+            const ticket = count > 0 ? total / count : 0;
+
+            return {
+                name: month,
+                "Ticket Médio": ticket,
+            };
+        });
+    }, [sales, selectedYear]);
+
+    // Suggestion 5: Termômetro de Meta
+    const [goal, setGoal] = useState(() => {
+        return Number(localStorage.getItem('finance_monthly_goal') || '50000');
+    });
+    const [isEditingGoal, setIsEditingGoal] = useState(false);
+    const [goalInput, setGoalInput] = useState(goal.toString());
+
+    const handleSaveGoal = () => {
+        const newGoal = parseFloat(goalInput);
+        if (!isNaN(newGoal) && newGoal > 0) {
+            setGoal(newGoal);
+            localStorage.setItem('finance_monthly_goal', newGoal.toString());
+            setIsEditingGoal(false);
+            toast.success(`Nova meta mensal de ${formatCurrency(newGoal)} salva!`);
+        } else {
+            toast.error("Por favor, digite um valor válido.");
+        }
+    };
+
+    const actualGoal = selectedDashMonth === 'anual' ? goal * 12 : goal;
+    const actualRevenue = currentSummary.receitaBrutaMes;
+    const percentage = actualGoal > 0 ? Math.min(100, (actualRevenue / actualGoal) * 100) : 0;
+    const remaining = Math.max(0, actualGoal - actualRevenue);
 
     // Helper to calculate percentage growth
     const calculateGrowth = (current: number, previous: number) => {
@@ -361,6 +452,165 @@ const DashboardTab = ({
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* NOVO BLOCO: FLUXO DE CAIXA DIÁRIO, TICKET MÉDIO E TERMÔMETRO DE META */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* 1. FLUXO DE CAIXA DIÁRIO (Próximos 15 dias) */}
+                <Card className="lg:col-span-6 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden flex flex-col justify-between">
+                    <div>
+                        <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-4">
+                            Fluxo de Caixa Diário (Próximos 15 dias)
+                        </h3>
+                        <div className="h-[250px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={dailyFlowData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
+                                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#555' }} />
+                                    <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#555' }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
+                                        formatter={(val: number) => formatCurrency(val)}
+                                    />
+                                    <Bar dataKey="Entradas" fill="#14b8a6" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="Saídas" fill="#f97316" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                    <div className="flex gap-4 mt-2 justify-center">
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 bg-primary rounded-full" /> 
+                            <span className="text-[10px] font-black uppercase text-muted-foreground">Entradas</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 bg-orange-500 rounded-full" /> 
+                            <span className="text-[10px] font-black uppercase text-muted-foreground">Saídas</span>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* 2. EVOLUÇÃO DO TICKET MÉDIO */}
+                <Card className="lg:col-span-3 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden flex flex-col justify-between">
+                    <div>
+                        <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-4">
+                            Ticket Médio ({selectedYear})
+                        </h3>
+                        <div className="h-[250px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={ticketMedioData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorTicket" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
+                                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#555' }} />
+                                    <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#555' }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
+                                        formatter={(val: number) => formatCurrency(val)}
+                                    />
+                                    <Area type="monotone" dataKey="Ticket Médio" stroke="#06b6d4" strokeWidth={2} fillOpacity={1} fill="url(#colorTicket)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                    <div className="text-center text-[10px] font-black uppercase text-muted-foreground mt-2">
+                        Média de Valor por Venda Realizada
+                    </div>
+                </Card>
+
+                {/* 3. TERMÔMETRO DE META */}
+                <Card className="lg:col-span-3 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden flex flex-col justify-between">
+                    <div>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest">
+                                Meta de Faturamento
+                            </h3>
+                            {isEditingGoal ? (
+                                <div className="flex items-center gap-1">
+                                    <input
+                                        type="number"
+                                        value={goalInput}
+                                        onChange={(e) => setGoalInput(e.target.value)}
+                                        className="w-16 text-[10px] bg-black border border-white/20 text-white rounded px-1.5 py-0.5 font-bold"
+                                    />
+                                    <button onClick={handleSaveGoal} className="text-emerald-500 hover:text-emerald-400 p-0.5">
+                                        <Check size={12} />
+                                    </button>
+                                    <button onClick={() => { setIsEditingGoal(false); setGoalInput(goal.toString()); }} className="text-rose-500 hover:text-rose-400 p-0.5">
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => setIsEditingGoal(true)}
+                                    className="text-[10px] font-black uppercase text-primary hover:underline flex items-center gap-1"
+                                >
+                                    <Pencil size={10} /> Editar
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="relative flex items-center justify-center h-32 my-4">
+                            <svg className="w-32 h-32 transform -rotate-90">
+                                <defs>
+                                    <linearGradient id="goalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#14b8a6" />
+                                        <stop offset="100%" stopColor="#06b6d4" />
+                                    </linearGradient>
+                                </defs>
+                                <circle
+                                    cx="64"
+                                    cy="64"
+                                    r="48"
+                                    stroke="#222"
+                                    strokeWidth="10"
+                                    fill="transparent"
+                                />
+                                <circle
+                                    cx="64"
+                                    cy="64"
+                                    r="48"
+                                    stroke="url(#goalGradient)"
+                                    strokeWidth="10"
+                                    fill="transparent"
+                                    strokeDasharray={301.6}
+                                    strokeDashoffset={301.6 - (301.6 * percentage) / 100}
+                                    strokeLinecap="round"
+                                    style={{ transition: 'stroke-dashoffset 0.8s ease-in-out' }}
+                                />
+                            </svg>
+                            <div className="absolute flex flex-col items-center justify-center">
+                                <span className="text-xl font-black text-white">{percentage.toFixed(0)}%</span>
+                                <span className="text-[8px] font-bold text-muted-foreground uppercase">Alcançado</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 mt-2">
+                            <div className="flex justify-between items-center text-[10px] font-bold">
+                                <span className="text-muted-foreground uppercase">Realizado:</span>
+                                <span className="text-white">{formatCurrency(actualRevenue)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] font-bold">
+                                <span className="text-muted-foreground uppercase">Meta:</span>
+                                <span className="text-primary">{formatCurrency(actualGoal)}</span>
+                            </div>
+                            {remaining > 0 ? (
+                                <div className="flex justify-between items-center text-[10px] font-bold">
+                                    <span className="text-muted-foreground uppercase">Falta:</span>
+                                    <span className="text-orange-500">{formatCurrency(remaining)}</span>
+                                </div>
+                            ) : (
+                                <div className="text-center text-[10px] font-black text-emerald-500 uppercase py-1 bg-emerald-500/10 rounded-lg">
+                                    Meta Superada! 🎉
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </Card>
             </div>
 
             {/* BOTTOM CHARTS AND CATEGORIES */}

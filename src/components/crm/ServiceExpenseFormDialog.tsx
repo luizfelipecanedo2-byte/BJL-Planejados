@@ -29,6 +29,10 @@ const ServiceExpenseFormDialog = ({
     onUpdate,
     editingExpense,
 }: ServiceExpenseFormDialogProps) => {
+    const isLinkedToOS = !!editingExpense && (
+        editingExpense.id.startsWith('os-') || 
+        editingExpense.clientName.includes(' - ')
+    );
     const [form, setForm] = useState({
         clientName: "",
         environment: "",
@@ -112,7 +116,8 @@ const ServiceExpenseFormDialog = ({
         setItems(items.filter((_, i) => i !== index));
     };
 
-    const totalSpent = items.reduce((acc, item) => acc + item.totalValue, 0);
+    const autoItemsTotal = editingExpense?.autoItems?.reduce((acc, item) => acc + item.totalValue, 0) || 0;
+    const totalSpentVisual = items.reduce((acc, item) => acc + item.totalValue, 0) + autoItemsTotal;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -171,7 +176,7 @@ const ServiceExpenseFormDialog = ({
         }).format(value);
     };
 
-    const grossProfit = (parseFloat(form.serviceValue) || 0) - totalSpent;
+    const grossProfit = (parseFloat(form.serviceValue) || 0) - totalSpentVisual;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -183,18 +188,27 @@ const ServiceExpenseFormDialog = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="clientName">Nome do Cliente</Label>
-                            <Select value={form.clientName} onValueChange={(value) => update("clientName", value)} required>
-                                <SelectTrigger id="clientName" className="w-full">
-                                    <SelectValue placeholder="Selecione um cliente..." />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[200px]">
-                                    {clients.map((client, index) => (
-                                        <SelectItem key={index} value={client.name}>
-                                            {client.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            {isLinkedToOS ? (
+                                <Input
+                                    id="clientName"
+                                    value={form.clientName}
+                                    disabled
+                                    className="bg-muted text-muted-foreground font-semibold"
+                                />
+                            ) : (
+                                <Select value={form.clientName} onValueChange={(value) => update("clientName", value)} required>
+                                    <SelectTrigger id="clientName" className="w-full">
+                                        <SelectValue placeholder="Selecione um cliente..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[200px]">
+                                        {clients.map((client, index) => (
+                                            <SelectItem key={index} value={client.name}>
+                                                {client.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="environment">Ambiente</Label>
@@ -202,6 +216,8 @@ const ServiceExpenseFormDialog = ({
                                 id="environment"
                                 value={form.environment}
                                 onChange={(e) => update("environment", e.target.value)}
+                                disabled={isLinkedToOS}
+                                className={isLinkedToOS ? "bg-muted text-muted-foreground font-semibold" : ""}
                                 required
                             />
                         </div>
@@ -297,6 +313,21 @@ const ServiceExpenseFormDialog = ({
                                 </div>
                             ) : null}
 
+                            {editingExpense?.autoItems && editingExpense.autoItems.length > 0 && editingExpense.autoItems.map((item, index) => (
+                                <div
+                                    key={`auto-${index}`}
+                                    className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center p-2 rounded border bg-blue-50/50 border-blue-100 opacity-90"
+                                >
+                                    <div className="col-span-4 text-sm font-medium italic text-blue-900">{item.description}</div>
+                                    <div className="col-span-1 text-center text-sm text-blue-800">{item.unit}</div>
+                                    <div className="col-span-2 text-center text-sm text-blue-800">{item.quantity}</div>
+                                    <div className="col-span-2 text-right text-sm text-blue-800">{formatCurrency(item.unitValue)}</div>
+                                    <div className="col-span-2 text-right text-sm font-bold text-blue-900">{formatCurrency(item.totalValue)}</div>
+                                    <div className="col-span-1 flex justify-end gap-1">
+                                    </div>
+                                </div>
+                            ))}
+
                             {items.map((item, index) => (
                                 <div
                                     key={index}
@@ -333,7 +364,7 @@ const ServiceExpenseFormDialog = ({
 
                         <div className="flex justify-between items-center pt-2 border-t font-bold">
                             <span>Total Gasto Acumulado:</span>
-                            <span className="text-red-600 text-lg">{formatCurrency(totalSpent)}</span>
+                            <span className="text-red-600 text-lg">{formatCurrency(totalSpentVisual)}</span>
                         </div>
                     </div>
 

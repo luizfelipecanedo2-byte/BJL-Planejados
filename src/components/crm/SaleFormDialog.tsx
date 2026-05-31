@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sale, SaleStatus, SaleChannel, STATUS_LABELS, CHANNEL_LABELS } from "@/types/sale";
+import { Sale, SaleStatus, SaleChannel, STATUS_LABELS, CHANNEL_LABELS, LeadTemperature, TEMPERATURE_LABELS } from "@/types/sale";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,7 @@ const SaleFormDialog = ({
     contactDate: new Date().toISOString().split("T")[0],
     expectedCloseDate: "",
     notes: "",
+    temperature: "morno" as LeadTemperature,
   });
 
   useEffect(() => {
@@ -61,6 +62,7 @@ const SaleFormDialog = ({
         contactDate: editingSale.contactDate,
         expectedCloseDate: editingSale.expectedCloseDate,
         notes: editingSale.notes || "",
+        temperature: editingSale.temperature || "morno",
       });
     } else {
       setForm({
@@ -75,6 +77,7 @@ const SaleFormDialog = ({
         contactDate: new Date().toISOString().split("T")[0],
         expectedCloseDate: "",
         notes: "",
+        temperature: "morno",
       });
     }
   }, [editingSale, open]);
@@ -113,6 +116,18 @@ const SaleFormDialog = ({
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {editingSale?.budget_id && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 p-3.5 rounded-2xl flex items-center justify-between text-xs text-emerald-400">
+              <span className="font-medium">Esta venda está vinculada a um orçamento ativo.</span>
+              <a 
+                href="/orcamento" 
+                className="underline hover:text-emerald-300 font-black uppercase tracking-wider text-[10px]"
+                onClick={() => onOpenChange(false)}
+              >
+                Ver Orçamentos
+              </a>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <Label htmlFor="clientName">Nome do Cliente</Label>
@@ -189,6 +204,24 @@ const SaleFormDialog = ({
                   {(Object.keys(STATUS_LABELS) as SaleStatus[]).map((s) => (
                     <SelectItem key={s} value={s}>
                       {STATUS_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Temperatura do Lead</Label>
+              <Select
+                value={form.temperature}
+                onValueChange={(v) => update("temperature", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(TEMPERATURE_LABELS) as LeadTemperature[]).map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {TEMPERATURE_LABELS[t]}
                     </SelectItem>
                   ))}
                 </SelectContent>

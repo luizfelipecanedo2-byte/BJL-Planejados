@@ -86,17 +86,23 @@ const Dashboard = ({ sales }: DashboardProps) => {
     fetchTasks();
   }, []);
 
-  // Spotlight effect tracker
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const cards = document.getElementsByClassName("spotlight-card");
-    for (const card of cards) {
-      const rect = (card as HTMLElement).getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      (card as HTMLElement).style.setProperty("--mouse-x", `${x}px`);
-      (card as HTMLElement).style.setProperty("--mouse-y", `${y}px`);
+  // Spotlight effect tracker with cached rect to avoid layout thrashing
+  const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    let rect = (card as any)._cachedRect;
+    if (!rect) {
+      rect = card.getBoundingClientRect();
+      (card as any)._cachedRect = rect;
     }
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    card.style.setProperty("--mouse-x", `${x}px`);
+    card.style.setProperty("--mouse-y", `${y}px`);
+  };
+
+  const handleCardMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    delete (e.currentTarget as any)._cachedRect;
   };
 
   const years = useMemo(() => {
@@ -394,11 +400,13 @@ const Dashboard = ({ sales }: DashboardProps) => {
     ];
 
     return (
-      <div className="space-y-8" onMouseMove={handleMouseMove}>
+      <div className="space-y-8">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
           {cards.map((card) => (
             <Card
               key={card.title}
+              onMouseMove={handleCardMouseMove}
+              onMouseLeave={handleCardMouseLeave}
               className="glass-card transition-all duration-500 hover:border-primary/40 group overflow-hidden rounded-[2rem] spotlight-card tilt-card border-beam-card luxury-shadow"
             >
               <CardContent className="p-6 relative">

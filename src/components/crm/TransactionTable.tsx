@@ -65,7 +65,7 @@ const TransactionTable = ({
                                         />
                                     </div>
                                     <div className="flex flex-col">
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-wrap items-center gap-2">
                                             <span className="font-bold text-sm text-primary">
                                                 {format(new Date(transaction.dueDate), "dd/MM/yy", { locale: ptBR })}
                                             </span>
@@ -74,9 +74,26 @@ const TransactionTable = ({
                                                     OS: {transaction.orderService}
                                                 </Badge>
                                             )}
+                                            {transaction.invoiceNumber && (
+                                                <Badge variant="secondary" className="text-[10px] h-4 py-0 font-mono">
+                                                    NF: {transaction.invoiceNumber}
+                                                </Badge>
+                                            )}
                                         </div>
                                         <h3 className="font-bold text-base leading-tight mt-0.5">{transaction.description}</h3>
-                                        <span className="text-xs text-muted-foreground">{transaction.contact}</span>
+                                        <div className="flex flex-col gap-0.5 mt-0.5">
+                                            {transaction.service && <span className="text-xs font-semibold text-muted-foreground">{transaction.service}</span>}
+                                            <span className="text-[11px] text-muted-foreground/80">{transaction.contact}</span>
+                                            {transaction.costSplits && transaction.costSplits.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {transaction.costSplits.map((split, sIdx) => (
+                                                        <Badge key={sIdx} variant="outline" className="text-[9px] bg-emerald-50 text-emerald-700 border-emerald-200 py-0 px-1 font-semibold">
+                                                            {split.client}: {formatCurrency(split.amount)}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex gap-1">
@@ -133,11 +150,18 @@ const TransactionTable = ({
                                     <Badge variant={isPaid ? "default" : "outline"} className={isPaid ? "bg-green-600/90 text-[10px]" : "text-yellow-600 border-yellow-600 text-[10px]"}>
                                         {isPaid ? "Concluído" : "Pendente"}
                                     </Badge>
-                                    {transaction.paymentDate && (
-                                        <span className="text-[10px] text-muted-foreground">
-                                            Pago: {format(new Date(transaction.paymentDate), "dd/MM", { locale: ptBR })}
-                                        </span>
-                                    )}
+                                    <div className="flex flex-col">
+                                        {transaction.paymentDate && (
+                                            <span className="text-[9px] text-muted-foreground">
+                                                Pago: {format(new Date(transaction.paymentDate), "dd/MM", { locale: ptBR })}
+                                            </span>
+                                        )}
+                                        {transaction.competenceDate && (
+                                            <span className="text-[9px] text-muted-foreground">
+                                                Compra: {format(new Date(transaction.competenceDate), "dd/MM", { locale: ptBR })}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="text-right flex flex-col items-end">
                                     <span className="text-[10px] font-medium px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
@@ -209,9 +233,25 @@ const TransactionTable = ({
                                         <div className="flex flex-col">
                                             <span className="font-semibold">{transaction.description}</span>
                                             <span className="text-[10px] text-muted-foreground">{transaction.service}</span>
+                                            {transaction.costSplits && transaction.costSplits.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {transaction.costSplits.map((split, sIdx) => (
+                                                        <Badge key={sIdx} variant="outline" className="text-[9px] bg-emerald-50 text-emerald-700 border-emerald-200 py-0 px-1 font-semibold">
+                                                            {split.client}: {formatCurrency(split.amount)}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="font-mono text-xs font-bold">{transaction.orderService || "-"}</TableCell>
+                                    <TableCell className="font-mono text-xs font-bold">
+                                        <div className="flex flex-col gap-1">
+                                            <span>{transaction.orderService || "-"}</span>
+                                            {transaction.invoiceNumber && (
+                                                <Badge variant="secondary" className="text-[9px] px-1 py-0 w-fit">NF: {transaction.invoiceNumber}</Badge>
+                                            )}
+                                        </div>
+                                    </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col">
                                             <span className="font-medium">{transaction.category}</span>

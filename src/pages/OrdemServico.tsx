@@ -5,9 +5,10 @@ import ServiceOrderFormDialog from "@/components/crm/ServiceOrderFormDialog";
 import { ServiceOrder, ServiceStatus } from "@/types/serviceOrder";
 import { useState, useEffect, lazy, Suspense } from "react";
 import ProductionTimeline from "@/components/crm/ProductionTimeline";
+import OSKanbanBoard from "@/components/crm/OSKanbanBoard";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
-import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play } from "lucide-react";
+import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play, KanbanSquare } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
@@ -589,6 +590,10 @@ const OrdemServico = () => {
                         <CalendarDays className="h-3 w-3 mr-2" />
                         Histórico Cronograma
                     </TabsTrigger>
+                    <TabsTrigger value="kanban" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-purple-500 data-[state=active]:text-white">
+                        <KanbanSquare className="h-3 w-3 mr-2" />
+                        Kanban (Visual)
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="definir" className="space-y-4">
@@ -706,6 +711,14 @@ const OrdemServico = () => {
                 <TabsContent value="cronograma">
                     <ProductionTimeline 
                         orders={orders}
+                        onEdit={handleEditOrder}
+                    />
+                </TabsContent>
+
+                <TabsContent value="kanban">
+                    <OSKanbanBoard 
+                        orders={orders}
+                        onStatusChange={(id, status) => handleUpdate(id, { status })}
                         onEdit={handleEditOrder}
                     />
                 </TabsContent>

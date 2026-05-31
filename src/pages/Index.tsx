@@ -21,6 +21,28 @@ const Index = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
 
+  const handleQuickAddSale = async (status: Sale["status"], clientName: string, product: string, totalValue: number) => {
+    try {
+      await addSale({
+        clientName,
+        product: product || "Geral",
+        totalValue,
+        quantity: 1,
+        unitPrice: totalValue,
+        status,
+        channel: "",
+        clientPhone: "",
+        clientEmail: "",
+        contactDate: new Date().toISOString().split("T")[0],
+        expectedCloseDate: "",
+        notes: "",
+        temperature: "morno"
+      });
+    } catch (e) {
+      console.error("Error adding quick sale:", e);
+    }
+  };
+
   const handleEdit = (sale: Sale) => {
     setEditingSale(sale);
     setFormOpen(true);
@@ -84,6 +106,7 @@ const Index = () => {
             sales={sales}
             onStatusChange={updateStatus}
             onEdit={handleEdit}
+            onAddQuickSale={handleQuickAddSale}
           />
         </TabsContent>
       </Tabs>

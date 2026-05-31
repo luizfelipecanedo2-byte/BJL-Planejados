@@ -14,5 +14,6 @@ export interface ServiceExpense {
     serviceValue: number;
     spentValue: number;
     items?: ExpenseItem[];
+    autoItems?: ExpenseItem[];
     createdAt: Date;
 }

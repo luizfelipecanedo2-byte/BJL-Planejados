@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -42,41 +42,122 @@ export interface Budget {
 }
 
 export function useBudgets() {
-    const [materials, setMaterials] = useState<Material[]>([]);
-    const [budgets, setBudgets] = useState<Budget[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
 
-    useEffect(() => {
-        fetchMaterials();
-        fetchBudgets();
-    }, []);
+    // Fetch Materials using React Query
+    const { data: materials = [], refetch: fetchMaterials } = useQuery<Material[]>({
+        queryKey: ["materials"],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('budget_materials')
+                .select('*')
+                .order('category', { ascending: true });
+            if (error) {
+                console.error("Error fetching materials:", error);
+                throw error;
+            }
+            return data || [];
+        },
+        staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    });
 
-    const fetchMaterials = async () => {
-        const { data, error } = await supabase
-            .from('budget_materials')
-            .select('*')
-            .order('category', { ascending: true });
+    // Fetch Budgets using React Query
+    const { data: budgets = [], isLoading: loading, refetch: fetchBudgets } = useQuery<Budget[]>({
+        queryKey: ["budgets"],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('budgets')
+                .select('*, budget_items(*, budget_materials(*))')
+                .order('created_at', { ascending: false });
+            if (error) {
+                console.error("Error fetching budgets:", error);
+                throw error;
+            }
+            return data || [];
+        },
+        staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    });
 
-        if (error) {
-            console.error("Error fetching materials:", error);
-        } else {
-            setMaterials(data || []);
+    const syncBudgetToSale = async (savedBudget: any) => {
+        try {
+            // Find existing sale
+            const { data: existingSale, error: fetchError } = await supabase
+                .from('sales')
+                .select('id, status')
+                .eq('budget_id', savedBudget.id)
+                .maybeSingle();
+
+            if (fetchError) {
+                console.error("Error fetching existing sale:", fetchError);
+                return;
+            }
+
+            // Look up client phone and email from the clients table
+            let clientPhone = "";
+            let clientEmail = "";
+            try {
+                const { data: clientData } = await supabase
+                    .from('clients')
+                    .select('phone, email')
+                    .ilike('name', savedBudget.client_name || "")
+                    .maybeSingle();
+                if (clientData) {
+                    clientPhone = clientData.phone || "";
+                    clientEmail = clientData.email || "";
+                }
+            } catch (err) {
+                console.error("Error looking up client details for CRM sync:", err);
+            }
+
+            // Map status
+            let saleStatus: any = 'negociacao';
+            if (savedBudget.status === 'aprovado') {
+                saleStatus = 'fechado';
+            } else if (savedBudget.status === 'rejeitado') {
+                saleStatus = 'nao_fechou';
+            } else if (savedBudget.status === 'em_elaboracao') {
+                saleStatus = existingSale?.status || 'negociacao';
+            }
+
+            const saleData: any = {
+                client_name: savedBudget.client_name,
+                product: `Orçamento: ${savedBudget.project_name || "Marcenaria"}`,
+                quantity: 1,
+                unit_price: savedBudget.total_value,
+                total_value: savedBudget.total_value,
+                status: saleStatus,
+                notes: savedBudget.notes || "",
+                budget_id: savedBudget.id
+            };
+
+            if (clientPhone) saleData.client_phone = clientPhone;
+            if (clientEmail) saleData.client_email = clientEmail;
+
+            if (existingSale) {
+                const { error: updateError } = await supabase
+                    .from('sales')
+                    .update(saleData)
+                    .eq('id', existingSale.id);
+                if (updateError) {
+                    console.error("Error updating sale from budget sync:", updateError);
+                }
+            } else {
+                saleData.contact_date = new Date().toISOString().split('T')[0];
+                // Set expected close date to 15 days from now
+                const expectedDate = new Date();
+                expectedDate.setDate(expectedDate.getDate() + 15);
+                saleData.expected_close_date = expectedDate.toISOString().split('T')[0];
+                
+                const { error: insertError } = await supabase
+                    .from('sales')
+                    .insert([saleData]);
+                if (insertError) {
+                    console.error("Error inserting sale from budget sync:", insertError);
+                }
+            }
+        } catch (e) {
+            console.error("Error syncing budget to CRM:", e);
         }
-    };
-
-    const fetchBudgets = async () => {
-        setLoading(true);
-        const { data, error } = await supabase
-            .from('budgets')
-            .select('*, budget_items(*, budget_materials(*))')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error("Error fetching budgets:", error);
-        } else {
-            setBudgets(data || []);
-        }
-        setLoading(false);
     };
 
     const updateMaterial = async (id: string, updates: Partial<Material>) => {
@@ -89,7 +170,7 @@ export function useBudgets() {
             toast.error("Erro ao atualizar item");
             return false;
         } else {
-            setMaterials(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+            queryClient.invalidateQueries({ queryKey: ["materials"] });
             toast.success("Item atualizado");
             return true;
         }
@@ -106,7 +187,7 @@ export function useBudgets() {
             toast.error("Erro ao adicionar material: " + error.message);
             return null;
         } else {
-            setMaterials(prev => [...prev, data]);
+            queryClient.invalidateQueries({ queryKey: ["materials"] });
             toast.success("Material adicionado com sucesso");
             return data;
         }
@@ -126,7 +207,7 @@ export function useBudgets() {
             }
             return false;
         } else {
-            setMaterials(prev => prev.filter(m => m.id !== id));
+            queryClient.invalidateQueries({ queryKey: ["materials"] });
             toast.success("Material excluído com sucesso");
             return true;
         }
@@ -153,7 +234,7 @@ export function useBudgets() {
             return false;
         }
 
-        setBudgets(prev => prev.filter(b => b.id !== id));
+        queryClient.invalidateQueries({ queryKey: ["budgets"] });
         toast.success("Orçamento excluído com sucesso");
         return true;
     };
@@ -224,7 +305,12 @@ export function useBudgets() {
             if (itemsError) throw itemsError;
 
             toast.success(budget.id ? "Orçamento atualizado!" : "Orçamento salvo com sucesso!");
-            fetchBudgets();
+            
+            // Sync to CRM
+            await syncBudgetToSale(budgetData);
+
+            queryClient.invalidateQueries({ queryKey: ["budgets"] });
+            queryClient.invalidateQueries({ queryKey: ["sales"] });
             return budgetData;
         } catch (error: any) {
             toast.error("Erro ao salvar orçamento: " + error.message);
@@ -242,12 +328,15 @@ export function useBudgets() {
 
             if (updateError) throw updateError;
 
+            // Sync to CRM
+            await syncBudgetToSale({ ...budget, status: 'aprovado' });
+
             // Use budget_items if mapped by Supabase query
             const itemsToConvert = budget.budget_items || budget.items || [];
             
             if (itemsToConvert.length === 0) {
                 toast.info("Este orçamento não tem materiais para pedir.");
-                fetchBudgets();
+                queryClient.invalidateQueries({ queryKey: ["budgets"] });
                 return true;
             }
 
@@ -274,7 +363,8 @@ export function useBudgets() {
             if (insertError) throw insertError;
 
             toast.success("Orçamento aprovado e materiais enviados para Pedidos da Semana!");
-            fetchBudgets();
+            queryClient.invalidateQueries({ queryKey: ["budgets"] });
+            queryClient.invalidateQueries({ queryKey: ["sales"] });
             return true;
         } catch (error: any) {
             console.error("Error converting to weekly orders:", error);
@@ -293,6 +383,9 @@ export function useBudgets() {
 
             if (updateError) throw updateError;
 
+            // Sync to CRM
+            await syncBudgetToSale({ ...budget, status: 'em_elaboracao' });
+
             // Remove all weekly_orders linked to this budget
             const { error: deleteError } = await supabase
                 .from('weekly_orders')
@@ -302,7 +395,8 @@ export function useBudgets() {
             if (deleteError) throw deleteError;
 
             toast.success("Aprovação removida e materiais retirados da lista de compras!");
-            fetchBudgets();
+            queryClient.invalidateQueries({ queryKey: ["budgets"] });
+            queryClient.invalidateQueries({ queryKey: ["sales"] });
             return true;
         } catch (error: any) {
             console.error("Error cancelling budget approval:", error);
@@ -322,7 +416,7 @@ export function useBudgets() {
             return false;
         }
         
-        setBudgets(prev => prev.map(b => b.id === budgetId ? { ...b, production_status: status as any } : b));
+        queryClient.invalidateQueries({ queryKey: ["budgets"] });
         toast.success("Status de produção atualizado!");
         return true;
     };
@@ -341,7 +435,7 @@ export function useBudgets() {
             return false;
         }
         
-        setBudgets(prev => prev.map(b => b.id === budgetId ? { ...b, ...updates } : b));
+        queryClient.invalidateQueries({ queryKey: ["budgets"] });
         return true;
     };
 

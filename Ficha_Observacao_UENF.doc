@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.5; margin: 40px; }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        .header { margin-bottom: 20px; }
+        .section { margin-top: 20px; }
+        .signature { margin-top: 50px; text-align: center; }
+        .checkbox { font-family: "Courier New", Courier, monospace; }
+    </style>
+</head>
+<body>
+    <div class="header center">
+        <p class="bold">UENF - Universidade Estadual do Norte Fluminense Darcy Ribeiro</p>
+        <p class="bold">LEEL - Laboratório de Estudos da Educação e Linguagem</p>
+        <p class="bold">Núcleo de Estágio da UENF</p>
+    </div>
+
+    <div class="center section">
+        <p class="bold">FICHA DE OBSERVAÇÃO DE ATIVIDADE e APRECIAÇÃO DE DOCÊNCIA</p>
+        <p>(Para o estagiário observar 2 atividades e 2 aulas diferentes)</p>
+    </div>
+
+    <div class="section">
+        <p><span class="bold">Instituição:</span> Escola Jardim de Infância Ana Passos</p>
+        <p><span class="bold">Disciplina:</span> Português</p>
+        <p><span class="bold">Série:</span> Pré II</p>
+        <p><span class="bold">Professor:</span> Larissa Gonçalves dos Santos Gomes</p>
+        <p><span class="bold">Data da observação:</span> 16/04/2026</p>
+        <p><span class="bold">Duração da aula:</span> 4 horas</p>
+    </div>
+
+    <div class="section">
+        <p class="bold">Planejamento:</p>
+        <p>Percebe-se a presença de objetivos previamente determinados, de acordo com os campos de Experiência (BNCC)? Quais?</p>
+        <p class="bold">( x ) sim ( ) não</p>
+        <p>( x ) Escuta, fala, pensamento e imaginação; ( x ) O eu, o outro e o nós ( ) Corpo, gestos e movimento; ( ) Traços, sons, cores e formas; ( ) Espaços, tempos, quantidades, relações e transformações</p>
+        <p>Nota-se a exigência de um planejamento?</p>
+        <p class="bold">( x ) sim ( ) não</p>
+    </div>
+
+    <div class="section">
+        <p class="bold">Conteúdo:</p>
+        <p><span class="bold">Assunto:</span> Povos indígenas.</p>
+        <p><span class="bold">Tópicos principais:</span> Cultura e costumes dos povos indígenas.</p>
+    </div>
+
+    <div class="section">
+        <p class="bold">Estratégias:</p>
+        <p>1. O assunto foi introduzido através de:</p>
+        <p>( ) exposição pelo professor<br>
+           ( ) leitura de texto<br>
+           <span class="bold">( x ) perguntas dirigidas à turma</span><br>
+           ( ) Outras atividades. Quais? _________________________________________________</p>
+
+        <p>2. Procedimentos pedagógicos empregados no desenvolvimento do assunto:</p>
+        <p>( ) elaboração de atividades em conjunto com uma turma<br>
+           <span class="bold">( x ) exposição pelo professor</span><br>
+           ( ) exposição e debate simultâneo com a turma<br>
+           ( ) técnicas de dinâmica de grupo<br>
+           ( ) atividades dos alunos sob a supervisão do professor<br>
+           ( ) demonstração<br>
+           ( ) outras. Quais? _________________________________________________</p>
+    </div>
+
+    <div class="section">
+        <p>3. Recursos didáticos utilizados:</p>
+        <p>( ) quadro de giz<br>
+           ( ) reália, modelos<br>
+           <span class="bold">( x ) material impresso</span><br>
+           ( ) cartazes<br>
+           ( ) gravações<br>
+           ( ) ilustrações<br>
+           ( ) álbum seriado projeções de: ( ) slides ( ) filmes ( ) transparências<br>
+           ( ) outras. Quais? _________________________________________________</p>
+    </div>
+
+    <div class="section">
+        <p class="bold">Atividades desenvolvidas durante a observação. O envolvimento da turma durante a atividade foi:</p>
+        <p><span class="bold">( x ) excelente</span><br>
+           ( ) muito bom<br>
+           ( ) bom<br>
+           ( ) regular<br>
+           ( ) insuficiente</p>
+    </div>
+
+    <div class="section">
+        <p class="bold">Professor:</p>
+        <p>Apresenta o conteúdo com dinamicidade?<br><span class="bold">( x ) sim ( ) não ( ) em parte</span></p>
+        <p>Mantinha bom relacionamento com a turma?<br><span class="bold">( x ) sim ( ) não ( ) em parte</span></p>
+        <p>Apresentava domínio do conteúdo?<br><span class="bold">( x ) sim ( ) não ( ) em parte</span></p>
+        <p>Apresentava explicações claras?<br><span class="bold">( x ) sim ( ) não ( ) em parte</span></p>
+        <p>Solicitava a participação dos alunos?<br><span class="bold">( x ) sim ( ) não ( ) em parte</span></p>
+        <p>Tornava a explicar quando solicitado?<br><span class="bold">( x ) sim ( ) não ( ) em parte</span></p>
+    </div>
+
+    <div class="section">
+        <p class="bold">Avaliação:</p>
+        <p>Houve preocupação por parte do professor em avaliar a atividade proposta?<br><span class="bold">( x ) sim ( ) não</span></p>
+        <p>Se você tomou conhecimento dos objetivos, havia relação entre a avaliação e o que foi observado?<br><span class="bold">( x ) sim ( ) não ( ) em parte</span></p>
+        <p>No caso de ter havido avaliação, foram empregados os seguintes Instrumentos:</p>
+        <p><span class="bold">( x ) interrogatório</span><br>
+           ( ) teste escrito<br>
+           ( ) debate<br>
+           ( ) elaboração de tarefas, exercícios ou trabalhos práticos.<br>
+           ( ) outros. Quais? _________________________________________________</p>
+    </div>
+
+    <div class="section">
+        <p class="bold">Registre o(s) aspecto(s) da aula que mais chamou(ram) sua atenção:</p>
+        <p>A aula foi introduzida de maneira dinâmica, divertida e que prendeu a atenção das crianças e despertou o interesse e a curiosidade. Foi dando a eles pipoca e explicado que esse costume que adquirimos no Brasil foi os povos indígenas que nos ensinaram como muitos outros alimentos do nosso dia a dia.</p>
+    </div>
+
+    <div class="section">
+        <p class="bold">Se algum aluno despertou sua atenção de maneira especial, registre o fato.</p>
+        <p>A turma no geral chamou a atenção pela participação e interação na aula.</p>
+    </div>
+
+    <div class="signature">
+        <p>_________________________________________________</p>
+        <p class="bold">Assinatura do estagiário: Felipe Lourenço Fonseca Canêdo</p>
+    </div>
+</body>
+</html>
