@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send, Pencil, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send, Pencil, CalendarRange, Check, Sparkles } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -90,6 +90,133 @@ const Tarefas = () => {
     const [activeView, setActiveView] = useState("hoje");
     const { sales } = useSales();
     const isAdmin = userRole === 'admin';
+
+    // Weekly Planner State
+    const [isPlannerOpen, setIsPlannerOpen] = useState(false);
+    const [plannerStep, setPlannerStep] = useState<1 | 2>(1);
+    const [plannerFocusProjects, setPlannerFocusProjects] = useState<string[]>([]);
+    const [plannerCustomProject, setPlannerCustomProject] = useState("");
+    const [plannerTasks, setPlannerTasks] = useState<Array<{
+        id: string;
+        dayIndex: number;
+        project: string;
+        environment: string;
+        title: string;
+        priority: string;
+    }>>([]);
+
+    const [tempProject, setTempProject] = useState("");
+    const [tempEnvironment, setTempEnvironment] = useState("");
+    const [tempTitle, setTempTitle] = useState("");
+    const [tempPriority, setTempPriority] = useState("normal");
+    const [activePlannerDayIndex, setActivePlannerDayIndex] = useState(0);
+
+    useEffect(() => {
+        if (plannerFocusProjects.length > 0 && !plannerFocusProjects.includes(tempProject)) {
+            setTempProject(plannerFocusProjects[0]);
+        }
+    }, [plannerFocusProjects]);
+
+    const getNextWeekDays = () => {
+        const today = new Date();
+        const currentDay = today.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+        
+        // 0 (Sunday) -> +1
+        // 1 (Monday) -> +0 (plan current week)
+        // 2-6 (Tue-Sat) -> 8 - currentDay (plan next week)
+        const daysToMonday = currentDay === 0 ? 1 : (currentDay === 1 ? 0 : 8 - currentDay);
+        
+        const dayNames = [
+            "Segunda-feira",
+            "Terça-feira",
+            "Quarta-feira",
+            "Quinta-feira",
+            "Sexta-feira",
+            "Sábado"
+        ];
+
+        return dayNames.map((name, index) => {
+            const d = new Date(today);
+            d.setDate(today.getDate() + daysToMonday + index);
+            const labelRaw = format(d, "EEEE (dd/MM)", { locale: ptBR });
+            const label = labelRaw.charAt(0).toUpperCase() + labelRaw.slice(1);
+            return {
+                name,
+                dateStr: format(d, "yyyy-MM-dd"),
+                label,
+                shortLabel: format(d, "dd/MM")
+            };
+        });
+    };
+
+    const handleAddPlannerTask = () => {
+        if (!tempTitle.trim()) {
+            toast.error("Por favor, digite o título da tarefa.");
+            return;
+        }
+        
+        const proj = tempProject || plannerFocusProjects[0] || "Geral";
+        const env = tempEnvironment.trim() || "Geral";
+
+        const newTask = {
+            id: Math.random().toString(36).substring(2, 9),
+            dayIndex: activePlannerDayIndex,
+            project: proj,
+            environment: env,
+            title: tempTitle.trim(),
+            priority: tempPriority
+        };
+
+        setPlannerTasks([...plannerTasks, newTask]);
+        setTempTitle("");
+    };
+
+    const handleSaveWeeklyPlanner = async () => {
+        if (plannerTasks.length === 0) {
+            toast.error("Nenhuma tarefa planejada para salvar.");
+            return;
+        }
+
+        try {
+            const userId = currentUserId || (await supabase.auth.getSession()).data.session?.user?.id || (await supabase.auth.getUser()).data.user?.id;
+            if (!userId) {
+                toast.error("Usuário não autenticado. Por favor, faça login.");
+                return;
+            }
+
+            const weekDays = getNextWeekDays();
+            
+            const tasksToInsert = plannerTasks.map(t => {
+                const day = weekDays[t.dayIndex];
+                return {
+                    title: t.title,
+                    description: "Planejado no assistente semanal",
+                    project_name: t.project,
+                    environment_name: t.environment,
+                    due_date: day.dateStr,
+                    priority: t.priority,
+                    created_by: userId,
+                    status: 'pending'
+                };
+            });
+
+            const { error } = await supabase.from('tasks').insert(tasksToInsert);
+            
+            if (error) throw error;
+
+            toast.success(`Planejamento concluído! ${plannerTasks.length} tarefas criadas.`);
+            setIsPlannerOpen(false);
+            
+            setPlannerStep(1);
+            setPlannerFocusProjects([]);
+            setPlannerTasks([]);
+            
+            fetchTasks();
+        } catch (err: any) {
+            console.error("Erro ao salvar planejamento semanal:", err);
+            toast.error(`Erro ao salvar: ${err.message || 'Erro desconhecido'}`);
+        }
+    };
 
     useEffect(() => {
         fetchInitialData();
@@ -379,20 +506,34 @@ const Tarefas = () => {
                     </Tabs>
 
                     {userRole === 'admin' && (
-                        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-                            if (!open) {
-                                resetForm();
-                            } else {
-                                // Sincroniza a data inicial com base na aba ativa ao abrir
-                                const now = new Date();
-                                if (activeView === 'amanha') {
-                                    setNewDueDate(format(addDays(now, 1), "yyyy-MM-dd"));
+                        <>
+                            <Button 
+                                onClick={() => {
+                                    setPlannerStep(1);
+                                    setPlannerFocusProjects([]);
+                                    setPlannerTasks([]);
+                                    setIsPlannerOpen(true);
+                                }}
+                                className="h-12 px-6 bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 gap-2 border border-amber-400/20"
+                            >
+                                <CalendarRange className="h-4 w-4" />
+                                Planejar Semana
+                            </Button>
+
+                            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                                if (!open) {
+                                    resetForm();
                                 } else {
-                                    setNewDueDate(format(now, "yyyy-MM-dd"));
+                                    // Sincroniza a data inicial com base na aba ativa ao abrir
+                                    const now = new Date();
+                                    if (activeView === 'amanha') {
+                                        setNewDueDate(format(addDays(now, 1), "yyyy-MM-dd"));
+                                    } else {
+                                        setNewDueDate(format(now, "yyyy-MM-dd"));
+                                    }
                                 }
-                            }
-                            setIsDialogOpen(open);
-                        }}>
+                                setIsDialogOpen(open);
+                            }}>
                             <DialogTrigger asChild>
                                 <Button className="h-12 px-8 bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all hover:scale-105 active:scale-95 gap-2">
                                     <Plus className="h-4 w-4" />
@@ -512,6 +653,7 @@ const Tarefas = () => {
                                 </form>
                             </DialogContent>
                         </Dialog>
+                        </>
                     )}
                 </div>
             </div>
@@ -552,6 +694,327 @@ const Tarefas = () => {
                     </div>
                 )}
             </div>
+
+            {/* Modal do Planejador Semanal */}
+            <Dialog open={isPlannerOpen} onOpenChange={setIsPlannerOpen}>
+                <DialogContent className="glass-card border-white/10 text-white max-w-4xl rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
+                    <div className="bg-gradient-to-r from-amber-500 to-amber-700 p-8 text-white relative">
+                        <DialogHeader>
+                            <DialogTitle className="text-3xl font-black uppercase tracking-tighter flex items-center gap-2">
+                                <CalendarRange className="h-7 w-7" />
+                                Planejamento da Semana (Planner de Domingo)
+                            </DialogTitle>
+                            <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest mt-1">
+                                Defina suas prioridades e organize a agenda de execução de forma integrada
+                            </p>
+                        </DialogHeader>
+                    </div>
+
+                    <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+                        {plannerStep === 1 ? (
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-lg font-black uppercase tracking-tight text-amber-500 mb-1">
+                                        Passo 1: Quais projetos você focará esta semana?
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
+                                        Selecione os clientes ativos para definir as metas diárias
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {Array.from(new Set(
+                                        serviceOrders
+                                            .filter(o => o.status !== "Entregue e Finalizado")
+                                            .map(o => o.client)
+                                            .filter(Boolean)
+                                    )).map((proj: any) => {
+                                        const isSelected = plannerFocusProjects.includes(proj);
+                                        return (
+                                            <button
+                                                key={proj}
+                                                type="button"
+                                                onClick={() => {
+                                                    if (isSelected) {
+                                                        setPlannerFocusProjects(plannerFocusProjects.filter(p => p !== proj));
+                                                    } else {
+                                                        setPlannerFocusProjects([...plannerFocusProjects, proj]);
+                                                    }
+                                                }}
+                                                className={cn(
+                                                    "p-4 rounded-2xl border text-left transition-all duration-300 font-bold text-xs uppercase tracking-wider flex items-center justify-between",
+                                                    isSelected 
+                                                        ? "bg-amber-500/10 border-amber-500 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+                                                        : "bg-white/[0.02] border-white/10 hover:bg-white/[0.05] text-white/70"
+                                                )}
+                                            >
+                                                <span className="truncate mr-2">{proj}</span>
+                                                <div className={cn(
+                                                    "h-4 w-4 rounded-full border flex items-center justify-center shrink-0",
+                                                    isSelected ? "border-amber-500 bg-amber-500 text-black" : "border-white/30"
+                                                )}>
+                                                    {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="space-y-2 pt-3 border-t border-white/5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                                        Adicionar outro projeto/cliente
+                                    </Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="Ex: Reforma Cozinha Maria"
+                                            value={plannerCustomProject}
+                                            onChange={(e) => setPlannerCustomProject(e.target.value)}
+                                            className="bg-white/5 border-white/10 rounded-xl h-12 font-bold"
+                                        />
+                                        <Button
+                                            type="button"
+                                            onClick={() => {
+                                                if (plannerCustomProject.trim()) {
+                                                    const cleanProj = plannerCustomProject.trim();
+                                                    if (!plannerFocusProjects.includes(cleanProj)) {
+                                                        setPlannerFocusProjects([...plannerFocusProjects, cleanProj]);
+                                                    }
+                                                    setPlannerCustomProject("");
+                                                }
+                                            }}
+                                            className="h-12 bg-white/10 hover:bg-white/20 border border-white/10 font-bold uppercase text-[10px] px-6 rounded-xl shrink-0"
+                                        >
+                                            Adicionar Foco
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-between items-center pt-6 border-t border-white/5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                        {plannerFocusProjects.length} projeto(s) selecionado(s)
+                                    </p>
+                                    <Button
+                                        type="button"
+                                        disabled={plannerFocusProjects.length === 0}
+                                        onClick={() => setPlannerStep(2)}
+                                        className="bg-amber-500 hover:bg-amber-600 text-black font-black uppercase tracking-widest text-xs h-12 px-8 rounded-xl shadow-lg"
+                                    >
+                                        Próximo: Planejar Dias
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-lg font-black uppercase tracking-tight text-amber-500 mb-1">
+                                        Passo 2: Defina as atividades de cada dia
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
+                                        As datas reais serão calculadas e vinculadas automaticamente
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col lg:flex-row gap-6">
+                                    {/* Abas dos Dias */}
+                                    <div className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 pb-2 lg:pb-0 lg:w-48 shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 pr-0 lg:pr-4">
+                                        {getNextWeekDays().map((day, idx) => {
+                                            const isSelected = activePlannerDayIndex === idx;
+                                            const dayTasksCount = plannerTasks.filter(t => t.dayIndex === idx).length;
+
+                                            return (
+                                                <button
+                                                    key={day.name}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setActivePlannerDayIndex(idx);
+                                                        setTempTitle("");
+                                                    }}
+                                                    className={cn(
+                                                        "px-4 py-3 rounded-xl text-left font-black uppercase text-[10px] tracking-wider transition-all flex items-center justify-between gap-3 shrink-0 lg:w-full",
+                                                        isSelected
+                                                            ? "bg-amber-500 text-black font-black shadow-lg"
+                                                            : "bg-white/5 hover:bg-white/10 text-white/70"
+                                                    )}
+                                                >
+                                                    <div className="flex flex-col text-left">
+                                                        <span>{day.name.split("-")[0]}</span>
+                                                        <span className={cn(
+                                                            "text-[8px] font-bold opacity-60",
+                                                            isSelected ? "text-black" : "text-slate-400"
+                                                        )}>{day.shortLabel}</span>
+                                                    </div>
+                                                    {dayTasksCount > 0 && (
+                                                        <span className={cn(
+                                                            "text-[9px] px-2 py-0.5 rounded-full font-black",
+                                                            isSelected ? "bg-black text-amber-500" : "bg-amber-500/25 text-amber-400"
+                                                        )}>
+                                                            {dayTasksCount}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Área de Criação de Tarefas no Dia Selecionado */}
+                                    <div className="flex-1 space-y-6">
+                                        <div className="bg-white/[0.02] border border-white/5 p-6 rounded-3xl space-y-4">
+                                            <h4 className="text-xs font-black uppercase tracking-widest text-amber-500 flex items-center gap-1.5">
+                                                <Sparkles className="h-3.5 w-3.5" />
+                                                Planejar para {getNextWeekDays()[activePlannerDayIndex].label}
+                                            </h4>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                                        Projeto Foco
+                                                    </Label>
+                                                    <Select
+                                                        value={tempProject || plannerFocusProjects[0] || ""}
+                                                        onValueChange={setTempProject}
+                                                    >
+                                                        <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-10 text-xs">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-slate-900 border-white/10 text-xs font-bold uppercase">
+                                                            {plannerFocusProjects.map(p => (
+                                                                <SelectItem key={p} value={p}>{p}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                                        Ambiente/Cômodo
+                                                    </Label>
+                                                    <Input
+                                                        placeholder="Ex: Cozinha, Quarto Casal"
+                                                        value={tempEnvironment}
+                                                        onChange={(e) => setTempEnvironment(e.target.value)}
+                                                        className="bg-white/5 border-white/10 rounded-xl h-10 text-xs font-bold"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                                                <div className="sm:col-span-2 space-y-1.5">
+                                                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                                        O que será feito neste dia?
+                                                    </Label>
+                                                    <Input
+                                                        placeholder="Ex: Finalizar montagem das portas"
+                                                        value={tempTitle}
+                                                        onChange={(e) => setTempTitle(e.target.value)}
+                                                        className="bg-white/5 border-white/10 rounded-xl h-10 text-xs font-bold"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                                        Prioridade
+                                                    </Label>
+                                                    <Select value={tempPriority} onValueChange={setTempPriority}>
+                                                        <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-10 text-xs">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-slate-900 border-white/10 text-xs">
+                                                            <SelectItem value="low">Baixa</SelectItem>
+                                                            <SelectItem value="normal">Normal</SelectItem>
+                                                            <SelectItem value="high">Alta</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                <Button
+                                                    type="button"
+                                                    onClick={handleAddPlannerTask}
+                                                    className="h-10 bg-amber-500 hover:bg-amber-600 text-black font-black uppercase text-[10px] tracking-wider rounded-xl gap-1 shadow-lg shadow-amber-500/10"
+                                                >
+                                                    <Plus className="h-3.5 w-3.5" />
+                                                    Lançar
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        {/* Lista de Atividades do Dia Atual */}
+                                        <div className="space-y-3">
+                                            <div className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30">
+                                                Atividades Agendadas para o Dia
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                {plannerTasks.filter(t => t.dayIndex === activePlannerDayIndex).map(t => (
+                                                    <div
+                                                        key={t.id}
+                                                        className="flex items-center justify-between gap-4 p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.04] transition-all"
+                                                    >
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="text-[8px] font-black uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                                                                    {t.project}
+                                                                </span>
+                                                                <span className="text-[8px] font-black uppercase tracking-wider text-white/40">
+                                                                    {t.environment}
+                                                                </span>
+                                                                <span className={cn(
+                                                                    "h-1.5 w-1.5 rounded-full shrink-0",
+                                                                    t.priority === "high" ? "bg-rose-500" :
+                                                                    t.priority === "normal" ? "bg-amber-500" : "bg-emerald-500"
+                                                                )} />
+                                                            </div>
+                                                            <p className="text-xs font-bold text-white leading-tight truncate">
+                                                                {t.title}
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPlannerTasks(plannerTasks.filter(item => item.id !== t.id))}
+                                                            className="h-8 w-8 flex items-center justify-center text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {plannerTasks.filter(t => t.dayIndex === activePlannerDayIndex).length === 0 && (
+                                                    <div className="text-center py-6 text-[10px] text-muted-foreground uppercase font-bold tracking-widest border border-dashed border-white/5 rounded-2xl italic">
+                                                        Nenhuma tarefa adicionada para este dia.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-between items-center pt-6 border-t border-white/5">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setPlannerStep(1)}
+                                        className="h-12 border-white/10 hover:bg-white/5 text-[10px] font-black uppercase tracking-widest px-6 rounded-xl"
+                                    >
+                                        Voltar Foco
+                                    </Button>
+
+                                    <div className="flex items-center gap-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hidden sm:block">
+                                            {plannerTasks.length} tarefa(s) no total da semana
+                                        </p>
+                                        <Button
+                                            type="button"
+                                            disabled={plannerTasks.length === 0}
+                                            onClick={handleSaveWeeklyPlanner}
+                                            className="bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black uppercase tracking-widest text-xs h-12 px-8 rounded-xl shadow-lg shadow-amber-900/10"
+                                        >
+                                            Salvar e Lançar Cronograma
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

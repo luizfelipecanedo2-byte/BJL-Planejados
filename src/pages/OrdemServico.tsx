@@ -469,6 +469,10 @@ const OrdemServico = () => {
         }
     });
 
+    const totalTasksCount = tasks.length;
+    const pendingTasksCount = tasks.filter(t => t.status === 'pending').length;
+    const completedTasksCount = totalTasksCount - pendingTasksCount;
+
     const criticalDeliveriesCount = orders.filter(o => {
         if (o.status === "Entregue e Finalizado" || o.status === "A Definir") return false;
         const days = getDaysRemaining(o.forecastDate);
@@ -628,13 +632,14 @@ const OrdemServico = () => {
                             <Hammer className="h-32 w-32" />
                         </div>
                         <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Progresso de Ambientes</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Progresso de Tarefas</p>
                             <h3 className="text-3xl font-black text-orange-500 tracking-tighter flex items-baseline">
-                                <AnimatedCounter value={completedEnvironmentsCount} />
+                                <AnimatedCounter value={completedTasksCount} />
                                 <span className="text-xl text-muted-foreground font-bold mx-1">/</span>
-                                <AnimatedCounter value={totalEnvironmentsCount} />
-                                <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">Cômodos</span>
+                                <AnimatedCounter value={totalTasksCount} />
+                                <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">Tarefas</span>
                             </h3>
+                            <p className="text-[9px] text-amber-500/80 font-black uppercase tracking-widest mt-1">({pendingTasksCount} pendentes)</p>
                         </div>
                     </CardContent>
                 </Card>
