@@ -8,7 +8,7 @@ import ProductionTimeline from "@/components/crm/ProductionTimeline";
 import OSKanbanBoard from "@/components/crm/OSKanbanBoard";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
-import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play, KanbanSquare } from "lucide-react";
+import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play, KanbanSquare, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
@@ -469,9 +469,9 @@ const OrdemServico = () => {
         }
     });
 
-    const totalTasksCount = tasks.length;
-    const pendingTasksCount = tasks.filter(t => t.status === 'pending').length;
-    const completedTasksCount = totalTasksCount - pendingTasksCount;
+    const totalOrdersCount = orders.length;
+    const completedOrdersCount = orders.filter(o => o.status === "Entregue e Finalizado").length;
+    const pendingOrdersCount = totalOrdersCount - completedOrdersCount;
 
     const criticalDeliveriesCount = orders.filter(o => {
         if (o.status === "Entregue e Finalizado" || o.status === "A Definir") return false;
@@ -629,17 +629,17 @@ const OrdemServico = () => {
                 <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-orange-500">
-                            <Hammer className="h-32 w-32" />
+                            <ClipboardList className="h-32 w-32" />
                         </div>
                         <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Progresso de Tarefas</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Progresso de OS</p>
                             <h3 className="text-3xl font-black text-orange-500 tracking-tighter flex items-baseline">
-                                <AnimatedCounter value={completedTasksCount} />
+                                <AnimatedCounter value={completedOrdersCount} />
                                 <span className="text-xl text-muted-foreground font-bold mx-1">/</span>
-                                <AnimatedCounter value={totalTasksCount} />
-                                <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">Tarefas</span>
+                                <AnimatedCounter value={totalOrdersCount} />
+                                <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">OSs</span>
                             </h3>
-                            <p className="text-[9px] text-amber-500/80 font-black uppercase tracking-widest mt-1">({pendingTasksCount} pendentes)</p>
+                            <p className="text-[9px] text-amber-500/80 font-black uppercase tracking-widest mt-1">({pendingOrdersCount} em aberto)</p>
                         </div>
                     </CardContent>
                 </Card>

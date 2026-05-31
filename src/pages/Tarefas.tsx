@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send, Pencil, CalendarRange, Check, Sparkles } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send, Pencil, CalendarRange, Check, Sparkles, AlertCircle, ListTodo } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSales } from "@/hooks/useSales";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 interface Task {
     id: string;
@@ -486,6 +487,39 @@ const Tarefas = () => {
         return acc;
     }, {});
 
+    // Calculations for Tarefas HUD
+    const now = new Date();
+    const todayStr = format(now, "yyyy-MM-dd");
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+
+    // Today's tasks (including overdue tasks if they are pending, to match the "Hoje" filter)
+    const todayTasks = tasks.filter(t => 
+        (t.due_date === todayStr) || 
+        (t.due_date < todayStr && t.status === 'pending')
+    );
+    const totalTodayTasks = todayTasks.length;
+    const completedTodayTasks = todayTasks.filter(t => t.status === 'completed').length;
+    const pendingTodayTasks = totalTodayTasks - completedTodayTasks;
+
+    // Weekly tasks
+    const weeklyTasks = tasks.filter(t => {
+        try {
+            const date = parseISO(t.due_date);
+            return isWithinInterval(date, { start: weekStart, end: weekEnd });
+        } catch (e) {
+            return false;
+        }
+    });
+    const totalWeeklyTasks = weeklyTasks.length;
+    const completedWeeklyTasks = weeklyTasks.filter(t => t.status === 'completed').length;
+
+    // All pending tasks
+    const totalPendingTasksCount = tasks.filter(t => t.status === 'pending').length;
+
+    // Critical (high priority) pending tasks
+    const criticalPendingTasksCount = tasks.filter(t => t.priority === 'high' && t.status === 'pending').length;
+
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
             {/* Header Section */}
@@ -656,6 +690,74 @@ const Tarefas = () => {
                         </>
                     )}
                 </div>
+            </div>
+
+            {/* Tarefas HUD */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
+                            <ListTodo className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Tarefas Diárias (Hoje)</p>
+                            <h3 className="text-3xl font-black text-primary tracking-tighter flex items-baseline">
+                                <AnimatedCounter value={completedTodayTasks} />
+                                <span className="text-xl text-muted-foreground font-bold mx-1">/</span>
+                                <AnimatedCounter value={totalTodayTasks} />
+                                <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">Concluídas</span>
+                            </h3>
+                            <p className="text-[9px] text-amber-500/80 font-black uppercase tracking-widest mt-1">({pendingTodayTasks} pendentes)</p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
+                            <CalendarIcon className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Total Pendentes</p>
+                            <h3 className="text-3xl font-black text-amber-500 tracking-tighter flex items-baseline">
+                                <AnimatedCounter value={totalPendingTasksCount} />
+                                <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">Atividades</span>
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-emerald-500">
+                            <CalendarRange className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Tarefas da Semana</p>
+                            <h3 className="text-3xl font-black text-emerald-500 tracking-tighter flex items-baseline">
+                                <AnimatedCounter value={completedWeeklyTasks} />
+                                <span className="text-xl text-muted-foreground font-bold mx-1">/</span>
+                                <AnimatedCounter value={totalWeeklyTasks} />
+                                <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">Metas</span>
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-rose-500">
+                            <AlertCircle className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Prioridade Crítica</p>
+                            <h3 className="text-3xl font-black text-rose-500 tracking-tighter flex items-baseline">
+                                <AnimatedCounter value={criticalPendingTasksCount} />
+                                <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">Altas</span>
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Tasks Container */}
