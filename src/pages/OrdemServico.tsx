@@ -447,13 +447,27 @@ const OrdemServico = () => {
         return diffDays;
     };
 
-    const activeTasks = tasks.filter(t => t.status === 'pending');
-    const uniquePendingEnvironments = new Set(
-        activeTasks
-            .filter(t => t.project_name && t.environment_name)
-            .map(t => `${t.project_name.trim().toLowerCase()} - ${t.environment_name.trim().toLowerCase()}`)
-    );
-    const pendingEnvironmentsCount = uniquePendingEnvironments.size;
+    // Group all tasks (pending & completed) to compute environment completion status
+    const environmentsMap = new Map<string, { total: number; completed: number }>();
+    
+    tasks.forEach(t => {
+        if (!t.project_name || !t.environment_name) return;
+        const key = `${t.project_name.trim().toLowerCase()} - ${t.environment_name.trim().toLowerCase()}`;
+        const existing = environmentsMap.get(key) || { total: 0, completed: 0 };
+        existing.total += 1;
+        if (t.status === 'completed') {
+            existing.completed += 1;
+        }
+        environmentsMap.set(key, existing);
+    });
+
+    const totalEnvironmentsCount = environmentsMap.size;
+    let completedEnvironmentsCount = 0;
+    environmentsMap.forEach((val) => {
+        if (val.completed === val.total) {
+            completedEnvironmentsCount += 1;
+        }
+    });
 
     const criticalDeliveriesCount = orders.filter(o => {
         if (o.status === "Entregue e Finalizado" || o.status === "A Definir") return false;
@@ -614,10 +628,12 @@ const OrdemServico = () => {
                             <Hammer className="h-32 w-32" />
                         </div>
                         <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Ambientes Ativos</p>
-                            <h3 className="text-3xl font-black text-orange-500 tracking-tighter">
-                                <AnimatedCounter value={pendingEnvironmentsCount} />
-                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Cômodos</span>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Progresso de Ambientes</p>
+                            <h3 className="text-3xl font-black text-orange-500 tracking-tighter flex items-baseline">
+                                <AnimatedCounter value={completedEnvironmentsCount} />
+                                <span className="text-xl text-muted-foreground font-bold mx-1">/</span>
+                                <AnimatedCounter value={totalEnvironmentsCount} />
+                                <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">Cômodos</span>
                             </h3>
                         </div>
                     </CardContent>
