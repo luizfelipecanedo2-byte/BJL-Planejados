@@ -35,7 +35,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { GripVertical } from "lucide-react";
+import { GripVertical, User } from "lucide-react";
 
 const OrdemServico = () => {
     const sensors = useSensors(
@@ -916,6 +916,21 @@ const SortableServiceOrderCard = ({
 
     const isUrgent = order.priorityLevel === 'urgente';
 
+    // Extractor de colaboradores do projeto
+    const projectCollaborators = useMemo(() => {
+        if (!tasks || tasks.length === 0) return [];
+        const collabs = new Set<string>();
+        tasks.forEach(t => {
+            if (t.description) {
+                const match = t.description.match(/^\[Colaborador:\s*([^\]]+)\]/);
+                if (match) {
+                    collabs.add(match[1].trim());
+                }
+            }
+        });
+        return Array.from(collabs);
+    }, [tasks]);
+
     // Group tasks by environment to show room-by-room progress
     const environmentProgress = useMemo(() => {
         if (!tasks || tasks.length === 0) return [];
@@ -1055,9 +1070,21 @@ const SortableServiceOrderCard = ({
                                 <h4 className="text-lg font-black tracking-tight text-white uppercase group-hover:text-primary transition-colors break-words whitespace-normal">
                                     {order.client}
                                 </h4>
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">
                                     {order.ticketNumber} - {order.action}
                                 </p>
+                                
+                                {projectCollaborators.length > 0 && (
+                                    <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">Equipe:</span>
+                                        {projectCollaborators.map(c => (
+                                            <span key={c} className="text-[8px] font-black uppercase tracking-widest text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                <User className="h-2 w-2 text-primary/70" />
+                                                {c}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                                 
                                 {/* Barra de Progresso compacta no fundo */}
                                 <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">

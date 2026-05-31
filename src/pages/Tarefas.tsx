@@ -111,6 +111,7 @@ const Tarefas = () => {
     const [newPriority, setNewPriority] = useState("normal");
 
     const [activeView, setActiveView] = useState(format(new Date(), "yyyy-MM-dd"));
+    const [selectedCollaboratorFilter, setSelectedCollaboratorFilter] = useState<string>("all");
     const { sales } = useSales();
     const isAdmin = userRole === 'admin';
 
@@ -877,8 +878,43 @@ const Tarefas = () => {
 
     const filteredTasks = filterTasksByView();
     
+    // Calcula produtividade dos colaboradores para o período atual (sem o filtro do painel ativo)
+    const collaboratorStats = useMemo(() => {
+        const stats: { [name: string]: { completed: number; total: number } } = {
+            "Samuel": { completed: 0, total: 0 },
+            "Felipe": { completed: 0, total: 0 },
+            "Lucas": { completed: 0, total: 0 },
+            "Zé Luiz": { completed: 0, total: 0 }
+        };
+        
+        filteredTasks.forEach(t => {
+            const parsed = parseTaskDescription(t.description);
+            if (parsed.collaborator && stats[parsed.collaborator]) {
+                stats[parsed.collaborator].total += 1;
+                if (t.status === 'completed') {
+                    stats[parsed.collaborator].completed += 1;
+                }
+            }
+        });
+        
+        return Object.entries(stats).map(([name, s]) => ({
+            name,
+            completed: s.completed,
+            total: s.total,
+            percentage: s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0
+        }));
+    }, [filteredTasks]);
+
+    // Aplica o filtro de colaborador selecionado na tela principal
+    const filteredTasksByCollab = filteredTasks.filter(t => {
+        if (selectedCollaboratorFilter === "all") return true;
+        const parsed = parseTaskDescription(t.description);
+        if (selectedCollaboratorFilter === "none") return !parsed.collaborator;
+        return parsed.collaborator === selectedCollaboratorFilter;
+    });
+    
     // Grouping robusto (case-insensitive e trim-insensitive nos nomes)
-    const groupedTasks = filteredTasks.reduce((acc: { [key: string]: Task[] }, task) => {
+    const groupedTasks = filteredTasksByCollab.reduce((acc: { [key: string]: Task[] }, task) => {
         const project = (task.project_name || "Geral").trim();
         const environment = (task.environment_name || "Geral").trim();
         
@@ -1187,6 +1223,66 @@ const Tarefas = () => {
                         </div>
                     </CardContent>
                 </Card>
+            </div>
+
+            {/* Filtro de Colaborador e Painel de Produtividade */}
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
+                {/* Filtro */}
+                <div className="xl:col-span-1 bg-white/[0.02] border border-white/10 p-5 rounded-3xl backdrop-blur-2xl flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-primary" />
+                        <h4 className="text-xs font-black uppercase tracking-widest text-white">Filtrar Quadro</h4>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider leading-relaxed">
+                        Filtre as colunas de tarefas para focar no cronograma de um colaborador específico.
+                    </p>
+                    <Select value={selectedCollaboratorFilter} onValueChange={setSelectedCollaboratorFilter}>
+                        <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12 text-xs font-bold text-white">
+                            <SelectValue placeholder="Todos os Colaboradores" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-900 border-white/10 text-xs font-bold text-white">
+                            <SelectItem value="all">Todos os Colaboradores</SelectItem>
+                            <SelectItem value="Samuel">Samuel</SelectItem>
+                            <SelectItem value="Felipe">Felipe</SelectItem>
+                            <SelectItem value="Lucas">Lucas</SelectItem>
+                            <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
+                            <SelectItem value="none">Sem Colaborador / Geral</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {/* Produtividade */}
+                <div className="xl:col-span-3 space-y-3">
+                    <div className="flex items-center gap-2 px-1">
+                        <UserIcon className="h-4 w-4 text-primary" />
+                        <h4 className="text-xs font-black uppercase tracking-[0.2em] text-white">Produtividade dos Colaboradores (Período Selecionado)</h4>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {collaboratorStats.map(collab => (
+                            <Card key={collab.name} className="border border-white/10 backdrop-blur-2xl bg-card/25 shadow-lg overflow-hidden group hover:border-primary/30 transition-all duration-300">
+                                <CardContent className="p-4 flex flex-col justify-between h-full relative">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <span className="text-xs font-black uppercase tracking-wider text-white">{collab.name}</span>
+                                        <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                            {collab.completed}/{collab.total}
+                                        </span>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mb-2">
+                                        <div 
+                                            className="h-full bg-gradient-to-r from-primary to-amber-500 transition-all duration-500 rounded-full"
+                                            style={{ width: `${collab.percentage}%` }}
+                                        />
+                                    </div>
+                                    <div className="flex justify-between items-center text-[9px] font-black text-muted-foreground/60 uppercase tracking-widest">
+                                        <span>Concluído</span>
+                                        <span>{collab.percentage}%</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             {/* Tasks Container */}
