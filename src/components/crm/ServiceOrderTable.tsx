@@ -19,9 +19,10 @@ interface ServiceOrderTableProps {
     orders: ServiceOrder[];
     onEdit: (order: ServiceOrder) => void;
     onDelete: (id: string) => void;
+    isAdmin?: boolean;
 }
 
-const ServiceOrderTable = ({ orders, onEdit, onDelete }: ServiceOrderTableProps) => {
+const ServiceOrderTable = ({ orders, onEdit, onDelete, isAdmin = false }: ServiceOrderTableProps) => {
     const getStatusDisplay = (order: ServiceOrder) => {
         if (order.status === "Entregue e Finalizado") {
             return <Badge variant="secondary" className="bg-emerald-500 text-white hover:bg-emerald-600">Entregue e Finalizado</Badge>;
@@ -73,9 +74,11 @@ const ServiceOrderTable = ({ orders, onEdit, onDelete }: ServiceOrderTableProps)
                                 <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => onEdit(order)}>
                                     <Pencil className="h-4 w-4 text-primary" />
                                 </Button>
-                                <Button variant="outline" size="icon" className="h-9 w-9 text-red-500 border-red-200 hover:bg-red-50" onClick={() => onDelete(order.id)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
+                                {isAdmin && (
+                                    <Button variant="outline" size="icon" className="h-9 w-9 text-red-500 border-red-200 hover:bg-red-50" onClick={() => onDelete(order.id)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                )}
                             </div>
                         </div>
 
@@ -143,9 +146,11 @@ const ServiceOrderTable = ({ orders, onEdit, onDelete }: ServiceOrderTableProps)
                                 <TableCell>{formatDate(order.forecastDate)}</TableCell>
                                 <TableCell>{formatDate(order.completionDate)}</TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors" onClick={() => onDelete(order.id)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    {isAdmin && (
+                                        <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors" onClick={() => onDelete(order.id)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))}

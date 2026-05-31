@@ -51,10 +51,11 @@ const OrdemServico = () => {
     const [orders, setOrders] = useState<ServiceOrder[]>([]);
     const [tasks, setTasks] = useState<any[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-
     const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
-
     const [isLoading, setIsLoading] = useState(true);
+    const [userRole, setUserRole] = useState<string | null>(null);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const isAdmin = userRole === 'admin';
 
     const parseDate = (dateStr: any) => {
         if (!dateStr) return new Date();
@@ -67,8 +68,36 @@ const OrdemServico = () => {
     };
 
     useEffect(() => {
-        fetchOrders();
+        fetchInitialData();
     }, []);
+
+    const fetchInitialData = async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            let user = session?.user || null;
+            if (!user) {
+                const { data: { user: gotUser } } = await supabase.auth.getUser();
+                user = gotUser;
+            }
+
+            if (user) {
+                setCurrentUserId(user.id);
+                if (user.email === 'luizfelipe.canedo2@gmail.com') {
+                    setUserRole('admin');
+                } else {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('role')
+                        .eq('id', user.id)
+                        .single();
+                    setUserRole(profile?.role || 'colaborador');
+                }
+            }
+        } catch (err) {
+            console.warn("Erro ao buscar dados do usuário na OS:", err);
+        }
+        await fetchOrders();
+    };
 
     const fetchOrders = async () => {
         try {
@@ -712,7 +741,9 @@ const OrdemServico = () => {
                                                     </div>
                                                     <div className="flex gap-4">
                                                         <Button variant="outline" size="sm" onClick={() => handleEditOrder(order)} className="text-[10px] font-black uppercase rounded-xl h-8">Editar OS</Button>
-                                                        <Button variant="ghost" size="sm" onClick={() => handleDeleteOrder(order.id)} className="text-[10px] font-black uppercase text-rose-500/50 hover:text-rose-500 h-8">Remover</Button>
+                                                        {isAdmin && (
+                                                            <Button variant="ghost" size="sm" onClick={() => handleDeleteOrder(order.id)} className="text-[10px] font-black uppercase text-rose-500/50 hover:text-rose-500 h-8">Remover</Button>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col justify-center gap-3 md:w-48">
@@ -799,6 +830,7 @@ const OrdemServico = () => {
                                     })}
                                     onEdit={handleEditOrder}
                                     onDelete={handleDeleteOrder}
+                                    isAdmin={isAdmin}
                                 />
                             )}
                         </CardContent>
