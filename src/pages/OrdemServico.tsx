@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import ServiceOrderTable from "@/components/crm/ServiceOrderTable";
 import ServiceOrderFormDialog from "@/components/crm/ServiceOrderFormDialog";
 import { ServiceOrder, ServiceStatus } from "@/types/serviceOrder";
-import { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import ProductionTimeline from "@/components/crm/ProductionTimeline";
 import OSKanbanBoard from "@/components/crm/OSKanbanBoard";
 import { Button } from "@/components/ui/button";
@@ -854,7 +854,7 @@ const SortableServiceOrderCard = ({
     const isUrgent = order.priorityLevel === 'urgente';
 
     // Group tasks by environment to show room-by-room progress
-    const environmentProgress = React.useMemo(() => {
+    const environmentProgress = useMemo(() => {
         if (!tasks || tasks.length === 0) return [];
         
         const envGroups: { [key: string]: { total: number; completed: number } } = {};
