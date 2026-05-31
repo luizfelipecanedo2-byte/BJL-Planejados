@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send, Pencil, CalendarRange, Check, Sparkles, AlertCircle, ListTodo } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send, Pencil, CalendarRange, Check, Sparkles, AlertCircle, ListTodo, Printer } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -41,6 +41,19 @@ interface Profile {
     role: string;
     email?: string;
 }
+
+// Helper para extrair o colaborador da descrição
+const parseTaskDescription = (desc: string | null) => {
+    if (!desc) return { description: "", collaborator: null };
+    const match = desc.match(/^\[Colaborador:\s*([^\]]+)\]\s*(.*)$/);
+    if (match) {
+        return {
+            collaborator: match[1].trim(),
+            description: match[2].trim()
+        };
+    }
+    return { description: desc, collaborator: null };
+};
 
 // Helper para verificar visibilidade da tarefa na aba ativa
 const checkTaskVisibility = (dueDate: string, status: string, activeView: string) => {
@@ -94,6 +107,7 @@ const Tarefas = () => {
     const [newEnvironment, setNewEnvironment] = useState("");
     const [newDueDate, setNewDueDate] = useState(format(new Date(), "yyyy-MM-dd"));
     const [newAssignedTo, setNewAssignedTo] = useState<string | "all">("all");
+    const [newCollaborator, setNewCollaborator] = useState<string>("all");
     const [newPriority, setNewPriority] = useState("normal");
 
     const [activeView, setActiveView] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -112,12 +126,14 @@ const Tarefas = () => {
         environment: string;
         title: string;
         priority: string;
+        collaborator?: string;
     }>>([]);
 
     const [tempProject, setTempProject] = useState("");
     const [tempEnvironment, setTempEnvironment] = useState("");
     const [tempTitle, setTempTitle] = useState("");
     const [tempPriority, setTempPriority] = useState("normal");
+    const [tempCollaborator, setTempCollaborator] = useState<string>("all");
     const [activePlannerDayIndex, setActivePlannerDayIndex] = useState(0);
 
     useEffect(() => {
@@ -187,11 +203,13 @@ const Tarefas = () => {
             project: proj,
             environment: env,
             title: tempTitle.trim(),
-            priority: tempPriority
+            priority: tempPriority,
+            collaborator: tempCollaborator
         };
 
         setPlannerTasks([...plannerTasks, newTask]);
         setTempTitle("");
+        setTempCollaborator("all");
     };
 
     const handleSaveWeeklyPlanner = async () => {
@@ -211,9 +229,12 @@ const Tarefas = () => {
             
             const tasksToInsert = plannerTasks.map(t => {
                 const day = weekDays[t.dayIndex];
+                const collabPrefix = t.collaborator && t.collaborator !== "all" ? `[Colaborador: ${t.collaborator}] ` : "";
+                const finalDescription = `${collabPrefix}Planejado no assistente semanal`;
+
                 return {
                     title: t.title,
-                    description: "Planejado no assistente semanal",
+                    description: finalDescription,
                     project_name: t.project,
                     environment_name: t.environment,
                     due_date: day.dateStr,
@@ -340,13 +361,16 @@ const Tarefas = () => {
         setNewEnvironment("");
         setNewDueDate(format(new Date(), "yyyy-MM-dd"));
         setNewAssignedTo("all");
+        setNewCollaborator("all");
         setNewPriority("normal");
     };
 
     const handleEditClick = (task: Task) => {
         setEditingTask(task);
         setNewTitle(task.title);
-        setNewDescription(task.description || "");
+        const parsed = parseTaskDescription(task.description);
+        setNewDescription(parsed.description || "");
+        setNewCollaborator(parsed.collaborator || "all");
         setNewProject(task.project_name || "");
         setNewEnvironment(task.environment_name || "");
         setNewDueDate(task.due_date);
@@ -379,13 +403,16 @@ const Tarefas = () => {
             const cleanProject = (newProject || "Geral").trim();
             const cleanEnvironment = (newEnvironment || "Geral").trim();
 
+            const collabPrefix = newCollaborator && newCollaborator !== "all" ? `[Colaborador: ${newCollaborator}] ` : "";
+            const finalDescription = `${collabPrefix}${newDescription.trim()}`;
+
             const taskData = {
                 title: newTitle.trim(),
-                description: newDescription.trim(),
+                description: finalDescription,
                 project_name: cleanProject,
                 environment_name: cleanEnvironment,
                 due_date: newDueDate,
-                assigned_to: newAssignedTo === "all" ? null : newAssignedTo,
+                assigned_to: null,
                 priority: newPriority,
                 created_by: userId,
                 status: editingTask ? editingTask.status : 'pending'
@@ -471,6 +498,303 @@ const Tarefas = () => {
             console.error("Erro ao limpar tarefas:", error);
             toast.error("Erro ao excluir todas as tarefas");
         }
+    };
+
+    const handlePrintDailyTasks = () => {
+        const tasksByCollab: { [key: string]: Task[] } = {
+            "Samuel": [],
+            "Felipe": [],
+            "Lucas": [],
+            "Zé Luiz": [],
+            "Geral": []
+        };
+
+        filteredTasks.forEach(task => {
+            const parsed = parseTaskDescription(task.description);
+            const collab = parsed.collaborator;
+            if (collab && ["Samuel", "Felipe", "Lucas", "Zé Luiz"].includes(collab)) {
+                tasksByCollab[collab].push(task);
+            } else {
+                tasksByCollab["Geral"].push(task);
+            }
+        });
+
+        let titleDate = "Tarefas";
+        if (activeView.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            titleDate = format(parseISO(activeView), "dd/MM/yyyy");
+        } else if (activeView === "hoje") {
+            titleDate = format(new Date(), "dd/MM/yyyy");
+        } else if (activeView === "amanha") {
+            titleDate = format(addDays(new Date(), 1), "dd/MM/yyyy");
+        } else if (activeView === "semana") {
+            titleDate = "Planejamento Semanal";
+        } else {
+            titleDate = "Todas as Tarefas";
+        }
+
+        const printWindow = window.open("", "_blank");
+        if (!printWindow) {
+            toast.error("Por favor, permita popups para poder imprimir as tarefas.");
+            return;
+        }
+
+        let html = `
+            <html>
+            <head>
+                <title>Relatório de Tarefas - ${titleDate}</title>
+                <style>
+                    body {
+                        font-family: 'Outfit', 'Inter', sans-serif;
+                        color: #1a1a1a;
+                        margin: 20px;
+                        background: #fff;
+                    }
+                    .header {
+                        text-align: center;
+                        border-bottom: 2px solid #f1f5f9;
+                        padding-bottom: 20px;
+                        margin-bottom: 30px;
+                    }
+                    .header h1 {
+                        margin: 0;
+                        font-size: 24px;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        color: #0f172a;
+                    }
+                    .header p {
+                        margin: 5px 0 0 0;
+                        font-size: 14px;
+                        color: #64748b;
+                        font-weight: bold;
+                    }
+                    .collab-section {
+                        margin-bottom: 30px;
+                        page-break-inside: avoid;
+                    }
+                    .collab-title {
+                        font-size: 16px;
+                        font-weight: 800;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        color: #ea580c;
+                        border-bottom: 2px solid #ffedd5;
+                        padding-bottom: 6px;
+                        margin-bottom: 12px;
+                        display: flex;
+                        justify-content: space-between;
+                    }
+                    .collab-title span.count {
+                        color: #64748b;
+                        font-size: 12px;
+                        font-weight: normal;
+                    }
+                    .task-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-bottom: 10px;
+                    }
+                    .task-table th {
+                        text-align: left;
+                        font-size: 11px;
+                        text-transform: uppercase;
+                        color: #64748b;
+                        padding: 8px 12px;
+                        background: #f8fafc;
+                        border-bottom: 1px solid #e2e8f0;
+                    }
+                    .task-table td {
+                        padding: 10px 12px;
+                        font-size: 13px;
+                        border-bottom: 1px solid #f1f5f9;
+                        vertical-align: top;
+                    }
+                    .task-title {
+                        font-weight: 700;
+                        color: #1e293b;
+                    }
+                    .task-desc {
+                        font-size: 11px;
+                        color: #64748b;
+                        margin-top: 4px;
+                        font-style: italic;
+                    }
+                    .priority-badge {
+                        display: inline-block;
+                        padding: 2px 6px;
+                        border-radius: 4px;
+                        font-size: 9px;
+                        font-weight: 800;
+                        text-transform: uppercase;
+                    }
+                    .priority-high { background: #fee2e2; color: #991b1b; }
+                    .priority-normal { background: #fef3c7; color: #92400e; }
+                    .priority-low { background: #dcfce7; color: #166534; }
+                    .project-badge {
+                        background: #f1f5f9;
+                        color: #334155;
+                        padding: 2px 6px;
+                        border-radius: 4px;
+                        font-size: 10px;
+                        font-weight: 700;
+                    }
+                    .status-box {
+                        display: inline-block;
+                        width: 12px;
+                        height: 12px;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 3px;
+                        margin-right: 8px;
+                        vertical-align: middle;
+                    }
+                    .status-box.completed {
+                        background: #10b981;
+                        border-color: #10b981;
+                        position: relative;
+                    }
+                    .status-box.completed::after {
+                        content: '';
+                        position: absolute;
+                        left: 4px;
+                        top: 1px;
+                        width: 3px;
+                        height: 6px;
+                        border: solid white;
+                        border-width: 0 2px 2px 0;
+                        transform: rotate(45deg);
+                    }
+                    .no-tasks {
+                        font-size: 12px;
+                        color: #94a3b8;
+                        font-style: italic;
+                        padding: 10px 12px;
+                    }
+                    @media print {
+                        body {
+                            margin: 10px;
+                        }
+                        .no-print {
+                            display: none;
+                        }
+                    }
+                    .print-btn-container {
+                        text-align: right;
+                        margin-bottom: 20px;
+                    }
+                    .print-btn {
+                        background: #ea580c;
+                        color: white;
+                        border: none;
+                        padding: 8px 16px;
+                        font-size: 12px;
+                        font-weight: bold;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                    .print-btn:hover {
+                        background: #c2410c;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="print-btn-container no-print">
+                    <button class="print-btn" onclick="window.print()">Imprimir PDF</button>
+                </div>
+                <div class="header">
+                    <h1>Planejamento Diário de Tarefas</h1>
+                    <p>Referência: ${titleDate}</p>
+                </div>
+        `;
+
+        const collaborators = ["Samuel", "Felipe", "Lucas", "Zé Luiz", "Geral"];
+        collaborators.forEach(collab => {
+            const collabTasks = tasksByCollab[collab];
+            const collabName = collab === "Geral" ? "Sem Colaborador / Geral" : `Tarefas do ${collab}`;
+            
+            html += `
+                <div class="collab-section">
+                    <div class="collab-title">
+                        <span>${collabName}</span>
+                        <span class="count">${collabTasks.length} tarefa(s)</span>
+                    </div>
+            `;
+
+            if (collabTasks.length === 0) {
+                html += `<div class="no-tasks">Nenhuma tarefa agendada.</div>`;
+            } else {
+                html += `
+                    <table class="task-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%">Status</th>
+                                <th style="width: 50%">Tarefa / Descrição</th>
+                                <th style="width: 25%">Projeto - Ambiente</th>
+                                <th style="width: 10%">Prioridade</th>
+                                <th style="width: 10%">Data Venc.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                collabTasks.forEach(task => {
+                    const parsed = parseTaskDescription(task.description);
+                    const isCompleted = task.status === 'completed';
+                    const priorityClass = task.priority === 'high' ? 'priority-high' : task.priority === 'normal' ? 'priority-normal' : 'priority-low';
+                    const priorityLabel = task.priority === 'high' ? 'Alta' : task.priority === 'normal' ? 'Normal' : 'Baixa';
+                    
+                    const proj = task.project_name || "Geral";
+                    const env = task.environment_name || "";
+                    const projEnv = env ? `${proj} - ${env}` : proj;
+
+                    const formattedDate = format(parseISO(task.due_date), "dd/MM");
+
+                    html += `
+                        <tr>
+                            <td style="text-align: center;">
+                                <span class="status-box ${isCompleted ? 'completed' : ''}"></span>
+                            </td>
+                            <td>
+                                <span class="task-title">${task.title}</span>
+                                ${parsed.description ? `<div class="task-desc">${parsed.description}</div>` : ''}
+                            </td>
+                            <td>
+                                <span class="project-badge">${projEnv}</span>
+                            </td>
+                            <td>
+                                <span class="priority-badge ${priorityClass}">${priorityLabel}</span>
+                            </td>
+                            <td>
+                                ${formattedDate}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            html += `</div>`;
+        });
+
+        html += `
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                        }, 500);
+                    };
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(html);
+        printWindow.document.close();
     };
 
     const filterTasksByView = () => {
@@ -627,6 +951,14 @@ const Tarefas = () => {
                         </TabsList>
                     </Tabs>
 
+                    <Button 
+                        onClick={handlePrintDailyTasks}
+                        className="h-12 px-6 bg-white/5 hover:bg-white/15 border border-white/10 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 gap-2"
+                    >
+                        <Printer className="h-4 w-4 text-primary" />
+                        Imprimir
+                    </Button>
+
                     {userRole === 'admin' && (
                         <>
                             <Button 
@@ -754,17 +1086,16 @@ const Tarefas = () => {
 
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Atribuir a</Label>
-                                        <Select value={newAssignedTo} onValueChange={setNewAssignedTo}>
+                                        <Select value={newCollaborator} onValueChange={setNewCollaborator}>
                                             <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12">
                                                 <SelectValue placeholder="Selecione um funcionário" />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-slate-900 border-white/10">
-                                                <SelectItem value="all">Equipe Inteira</SelectItem>
-                                                {profiles.map(p => (
-                                                    <SelectItem key={p.id} value={p.id}>
-                                                        {p.role === 'admin' ? 'Administrador' : `Colaborador (${p.id.slice(0,4)})`}
-                                                    </SelectItem>
-                                                ))}
+                                            <SelectContent className="bg-slate-900 border-white/10 font-bold">
+                                                <SelectItem value="all">Equipe Inteira / Sem Colaborador</SelectItem>
+                                                <SelectItem value="Samuel">Samuel</SelectItem>
+                                                <SelectItem value="Felipe">Felipe</SelectItem>
+                                                <SelectItem value="Lucas">Lucas</SelectItem>
+                                                <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -1071,7 +1402,7 @@ const Tarefas = () => {
                                                 Planejar para {getNextWeekDays()[activePlannerDayIndex].label}
                                             </h4>
 
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <div className="space-y-1.5">
                                                     <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
                                                         Projeto Foco
@@ -1101,6 +1432,24 @@ const Tarefas = () => {
                                                         onChange={(e) => setTempEnvironment(e.target.value)}
                                                         className="bg-white/5 border-white/10 rounded-xl h-10 text-xs font-bold"
                                                     />
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                                        Colaborador
+                                                    </Label>
+                                                    <Select value={tempCollaborator} onValueChange={setTempCollaborator}>
+                                                        <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-10 text-xs">
+                                                            <SelectValue placeholder="Selecione..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-slate-900 border-white/10 text-xs font-bold">
+                                                            <SelectItem value="all">Equipe Inteira</SelectItem>
+                                                            <SelectItem value="Samuel">Samuel</SelectItem>
+                                                            <SelectItem value="Felipe">Felipe</SelectItem>
+                                                            <SelectItem value="Lucas">Lucas</SelectItem>
+                                                            <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                 </div>
                                             </div>
 
@@ -1169,6 +1518,12 @@ const Tarefas = () => {
                                                                     t.priority === "high" ? "bg-rose-500" :
                                                                     t.priority === "normal" ? "bg-amber-500" : "bg-emerald-500"
                                                                 )} />
+                                                                {t.collaborator && t.collaborator !== "all" && (
+                                                                    <span className="text-[8px] font-black uppercase tracking-widest text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                                                                        <UserIcon className="h-2 w-2 text-primary/70" />
+                                                                        {t.collaborator}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             <p className="text-xs font-bold text-white leading-tight truncate">
                                                                 {t.title}
@@ -1332,6 +1687,8 @@ const SortableTaskItem = ({ task, isAdmin, onEdit, onToggleStatus, onDelete }: S
         transition,
     };
 
+    const parsed = parseTaskDescription(task.description);
+
     return (
         <div 
             ref={setNodeRef} 
@@ -1350,15 +1707,21 @@ const SortableTaskItem = ({ task, isAdmin, onEdit, onToggleStatus, onDelete }: S
             </button>
 
             <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
+                <div className="flex items-center gap-2 flex-wrap mb-0.5">
                     <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", 
                         task.priority === 'high' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 
                         task.priority === 'normal' ? 'bg-amber-500' : 'bg-emerald-500'
                     )} />
                     <p className="text-[13px] font-bold text-white/90 leading-tight break-words font-['Outfit']">{task.title}</p>
+                    {parsed.collaborator && (
+                        <span className="text-[8px] font-black uppercase tracking-widest text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                            <UserIcon className="h-2 w-2 text-primary/70" />
+                            {parsed.collaborator}
+                        </span>
+                    )}
                 </div>
-                {task.description && (
-                    <p className="text-[10px] text-muted-foreground/60 line-clamp-1 pl-3.5 italic">{task.description}</p>
+                {parsed.description && (
+                    <p className="text-[10px] text-muted-foreground/60 line-clamp-1 pl-3.5 italic">{parsed.description}</p>
                 )}
             </div>
 
