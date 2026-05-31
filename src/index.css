@@ -290,6 +290,39 @@
     pointer-events: none;
     z-index: 1;
   }
+  
+  /* 3D Parallax Depth for Card Elements */
+  .spotlight-card svg,
+  .spotlight-card [class*="lucide-"],
+  .spotlight-card .emoji-3d {
+    transform: translateZ(30px) translate(calc(var(--tilt-x) * -5px), calc(var(--tilt-y) * -5px));
+    transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+    transform-style: preserve-3d;
+  }
+  .spotlight-card:hover svg,
+  .spotlight-card:hover [class*="lucide-"],
+  .spotlight-card:hover .emoji-3d {
+    transform: translateZ(55px) translate(calc(var(--tilt-x) * -10px), calc(var(--tilt-y) * -10px));
+    filter: drop-shadow(0 15px 20px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 12px hsl(var(--primary) / 0.35));
+  }
+
+  .spotlight-card h3,
+  .spotlight-card p,
+  .spotlight-card .text-2xl,
+  .spotlight-card .text-3xl,
+  .spotlight-card .text-4xl {
+    transform: translateZ(15px) translate(calc(var(--tilt-x) * -2px), calc(var(--tilt-y) * -2px));
+    transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+    transform-style: preserve-3d;
+  }
+  .spotlight-card:hover h3,
+  .spotlight-card:hover p,
+  .spotlight-card:hover .text-2xl,
+  .spotlight-card:hover .text-3xl,
+  .spotlight-card:hover .text-4xl {
+    transform: translateZ(30px) translate(calc(var(--tilt-x) * -4px), calc(var(--tilt-y) * -4px));
+  }
+
   .text-glow {
     text-shadow: 0 0 15px hsl(var(--primary) / 0.2);
   }
@@ -313,35 +346,7 @@
     @apply absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_10px_hsl(var(--primary))];
   }
 
-  /* Border Beam Animation */
-  .border-beam-card {
-    position: relative;
-  }
-  .border-beam-card::after {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
-    background-size: 200% 100%;
-    animation: borderBeam 6s linear infinite;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    -webkit-mask-composite: destination-out;
-    border-radius: inherit;
-    z-index: 1;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.5s ease;
-  }
-  .border-beam-card:hover::after {
-    opacity: 1;
-  }
 
-  @keyframes borderBeam {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-  }
 
   /* Animated traveling border beam for text */
   @keyframes beamMove {

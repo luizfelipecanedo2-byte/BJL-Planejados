@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 
 import { CommandMenu } from "./CommandMenu";
 import { Search } from "lucide-react";
@@ -55,6 +55,23 @@ const MainLayout = () => {
         document.documentElement.classList.add(currentTheme);
         localStorage.setItem("appTheme", currentTheme);
     }, [currentTheme]);
+
+    // High performance spring-chased mouse glow tracking (No React re-renders)
+    const mouseX = useMotionValue(-200);
+    const mouseY = useMotionValue(-200);
+
+    const glowX = useSpring(mouseX, { damping: 50, stiffness: 200, mass: 0.5 });
+    const glowY = useSpring(mouseY, { damping: 50, stiffness: 200, mass: 0.5 });
+
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            // Center the 192px glow card (96px offsets)
+            mouseX.set(e.clientX - 96);
+            mouseY.set(e.clientY - 96);
+        };
+        window.addEventListener("mousemove", handleMouseMove);
+        return () => window.removeEventListener("mousemove", handleMouseMove);
+    }, [mouseX, mouseY]);
 
     const [overdueCount, setOverdueCount] = useState<number>(0);
     const [overdueSum, setOverdueSum] = useState<number>(0);
@@ -160,6 +177,13 @@ const MainLayout = () => {
         <div className="min-h-[100dvh] bg-background/50 flex pb-[72px] lg:pb-0 overflow-hidden">
             <CommandMenu />
             <div className="aurora-bg" />
+            
+            {/* Global Pointer Glow Effect */}
+            <motion.div
+                className="fixed w-48 h-48 rounded-full bg-[radial-gradient(circle,hsl(var(--primary)/0.12)_0%,transparent_70%)] pointer-events-none z-30 filter blur-xl select-none hidden lg:block"
+                style={{ left: glowX, top: glowY }}
+            />
+
             {/* Mesh Gradient Background (Fundo Dinâmico Animado de Última Geração) */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 select-none">
                 <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-[radial-gradient(circle,hsl(var(--mesh-color-1)/0.08)_0%,transparent_70%)] animate-[float-slow_25s_infinite_alternate]" />
