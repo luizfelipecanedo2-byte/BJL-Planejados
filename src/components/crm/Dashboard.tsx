@@ -17,6 +17,7 @@ import {
   Clock,
   ArrowRight
 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PremiumCard } from "@/components/ui/PremiumCard";
 import {
   BarChart,
