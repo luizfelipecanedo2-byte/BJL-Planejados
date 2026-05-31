@@ -327,6 +327,59 @@
     text-shadow: 0 0 15px hsl(var(--primary) / 0.2);
   }
 
+  /* Luxury Glassmorphic Command Dialog (Raycast/Spotlight design) */
+  .glass-command-dialog {
+    background: hsl(var(--background) / 0.6) !important;
+    backdrop-filter: blur(25px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
+    border: 1px solid hsl(var(--primary) / 0.2) !important;
+    box-shadow: 
+      0 30px 60px -15px rgba(0, 0, 0, 0.8),
+      0 0 50px -10px hsl(var(--primary) / 0.15),
+      inset 0 1px 1px rgba(255, 255, 255, 0.05) !important;
+    border-radius: 24px !important;
+    overflow: hidden;
+    animation: cmdkReveal 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  @keyframes cmdkReveal {
+    from { transform: translate(-50%, calc(-50% + 10px)) scale(0.96); opacity: 0; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+
+  .glass-command-dialog [cmdk-root] {
+    background: transparent !important;
+  }
+
+  .glass-command-dialog [cmdk-input-wrapper] {
+    border-bottom: 1px solid hsl(var(--primary) / 0.1) !important;
+    padding: 8px 16px !important;
+  }
+
+  .glass-command-dialog [cmdk-input] {
+    font-size: 15px !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.02em !important;
+  }
+
+  .glass-command-dialog [cmdk-item] {
+    margin: 4px 12px !important;
+    border-radius: 12px !important;
+    padding: 10px 14px !important;
+    transition: all 0.2s ease !important;
+    border: 1px solid transparent !important;
+  }
+
+  .glass-command-dialog [cmdk-item][data-selected="true"] {
+    background: hsl(var(--primary) / 0.1) !important;
+    color: hsl(var(--foreground)) !important;
+    border: 1px solid hsl(var(--primary) / 0.25) !important;
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0px rgba(255, 255, 255, 0.05) !important;
+  }
+
   /* Luxury Sidebar Menu Items */
   .menu-item-premium {
     @apply relative transition-all duration-500 ease-out font-['Outfit'];

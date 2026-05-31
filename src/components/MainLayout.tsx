@@ -35,6 +35,8 @@ import { Search } from "lucide-react";
 import { NotificationBell } from "./notifications/NotificationBell";
 import { checkAndNotifyOverdueTasks } from "@/lib/notifications";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { Magnetic } from "./ui/Magnetic";
+import { playClickSound, playHoverSound, playTransitionSound } from "@/lib/audio";
 
 
 const MainLayout = () => {
@@ -80,6 +82,20 @@ const MainLayout = () => {
     const [userEmail, setUserEmail] = useState<string | null>(null);
     const location = useLocation();
     const navigate = useNavigate();
+
+    const [uiSoundsEnabled, setUiSoundsEnabled] = useState<boolean>(() => {
+        return localStorage.getItem("ui_sounds") !== "false";
+    });
+
+    const toggleUiSounds = () => {
+        setUiSoundsEnabled(prev => {
+            const next = !prev;
+            localStorage.setItem("ui_sounds", String(next));
+            toast.success(next ? "Efeitos sonoros ativados" : "Efeitos sonoros desativados", { duration: 1500 });
+            if (next) setTimeout(playClickSound, 50);
+            return next;
+        });
+    };
 
     const toggleSidebarCollapse = () => {
         setIsSidebarCollapsed(prev => {
@@ -192,10 +208,10 @@ const MainLayout = () => {
             </div>
 
             <aside className={cn(
-                "hidden lg:flex fixed lg:static inset-y-0 left-0 z-50 glass-card border-r border-white/5 shadow-2xl flex-col transition-all duration-500",
+                "hidden lg:flex fixed lg:static top-6 bottom-6 left-6 z-50 glass-card border border-white/10 shadow-2xl flex-col transition-all duration-500 rounded-3xl m-4 lg:mr-0 lg:my-6 overflow-hidden",
                 isSidebarCollapsed ? "w-20" : "w-72"
             )}>
-                <div className={cn("h-28 flex items-center border-b border-white/5 justify-between shrink-0 relative overflow-hidden group", isSidebarCollapsed ? "px-2" : "px-6")}>
+                <div className={cn("h-28 flex items-center justify-between shrink-0 relative overflow-hidden group", isSidebarCollapsed ? "px-2" : "px-6")}>
                     <div className={cn("flex items-center gap-4 w-full justify-center relative z-10 transition-all duration-500", isSidebarCollapsed ? "flex-col gap-1" : "flex-row")}>
                         <div className="relative">
                             <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
@@ -212,7 +228,11 @@ const MainLayout = () => {
                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        onClick={toggleSidebarCollapse}
+                        onClick={() => {
+                            playClickSound();
+                            toggleSidebarCollapse();
+                        }}
+                        onMouseEnter={playHoverSound}
                         className={cn(
                             "h-7 w-7 text-muted-foreground hover:text-primary rounded-xl absolute z-20 transition-all bg-black/40 hover:bg-black/80 border border-white/10",
                             isSidebarCollapsed ? "left-1/2 -translate-x-1/2 bottom-2" : "right-2 top-2 opacity-0 group-hover:opacity-100"
@@ -223,81 +243,111 @@ const MainLayout = () => {
                     </Button>
                 </div>
 
-                <div className={cn("border-b border-white/5 flex items-center hover:bg-white/[0.02] transition-colors duration-300", isSidebarCollapsed ? "p-4 justify-center" : "p-6 gap-4")}>
-                    <div className="relative group">
-                        <div className="absolute inset-0 bg-primary/20 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="w-12 h-12 rounded-full border border-primary/30 p-0.5 overflow-hidden shadow-xl relative z-10">
+                {/* Floating glass profile widget with gradient border spin */}
+                <div className={cn(
+                    "mx-4 mb-4 p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-primary/20 transition-all duration-500 flex items-center gap-3 relative group overflow-hidden",
+                    isSidebarCollapsed ? "justify-center p-2.5 mx-2" : ""
+                )}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    <div className="relative shrink-0">
+                        <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-primary to-transparent opacity-50 blur-[2px] group-hover:opacity-100 group-hover:animate-[spin_4s_linear_infinite] transition-opacity" />
+                        <div className="w-10 h-10 rounded-full border border-black/40 p-0.5 overflow-hidden shadow-xl relative z-10 bg-background/80">
                             {role === 'admin' ? (
                                 <img src="/luiz-felipe.png" className="w-full h-full object-cover rounded-full transition-transform duration-500 group-hover:scale-110" alt="Luiz Felipe" />
                             ) : (
                                 <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
-                                    <UserCircle className="w-6 h-6 text-primary" />
+                                    <UserCircle className="w-5 h-5 text-primary" />
                                 </div>
                             )}
                         </div>
                     </div>
+
                     {!isSidebarCollapsed && (
-                        <div className="flex flex-col min-w-0 animate-in fade-in duration-300">
-                            <span className="text-sm font-bold truncate tracking-tight text-foreground text-luxury">
-                                {role === 'admin' ? 'Luiz Felipe Canedo' : userEmail?.split('@')[0]}
+                        <div className="flex flex-col min-w-0 z-10 animate-in fade-in duration-300">
+                            <span className="text-xs font-black truncate tracking-tight text-foreground text-luxury group-hover:text-primary transition-colors duration-300">
+                                {role === 'admin' ? 'Luiz Felipe' : userEmail?.split('@')[0]}
                             </span>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[9px] uppercase font-black text-primary/70 tracking-widest leading-none">{role === 'admin' ? 'Administrador' : 'Colaborador'}</span>
+                                <span className="relative flex h-1.5 w-1.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                                </span>
+                                <span className="text-[7px] uppercase font-black text-primary/70 tracking-widest leading-none">{role === 'admin' ? 'Administrador' : 'Colaborador'}</span>
                             </div>
                         </div>
                     )}
                 </div>
 
-                <nav className={cn("space-y-1.5 flex-1 overflow-y-auto min-h-0 bg-transparent scrollbar-none", isSidebarCollapsed ? "p-2" : "p-4")}>
+                <nav className={cn("space-y-1 flex-1 overflow-y-auto min-h-0 bg-transparent scrollbar-none", isSidebarCollapsed ? "p-2" : "p-3")}>
                     {menuItems.map((item) => (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            title={isSidebarCollapsed ? item.label : undefined}
-                            className={cn(
-                                "flex items-center rounded-xl transition-all duration-500 menu-item-premium group relative overflow-hidden",
-                                isSidebarCollapsed ? "justify-center p-2 h-14" : "gap-4 px-4 py-3.5",
-                                location.pathname === item.path
-                                    ? "active text-primary font-bold bg-primary/5 shadow-lg"
-                                    : "text-muted-foreground hover:text-foreground"
-                            )}
-                        >
-                            <div className={cn(
-                                "flex items-center justify-center p-2 rounded-xl transition-all duration-500 w-10 h-10 relative z-10",
-                                location.pathname === item.path 
-                                    ? "bg-primary/20 scale-110 shadow-[0_0_20px_rgba(var(--primary),0.3)]" 
-                                    : "bg-white/5 group-hover:bg-primary/10 group-hover:scale-105"
-                            )}>
-                                <span className="emoji-3d text-xl">{item.emoji}</span>
-                            </div>
-                            {!isSidebarCollapsed && (
-                                <span className={cn(
-                                    "text-sm tracking-wide transition-all relative z-10 text-luxury animate-in fade-in duration-300",
-                                    location.pathname === item.path ? "font-bold" : "font-medium group-hover:translate-x-1"
-                                )}>{item.label}</span>
-                            )}
-                            
-                            {location.pathname === item.path && (
-                                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-50" />
-                            )}
-                        </Link>
+                        <Magnetic key={item.path} range={35} strength={0.15} className="w-full">
+                            <Link
+                                to={item.path}
+                                title={isSidebarCollapsed ? item.label : undefined}
+                                onMouseEnter={playHoverSound}
+                                onClick={playClickSound}
+                                className={cn(
+                                    "flex items-center rounded-xl transition-all duration-300 menu-item-premium group relative overflow-hidden w-full",
+                                    isSidebarCollapsed ? "justify-center p-2 h-14" : "gap-4 px-4 py-3",
+                                    location.pathname === item.path
+                                        ? "text-primary font-bold z-10"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-white/[0.01]"
+                                )}
+                            >
+                                {location.pathname === item.path && (
+                                    <motion.div
+                                        layoutId="sidebar-active-indicator"
+                                        className="absolute inset-0 bg-primary/10 border-l-2 border-primary rounded-xl z-0"
+                                        transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                                    />
+                                )}
+                                <div className={cn(
+                                    "flex items-center justify-center p-2 rounded-xl transition-all duration-500 w-10 h-10 relative z-10",
+                                    location.pathname === item.path 
+                                        ? "bg-primary/20 scale-105 shadow-[0_0_15px_rgba(var(--primary),0.2)] text-primary" 
+                                        : "bg-white/5 group-hover:bg-primary/10 group-hover:text-primary group-hover:scale-105"
+                                )}>
+                                    <item.icon className={cn(
+                                        "h-5 w-5 transition-all duration-500",
+                                        item.label === "Configurações" && "group-hover:rotate-90",
+                                        item.label === "CRM" && "group-hover:-translate-y-0.5",
+                                        item.label === "Financeiro" && "group-hover:scale-110",
+                                        item.label === "Tarefas" && "group-hover:scale-105",
+                                        item.label === "Orçamento" && "group-hover:rotate-12",
+                                        item.label === "Cliente e Fornecedores" && "group-hover:scale-105"
+                                    )} />
+                                </div>
+                                {!isSidebarCollapsed && (
+                                    <span className={cn(
+                                        "text-sm tracking-wide transition-all relative z-10 text-luxury animate-in fade-in duration-300",
+                                        location.pathname === item.path ? "font-bold" : "font-medium group-hover:translate-x-1"
+                                    )}>{item.label}</span>
+                                )}
+                            </Link>
+                        </Magnetic>
                     ))}
                 </nav>
 
-                <div className={cn("border-t border-white/5", isSidebarCollapsed ? "p-2 flex justify-center" : "p-4")}>
-                    <Button
-                        variant="ghost"
-                        title={isSidebarCollapsed ? "Encerrar Sessão" : undefined}
-                        className={cn(
-                            "rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-300 border border-transparent hover:border-destructive/20",
-                            isSidebarCollapsed ? "w-12 h-12 p-0 flex items-center justify-center" : "w-full justify-start gap-4 px-4 py-6"
-                        )}
-                        onClick={handleLogout}
-                    >
-                        <LogOut className="h-5 w-5" />
-                        {!isSidebarCollapsed && <span className="text-sm font-bold text-luxury animate-in fade-in duration-300">Encerrar Sessão</span>}
-                    </Button>
+                <div className={cn("p-4", isSidebarCollapsed ? "p-2 flex justify-center" : "p-3")}>
+                    <Magnetic range={30} strength={0.15} className="w-full">
+                        <Button
+                            variant="ghost"
+                            title={isSidebarCollapsed ? "Encerrar Sessão" : undefined}
+                            className={cn(
+                                "rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-300 border border-transparent hover:border-destructive/20 w-full",
+                                isSidebarCollapsed ? "w-12 h-12 p-0 flex items-center justify-center" : "justify-start gap-4 px-4 py-6"
+                            )}
+                            onClick={() => {
+                                playClickSound();
+                                handleLogout();
+                            }}
+                            onMouseEnter={playHoverSound}
+                        >
+                            <LogOut className="h-5 w-5" />
+                            {!isSidebarCollapsed && <span className="text-sm font-bold text-luxury animate-in fade-in duration-300">Encerrar Sessão</span>}
+                        </Button>
+                    </Magnetic>
                 </div>
             </aside>
 
@@ -317,25 +367,29 @@ const MainLayout = () => {
                              <div className="h-0.5 w-12 bg-primary/40 mt-1 rounded-full" />
                         </div>
 
-                        <button 
-                            onClick={() => {
-                                const e = new KeyboardEvent('keydown', {
-                                    key: 'k',
-                                    ctrlKey: true,
-                                    metaKey: true,
-                                    bubbles: true
-                                });
-                                document.dispatchEvent(e);
-                            }}
-                            className="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all group"
-                        >
-                            <Search className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                            <span className="text-xs text-muted-foreground font-bold tracking-wide text-luxury">Pesquisar...</span>
-                            <div className="flex items-center gap-1 bg-white/10 px-1.5 py-0.5 rounded-lg border border-white/10">
-                                <span className="text-[10px] font-black text-muted-foreground">⌘</span>
-                                <span className="text-[10px] font-black text-muted-foreground">K</span>
-                            </div>
-                        </button>
+                        <Magnetic range={25} strength={0.2}>
+                            <button 
+                                onClick={() => {
+                                    playClickSound();
+                                    const e = new KeyboardEvent('keydown', {
+                                        key: 'k',
+                                        ctrlKey: true,
+                                        metaKey: true,
+                                        bubbles: true
+                                    });
+                                    document.dispatchEvent(e);
+                                }}
+                                onMouseEnter={playHoverSound}
+                                className="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all group"
+                            >
+                                <Search className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                <span className="text-xs text-muted-foreground font-bold tracking-wide text-luxury">Pesquisar...</span>
+                                <div className="flex items-center gap-1 bg-white/10 px-1.5 py-0.5 rounded-lg border border-white/10">
+                                    <span className="text-[10px] font-black text-muted-foreground">⌘</span>
+                                    <span className="text-[10px] font-black text-muted-foreground">K</span>
+                                </div>
+                            </button>
+                        </Magnetic>
                     </div>
 
                     <div className="flex items-center gap-6">
@@ -352,36 +406,54 @@ const MainLayout = () => {
                         
                         <div className="flex items-center gap-2">
                              {/* Botão do Customizador de Temas Premium */}
-                             <Button
-                                 variant="ghost"
-                                 size="icon"
-                                 onClick={() => setIsThemePanelOpen(true)}
-                                 className="text-muted-foreground hover:text-primary rounded-xl transition-all mr-1 relative group"
-                                 title="Personalizar Tema"
-                             >
-                                 <Palette className="h-5 w-5 group-hover:rotate-12 transition-transform duration-300" />
-                                 <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                                 </span>
-                             </Button>
+                             <Magnetic range={25} strength={0.25}>
+                                 <Button
+                                     variant="ghost"
+                                     size="icon"
+                                     onClick={() => {
+                                         playClickSound();
+                                         setIsThemePanelOpen(true);
+                                     }}
+                                     onMouseEnter={playHoverSound}
+                                     className="text-muted-foreground hover:text-primary rounded-xl transition-all mr-1 relative group"
+                                     title="Personalizar Tema"
+                                 >
+                                     <Palette className="h-5 w-5 group-hover:rotate-12 transition-transform duration-300" />
+                                     <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                         <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                     </span>
+                                 </Button>
+                             </Magnetic>
                              <NotificationBell />
-                             <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-muted-foreground hover:text-primary rounded-xl transition-all"
-                                onClick={() => navigate("/configuracoes")}
-                            >
-                                <Settings className="h-5 w-5" />
-                            </Button>
-                             <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all"
-                                onClick={handleLogout}
-                            >
-                                <LogOut className="h-5 w-5" />
-                            </Button>
+                             <Magnetic range={25} strength={0.25}>
+                                 <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-muted-foreground hover:text-primary rounded-xl transition-all"
+                                    onClick={() => {
+                                        playClickSound();
+                                        navigate("/configuracoes");
+                                    }}
+                                    onMouseEnter={playHoverSound}
+                                >
+                                    <Settings className="h-5 w-5" />
+                                </Button>
+                             </Magnetic>
+                             <Magnetic range={25} strength={0.25}>
+                                 <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all"
+                                    onClick={() => {
+                                        playClickSound();
+                                        handleLogout();
+                                    }}
+                                    onMouseEnter={playHoverSound}
+                                >
+                                    <LogOut className="h-5 w-5" />
+                                </Button>
+                             </Magnetic>
                         </div>
                     </div>
                 </header>
@@ -418,10 +490,10 @@ const MainLayout = () => {
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={location.pathname}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                            initial={{ opacity: 0, scale: 0.98, y: 12 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.98, y: -12 }}
+                            transition={{ type: "spring", damping: 25, stiffness: 190 }}
                             className="relative z-10 w-full h-full"
                         >
                             <Outlet />
@@ -490,7 +562,11 @@ const MainLayout = () => {
                                     <div className="grid grid-cols-1 gap-3">
                                         {/* Classic Obsidian Card */}
                                         <button
-                                            onClick={() => setCurrentTheme("theme-gold")}
+                                            onClick={() => {
+                                                playClickSound();
+                                                setCurrentTheme("theme-gold");
+                                            }}
+                                            onMouseEnter={playHoverSound}
                                             className={cn(
                                                 "w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group",
                                                 currentTheme === "theme-gold" 
@@ -510,7 +586,11 @@ const MainLayout = () => {
 
                                         {/* Nordic Frost Card */}
                                         <button
-                                            onClick={() => setCurrentTheme("theme-emerald")}
+                                            onClick={() => {
+                                                playClickSound();
+                                                setCurrentTheme("theme-emerald");
+                                            }}
+                                            onMouseEnter={playHoverSound}
                                             className={cn(
                                                 "w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group",
                                                 currentTheme === "theme-emerald" 
@@ -530,7 +610,11 @@ const MainLayout = () => {
 
                                         {/* Midnight Navy Card */}
                                         <button
-                                            onClick={() => setCurrentTheme("theme-sapphire")}
+                                            onClick={() => {
+                                                playClickSound();
+                                                setCurrentTheme("theme-sapphire");
+                                            }}
+                                            onMouseEnter={playHoverSound}
                                             className={cn(
                                                 "w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group",
                                                 currentTheme === "theme-sapphire" 
@@ -550,7 +634,11 @@ const MainLayout = () => {
 
                                         {/* Cyberpunk Neo Card */}
                                         <button
-                                            onClick={() => setCurrentTheme("theme-amethyst")}
+                                            onClick={() => {
+                                                playClickSound();
+                                                setCurrentTheme("theme-amethyst");
+                                            }}
+                                            onMouseEnter={playHoverSound}
                                             className={cn(
                                                 "w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group",
                                                 currentTheme === "theme-amethyst" 
@@ -568,8 +656,31 @@ const MainLayout = () => {
                                             </div>
                                         </button>
                                     </div>
+
+                                    {/* UI Audio Feedback Controller */}
+                                    <div className="pt-4 border-t border-white/5 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="space-y-0.5">
+                                                <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Efeitos Sonoros</span>
+                                                <span className="text-[9px] text-muted-foreground block">Clicks e toques digitais</span>
+                                            </div>
+                                            <button
+                                                onClick={toggleUiSounds}
+                                                className={cn(
+                                                    "w-12 h-6 rounded-full p-1 transition-all duration-300 relative border border-white/10",
+                                                    uiSoundsEnabled ? "bg-primary" : "bg-white/5"
+                                                )}
+                                            >
+                                                <motion.div
+                                                    layout
+                                                    className="w-3.5 h-3.5 rounded-full bg-white shadow-md"
+                                                    style={{ float: uiSoundsEnabled ? "right" : "left" }}
+                                                />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    </div>
                                 </div>
-                            </div>
 
                             <div className="border-t border-white/5 pt-4 text-center">
                                 <p className="text-[8px] font-black uppercase text-muted-foreground tracking-[0.2em] leading-normal">
