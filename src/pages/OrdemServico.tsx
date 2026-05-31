@@ -11,6 +11,7 @@ import { MagicButton } from "@/components/ui/magic-button";
 import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play, KanbanSquare, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 
@@ -886,16 +887,17 @@ interface SortableItemProps {
     getStatusProgress: (status: any) => number;
 }
 
-const SortableServiceOrderCard = ({ 
-    order, 
-    index, 
+const SortableServiceOrderCard = ({
+    order,
+    index,
     tasks,
-    onEdit, 
+    onEdit,
     onNotify,
-    onUpdate, 
-    getStatusColor, 
-    getStatusProgress 
-}: SortableItemProps) => {
+    onUpdate,
+    getStatusColor,
+    getStatusProgress }: SortableItemProps) => {
+  const [showEnv, setShowEnv] = React.useState(false);
+
     const {
         attributes,
         listeners,
@@ -1000,6 +1002,7 @@ const SortableServiceOrderCard = ({
                     isUrgent ? "border-rose-500/30 bg-rose-500/5 shadow-[0_0_30px_rgba(244,63,94,0.1)]" : "border-white/5 bg-white/[0.02]",
                     order.status === "Entregue e Finalizado" && "bg-emerald-600/90 border-emerald-400/50"
                 )}
+                onClick={() => setShowEnv(true)}
             >
                 {/* Background Progress Fill */}
                 {order.status !== "Entregue e Finalizado" && (
@@ -1049,7 +1052,7 @@ const SortableServiceOrderCard = ({
                                     
                                     {deadlineBadge}
                                 </div>
-                                <h4 className="text-lg font-black tracking-tight text-white uppercase group-hover:text-primary transition-colors truncate">
+                                <h4 className="text-lg font-black tracking-tight text-white uppercase group-hover:text-primary transition-colors break-words whitespace-normal">
                                     {order.client}
                                 </h4>
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
@@ -1119,7 +1122,18 @@ const SortableServiceOrderCard = ({
                         <p className="text-[11px] text-white/60 font-medium italic">"{order.productionNotes}"</p>
                     </div>
                 )}
-            </Card>
+                        </Card>
+            {/* Environment Dialog */}
+            <Dialog open={showEnv} onOpenChange={setShowEnv}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Ambiente da Ordem de Serviço</DialogTitle>
+                    </DialogHeader>
+                    <div className="p-4">
+                        <p className="text-lg font-medium">{order.action || "Sem ação definida"}</p>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

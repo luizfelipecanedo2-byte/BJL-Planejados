@@ -446,6 +446,25 @@ const Tarefas = () => {
         }
     };
 
+    const handleClearAllTasks = async () => {
+        if (!confirm("Tem certeza que deseja apagar TODAS as tarefas ativas? Essa ação não pode ser desfeita e limpará todo o painel de planejamento.")) return;
+
+        try {
+            const { error } = await supabase
+                .from('tasks')
+                .delete()
+                .neq('id', '00000000-0000-0000-0000-000000000000');
+            
+            if (error) throw error;
+            
+            setTasks([]);
+            toast.success("Todas as tarefas foram excluídas com sucesso!");
+        } catch (error) {
+            console.error("Erro ao limpar tarefas:", error);
+            toast.error("Erro ao excluir todas as tarefas");
+        }
+    };
+
     const filterTasksByView = () => {
         const now = new Date();
         const today = format(now, "yyyy-MM-dd");
@@ -555,6 +574,14 @@ const Tarefas = () => {
 
                     {userRole === 'admin' && (
                         <>
+                            <Button 
+                                onClick={handleClearAllTasks}
+                                className="h-12 px-6 bg-rose-600/10 hover:bg-rose-600 border border-rose-500/20 hover:border-rose-500 text-rose-400 hover:text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 gap-2"
+                            >
+                                <Trash2 className="h-4 w-4 text-rose-400 group-hover:text-white" />
+                                Limpar Painel
+                            </Button>
+
                             <Button 
                                 onClick={() => {
                                     setPlannerStep(1);
@@ -838,7 +865,7 @@ const Tarefas = () => {
                                     </p>
                                 </div>
 
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                     {serviceOrders
                                         .filter(o => o.status !== "Entregue e Finalizado" && o.client)
                                         .map((order: any) => {
@@ -856,13 +883,22 @@ const Tarefas = () => {
                                                         }
                                                     }}
                                                     className={cn(
-                                                        "p-4 rounded-2xl border text-left transition-all duration-300 font-bold text-xs uppercase tracking-wider flex items-center justify-between",
+                                                        "p-4 rounded-2xl border text-left transition-all duration-300 font-bold text-xs uppercase tracking-wider flex items-center justify-between min-h-[4.5rem]",
                                                         isSelected 
                                                             ? "bg-amber-500/10 border-amber-500 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
                                                             : "bg-white/[0.02] border-white/10 hover:bg-white/[0.05] text-white/70"
                                                     )}
                                                 >
-                                                    <span className="truncate mr-2">{projLabel}</span>
+                                                    <div className="flex flex-col gap-1 min-w-0 flex-1 mr-2 text-left">
+                                                        <span className="font-extrabold text-[11px] text-white tracking-wide break-words whitespace-normal">
+                                                            {order.ticket_number || "S/N"} - {order.client}
+                                                        </span>
+                                                        {order.action && (
+                                                            <span className="text-[9px] font-black uppercase text-amber-500/90 tracking-widest break-words leading-tight">
+                                                                {order.action}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <div className={cn(
                                                         "h-4 w-4 rounded-full border flex items-center justify-center shrink-0",
                                                         isSelected ? "border-amber-500 bg-amber-500 text-black" : "border-white/30"
