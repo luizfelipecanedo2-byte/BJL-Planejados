@@ -50,6 +50,14 @@ const checkTaskVisibility = (dueDate: string, status: string, activeView: string
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
+    if (activeView.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        if (activeView === today) {
+            return (dueDate === today) || (dueDate < today && status === 'pending');
+        } else {
+            return dueDate === activeView;
+        }
+    }
+
     switch (activeView) {
         case "hoje":
             return (dueDate === today) || (dueDate < today && status === 'pending');
@@ -88,7 +96,7 @@ const Tarefas = () => {
     const [newAssignedTo, setNewAssignedTo] = useState<string | "all">("all");
     const [newPriority, setNewPriority] = useState("normal");
 
-    const [activeView, setActiveView] = useState("hoje");
+    const [activeView, setActiveView] = useState(format(new Date(), "yyyy-MM-dd"));
     const { sales } = useSales();
     const isAdmin = userRole === 'admin';
 
@@ -472,6 +480,17 @@ const Tarefas = () => {
         const weekStart = startOfWeek(now, { weekStartsOn: 1 });
         const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
+        if (activeView.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            if (activeView === today) {
+                return tasks.filter(t => 
+                    (t.due_date === today) || 
+                    (t.due_date < today && t.status === 'pending')
+                );
+            } else {
+                return tasks.filter(t => t.due_date === activeView);
+            }
+        }
+
         switch (activeView) {
             case "hoje":
                 return tasks.filter(t => 
@@ -497,9 +516,40 @@ const Tarefas = () => {
     };
 
     // Keep defaultDueDate synced with activeView
-    const defaultDueDate = activeView === 'amanha' 
-        ? format(addDays(new Date(), 1), "yyyy-MM-dd")
+    const defaultDueDate = activeView.match(/^\d{4}-\d{2}-\d{2}$/) 
+        ? activeView 
         : format(new Date(), "yyyy-MM-dd");
+
+    const getRollingTabs = () => {
+        const today = new Date();
+        const dayNames = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+        
+        const tabs = [];
+        for (let i = 0; i < 8; i++) {
+            const d = addDays(today, i);
+            const dateStr = format(d, "yyyy-MM-dd");
+            
+            let label = "";
+            if (i === 0) {
+                label = "Hoje";
+            } else if (i === 1) {
+                label = "Amanhã";
+            } else {
+                const fullDayName = dayNames[d.getDay()];
+                label = fullDayName.includes("-feira") ? fullDayName.split("-")[0] : fullDayName;
+            }
+            
+            tabs.push({
+                value: dateStr,
+                label: label
+            });
+        }
+        
+        tabs.push({ value: "semana", label: "Semanal" });
+        tabs.push({ value: "todas", label: "Todas" });
+        
+        return tabs;
+    };
 
     const filteredTasks = filterTasksByView();
     
@@ -563,12 +613,17 @@ const Tarefas = () => {
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3">
-                    <Tabs value={activeView} onValueChange={setActiveView} className="bg-white/5 border border-white/10 p-1 rounded-2xl h-12 shadow-inner">
-                        <TabsList className="bg-transparent h-full">
-                            <TabsTrigger value="hoje" className="px-6 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all">Hoje</TabsTrigger>
-                            <TabsTrigger value="amanha" className="px-6 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all">Amanhã</TabsTrigger>
-                            <TabsTrigger value="semana" className="px-6 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all">Semana</TabsTrigger>
-                            <TabsTrigger value="todas" className="px-6 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all">Todas</TabsTrigger>
+                    <Tabs value={activeView} onValueChange={setActiveView} className="bg-white/5 border border-white/10 p-1 rounded-2xl h-12 shadow-inner max-w-full overflow-hidden flex w-full md:w-auto">
+                        <TabsList className="bg-transparent h-full flex overflow-x-auto gap-0.5 custom-scrollbar max-w-full py-1">
+                            {getRollingTabs().map(tab => (
+                                <TabsTrigger 
+                                    key={tab.value}
+                                    value={tab.value} 
+                                    className="px-4 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all shrink-0"
+                                >
+                                    {tab.label}
+                                </TabsTrigger>
+                            ))}
                         </TabsList>
                     </Tabs>
 
@@ -601,7 +656,9 @@ const Tarefas = () => {
                                 } else {
                                     // Sincroniza a data inicial com base na aba ativa ao abrir
                                     const now = new Date();
-                                    if (activeView === 'amanha') {
+                                    if (activeView.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                                        setNewDueDate(activeView);
+                                    } else if (activeView === 'amanha') {
                                         setNewDueDate(format(addDays(now, 1), "yyyy-MM-dd"));
                                     } else {
                                         setNewDueDate(format(now, "yyyy-MM-dd"));
