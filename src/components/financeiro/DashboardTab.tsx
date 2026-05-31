@@ -101,8 +101,20 @@ const DashboardTab = ({
 
     const COLORS = ['#14b8a6', '#f97316', '#06b6d4', '#8b5cf6', '#ec4899', '#eab308'];
 
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const cards = document.getElementsByClassName("spotlight-card");
+        for (const card of cards) {
+            const rect = (card as HTMLElement).getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            (card as HTMLElement).style.setProperty("--mouse-x", `${x}px`);
+            (card as HTMLElement).style.setProperty("--mouse-y", `${y}px`);
+        }
+    };
+
     return (
-        <div className="space-y-6 text-foreground bg-[#0a0a0a] p-2 rounded-3xl min-h-screen">
+        <div className="space-y-6 text-foreground bg-[#0a0a0a] p-2 rounded-3xl min-h-screen" onMouseMove={handleMouseMove}>
             {/* TOP HEADER SECTION */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center mb-2">
                 <div className="md:col-span-3 flex items-center gap-3">
@@ -129,30 +141,30 @@ const DashboardTab = ({
                 </div>
 
                 <div className="md:col-span-9 grid grid-cols-2 lg:grid-cols-5 gap-3">
-                    <Card className="bg-[#1a1a1a] border-none shadow-none p-3 h-16 flex flex-col justify-center">
+                    <Card className="glass-card border border-white/5 p-3 h-16 flex flex-col justify-center spotlight-card border-beam-card tilt-card luxury-shadow rounded-2xl">
                         <span className="text-[10px] font-bold text-cyan-400 uppercase">A receber</span>
                         <span className="text-lg font-black text-white">
                             <AnimatedCounter value={currentSummary.accountsReceivable} formatter={formatCurrency} />
                         </span>
                     </Card>
-                    <Card className="bg-[#1a1a1a] border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-primary">
+                    <Card className="glass-card border border-white/5 p-3 h-16 flex flex-col justify-center border-t-2 border-primary spotlight-card border-beam-card tilt-card luxury-shadow rounded-2xl">
                         <span className="text-[10px] font-bold text-primary uppercase">Hoje (Entra/Sai)</span>
                         <div className="flex items-baseline gap-2">
                             <span className="text-sm font-black text-emerald-500">+{formatCurrency(currentSummary.entradaHoje).replace('R$', '')}</span>
                             <span className="text-sm font-black text-rose-500">-{formatCurrency(currentSummary.saidaHoje).replace('R$', '')}</span>
                         </div>
                     </Card>
-                    <Card className="bg-rose-500/10 border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-rose-500">
+                    <Card className="bg-rose-500/10 border border-rose-500/20 p-3 h-16 flex flex-col justify-center border-t-2 border-rose-500 spotlight-card border-beam-card tilt-card luxury-shadow rounded-2xl">
                         <span className="text-[10px] font-bold text-rose-500 uppercase">A pagar</span>
                         <span className="text-lg font-black text-white">{formatCurrency(currentSummary.accountsPayable)}</span>
                     </Card>
-                    <Card className="bg-orange-500/10 border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-orange-500">
+                    <Card className="bg-orange-500/10 border border-orange-500/20 p-3 h-16 flex flex-col justify-center border-t-2 border-orange-500 spotlight-card border-beam-card tilt-card luxury-shadow rounded-2xl">
                         <span className="text-[10px] font-bold text-orange-500 uppercase">Vencidos</span>
                         <span className="text-lg font-black text-white">
                             <AnimatedCounter value={currentSummary.inadimplenciaTotal} formatter={formatCurrency} />
                         </span>
                     </Card>
-                    <Card className="bg-emerald-500/10 border-none shadow-none p-3 h-16 flex flex-col justify-center border-t-2 border-emerald-500">
+                    <Card className="bg-emerald-500/10 border border-emerald-500/20 p-3 h-16 flex flex-col justify-center border-t-2 border-emerald-500 spotlight-card border-beam-card tilt-card luxury-shadow rounded-2xl">
                         <span className="text-[10px] font-bold text-emerald-500 uppercase">Saldo Projetado</span>
                         <span className="text-lg font-black text-white">
                             <AnimatedCounter value={currentSummary.projectedBalance} formatter={formatCurrency} />
@@ -230,11 +242,21 @@ const DashboardTab = ({
                 </Card>
 
                 {/* 2. ANÁLISE EVOLUTIVA */}
-                <Card className="lg:col-span-6 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden">
+                <Card className="lg:col-span-6 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden spotlight-card border-beam-card luxury-shadow">
                     <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-4">Análise Evolutiva</h3>
                     <div className="h-[320px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.4}/>
+                                        <stop offset="95%" stopColor="#14b8a6" stopOpacity={0.0}/>
+                                    </linearGradient>
+                                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.4}/>
+                                        <stop offset="95%" stopColor="#f97316" stopOpacity={0.0}/>
+                                    </linearGradient>
+                                </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
                                 <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#555' }} />
                                 <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#555' }} />
@@ -242,14 +264,14 @@ const DashboardTab = ({
                                     contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
                                     formatter={(val: number) => formatCurrency(val)}
                                 />
-                                <Bar dataKey="Despesas" fill="#f97316" radius={[4, 4, 0, 0]} barSize={20} />
-                                <Line type="monotone" dataKey="Receitas" stroke="#14b8a6" strokeWidth={3} dot={{ r: 4, fill: '#14b8a6', strokeWidth: 2, stroke: '#111' }} />
-                            </ComposedChart>
+                                <Area type="monotone" dataKey="Receitas" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
+                                <Area type="monotone" dataKey="Despesas" stroke="#f97316" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" />
+                            </AreaChart>
                         </ResponsiveContainer>
                     </div>
                     <div className="flex gap-4 mt-2 justify-center">
-                        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-orange-500 rounded-full" /> <span className="text-[10px] font-black uppercase text-muted-foreground">Despesas</span></div>
                         <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-primary rounded-full" /> <span className="text-[10px] font-black uppercase text-muted-foreground">Receitas</span></div>
+                        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-orange-500 rounded-full" /> <span className="text-[10px] font-black uppercase text-muted-foreground">Despesas</span></div>
                     </div>
                 </Card>
 
@@ -402,27 +424,26 @@ const DashboardTab = ({
                     </div>
                 </Card>
 
-                <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl lg:col-span-2">
+                <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl lg:col-span-2 spotlight-card border-beam-card">
                     <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Resultados Mensais (Real x Previsto)</h3>
                     <div className="h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData}>
+                            <AreaChart data={chartData}>
+                                <defs>
+                                    <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.4}/>
+                                        <stop offset="95%" stopColor="#14b8a6" stopOpacity={0.0}/>
+                                    </linearGradient>
+                                </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
                                 <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
                                 <YAxis fontSize={10} axisLine={false} tickLine={false} />
                                 <Tooltip
-                                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }}
+                                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
                                     formatter={(val: number) => formatCurrency(val)}
                                 />
-                                <Bar dataKey="Saldo" fill="#14b8a6" radius={[2, 2, 0, 0]}>
-                                    <LabelList
-                                        dataKey="Saldo"
-                                        position="top"
-                                        formatter={(val: number) => Math.floor(val)}
-                                        style={{ fill: '#fff', fontSize: '10px', fontWeight: 'bold' }}
-                                    />
-                                </Bar>
-                            </BarChart>
+                                <Area type="monotone" dataKey="Saldo" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorSaldo)" />
+                            </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </Card>

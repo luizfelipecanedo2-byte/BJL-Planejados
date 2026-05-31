@@ -15,7 +15,10 @@ import {
     Sofa,
     Ruler,
     CheckSquare,
-    Settings
+    Settings,
+    ChevronLeft,
+    ChevronRight,
+    AlertTriangle
 } from "lucide-react";
 
 import { useState, useEffect } from "react";
@@ -36,11 +39,47 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 const MainLayout = () => {
     const { settings } = useCompanySettings();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+        return localStorage.getItem("isSidebarCollapsed") === "true";
+    });
+
+    const [overdueCount, setOverdueCount] = useState<number>(0);
+    const [overdueSum, setOverdueSum] = useState<number>(0);
 
     const [role, setRole] = useState<string | null>('colaborador');
     const [userEmail, setUserEmail] = useState<string | null>(null);
     const location = useLocation();
     const navigate = useNavigate();
+
+    const toggleSidebarCollapse = () => {
+        setIsSidebarCollapsed(prev => {
+            const next = !prev;
+            localStorage.setItem("isSidebarCollapsed", String(next));
+            return next;
+        });
+    };
+
+    const fetchOverdueTransactions = async () => {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const { data, error } = await supabase
+                .from('transactions')
+                .select('amount, type')
+                .eq('status', 'pending')
+                .lt('due_date', today);
+
+            if (!error && data) {
+                const unpaidExpenses = data.filter(t => t.type === 'expense');
+                const count = unpaidExpenses.length;
+                const sum = unpaidExpenses.reduce((acc, t) => acc + Number(t.amount), 0);
+                
+                setOverdueCount(count);
+                setOverdueSum(sum);
+            }
+        } catch (err) {
+            console.error("Erro ao buscar transações vencidas:", err);
+        }
+    };
 
     useEffect(() => {
         const fetchUserProfile = async () => {
@@ -75,6 +114,10 @@ const MainLayout = () => {
         checkAndNotifyOverdueTasks();
     }, []);
 
+    useEffect(() => {
+        fetchOverdueTransactions();
+    }, [location.pathname]);
+
     const handleLogout = async () => {
         await supabase.auth.signOut();
         navigate("/login");
@@ -105,22 +148,39 @@ const MainLayout = () => {
             <CommandMenu />
             <div className="aurora-bg" />
 
-            <aside className="hidden lg:flex fixed lg:static inset-y-0 left-0 z-50 w-72 glass-card border-r border-white/5 shadow-2xl flex-col transition-all duration-500">
-                <div className="h-28 flex items-center px-8 border-b border-white/5 justify-between shrink-0 relative overflow-hidden group">
-                    <div className="flex items-center gap-4 w-full justify-center relative z-10 transition-transform duration-500 group-hover:scale-105">
+            <aside className={cn(
+                "hidden lg:flex fixed lg:static inset-y-0 left-0 z-50 glass-card border-r border-white/5 shadow-2xl flex-col transition-all duration-500",
+                isSidebarCollapsed ? "w-20" : "w-72"
+            )}>
+                <div className={cn("h-28 flex items-center border-b border-white/5 justify-between shrink-0 relative overflow-hidden group", isSidebarCollapsed ? "px-2" : "px-6")}>
+                    <div className={cn("flex items-center gap-4 w-full justify-center relative z-10 transition-all duration-500", isSidebarCollapsed ? "flex-col gap-1" : "flex-row")}>
                         <div className="relative">
                             <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
-                            <img src={settings?.logo_url || "/logo-bjl.png"} alt={settings?.name || "BJL Planejados"} className="h-16 w-16 object-contain rounded-full border border-primary/30 shadow-[0_0_30px_rgba(var(--primary),0.2)] animate-pinball p-1 bg-black/40 relative z-10" />
+                            <img src={settings?.logo_url || "/logo-bjl.png"} alt={settings?.name || "BJL Planejados"} className={cn("object-contain rounded-full border border-primary/30 shadow-[0_0_30px_rgba(var(--primary),0.2)] bg-black/40 relative z-10 transition-all duration-500", isSidebarCollapsed ? "h-10 w-10 p-0.5" : "h-16 w-16 p-1")} />
                         </div>
-                        <div className="flex flex-col">
-                            <span className="text-2xl font-black tracking-tighter text-luxury shimmer-gold">{settings?.name?.split(' ')[0] || "BJL"}</span>
-                            <span className="text-[8px] uppercase tracking-[0.3em] font-bold text-primary/60">{settings?.name?.split(' ').slice(1).join(' ') || "Planejados"}</span>
-                        </div>
-
+                        {!isSidebarCollapsed && (
+                            <div className="flex flex-col animate-in fade-in duration-300">
+                                <span className="text-2xl font-black tracking-tighter text-luxury shimmer-gold">{settings?.name?.split(' ')[0] || "BJL"}</span>
+                                <span className="text-[8px] uppercase tracking-[0.3em] font-bold text-primary/60">{settings?.name?.split(' ').slice(1).join(' ') || "Planejados"}</span>
+                            </div>
+                        )}
                     </div>
+                    
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={toggleSidebarCollapse}
+                        className={cn(
+                            "h-7 w-7 text-muted-foreground hover:text-primary rounded-xl absolute z-20 transition-all bg-black/40 hover:bg-black/80 border border-white/10",
+                            isSidebarCollapsed ? "left-1/2 -translate-x-1/2 bottom-2" : "right-2 top-2 opacity-0 group-hover:opacity-100"
+                        )}
+                        title={isSidebarCollapsed ? "Expandir Menu" : "Recolher Menu"}
+                    >
+                        {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                    </Button>
                 </div>
 
-                <div className="p-6 border-b border-white/5 flex items-center gap-4 hover:bg-white/[0.02] transition-colors duration-300">
+                <div className={cn("border-b border-white/5 flex items-center hover:bg-white/[0.02] transition-colors duration-300", isSidebarCollapsed ? "p-4 justify-center" : "p-6 gap-4")}>
                     <div className="relative group">
                         <div className="absolute inset-0 bg-primary/20 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                         <div className="w-12 h-12 rounded-full border border-primary/30 p-0.5 overflow-hidden shadow-xl relative z-10">
@@ -133,24 +193,28 @@ const MainLayout = () => {
                             )}
                         </div>
                     </div>
-                    <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-bold truncate tracking-tight text-foreground text-luxury">
-                            {role === 'admin' ? 'Luiz Felipe Canedo' : userEmail?.split('@')[0]}
-                        </span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-[9px] uppercase font-black text-primary/70 tracking-widest leading-none">{role === 'admin' ? 'Administrador' : 'Colaborador'}</span>
+                    {!isSidebarCollapsed && (
+                        <div className="flex flex-col min-w-0 animate-in fade-in duration-300">
+                            <span className="text-sm font-bold truncate tracking-tight text-foreground text-luxury">
+                                {role === 'admin' ? 'Luiz Felipe Canedo' : userEmail?.split('@')[0]}
+                            </span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-[9px] uppercase font-black text-primary/70 tracking-widest leading-none">{role === 'admin' ? 'Administrador' : 'Colaborador'}</span>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
-                <nav className="p-4 space-y-1.5 flex-1 overflow-y-auto min-h-0 bg-transparent scrollbar-none">
+                <nav className={cn("space-y-1.5 flex-1 overflow-y-auto min-h-0 bg-transparent scrollbar-none", isSidebarCollapsed ? "p-2" : "p-4")}>
                     {menuItems.map((item) => (
                         <Link
                             key={item.path}
                             to={item.path}
+                            title={isSidebarCollapsed ? item.label : undefined}
                             className={cn(
-                                "flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-500 menu-item-premium group relative overflow-hidden",
+                                "flex items-center rounded-xl transition-all duration-500 menu-item-premium group relative overflow-hidden",
+                                isSidebarCollapsed ? "justify-center p-2 h-14" : "gap-4 px-4 py-3.5",
                                 location.pathname === item.path
                                     ? "active text-primary font-bold bg-primary/5 shadow-lg"
                                     : "text-muted-foreground hover:text-foreground"
@@ -164,10 +228,12 @@ const MainLayout = () => {
                             )}>
                                 <span className="emoji-3d text-xl">{item.emoji}</span>
                             </div>
-                            <span className={cn(
-                                "text-sm tracking-wide transition-all relative z-10 text-luxury",
-                                location.pathname === item.path ? "font-bold" : "font-medium group-hover:translate-x-1"
-                            )}>{item.label}</span>
+                            {!isSidebarCollapsed && (
+                                <span className={cn(
+                                    "text-sm tracking-wide transition-all relative z-10 text-luxury animate-in fade-in duration-300",
+                                    location.pathname === item.path ? "font-bold" : "font-medium group-hover:translate-x-1"
+                                )}>{item.label}</span>
+                            )}
                             
                             {location.pathname === item.path && (
                                 <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-50" />
@@ -176,14 +242,18 @@ const MainLayout = () => {
                     ))}
                 </nav>
 
-                <div className="p-4 mt-auto border-t border-white/5">
+                <div className={cn("border-t border-white/5", isSidebarCollapsed ? "p-2 flex justify-center" : "p-4")}>
                     <Button
                         variant="ghost"
-                        className="w-full justify-start gap-4 px-4 py-6 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-300 border border-transparent hover:border-destructive/20"
+                        title={isSidebarCollapsed ? "Encerrar Sessão" : undefined}
+                        className={cn(
+                            "rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-300 border border-transparent hover:border-destructive/20",
+                            isSidebarCollapsed ? "w-12 h-12 p-0 flex items-center justify-center" : "w-full justify-start gap-4 px-4 py-6"
+                        )}
                         onClick={handleLogout}
                     >
                         <LogOut className="h-5 w-5" />
-                        <span className="text-sm font-bold text-luxury">Encerrar Sessão</span>
+                        {!isSidebarCollapsed && <span className="text-sm font-bold text-luxury animate-in fade-in duration-300">Encerrar Sessão</span>}
                     </Button>
                 </div>
             </aside>
@@ -257,17 +327,34 @@ const MainLayout = () => {
                             </Button>
                         </div>
 
-                    </div>
-                </header>
-
-                <main className="flex-1 p-4 md:p-8 lg:p-10 overflow-y-auto overflow-x-hidden relative">
+                                 <main className="flex-1 p-4 md:p-8 lg:p-10 overflow-y-auto overflow-x-hidden relative">
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 select-none overflow-hidden">
                         <div className="relative w-full h-full flex items-center justify-center opacity-[0.03]">
                              <div className="absolute rotate-[-15deg] scale-[3] blur-[2px]">
-                                <h1 className="text-9xl font-black text-luxury tracking-tighter whitespace-nowrap">BJL PLANEJADOS</h1>
+                                 <h1 className="text-9xl font-black text-luxury tracking-tighter whitespace-nowrap">BJL PLANEJADOS</h1>
                              </div>
                         </div>
                     </div>
+
+                    {overdueCount > 0 && (
+                        <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border-2 border-rose-500/20 shadow-[0_0_30px_rgba(244,63,94,0.15)] flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 relative z-20">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-rose-500/20 rounded-xl text-rose-500">
+                                    <AlertTriangle className="h-5 w-5 animate-pulse" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-black text-white uppercase tracking-tight">Atenção: Contas Vencidas Detectadas!</p>
+                                    <p className="text-xs text-muted-foreground">Existem <span className="text-rose-500 font-bold">{overdueCount} despesas</span> pendentes vencidas que totalizam <span className="text-rose-500 font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(overdueSum)}</span>.</p>
+                                </div>
+                            </div>
+                            <Button 
+                                onClick={() => navigate('/admin/financeiro?overdue=true')}
+                                className="bg-rose-600 hover:bg-rose-500 text-white font-black uppercase text-[10px] tracking-widest px-6 h-10 rounded-xl shadow-lg shadow-rose-950/20 active:scale-95 transition-all shrink-0"
+                            >
+                                Ver Pendências
+                            </Button>
+                        </div>
+                    )}
 
                     <AnimatePresence mode="wait">
                         <motion.div

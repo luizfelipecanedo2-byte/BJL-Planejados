@@ -45,6 +45,15 @@ const Financeiro = () => {
     fetchAssets();
     fetchServiceOrders();
     fetchServiceExpenses();
+
+    // Detectar se o usuário veio pelo alerta de contas vencidas
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('overdue') === 'true') {
+      setShowOverdueOnly(true);
+      setActiveTab("lancamentos");
+      // Limpa os parâmetros da URL para evitar filtros residuais ao navegar
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   const fetchTransactions = async () => {

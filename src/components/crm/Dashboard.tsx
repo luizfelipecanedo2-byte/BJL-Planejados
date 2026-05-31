@@ -30,6 +30,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  AreaChart,
+  Area
 } from "recharts";
 import { CHANNEL_LABELS, SaleChannel } from "@/types/sale";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -441,15 +443,27 @@ const Dashboard = ({ sales }: DashboardProps) => {
               </div>
             </div>
             <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={chartData} barGap={8}>
+              <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorFechado" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.2}/>
+                    <stop offset="5%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.0}/>
                   </linearGradient>
-                  <linearGradient id="colorPrimary" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/>
+                  <linearGradient id="colorAndamento" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.0}/>
+                  </linearGradient>
+                  <linearGradient id="colorCongelado" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--kanban-congelado))" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(var(--kanban-congelado))" stopOpacity={0.0}/>
+                  </linearGradient>
+                  <linearGradient id="colorPosVenda" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--kanban-pos_venda))" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="hsl(var(--kanban-pos_venda))" stopOpacity={0.0}/>
+                  </linearGradient>
+                  <linearGradient id="colorNaoFechou" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--kanban-nao_fechou))" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(var(--kanban-nao_fechou))" stopOpacity={0.0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="white" strokeOpacity={0.05} vertical={false} />
@@ -471,15 +485,15 @@ const Dashboard = ({ sales }: DashboardProps) => {
                     fontSize: 12,
                     boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.5)"
                   }}
-                  cursor={{ fill: 'white', fillOpacity: 0.05 }}
+                  cursor={{ stroke: 'white', strokeWidth: 1, strokeDasharray: '3 3' }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
-                <Bar dataKey="Fechado" fill="url(#colorFechado)" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Em Andamento" fill="url(#colorPrimary)" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Congelado" fill="hsl(var(--kanban-congelado))" fillOpacity={0.5} radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Pós Venda" fill="hsl(var(--kanban-pos_venda))" fillOpacity={0.6} radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Não Fechou" fill="hsl(var(--kanban-nao_fechou))" fillOpacity={0.4} radius={[6, 6, 0, 0]} />
-              </BarChart>
+                <Area type="monotone" dataKey="Fechado" stroke="hsl(var(--kanban-fechado))" strokeWidth={2.5} fillOpacity={1} fill="url(#colorFechado)" />
+                <Area type="monotone" dataKey="Em Andamento" stroke="hsl(var(--primary))" strokeWidth={2.5} fillOpacity={1} fill="url(#colorAndamento)" />
+                <Area type="monotone" dataKey="Pós Venda" stroke="hsl(var(--kanban-pos_venda))" strokeWidth={2} fillOpacity={1} fill="url(#colorPosVenda)" />
+                <Area type="monotone" dataKey="Congelado" stroke="hsl(var(--kanban-congelado))" strokeWidth={1.5} fillOpacity={1} fill="url(#colorCongelado)" />
+                <Area type="monotone" dataKey="Não Fechou" stroke="hsl(var(--kanban-nao_fechou))" strokeWidth={1.5} fillOpacity={1} fill="url(#colorNaoFechou)" />
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
