@@ -15,10 +15,14 @@ import {
   Circle,
   CheckCircle2,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Pencil,
+  Check,
+  X
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PremiumCard } from "@/components/ui/PremiumCard";
+import { toast } from "sonner";
 import {
   BarChart,
   Bar,
@@ -67,6 +71,23 @@ const Dashboard = ({ sales }: DashboardProps) => {
   const [recentTasks, setRecentTasks] = useState<Task[]>([]);
   const [totalPendingTasks, setTotalPendingTasks] = useState(0);
   const [userName, setUserName] = useState("Luiz Felipe");
+  const [salesGoal, setSalesGoal] = useState(() => {
+    return Number(localStorage.getItem('crm_sales_goal') || '150000');
+  });
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState(salesGoal.toString());
+
+  const handleSaveGoal = () => {
+    const newGoal = parseFloat(goalInput);
+    if (!isNaN(newGoal) && newGoal > 0) {
+      setSalesGoal(newGoal);
+      localStorage.setItem('crm_sales_goal', newGoal.toString());
+      setIsEditingGoal(false);
+      toast.success(`Nova meta de vendas de ${formatCurrency(newGoal)} salva!`);
+    } else {
+      toast.error("Por favor, digite um valor válido.");
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -409,7 +430,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
       }
     ];
 
-    const progressPercent = Math.min((totalRevenue / 150000) * 100, 100);
+    const progressPercent = Math.min((totalRevenue / salesGoal) * 100, 100);
 
     return (
       <div className="space-y-8">
@@ -426,7 +447,40 @@ const Dashboard = ({ sales }: DashboardProps) => {
           <div className="w-full md:w-80 space-y-2 bg-black/20 p-4 rounded-2xl border border-white/5">
             <div className="flex justify-between items-center text-xs">
               <span className="font-bold text-muted-foreground uppercase tracking-widest text-[9px]">Meta de Vendas Mensal</span>
-              <span className="font-bold text-primary">{progressPercent.toFixed(0)}%</span>
+              {isEditingGoal ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    value={goalInput}
+                    onChange={(e) => setGoalInput(e.target.value)}
+                    className="w-20 text-[10px] bg-black border border-white/20 text-white rounded px-1.5 py-0.5 font-bold"
+                    autoFocus
+                  />
+                  <button onClick={handleSaveGoal} className="text-emerald-500 hover:text-emerald-400 p-0.5">
+                    <Check size={12} />
+                  </button>
+                  <button 
+                    onClick={() => { 
+                      setIsEditingGoal(false); 
+                      setGoalInput(salesGoal.toString()); 
+                    }} 
+                    className="text-rose-500 hover:text-rose-400 p-0.5"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-primary">{progressPercent.toFixed(0)}%</span>
+                  <button 
+                    onClick={() => setIsEditingGoal(true)}
+                    className="text-[9px] font-black uppercase text-primary/60 hover:text-primary transition-colors p-0.5 flex items-center"
+                    title="Editar Meta"
+                  >
+                    <Pencil size={10} />
+                  </button>
+                </div>
+              )}
             </div>
             <div className="w-full bg-secondary h-3 rounded-full overflow-hidden relative shadow-inner p-[1px]">
               <div 
@@ -436,7 +490,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
             </div>
             <div className="flex justify-between items-center text-[10px] text-muted-foreground">
               <span>{formatCurrency(totalRevenue)}</span>
-              <span>Meta: {formatCurrency(150000)}</span>
+              <span>Meta: {formatCurrency(salesGoal)}</span>
             </div>
           </div>
         </PremiumCard>
