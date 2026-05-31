@@ -825,41 +825,39 @@ const Tarefas = () => {
                                 </div>
 
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                    {Array.from(new Set(
-                                        serviceOrders
-                                            .filter(o => o.status !== "Entregue e Finalizado")
-                                            .map(o => o.client)
-                                            .filter(Boolean)
-                                    )).map((proj: any) => {
-                                        const isSelected = plannerFocusProjects.includes(proj);
-                                        return (
-                                            <button
-                                                key={proj}
-                                                type="button"
-                                                onClick={() => {
-                                                    if (isSelected) {
-                                                        setPlannerFocusProjects(plannerFocusProjects.filter(p => p !== proj));
-                                                    } else {
-                                                        setPlannerFocusProjects([...plannerFocusProjects, proj]);
-                                                    }
-                                                }}
-                                                className={cn(
-                                                    "p-4 rounded-2xl border text-left transition-all duration-300 font-bold text-xs uppercase tracking-wider flex items-center justify-between",
-                                                    isSelected 
-                                                        ? "bg-amber-500/10 border-amber-500 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
-                                                        : "bg-white/[0.02] border-white/10 hover:bg-white/[0.05] text-white/70"
-                                                )}
-                                            >
-                                                <span className="truncate mr-2">{proj}</span>
-                                                <div className={cn(
-                                                    "h-4 w-4 rounded-full border flex items-center justify-center shrink-0",
-                                                    isSelected ? "border-amber-500 bg-amber-500 text-black" : "border-white/30"
-                                                )}>
-                                                    {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
+                                    {serviceOrders
+                                        .filter(o => o.status !== "Entregue e Finalizado" && o.client)
+                                        .map((order: any) => {
+                                            const projLabel = `${order.ticket_number || "S/N"} - ${order.client}`;
+                                            const isSelected = plannerFocusProjects.includes(projLabel);
+                                            return (
+                                                <button
+                                                    key={order.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (isSelected) {
+                                                            setPlannerFocusProjects(plannerFocusProjects.filter(p => p !== projLabel));
+                                                        } else {
+                                                            setPlannerFocusProjects([...plannerFocusProjects, projLabel]);
+                                                        }
+                                                    }}
+                                                    className={cn(
+                                                        "p-4 rounded-2xl border text-left transition-all duration-300 font-bold text-xs uppercase tracking-wider flex items-center justify-between",
+                                                        isSelected 
+                                                            ? "bg-amber-500/10 border-amber-500 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+                                                            : "bg-white/[0.02] border-white/10 hover:bg-white/[0.05] text-white/70"
+                                                    )}
+                                                >
+                                                    <span className="truncate mr-2">{projLabel}</span>
+                                                    <div className={cn(
+                                                        "h-4 w-4 rounded-full border flex items-center justify-center shrink-0",
+                                                        isSelected ? "border-amber-500 bg-amber-500 text-black" : "border-white/30"
+                                                    )}>
+                                                        {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
                                 </div>
 
                                 <div className="space-y-2 pt-3 border-t border-white/5">
@@ -1331,10 +1329,15 @@ const TaskCard = ({ title, tasks, serviceOrders, defaultDueDate, currentUserId, 
         return diffDays;
     };
 
-    const projName = tasks[0]?.project_name || projectName;
-    const matchingOS = serviceOrders.find(
-        o => o.client?.trim().toLowerCase() === projName?.trim().toLowerCase()
-    );
+    const projName = (tasks[0]?.project_name || projectName || "").trim().toLowerCase();
+    const matchingOS = serviceOrders.find(o => {
+        const clientName = (o.client || "").trim().toLowerCase();
+        const ticketNum = (o.ticket_number || "").trim().toLowerCase();
+        
+        if (clientName === projName) return true;
+        if (ticketNum && projName.includes(ticketNum)) return true;
+        return false;
+    });
 
     let deadlineBadge = null;
     if (matchingOS) {

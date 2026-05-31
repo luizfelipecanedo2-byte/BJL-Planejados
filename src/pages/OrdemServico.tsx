@@ -753,7 +753,15 @@ const OrdemServico = () => {
                                         key={order.id}
                                         order={order}
                                         index={index}
-                                        tasks={tasks.filter(t => t.project_name?.trim().toLowerCase() === order.client?.trim().toLowerCase())}
+                                        tasks={tasks.filter(t => {
+                                            const projName = t.project_name?.trim().toLowerCase() || "";
+                                            const clientName = order.client?.trim().toLowerCase() || "";
+                                            const ticketNum = order.ticketNumber?.trim().toLowerCase() || "";
+                                            
+                                            if (projName === clientName) return true;
+                                            if (ticketNum && projName.includes(ticketNum)) return true;
+                                            return false;
+                                        })}
                                         onEdit={handleEditOrder}
                                         onNotify={handleNotifyClient}
                                         onUpdate={handleUpdate}
