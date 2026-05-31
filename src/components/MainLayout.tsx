@@ -18,7 +18,8 @@ import {
     Settings,
     ChevronLeft,
     ChevronRight,
-    AlertTriangle
+    AlertTriangle,
+    Palette
 } from "lucide-react";
 
 import { useState, useEffect } from "react";
@@ -46,6 +47,7 @@ const MainLayout = () => {
     const [currentTheme, setCurrentTheme] = useState<string>(() => {
         return localStorage.getItem("appTheme") || "theme-gold";
     });
+    const [isThemePanelOpen, setIsThemePanelOpen] = useState(false);
 
     useEffect(() => {
         const themes = ["theme-gold", "theme-emerald", "theme-sapphire", "theme-amethyst"];
@@ -158,6 +160,12 @@ const MainLayout = () => {
         <div className="min-h-[100dvh] bg-background/50 flex pb-[72px] lg:pb-0 overflow-hidden">
             <CommandMenu />
             <div className="aurora-bg" />
+            {/* Mesh Gradient Background (Fundo Dinâmico Animado de Última Geração) */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 select-none">
+                <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-[radial-gradient(circle,hsl(var(--mesh-color-1)/0.08)_0%,transparent_70%)] animate-[float-slow_25s_infinite_alternate]" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-[radial-gradient(circle,hsl(var(--mesh-color-2)/0.06)_0%,transparent_70%)] animate-[float-medium_20s_infinite_alternate]" />
+                <div className="absolute top-[30%] right-[20%] w-[40vw] h-[40vw] rounded-full bg-[radial-gradient(circle,hsl(var(--mesh-color-1)/0.05)_0%,transparent_70%)] animate-[float-reverse_30s_infinite_alternate]" />
+            </div>
 
             <aside className={cn(
                 "hidden lg:flex fixed lg:static inset-y-0 left-0 z-50 glass-card border-r border-white/5 shadow-2xl flex-col transition-all duration-500",
@@ -319,41 +327,20 @@ const MainLayout = () => {
                         </div>
                         
                         <div className="flex items-center gap-2">
-                             {/* Seletor de Temas Premium */}
-                             <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-2xl border border-white/5 shadow-inner mr-2">
-                                 <button
-                                     onClick={() => setCurrentTheme("theme-gold")}
-                                     className={cn(
-                                         "w-4 h-4 rounded-full bg-amber-500 border transition-all duration-300",
-                                         currentTheme === "theme-gold" ? "scale-110 border-white shadow-[0_0_8px_rgba(245,158,11,0.6)]" : "border-transparent hover:scale-110"
-                                     )}
-                                     title="Champagne Gold"
-                                 />
-                                 <button
-                                     onClick={() => setCurrentTheme("theme-emerald")}
-                                     className={cn(
-                                         "w-4 h-4 rounded-full bg-emerald-500 border transition-all duration-300",
-                                         currentTheme === "theme-emerald" ? "scale-110 border-white shadow-[0_0_8px_rgba(16,185,129,0.6)]" : "border-transparent hover:scale-110"
-                                     )}
-                                     title="Emerald Oasis"
-                                 />
-                                 <button
-                                     onClick={() => setCurrentTheme("theme-sapphire")}
-                                     className={cn(
-                                         "w-4 h-4 rounded-full bg-blue-500 border transition-all duration-300",
-                                         currentTheme === "theme-sapphire" ? "scale-110 border-white shadow-[0_0_8px_rgba(59,130,246,0.6)]" : "border-transparent hover:scale-110"
-                                     )}
-                                     title="Midnight Sapphire"
-                                 />
-                                 <button
-                                     onClick={() => setCurrentTheme("theme-amethyst")}
-                                     className={cn(
-                                         "w-4 h-4 rounded-full bg-purple-500 border transition-all duration-300",
-                                         currentTheme === "theme-amethyst" ? "scale-110 border-white shadow-[0_0_8px_rgba(168,85,247,0.6)]" : "border-transparent hover:scale-110"
-                                     )}
-                                     title="Cyberpunk Amethyst"
-                                 />
-                             </div>
+                             {/* Botão do Customizador de Temas Premium */}
+                             <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 onClick={() => setIsThemePanelOpen(true)}
+                                 className="text-muted-foreground hover:text-primary rounded-xl transition-all mr-1 relative group"
+                                 title="Personalizar Tema"
+                             >
+                                 <Palette className="h-5 w-5 group-hover:rotate-12 transition-transform duration-300" />
+                                 <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                 </span>
+                             </Button>
                              <NotificationBell />
                              <Button
                                 variant="ghost"
@@ -436,6 +423,139 @@ const MainLayout = () => {
                     </Link>
                 ))}
             </nav>
+
+            {/* Painel Lateral de Personalização de Temas */}
+            <AnimatePresence>
+                {isThemePanelOpen && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsThemePanelOpen(false)}
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 cursor-pointer"
+                        />
+                        {/* Panel */}
+                        <motion.div
+                            initial={{ x: "100%" }}
+                            animate={{ x: 0 }}
+                            exit={{ x: "100%" }}
+                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                            className="fixed right-0 top-0 bottom-0 w-80 bg-background/95 backdrop-blur-2xl border-l border-white/10 z-50 p-6 shadow-2xl flex flex-col justify-between"
+                        >
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center pb-4 border-b border-white/5">
+                                    <div className="flex items-center gap-2">
+                                        <Palette className="h-5 w-5 text-primary" />
+                                        <h3 className="font-black text-sm uppercase tracking-wider text-white">Customizador de Tema</h3>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setIsThemePanelOpen(false)}
+                                        className="h-8 w-8 rounded-full border border-white/5 hover:bg-white/5"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Selecione uma Paleta de Cores</p>
+                                    
+                                    <div className="grid grid-cols-1 gap-3">
+                                        {/* Classic Obsidian Card */}
+                                        <button
+                                            onClick={() => setCurrentTheme("theme-gold")}
+                                            className={cn(
+                                                "w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group",
+                                                currentTheme === "theme-gold" 
+                                                    ? "bg-amber-500/10 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.15)]" 
+                                                    : "bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/10"
+                                            )}
+                                        >
+                                            <div className="space-y-1">
+                                                <span className="font-bold text-xs text-white block group-hover:text-primary transition-colors">Classic Obsidian</span>
+                                                <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Escuro de Luxo & Ouro</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <div className="w-3.5 h-3.5 rounded-full bg-[#111111] border border-white/10" />
+                                                <div className="w-3.5 h-3.5 rounded-full bg-amber-500" />
+                                            </div>
+                                        </button>
+
+                                        {/* Nordic Frost Card */}
+                                        <button
+                                            onClick={() => setCurrentTheme("theme-emerald")}
+                                            className={cn(
+                                                "w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group",
+                                                currentTheme === "theme-emerald" 
+                                                    ? "bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]" 
+                                                    : "bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/10"
+                                            )}
+                                        >
+                                            <div className="space-y-1">
+                                                <span className="font-bold text-xs text-white block group-hover:text-primary transition-colors">Nordic Frost</span>
+                                                <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Claro Gelado & Esmeralda</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <div className="w-3.5 h-3.5 rounded-full bg-[#f9fafb] border border-black/10" />
+                                                <div className="w-3.5 h-3.5 rounded-full bg-emerald-500" />
+                                            </div>
+                                        </button>
+
+                                        {/* Midnight Navy Card */}
+                                        <button
+                                            onClick={() => setCurrentTheme("theme-sapphire")}
+                                            className={cn(
+                                                "w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group",
+                                                currentTheme === "theme-sapphire" 
+                                                    ? "bg-blue-500/10 border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.15)]" 
+                                                    : "bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/10"
+                                            )}
+                                        >
+                                            <div className="space-y-1">
+                                                <span className="font-bold text-xs text-white block group-hover:text-primary transition-colors">Midnight Navy</span>
+                                                <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Azul Escuro & Safira</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <div className="w-3.5 h-3.5 rounded-full bg-[#0a0f1d] border border-white/10" />
+                                                <div className="w-3.5 h-3.5 rounded-full bg-blue-500" />
+                                            </div>
+                                        </button>
+
+                                        {/* Cyberpunk Neo Card */}
+                                        <button
+                                            onClick={() => setCurrentTheme("theme-amethyst")}
+                                            className={cn(
+                                                "w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group",
+                                                currentTheme === "theme-amethyst" 
+                                                    ? "bg-purple-500/10 border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.15)]" 
+                                                    : "bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/10"
+                                            )}
+                                        >
+                                            <div className="space-y-1">
+                                                <span className="font-bold text-xs text-white block group-hover:text-primary transition-colors">Cyberpunk Neo</span>
+                                                <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Púrpura Profundo & Ametista</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <div className="w-3.5 h-3.5 rounded-full bg-[#07020d] border border-white/10" />
+                                                <div className="w-3.5 h-3.5 rounded-full bg-purple-500" />
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-white/5 pt-4 text-center">
+                                <p className="text-[8px] font-black uppercase text-muted-foreground tracking-[0.2em] leading-normal">
+                                    BJL PLANEJADOS • LUXO & TECNOLOGIA<br />DESIGN SISTEMA V1.2
+                                </p>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

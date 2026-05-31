@@ -437,7 +437,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
         {/* Painel de Boas-Vindas Premium */}
         <PremiumCard className="relative overflow-hidden p-8 border-none bg-gradient-to-r from-primary/10 via-primary/5 to-transparent flex flex-col md:flex-row justify-between items-center gap-6 rounded-3xl luxury-shadow">
           <div className="space-y-2 text-center md:text-left">
-            <h2 className="text-3xl font-black text-white tracking-tight">
+            <h2 className="text-3xl font-black text-foreground tracking-tight">
               {greeting}, <span className="shimmer-gold">{userName}</span>!
             </h2>
             <p className="text-sm text-muted-foreground max-w-md">

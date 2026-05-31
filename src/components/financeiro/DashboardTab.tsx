@@ -248,7 +248,7 @@ const DashboardTab = ({
                                 <SelectTrigger className="w-[70px] h-5 text-[9px] bg-white/5 border-white/10 uppercase font-black py-0 px-2 rounded-lg">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-[#111111] border-white/10">
+                                <SelectContent className="bg-card border-white/10">
                                     <SelectItem value="2024">2024</SelectItem>
                                     <SelectItem value="2025">2025</SelectItem>
                                     <SelectItem value="2026">2026</SelectItem>
@@ -262,7 +262,7 @@ const DashboardTab = ({
                 <div className="md:col-span-9 grid grid-cols-2 lg:grid-cols-5 gap-3">
                     <PremiumCard className="p-3 h-16 flex flex-col justify-center border-t-2 border-cyan-400 luxury-shadow rounded-2xl" animate={false}>
                         <span className="text-[10px] font-bold text-cyan-400 uppercase">A receber</span>
-                        <span className="text-lg font-black text-white">
+                        <span className="text-lg font-black text-foreground">
                             <AnimatedCounter value={currentSummary.accountsReceivable} formatter={formatCurrency} />
                         </span>
                     </PremiumCard>
@@ -275,17 +275,17 @@ const DashboardTab = ({
                     </PremiumCard>
                     <PremiumCard className="p-3 h-16 flex flex-col justify-center border-t-2 border-rose-500 luxury-shadow rounded-2xl bg-rose-500/5 border-rose-500/20" animate={false}>
                         <span className="text-[10px] font-bold text-rose-500 uppercase">A pagar</span>
-                        <span className="text-lg font-black text-white">{formatCurrency(currentSummary.accountsPayable)}</span>
+                        <span className="text-lg font-black text-foreground">{formatCurrency(currentSummary.accountsPayable)}</span>
                     </PremiumCard>
                     <PremiumCard className="p-3 h-16 flex flex-col justify-center border-t-2 border-orange-500 luxury-shadow rounded-2xl bg-orange-500/5 border-orange-500/20" animate={false}>
                         <span className="text-[10px] font-bold text-orange-500 uppercase">Vencidos</span>
-                        <span className="text-lg font-black text-white">
+                        <span className="text-lg font-black text-foreground">
                             <AnimatedCounter value={currentSummary.inadimplenciaTotal} formatter={formatCurrency} />
                         </span>
                     </PremiumCard>
                     <PremiumCard className="p-3 h-16 flex flex-col justify-center border-t-2 border-emerald-500 luxury-shadow rounded-2xl bg-emerald-500/5 border-emerald-500/20" animate={false}>
                         <span className="text-[10px] font-bold text-emerald-500 uppercase">Saldo Projetado</span>
-                        <span className="text-lg font-black text-white">
+                        <span className="text-lg font-black text-foreground">
                             <AnimatedCounter value={currentSummary.projectedBalance} formatter={formatCurrency} />
                         </span>
                     </PremiumCard>
@@ -295,7 +295,7 @@ const DashboardTab = ({
             {/* Painel de Boas-Vindas Premium */}
             <PremiumCard className="relative overflow-hidden p-8 border-none bg-gradient-to-r from-primary/10 via-primary/5 to-transparent flex flex-col md:flex-row justify-between items-center gap-6 rounded-3xl luxury-shadow my-4" delay={0.1}>
                 <div className="space-y-2 text-center md:text-left">
-                    <h2 className="text-3xl font-black text-white tracking-tight">
+                    <h2 className="text-3xl font-black text-foreground tracking-tight">
                         {greeting}, <span className="shimmer-gold">{userName}</span>!
                     </h2>
                     <p className="text-sm text-muted-foreground max-w-md">
@@ -324,7 +324,7 @@ const DashboardTab = ({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
                 {/* 1. ANÁLISE DO MÊS */}
-                <Card className="lg:col-span-3 bg-[#111111] border-none p-4 rounded-2xl relative overflow-hidden">
+                <Card className="lg:col-span-3 glass-card p-4 rounded-2xl relative overflow-hidden">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest">
                             {selectedDashMonth === 'anual' ? 'Análise do Ano' : 'Análise do Mês'}
@@ -333,7 +333,7 @@ const DashboardTab = ({
                             <SelectTrigger className="w-[80px] h-7 text-[10px] bg-black/40 border-white/10 uppercase font-black">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-[#111111] border-white/10">
+                            <SelectContent className="bg-card border-white/10">
                                 <SelectItem value="anual">ANUAL</SelectItem>
                                 {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"].map((m, i) => (
                                     <SelectItem key={m} value={String(i)}>{m.toUpperCase()}</SelectItem>
@@ -430,7 +430,7 @@ const DashboardTab = ({
                 </PremiumCard>
 
                 {/* 3. EVOLUÇÃO CAIXA INICIAL (Horizontal Bar Chart) */}
-                <Card className="lg:col-span-3 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden">
+                <Card className="lg:col-span-3 glass-card p-4 rounded-2xl overflow-hidden">
                     <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-4">Evolução Caixa Inicial</h3>
                     <div className="h-[320px] w-full overflow-y-auto pr-2">
                         {initialCashData.slice(0, 12).reverse().map((item, idx) => (
@@ -455,7 +455,7 @@ const DashboardTab = ({
                 <div className="md:col-span-3 bg-primary/10 rounded-2xl flex items-center p-4 border border-primary/20">
                     <h2 className="text-xs font-black uppercase text-primary tracking-widest leading-tight">Visão Econômica<br />do Negócio</h2>
                 </div>
-                <Card className="md:col-span-3 bg-[#111111] border-none p-4 flex flex-col justify-center">
+                <Card className="md:col-span-3 glass-card p-4 flex flex-col justify-center">
                     <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">
                         Receita Bruta <GrowthIndicator value={calculateGrowth(currentSummary.receitaBrutaMes, previousSummary?.receitaBrutaMes || 0)} />
                     </p>
@@ -492,7 +492,7 @@ const DashboardTab = ({
                     {upcomingTransactions.slice(0, 5).map((t, idx) => (
                         <Card
                             key={t.id || idx}
-                            className="bg-[#111111] border-none p-3 hover:bg-[#1a1a1a] transition-all cursor-pointer group relative overflow-hidden"
+                            className="glass-card p-3 hover:bg-white/5 transition-all cursor-pointer group relative overflow-hidden"
                             onClick={() => handleEditTransaction?.(t)}
                         >
                             <div className={`absolute left-0 top-0 h-full w-1 ${t.type === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
@@ -510,7 +510,7 @@ const DashboardTab = ({
                         </Card>
                     ))}
                     {upcomingTransactions.length === 0 && (
-                        <div className="col-span-1 md:col-span-5 bg-[#111111] border-none p-6 rounded-2xl text-center text-muted-foreground text-[10px] font-bold uppercase tracking-widest border border-dashed border-white/5">
+                        <div className="col-span-1 md:col-span-5 glass-card p-6 rounded-2xl text-center text-muted-foreground text-[10px] font-bold uppercase tracking-widest border border-dashed border-white/5">
                             Nenhum compromisso pendente para os próximos dias.
                         </div>
                     )}
@@ -520,7 +520,7 @@ const DashboardTab = ({
             {/* NOVO BLOCO: FLUXO DE CAIXA DIÁRIO, TICKET MÉDIO E TERMÔMETRO DE META */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* 1. FLUXO DE CAIXA DIÁRIO (Próximos 15 dias) */}
-                <Card className="lg:col-span-6 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden flex flex-col justify-between">
+                <Card className="lg:col-span-6 glass-card p-4 rounded-2xl overflow-hidden flex flex-col justify-between">
                     <div>
                         <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-4">
                             Fluxo de Caixa Diário (Próximos 15 dias)
@@ -554,7 +554,7 @@ const DashboardTab = ({
                 </Card>
 
                 {/* 2. EVOLUÇÃO DO TICKET MÉDIO */}
-                <Card className="lg:col-span-3 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden flex flex-col justify-between">
+                <Card className="lg:col-span-3 glass-card p-4 rounded-2xl overflow-hidden flex flex-col justify-between">
                     <div>
                         <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-4">
                             Ticket Médio ({selectedYear})
@@ -586,7 +586,7 @@ const DashboardTab = ({
                 </Card>
 
                 {/* 3. TERMÔMETRO DE META */}
-                <Card className="lg:col-span-3 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden flex flex-col justify-between">
+                <Card className="lg:col-span-3 glass-card p-4 rounded-2xl overflow-hidden flex flex-col justify-between">
                     <div>
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest">
@@ -678,7 +678,7 @@ const DashboardTab = ({
 
             {/* BOTTOM CHARTS AND CATEGORIES */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl flex flex-col">
+                <Card className="glass-card p-4 rounded-2xl flex flex-col">
                     <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Gastos por Categoria</h3>
                     <div className="h-[250px] w-full flex-1">
                         <ResponsiveContainer width="100%" height="100%">
@@ -704,7 +704,7 @@ const DashboardTab = ({
                     </div>
                 </Card>
 
-                <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl flex flex-col">
+                <Card className="glass-card p-4 rounded-2xl flex flex-col">
                     <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Top 5 Clientes</h3>
                     <div className="flex-1 space-y-4 overflow-y-auto pr-1">
                         {topClients?.map((client, idx) => (
