@@ -326,8 +326,10 @@ const MainLayout = () => {
                                 <LogOut className="h-5 w-5" />
                             </Button>
                         </div>
+                    </div>
+                </header>
 
-                                 <main className="flex-1 p-4 md:p-8 lg:p-10 overflow-y-auto overflow-x-hidden relative">
+                <main className="flex-1 p-4 md:p-8 lg:p-10 overflow-y-auto overflow-x-hidden relative">
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 select-none overflow-hidden">
                         <div className="relative w-full h-full flex items-center justify-center opacity-[0.03]">
                              <div className="absolute rotate-[-15deg] scale-[3] blur-[2px]">
