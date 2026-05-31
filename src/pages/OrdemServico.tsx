@@ -49,6 +49,7 @@ const OrdemServico = () => {
     );
     const { settings } = useCompanySettings();
     const [orders, setOrders] = useState<ServiceOrder[]>([]);
+    const [tasks, setTasks] = useState<any[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
@@ -103,6 +104,18 @@ const OrdemServico = () => {
             // Mostra o que já tem
             setOrders(mappedOrders);
             setIsLoading(false);
+
+            // Fetch tasks to calculate environment progress
+            try {
+                const { data: tasksData, error: tasksError } = await supabase
+                    .from('tasks')
+                    .select('*');
+                if (!tasksError && tasksData) {
+                    setTasks(tasksData);
+                }
+            } catch (err) {
+                console.warn("Erro ao buscar tarefas na OS:", err);
+            }
 
             // Passo 2: Tenta buscar as horas separadamente
             try {
@@ -424,6 +437,30 @@ const OrdemServico = () => {
     const inProgress = orders.filter(o => inProgressStatuses.includes(o.status)).length;
     const defining = orders.filter(o => o.status === "A Definir").length;
     const totalValueActive = orders.filter(o => inProgressStatuses.includes(o.status)).reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    const getDaysRemaining = (forecastDate: Date) => {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const forecast = new Date(forecastDate);
+        forecast.setHours(0,0,0,0);
+        const diffTime = forecast.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    };
+
+    const activeTasks = tasks.filter(t => t.status === 'pending');
+    const uniquePendingEnvironments = new Set(
+        activeTasks
+            .filter(t => t.project_name && t.environment_name)
+            .map(t => `${t.project_name.trim().toLowerCase()} - ${t.environment_name.trim().toLowerCase()}`)
+    );
+    const pendingEnvironmentsCount = uniquePendingEnvironments.size;
+
+    const criticalDeliveriesCount = orders.filter(o => {
+        if (o.status === "Entregue e Finalizado" || o.status === "A Definir") return false;
+        const days = getDaysRemaining(o.forecastDate);
+        return days <= 7;
+    }).length;
+
     const completedThisMonth = orders.filter(o => {
         const isClosed = o.status === "Entregue e Finalizado";
         const date = o.completionDate || o.openDate;
@@ -511,8 +548,8 @@ const OrdemServico = () => {
             </div>
 
             {/* OS HUD */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card border-beam-card">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-blue-500">
                             <Settings2 className="h-32 w-32" />
@@ -527,7 +564,7 @@ const OrdemServico = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card border-beam-card">
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
                             <RefreshCw className="h-32 w-32" />
@@ -542,7 +579,7 @@ const OrdemServico = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card border-beam-card">
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
                             <DollarSign className="h-32 w-32" />
@@ -556,7 +593,7 @@ const OrdemServico = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card border-beam-card">
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-emerald-500">
                             <CheckCircle className="h-32 w-32" />
@@ -566,6 +603,36 @@ const OrdemServico = () => {
                             <h3 className="text-3xl font-black text-emerald-500 tracking-tighter">
                                 <AnimatedCounter value={completedThisMonth} />
                                 <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Finalizadas</span>
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-orange-500">
+                            <Hammer className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Ambientes Ativos</p>
+                            <h3 className="text-3xl font-black text-orange-500 tracking-tighter">
+                                <AnimatedCounter value={pendingEnvironmentsCount} />
+                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Cômodos</span>
+                            </h3>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                    <CardContent className="p-6 flex items-center justify-between relative">
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-rose-500">
+                            <AlertCircle className="h-32 w-32" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Entregas Críticas</p>
+                            <h3 className="text-3xl font-black text-rose-500 tracking-tighter">
+                                <AnimatedCounter value={criticalDeliveriesCount} />
+                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">7 dias</span>
                             </h3>
                         </div>
                     </CardContent>
@@ -665,6 +732,7 @@ const OrdemServico = () => {
                                         key={order.id}
                                         order={order}
                                         index={index}
+                                        tasks={tasks.filter(t => t.project_name?.trim().toLowerCase() === order.client?.trim().toLowerCase())}
                                         onEdit={handleEditOrder}
                                         onNotify={handleNotifyClient}
                                         onUpdate={handleUpdate}
@@ -746,10 +814,10 @@ const OrdemServico = () => {
 
 export default OrdemServico;
 
-// Componente Interno para Itens Arrastáveis
 interface SortableItemProps {
     order: ServiceOrder;
     index: number;
+    tasks: any[];
     onEdit: (order: ServiceOrder) => void;
     onNotify: (order: ServiceOrder) => void;
     onUpdate: (id: string, updates: Partial<ServiceOrder>) => void;
@@ -760,6 +828,7 @@ interface SortableItemProps {
 const SortableServiceOrderCard = ({ 
     order, 
     index, 
+    tasks,
     onEdit, 
     onNotify,
     onUpdate, 
@@ -783,6 +852,84 @@ const SortableServiceOrderCard = ({
     };
 
     const isUrgent = order.priorityLevel === 'urgente';
+
+    // Group tasks by environment to show room-by-room progress
+    const environmentProgress = React.useMemo(() => {
+        if (!tasks || tasks.length === 0) return [];
+        
+        const envGroups: { [key: string]: { total: number; completed: number } } = {};
+        
+        tasks.forEach(t => {
+            const env = (t.environment_name || "Geral").trim();
+            if (!envGroups[env]) {
+                envGroups[env] = { total: 0, completed: 0 };
+            }
+            envGroups[env].total += 1;
+            if (t.status === 'completed') {
+                envGroups[env].completed += 1;
+            }
+        });
+        
+        return Object.entries(envGroups).map(([name, stats]) => ({
+            name,
+            total: stats.total,
+            completed: stats.completed,
+            percentage: Math.round((stats.completed / stats.total) * 100),
+            isDone: stats.completed === stats.total
+        }));
+    }, [tasks]);
+
+    // Deadline Countdown calculation
+    const getDaysRemaining = (forecastDate: Date) => {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const forecast = new Date(forecastDate);
+        forecast.setHours(0,0,0,0);
+        const diffTime = forecast.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    };
+
+    const daysRemaining = getDaysRemaining(order.forecastDate);
+    const isFinished = order.status === "Entregue e Finalizado";
+
+    let deadlineBadge = null;
+    if (isFinished) {
+        deadlineBadge = (
+            <span className="text-[9px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Entrega Concluída
+            </span>
+        );
+    } else if (daysRemaining < 0) {
+        deadlineBadge = (
+            <span className="text-[9px] font-black uppercase tracking-wider text-rose-400 bg-rose-500/15 px-2.5 py-1 rounded-full border border-rose-500/30 flex items-center gap-1 animate-pulse">
+                <AlertCircle className="h-3 w-3" />
+                Atrasado há {Math.abs(daysRemaining)} {Math.abs(daysRemaining) === 1 ? 'dia' : 'dias'}
+            </span>
+        );
+    } else if (daysRemaining <= 3) {
+        deadlineBadge = (
+            <span className="text-[9px] font-black uppercase tracking-wider text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20 flex items-center gap-1 animate-pulse">
+                <AlertCircle className="h-3 w-3" />
+                Crítico: {daysRemaining} {daysRemaining === 1 ? 'dia' : 'dias'}
+            </span>
+        );
+    } else if (daysRemaining <= 7) {
+        deadlineBadge = (
+            <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Atenção: {daysRemaining}d
+            </span>
+        );
+    } else {
+        deadlineBadge = (
+            <span className="text-[9px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                <CalendarDays className="h-3 w-3" />
+                Prazo: {daysRemaining}d
+            </span>
+        );
+    }
 
     return (
         <div ref={setNodeRef} style={style}>
@@ -814,10 +961,10 @@ const SortableServiceOrderCard = ({
 
                     <div className="flex-1 p-4">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                                     <Select value={order.status} onValueChange={(val) => onUpdate(order.id, { status: val as any })}>
-                                        <SelectTrigger className={cn("h-6 border-none shadow-none text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full", getStatusColor(order.status), "text-white")}>
+                                        <SelectTrigger className={cn("h-6 border-none shadow-none text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full w-auto gap-1", getStatusColor(order.status), "text-white")}>
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="bg-slate-900 border-white/10 text-[10px] uppercase font-bold">
@@ -838,28 +985,54 @@ const SortableServiceOrderCard = ({
                                     <span className={cn("text-[8px] font-black uppercase tracking-wider", isUrgent ? "text-rose-500" : "text-slate-400")}>
                                         Prioridade: {order.priorityLevel || 'normal'}
                                     </span>
-                                    <span className="text-[8px] font-black uppercase tracking-wider text-primary/80 flex items-center gap-1 ml-2">
-                                        <CalendarDays className="h-2 w-2" />
-                                        Previsão: {order.forecastDate.toLocaleDateString()}
-                                    </span>
+                                    
+                                    {deadlineBadge}
                                 </div>
-                                <h4 className="text-lg font-black tracking-tight text-white uppercase group-hover:text-primary transition-colors">
+                                <h4 className="text-lg font-black tracking-tight text-white uppercase group-hover:text-primary transition-colors truncate">
                                     {order.client}
                                 </h4>
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
                                     {order.ticketNumber} - {order.action}
                                 </p>
                                 
                                 {/* Barra de Progresso compacta no fundo */}
-                                <div className="mt-4 w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
                                     <div 
                                         className={cn("h-full transition-all duration-1000", order.status === "Entregue e Finalizado" ? "bg-white" : getStatusColor(order.status))}
                                         style={{ width: `${getStatusProgress(order.status)}%` }}
                                     />
                                 </div>
+
+                                {/* Lista de Ambientes e seu progresso */}
+                                {environmentProgress.length > 0 && (
+                                    <div className="mt-4 pt-3 border-t border-white/5 space-y-2.5">
+                                        <div className="text-[8px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">Ambientes do Projeto</div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {environmentProgress.map(env => (
+                                                <div key={env.name} className="bg-white/[0.01] border border-white/5 p-2 rounded-xl flex flex-col gap-1 transition-colors hover:bg-white/[0.03]">
+                                                    <div className="flex justify-between items-center gap-2">
+                                                        <span className="text-[10px] font-black text-white/80 uppercase truncate flex-1">{env.name}</span>
+                                                        <span className={cn(
+                                                            "text-[9px] font-black tracking-tight shrink-0",
+                                                            env.isDone ? "text-emerald-400" : "text-primary/70"
+                                                        )}>
+                                                            {env.completed}/{env.total}
+                                                        </span>
+                                                    </div>
+                                                    <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                                        <div 
+                                                            className={cn("h-full transition-all duration-500", env.isDone ? "bg-emerald-500" : "bg-primary")}
+                                                            style={{ width: `${env.percentage}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 shrink-0 self-center">
                                 {order.clientPhone && (
                                     <Button 
                                         variant="default" 

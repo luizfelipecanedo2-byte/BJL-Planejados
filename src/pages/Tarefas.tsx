@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send, Pencil } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send, Pencil, AlertCircle } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -70,6 +70,7 @@ const checkTaskVisibility = (dueDate: string, status: string, activeView: string
 
 const Tarefas = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [serviceOrders, setServiceOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -118,11 +119,24 @@ const Tarefas = () => {
                 }
             }
 
-            await Promise.all([fetchTasks(), fetchProfiles()]);
+            await Promise.all([fetchTasks(), fetchProfiles(), fetchServiceOrders()]);
         } catch (error) {
             console.error("Error fetching initial data:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchServiceOrders = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('service_orders')
+                .select('*');
+            if (!error && data) {
+                setServiceOrders(data);
+            }
+        } catch (err) {
+            console.warn("Erro ao buscar ordens de serviço:", err);
         }
     };
 
@@ -138,6 +152,9 @@ const Tarefas = () => {
             toast.error("Erro ao carregar tarefas");
             return;
         }
+
+        // Também busca as ordens de serviço para manter prazos atualizados
+        fetchServiceOrders();
 
         const today = format(new Date(), "yyyy-MM-dd");
         const tasksToUpdate = (data || []).filter(t => t.status === 'pending' && t.due_date < today);
@@ -521,6 +538,7 @@ const Tarefas = () => {
                                 key={key} 
                                 title={key} 
                                 tasks={tasks} 
+                                serviceOrders={serviceOrders}
                                 defaultDueDate={defaultDueDate}
                                 currentUserId={currentUserId}
                                 activeView={activeView}
@@ -698,6 +716,7 @@ const SortableTaskItem = ({ task, isAdmin, onEdit, onToggleStatus, onDelete }: S
 interface TaskCardProps {
     title: string;
     tasks: Task[];
+    serviceOrders: any[];
     defaultDueDate: string;
     currentUserId: string | null;
     activeView: string;
@@ -708,7 +727,7 @@ interface TaskCardProps {
     onDelete: (id: string) => void;
 }
 
-const TaskCard = ({ title, tasks, defaultDueDate, currentUserId, activeView, isAdmin, onUpdate, onEdit, onToggleStatus, onDelete }: TaskCardProps) => {
+const TaskCard = ({ title, tasks, serviceOrders, defaultDueDate, currentUserId, activeView, isAdmin, onUpdate, onEdit, onToggleStatus, onDelete }: TaskCardProps) => {
     const [showCompleted, setShowCompleted] = useState(false);
     
     // Spotlight effect logic
@@ -726,6 +745,76 @@ const TaskCard = ({ title, tasks, defaultDueDate, currentUserId, activeView, isA
     );
     const completedTasks = tasks.filter(t => t.status === 'completed');
     const [projectName, environmentName] = title.split(' - ');
+
+    const parseDate = (dateStr: any) => {
+        if (!dateStr) return new Date();
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) {
+            const d2 = new Date(dateStr + (dateStr.includes('T') ? '' : 'T12:00:00'));
+            return isNaN(d2.getTime()) ? new Date() : d2;
+        }
+        return d;
+    };
+
+    const getDaysRemaining = (forecastDateStr: string) => {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const forecast = parseDate(forecastDateStr);
+        forecast.setHours(0,0,0,0);
+        const diffTime = forecast.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    };
+
+    const projName = tasks[0]?.project_name || projectName;
+    const matchingOS = serviceOrders.find(
+        o => o.client?.trim().toLowerCase() === projName?.trim().toLowerCase()
+    );
+
+    let deadlineBadge = null;
+    if (matchingOS) {
+        const isFinished = matchingOS.status === "Entregue e Finalizado";
+        const daysRemaining = matchingOS.forecast_date ? getDaysRemaining(matchingOS.forecast_date) : null;
+
+        if (isFinished) {
+            deadlineBadge = (
+                <span className="text-[9px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1 shrink-0">
+                    <CheckCircle2 className="h-2.5 w-2.5" />
+                    Entregue
+                </span>
+            );
+        } else if (daysRemaining !== null) {
+            if (daysRemaining < 0) {
+                deadlineBadge = (
+                    <span className="text-[9px] font-black uppercase tracking-wider text-rose-400 bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-500/30 flex items-center gap-1 animate-pulse shrink-0">
+                        <AlertCircle className="h-2.5 w-2.5" />
+                        Atrasado {Math.abs(daysRemaining)}d
+                    </span>
+                );
+            } else if (daysRemaining <= 3) {
+                deadlineBadge = (
+                    <span className="text-[9px] font-black uppercase tracking-wider text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20 flex items-center gap-1 animate-pulse shrink-0">
+                        <AlertCircle className="h-2.5 w-2.5" />
+                        Crítico: {daysRemaining}d
+                    </span>
+                );
+            } else if (daysRemaining <= 7) {
+                deadlineBadge = (
+                    <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1 shrink-0">
+                        <AlertCircle className="h-2.5 w-2.5" />
+                        Atenção: {daysRemaining}d
+                    </span>
+                );
+            } else {
+                deadlineBadge = (
+                    <span className="text-[9px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1 shrink-0">
+                        <CalendarIcon className="h-2.5 w-2.5" />
+                        Prazo: {daysRemaining}d
+                    </span>
+                );
+            }
+        }
+    }
     
     useEffect(() => {
         setPendingTasks(tasks.filter(t => t.status === 'pending').sort((a,b) => (a.order_index || 0) - (b.order_index || 0)));
@@ -767,19 +856,20 @@ const TaskCard = ({ title, tasks, defaultDueDate, currentUserId, activeView, isA
         >
             <CardHeader className="p-7 pb-4">
                 <div className="flex justify-between items-start">
-                    <div className="space-y-1.5">
-                        <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                            {title}
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                        <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 truncate">
+                            <div className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
+                            <span className="truncate">{title}</span>
                         </h3>
-                        <div className="flex items-center gap-3">
-                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full shrink-0">
                                 <CalendarIcon className="h-2.5 w-2.5 text-primary/60" />
                                 {format(new Date(), "dd MMM", { locale: ptBR })}
                             </p>
-                            <p className="text-[9px] font-black text-primary/60 uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded-full">
+                            <p className="text-[9px] font-black text-primary/60 uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded-full shrink-0">
                                 {pendingTasks.length} {pendingTasks.length === 1 ? 'Pendente' : 'Pendentes'}
                             </p>
+                            {deadlineBadge}
                         </div>
                     </div>
                     <div className="h-10 w-10 rounded-2xl bg-white/[0.03] flex items-center justify-center border border-white/5 group-hover/card:border-primary/40 group-hover/card:bg-primary/10 transition-all duration-500">
