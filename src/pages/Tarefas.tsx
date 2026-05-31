@@ -118,6 +118,20 @@ const Tarefas = () => {
         }
     }, [plannerFocusProjects]);
 
+    useEffect(() => {
+        const activeProj = tempProject || plannerFocusProjects[0] || "";
+        if (activeProj) {
+            const match = activeProj.match(/\(([^)]+)\)$/);
+            if (match) {
+                setTempEnvironment(match[1]);
+            } else {
+                setTempEnvironment("");
+            }
+        } else {
+            setTempEnvironment("");
+        }
+    }, [tempProject, plannerFocusProjects]);
+
     const getNextWeekDays = () => {
         const today = new Date();
         const currentDay = today.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
@@ -828,7 +842,7 @@ const Tarefas = () => {
                                     {serviceOrders
                                         .filter(o => o.status !== "Entregue e Finalizado" && o.client)
                                         .map((order: any) => {
-                                            const projLabel = `${order.ticket_number || "S/N"} - ${order.client}`;
+                                            const projLabel = `${order.ticket_number || "S/N"} - ${order.client}${order.action ? ` (${order.action})` : ""}`;
                                             const isSelected = plannerFocusProjects.includes(projLabel);
                                             return (
                                                 <button
@@ -1307,7 +1321,10 @@ const TaskCard = ({ title, tasks, serviceOrders, defaultDueDate, currentUserId, 
         tasks.filter(t => t.status === 'pending').sort((a,b) => (a.order_index || 0) - (b.order_index || 0))
     );
     const completedTasks = tasks.filter(t => t.status === 'completed');
-    const [projectName, environmentName] = title.split(' - ');
+    
+    const lastDashIdx = title.lastIndexOf(' - ');
+    const projectName = lastDashIdx !== -1 ? title.substring(0, lastDashIdx) : title;
+    const environmentName = lastDashIdx !== -1 ? title.substring(lastDashIdx + 3) : "";
 
     const parseDate = (dateStr: any) => {
         if (!dateStr) return new Date();
