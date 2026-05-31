@@ -84,6 +84,15 @@ const TransactionTable = ({
                                         <div className="flex flex-col gap-0.5 mt-0.5">
                                             {transaction.service && <span className="text-xs font-semibold text-muted-foreground">{transaction.service}</span>}
                                             <span className="text-[11px] text-muted-foreground/80">{transaction.contact}</span>
+                                            {transaction.costSplits && transaction.costSplits.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {transaction.costSplits.map((split, sIdx) => (
+                                                        <Badge key={sIdx} variant="outline" className="text-[9px] bg-emerald-50 text-emerald-700 border-emerald-200 py-0 px-1 font-semibold">
+                                                            {split.client}: {formatCurrency(split.amount)}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -224,6 +233,15 @@ const TransactionTable = ({
                                         <div className="flex flex-col">
                                             <span className="font-semibold">{transaction.description}</span>
                                             <span className="text-[10px] text-muted-foreground">{transaction.service}</span>
+                                            {transaction.costSplits && transaction.costSplits.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {transaction.costSplits.map((split, sIdx) => (
+                                                        <Badge key={sIdx} variant="outline" className="text-[9px] bg-emerald-50 text-emerald-700 border-emerald-200 py-0 px-1 font-semibold">
+                                                            {split.client}: {formatCurrency(split.amount)}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell className="font-mono text-xs font-bold">

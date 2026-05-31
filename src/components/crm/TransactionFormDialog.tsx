@@ -70,7 +70,7 @@ const TransactionFormDialog = ({
         { method: "Pix", amount: "", institution: "Nubank" }
     ]);
     const [isCostSplit, setIsCostSplit] = useState(false);
-    const [costSplits, setCostSplits] = useState([
+    const [costSplits, setCostSplits] = useState<Array<{ client: string; amount: string; description: string; color?: string }>>([
         { client: "", amount: "", description: "" }
     ]);
 
@@ -165,6 +165,29 @@ const TransactionFormDialog = ({
                 orderService: editingTransaction.orderService || "",
                 boletoUrl: editingTransaction.boletoUrl || "",
             });
+            // Populate cost splits if they exist
+            if (editingTransaction.costSplits && editingTransaction.costSplits.length > 0) {
+                setIsCostSplit(true);
+                setCostSplits(editingTransaction.costSplits.map(cs => {
+                    let color = "";
+                    let description = cs.description || "";
+                    const colorRegex = /^([🔴🟢🔵🟡🟠🟣⚫])\s*(.*)$/;
+                    const match = description.match(colorRegex);
+                    if (match) {
+                        color = match[1];
+                        description = match[2];
+                    }
+                    return {
+                        client: cs.client,
+                        amount: cs.amount.toString(),
+                        description: description,
+                        color: color
+                    };
+                }));
+            } else {
+                setIsCostSplit(false);
+                setCostSplits([{ client: "", amount: "", description: "" }]);
+            }
         } else {
             // Reset Default state
             setType(initialType);
@@ -271,8 +294,25 @@ const TransactionFormDialog = ({
             // Ensure recurring fields are consistent if we add them later
         };
 
+        let formattedSplits: any[] | undefined = undefined;
+        if (isCostSplit && type === 'expense') {
+            const totalSplitAmount = costSplits.reduce((acc, split) => acc + Number(split.amount), 0);
+            if (Math.abs(totalSplitAmount - amount) > 0.01) {
+                alert(`A soma dos rateios (${totalSplitAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) deve ser igual ao valor total (${amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
+                return;
+            }
+            formattedSplits = costSplits.map(s => ({
+                client: s.client,
+                amount: Number(s.amount),
+                description: (s as any).color ? `${(s as any).color} ${s.description}`.trim() : s.description
+            }));
+        }
+
         if (editingTransaction && onUpdate) {
-            onUpdate(editingTransaction.id, baseSubmitData);
+            onUpdate(editingTransaction.id, {
+                ...baseSubmitData,
+                costSplits: isCostSplit ? formattedSplits : []
+            });
         } else if (type === 'transfer') {
             const transferOut = {
                 ...baseSubmitData,
@@ -289,20 +329,7 @@ const TransactionFormDialog = ({
             };
             onSubmit([transferOut, transferIn]);
         } else {
-            let formattedSplits: any[] | undefined = undefined;
-            if (isCostSplit && type === 'expense') {
-                const totalSplitAmount = costSplits.reduce((acc, split) => acc + Number(split.amount), 0);
-                if (Math.abs(totalSplitAmount - amount) > 0.01) {
-                    alert(`A soma dos rateios (${totalSplitAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) deve ser igual ao valor total (${amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
-                    return;
-                }
-                formattedSplits = costSplits.map(s => ({
-                    client: s.client,
-                    amount: Number(s.amount),
-                    description: (s as any).color ? `${(s as any).color} ${s.description}`.trim() : s.description
-                }));
-            }
-
+            const finalCostSplits = isCostSplit ? formattedSplits : [];
             if (isInstallment && Number(installmentsCount) > 1) {
                 const count = Number(installmentsCount);
                 const installmentValue = amount / count;
@@ -312,7 +339,7 @@ const TransactionFormDialog = ({
                     const dueDate = new Date(form.dueDate);
                     // Add i months to the due date
                     const newDueDate = addMonths(dueDate, i);
-                    const instSplits = formattedSplits ? formattedSplits.map(s => ({ ...s, amount: s.amount / count })) : undefined;
+                    const instSplits = finalCostSplits ? finalCostSplits.map(s => ({ ...s, amount: s.amount / count })) : undefined;
 
                     transactions.push({
                         ...baseSubmitData,
@@ -345,7 +372,7 @@ const TransactionFormDialog = ({
                         status: i === 0 ? status : 'pending', // Apenas o primeiro pode já ser pago, os próximos são contas a pagar
                         paymentDate: i === 0 ? baseSubmitData.paymentDate : undefined,
                         boletoUrl: i === 0 ? baseSubmitData.boletoUrl : undefined,
-                        costSplits: formattedSplits
+                        costSplits: finalCostSplits
                     });
                 }
                 onSubmit(transactions);
@@ -358,7 +385,7 @@ const TransactionFormDialog = ({
 
                 const transactions = splits.map((split) => {
                     const ratio = Number(split.amount) / amount;
-                    const instSplits = formattedSplits ? formattedSplits.map(s => ({ ...s, amount: s.amount * ratio })) : undefined;
+                    const instSplits = finalCostSplits ? finalCostSplits.map(s => ({ ...s, amount: s.amount * ratio })) : undefined;
                     return {
                         ...baseSubmitData,
                         amount: Number(split.amount),
@@ -370,7 +397,7 @@ const TransactionFormDialog = ({
                 });
                 onSubmit(transactions);
             } else {
-                onSubmit({ ...baseSubmitData, costSplits: formattedSplits });
+                onSubmit({ ...baseSubmitData, costSplits: finalCostSplits });
             }
         }
         onOpenChange(false);
@@ -726,7 +753,7 @@ const TransactionFormDialog = ({
                     )}
 
                     {/* Seção Cost Split (Rateio por Cliente) */}
-                    {!editingTransaction && type === 'expense' && (
+                    {type === 'expense' && (
                         <div className={`p-4 border rounded-lg space-y-4 ${isCostSplit ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-muted/20'}`}>
                             <div className="flex items-center justify-between">
                                 <div className="space-y-0.5">

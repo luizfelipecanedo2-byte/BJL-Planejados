@@ -91,12 +91,25 @@ const Financeiro = () => {
 
       if (error) throw error;
 
+      const { data: allocations, error: allocError } = await supabase
+        .from('transaction_allocations')
+        .select('*');
+
+      if (allocError) throw allocError;
+
       const mappedTransactions: Transaction[] = (data || []).map(t => {
         const parseDate = (dateStr: string | null) => {
           if (!dateStr) return undefined;
           const d = new Date(dateStr + 'T12:00:00');
           return isNaN(d.getTime()) ? undefined : d;
         };
+
+        const txAllocations = (allocations || []).filter((a: any) => a.transaction_id === t.id);
+        const costSplits = txAllocations.map((a: any) => ({
+          client: a.client_name,
+          amount: Number(a.amount),
+          description: a.description || ""
+        }));
 
         return {
           id: t.id,
@@ -115,7 +128,8 @@ const Financeiro = () => {
           status: t.status as any,
           invoiceNumber: t.invoice_number,
           orderService: t.order_service,
-          boletoUrl: t.boleto_url
+          boletoUrl: t.boleto_url,
+          costSplits: costSplits.length > 0 ? costSplits : undefined
         };
       });
 
@@ -945,23 +959,48 @@ const Financeiro = () => {
   const handleUpdate = async (id: string, updates: Partial<Transaction>) => {
     try {
       const updateData: any = {};
-      if (updates.description) updateData.description = updates.description;
-      if (updates.amount) updateData.amount = updates.amount;
-      if (updates.type) updateData.type = updates.type;
-      if (updates.category) updateData.category = updates.category;
-      if (updates.subcategory) updateData.subcategory = updates.subcategory;
-      if (updates.contact) updateData.contact = updates.contact;
-      if (updates.status) updateData.status = updates.status;
-      if (updates.dueDate) updateData.due_date = updates.dueDate.toISOString().split('T')[0];
-      if (updates.paymentDate) updateData.payment_date = updates.paymentDate.toISOString().split('T')[0];
-      if (updates.financialInstitution) updateData.financial_institution = updates.financialInstitution;
-      if (updates.paymentMethod) updateData.payment_method = updates.paymentMethod;
+      if (updates.description !== undefined) updateData.description = updates.description;
+      if (updates.amount !== undefined) updateData.amount = updates.amount;
+      if (updates.type !== undefined) updateData.type = updates.type;
+      if (updates.category !== undefined) updateData.category = updates.category;
+      if (updates.subcategory !== undefined) updateData.subcategory = updates.subcategory;
+      if (updates.contact !== undefined) updateData.contact = updates.contact;
+      if (updates.status !== undefined) updateData.status = updates.status;
+      if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate.toISOString().split('T')[0];
+      if (updates.paymentDate !== undefined) updateData.payment_date = updates.paymentDate ? updates.paymentDate.toISOString().split('T')[0] : null;
+      if (updates.financialInstitution !== undefined) updateData.financial_institution = updates.financialInstitution;
+      if (updates.paymentMethod !== undefined) updateData.payment_method = updates.paymentMethod;
+      if (updates.invoiceNumber !== undefined) updateData.invoice_number = updates.invoiceNumber;
+      if (updates.orderService !== undefined) updateData.order_service = updates.orderService;
+      if (updates.service !== undefined) updateData.service = updates.service;
+      if (updates.boletoUrl !== undefined) updateData.boleto_url = updates.boletoUrl;
 
       const { error } = await supabase.from('transactions').update(updateData).eq('id', id);
       if (error) throw error;
+
+      if (updates.costSplits !== undefined) {
+        const { error: deleteError } = await supabase.from('transaction_allocations').delete().eq('transaction_id', id);
+        if (deleteError) throw deleteError;
+
+        if (updates.costSplits && updates.costSplits.length > 0) {
+          const splitsToInsert = updates.costSplits.map(split => ({
+            transaction_id: id,
+            client_name: split.client,
+            amount: split.amount,
+            description: split.description
+          }));
+          const { error: splitError } = await supabase.from('transaction_allocations').insert(splitsToInsert);
+          if (splitError) throw splitError;
+        }
+      }
+
       setTransactions(transactions.map(t => t.id === id ? { ...t, ...updates } : t));
+      fetchTransactionAllocations();
       toast.success("Lançamento atualizado!");
-    } catch (error) { toast.error("Erro ao atualizar lançamento."); }
+    } catch (error) {
+      console.error("Erro ao atualizar lançamento:", error);
+      toast.error("Erro ao atualizar lançamento.");
+    }
   };
 
   const handleNewAsset = () => { setEditingAsset(null); setIsAssetDialogOpen(true); };
