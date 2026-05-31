@@ -43,6 +43,17 @@ const MainLayout = () => {
         return localStorage.getItem("isSidebarCollapsed") === "true";
     });
 
+    const [currentTheme, setCurrentTheme] = useState<string>(() => {
+        return localStorage.getItem("appTheme") || "theme-gold";
+    });
+
+    useEffect(() => {
+        const themes = ["theme-gold", "theme-emerald", "theme-sapphire", "theme-amethyst"];
+        themes.forEach(t => document.documentElement.classList.remove(t));
+        document.documentElement.classList.add(currentTheme);
+        localStorage.setItem("appTheme", currentTheme);
+    }, [currentTheme]);
+
     const [overdueCount, setOverdueCount] = useState<number>(0);
     const [overdueSum, setOverdueSum] = useState<number>(0);
 
@@ -308,6 +319,41 @@ const MainLayout = () => {
                         </div>
                         
                         <div className="flex items-center gap-2">
+                             {/* Seletor de Temas Premium */}
+                             <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-2xl border border-white/5 shadow-inner mr-2">
+                                 <button
+                                     onClick={() => setCurrentTheme("theme-gold")}
+                                     className={cn(
+                                         "w-4 h-4 rounded-full bg-amber-500 border transition-all duration-300",
+                                         currentTheme === "theme-gold" ? "scale-110 border-white shadow-[0_0_8px_rgba(245,158,11,0.6)]" : "border-transparent hover:scale-110"
+                                     )}
+                                     title="Champagne Gold"
+                                 />
+                                 <button
+                                     onClick={() => setCurrentTheme("theme-emerald")}
+                                     className={cn(
+                                         "w-4 h-4 rounded-full bg-emerald-500 border transition-all duration-300",
+                                         currentTheme === "theme-emerald" ? "scale-110 border-white shadow-[0_0_8px_rgba(16,185,129,0.6)]" : "border-transparent hover:scale-110"
+                                     )}
+                                     title="Emerald Oasis"
+                                 />
+                                 <button
+                                     onClick={() => setCurrentTheme("theme-sapphire")}
+                                     className={cn(
+                                         "w-4 h-4 rounded-full bg-blue-500 border transition-all duration-300",
+                                         currentTheme === "theme-sapphire" ? "scale-110 border-white shadow-[0_0_8px_rgba(59,130,246,0.6)]" : "border-transparent hover:scale-110"
+                                     )}
+                                     title="Midnight Sapphire"
+                                 />
+                                 <button
+                                     onClick={() => setCurrentTheme("theme-amethyst")}
+                                     className={cn(
+                                         "w-4 h-4 rounded-full bg-purple-500 border transition-all duration-300",
+                                         currentTheme === "theme-amethyst" ? "scale-110 border-white shadow-[0_0_8px_rgba(168,85,247,0.6)]" : "border-transparent hover:scale-110"
+                                     )}
+                                     title="Cyberpunk Amethyst"
+                                 />
+                             </div>
                              <NotificationBell />
                              <Button
                                 variant="ghost"

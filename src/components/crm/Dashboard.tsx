@@ -1,7 +1,6 @@
 import { useMemo, useEffect, useState } from "react";
 import { Sale, STATUS_LABELS, SaleStatus } from "@/types/sale";
 import { formatCurrency, getMetrics } from "@/lib/salesUtils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DollarSign,
   TrendingUp,
@@ -18,6 +17,7 @@ import {
   Clock,
   ArrowRight
 } from "lucide-react";
+import { PremiumCard } from "@/components/ui/PremiumCard";
 import {
   BarChart,
   Bar,
@@ -65,6 +65,32 @@ const Dashboard = ({ sales }: DashboardProps) => {
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [recentTasks, setRecentTasks] = useState<Task[]>([]);
   const [totalPendingTasks, setTotalPendingTasks] = useState(0);
+  const [userName, setUserName] = useState("Luiz Felipe");
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          if (user.email === 'luizfelipe.canedo2@gmail.com') {
+            setUserName("Luiz Felipe");
+          } else {
+            setUserName(user.email?.split('@')[0] || "Usuário");
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Bom dia";
+    if (hour < 18) return "Boa tarde";
+    return "Boa noite";
+  }, []);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -86,24 +112,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
     fetchTasks();
   }, []);
 
-  // Spotlight effect tracker with cached rect to avoid layout thrashing
-  const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const card = e.currentTarget;
-    let rect = (card as any)._cachedRect;
-    if (!rect) {
-      rect = card.getBoundingClientRect();
-      (card as any)._cachedRect = rect;
-    }
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    card.style.setProperty("--mouse-x", `${x}px`);
-    card.style.setProperty("--mouse-y", `${y}px`);
-  };
-
-  const handleCardMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
-    delete (e.currentTarget as any)._cachedRect;
-  };
+  // Spotlight event handlers removed in favor of PremiumCard component
 
   const years = useMemo(() => {
     const yearsSet = new Set<string>();
@@ -399,17 +408,46 @@ const Dashboard = ({ sales }: DashboardProps) => {
       }
     ];
 
+    const progressPercent = Math.min((totalRevenue / 150000) * 100, 100);
+
     return (
       <div className="space-y-8">
+        {/* Painel de Boas-Vindas Premium */}
+        <PremiumCard className="relative overflow-hidden p-8 border-none bg-gradient-to-r from-primary/10 via-primary/5 to-transparent flex flex-col md:flex-row justify-between items-center gap-6 rounded-3xl luxury-shadow">
+          <div className="space-y-2 text-center md:text-left">
+            <h2 className="text-3xl font-black text-white tracking-tight">
+              {greeting}, <span className="shimmer-gold">{userName}</span>!
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-md">
+              Bem-vindo de volta ao seu painel. Aqui está o desempenho comercial de <span className="font-semibold text-primary">{titleSuffix}</span>.
+            </p>
+          </div>
+          <div className="w-full md:w-80 space-y-2 bg-black/20 p-4 rounded-2xl border border-white/5">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-bold text-muted-foreground uppercase tracking-widest text-[9px]">Meta de Vendas Mensal</span>
+              <span className="font-bold text-primary">{progressPercent.toFixed(0)}%</span>
+            </div>
+            <div className="w-full bg-secondary h-3 rounded-full overflow-hidden relative shadow-inner p-[1px]">
+              <div 
+                className="bg-gradient-to-r from-primary to-amber-300 h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(245,158,11,0.5)]" 
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+              <span>{formatCurrency(totalRevenue)}</span>
+              <span>Meta: {formatCurrency(150000)}</span>
+            </div>
+          </div>
+        </PremiumCard>
+
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
-          {cards.map((card) => (
-            <Card
+          {cards.map((card, idx) => (
+            <PremiumCard
               key={card.title}
-              onMouseMove={handleCardMouseMove}
-              onMouseLeave={handleCardMouseLeave}
-              className="glass-card transition-all duration-500 hover:border-primary/40 group overflow-hidden rounded-[2rem] spotlight-card tilt-card border-beam-card luxury-shadow"
+              delay={idx * 0.04}
+              className="hover:border-primary/40 rounded-[2rem] luxury-shadow"
             >
-              <CardContent className="p-6 relative">
+              <div className="relative w-full h-full">
                 <div className={`absolute -right-6 -bottom-6 opacity-[0.03] group-hover:opacity-[0.08] group-hover:scale-150 transition-all duration-700 ${card.color}`}>
                   <card.icon size={100} />
                 </div>
@@ -433,78 +471,83 @@ const Dashboard = ({ sales }: DashboardProps) => {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </PremiumCard>
           ))}
         </div>
 
-        <Card className="glass-card rounded-[2.5rem] luxury-shadow overflow-hidden group">
-          <CardContent className="p-8">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                 <div className="p-2 bg-primary/10 rounded-lg">
-                    <BarChart3 className="h-5 w-5 text-primary" />
-                 </div>
-                 <h3 className="text-sm font-bold text-luxury uppercase tracking-[0.3em] text-primary/80">
-                   Desempenho de Vendas ({titleSuffix})
-                 </h3>
-              </div>
+        <PremiumCard className="rounded-[2.5rem] luxury-shadow overflow-hidden group">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+               <div className="p-2 bg-primary/10 rounded-lg">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+               </div>
+               <h3 className="text-sm font-bold text-luxury uppercase tracking-[0.3em] text-primary/80">
+                 Desempenho de Vendas ({titleSuffix})
+               </h3>
             </div>
-            <ResponsiveContainer width="100%" height={350}>
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorFechado" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.0}/>
-                  </linearGradient>
-                  <linearGradient id="colorAndamento" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.0}/>
-                  </linearGradient>
-                  <linearGradient id="colorCongelado" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--kanban-congelado))" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="hsl(var(--kanban-congelado))" stopOpacity={0.0}/>
-                  </linearGradient>
-                  <linearGradient id="colorPosVenda" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--kanban-pos_venda))" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="hsl(var(--kanban-pos_venda))" stopOpacity={0.0}/>
-                  </linearGradient>
-                  <linearGradient id="colorNaoFechou" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--kanban-nao_fechou))" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="hsl(var(--kanban-nao_fechou))" stopOpacity={0.0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="white" strokeOpacity={0.05} vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} stroke="transparent" />
-                <YAxis
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                  stroke="transparent"
-                  tickFormatter={(v) =>
-                    v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toString()
-                  }
-                />
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: "rgba(20, 20, 20, 0.9)",
-                    backdropFilter: "blur(12px)",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    borderRadius: "16px",
-                    fontSize: 12,
-                    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.5)"
-                  }}
-                  cursor={{ stroke: 'white', strokeWidth: 1, strokeDasharray: '3 3' }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
-                <Area type="monotone" dataKey="Fechado" stroke="hsl(var(--kanban-fechado))" strokeWidth={2.5} fillOpacity={1} fill="url(#colorFechado)" />
-                <Area type="monotone" dataKey="Em Andamento" stroke="hsl(var(--primary))" strokeWidth={2.5} fillOpacity={1} fill="url(#colorAndamento)" />
-                <Area type="monotone" dataKey="Pós Venda" stroke="hsl(var(--kanban-pos_venda))" strokeWidth={2} fillOpacity={1} fill="url(#colorPosVenda)" />
-                <Area type="monotone" dataKey="Congelado" stroke="hsl(var(--kanban-congelado))" strokeWidth={1.5} fillOpacity={1} fill="url(#colorCongelado)" />
-                <Area type="monotone" dataKey="Não Fechou" stroke="hsl(var(--kanban-nao_fechou))" strokeWidth={1.5} fillOpacity={1} fill="url(#colorNaoFechou)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+          <ResponsiveContainer width="100%" height={350}>
+            <AreaChart data={chartData}>
+              <defs>
+                <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="6" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                <linearGradient id="colorFechado" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.0}/>
+                </linearGradient>
+                <linearGradient id="colorAndamento" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.0}/>
+                </linearGradient>
+                <linearGradient id="colorCongelado" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--kanban-congelado))" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="hsl(var(--kanban-congelado))" stopOpacity={0.0}/>
+                </linearGradient>
+                <linearGradient id="colorPosVenda" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--kanban-pos_venda))" stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor="hsl(var(--kanban-pos_venda))" stopOpacity={0.0}/>
+                </linearGradient>
+                <linearGradient id="colorNaoFechou" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--kanban-nao_fechou))" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="hsl(var(--kanban-nao_fechou))" stopOpacity={0.0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="white" strokeOpacity={0.05} vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} stroke="transparent" />
+              <YAxis
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                stroke="transparent"
+                tickFormatter={(v) =>
+                  v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toString()
+                }
+              />
+              <Tooltip
+                formatter={(value: number) => formatCurrency(value)}
+                contentStyle={{
+                  backgroundColor: "rgba(20, 20, 20, 0.9)",
+                  backdropFilter: "blur(12px)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "16px",
+                  fontSize: 12,
+                  boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.5)"
+                }}
+                cursor={{ stroke: 'white', strokeWidth: 1, strokeDasharray: '3 3' }}
+              />
+              <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
+              <Area type="monotone" dataKey="Fechado" stroke="hsl(var(--kanban-fechado))" strokeWidth={2.5} fillOpacity={1} fill="url(#colorFechado)" filter="url(#neon-glow)" />
+              <Area type="monotone" dataKey="Em Andamento" stroke="hsl(var(--primary))" strokeWidth={2.5} fillOpacity={1} fill="url(#colorAndamento)" filter="url(#neon-glow)" />
+              <Area type="monotone" dataKey="Pós Venda" stroke="hsl(var(--kanban-pos_venda))" strokeWidth={2} fillOpacity={1} fill="url(#colorPosVenda)" filter="url(#neon-glow)" />
+              <Area type="monotone" dataKey="Congelado" stroke="hsl(var(--kanban-congelado))" strokeWidth={1.5} fillOpacity={1} fill="url(#colorCongelado)" filter="url(#neon-glow)" />
+              <Area type="monotone" dataKey="Não Fechou" stroke="hsl(var(--kanban-nao_fechou))" strokeWidth={1.5} fillOpacity={1} fill="url(#colorNaoFechou)" filter="url(#neon-glow)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </PremiumCard>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="border border-white/10 backdrop-blur-xl bg-card/60 shadow-xl rounded-[2.5rem]">

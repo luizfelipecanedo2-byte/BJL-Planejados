@@ -83,6 +83,34 @@
     --border: 240 3.7% 15.9%;
     --ring: 38 92% 50%;
   }
+
+  .theme-gold {
+    --primary: 38 92% 50%;
+    --ring: 38 92% 50%;
+    --sidebar-primary: 38 92% 50%;
+    --sidebar-ring: 38 92% 50%;
+  }
+
+  .theme-emerald {
+    --primary: 142.1 70.6% 45.3%;
+    --ring: 142.1 70.6% 45.3%;
+    --sidebar-primary: 142.1 70.6% 45.3%;
+    --sidebar-ring: 142.1 70.6% 45.3%;
+  }
+
+  .theme-sapphire {
+    --primary: 217.2 91.2% 59.8%;
+    --ring: 217.2 91.2% 59.8%;
+    --sidebar-primary: 217.2 91.2% 59.8%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .theme-amethyst {
+    --primary: 270 91.2% 65.1%;
+    --ring: 270 91.2% 65.1%;
+    --sidebar-primary: 270 91.2% 65.1%;
+    --sidebar-ring: 270 91.2% 65.1%;
+  }
 }
 
 @layer base {

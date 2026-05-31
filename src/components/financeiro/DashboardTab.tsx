@@ -1,6 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { DollarSign, Calendar, Rocket, Users, Pencil, Check, X } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { PremiumCard } from "@/components/ui/PremiumCard";
 import {
     ComposedChart,
     Line,
@@ -80,7 +82,33 @@ const DashboardTab = ({
     handleEditTransaction,
     transactions = [],
     sales = [],
-}: DashboardTabProps) => {
+}) => {
+    const [userName, setUserName] = useState("Luiz Felipe");
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    if (user.email === 'luizfelipe.canedo2@gmail.com') {
+                        setUserName("Luiz Felipe");
+                    } else {
+                        setUserName(user.email?.split('@')[0] || "Usuário");
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        };
+        fetchUser();
+    }, []);
+
+    const greeting = useMemo(() => {
+        const hour = new Date().getHours();
+        if (hour < 12) return "Bom dia";
+        if (hour < 18) return "Boa tarde";
+        return "Boa noite";
+    }, []);
 
     // Suggestion 1: Fluxo de Caixa Diário (Próximos 15 dias)
     const dailyFlowData = useMemo(() => {
@@ -232,37 +260,65 @@ const DashboardTab = ({
                 </div>
 
                 <div className="md:col-span-9 grid grid-cols-2 lg:grid-cols-5 gap-3">
-                    <Card className="glass-card border border-white/5 p-3 h-16 flex flex-col justify-center spotlight-card border-beam-card tilt-card luxury-shadow rounded-2xl">
+                    <PremiumCard className="p-3 h-16 flex flex-col justify-center border-t-2 border-cyan-400 luxury-shadow rounded-2xl" animate={false}>
                         <span className="text-[10px] font-bold text-cyan-400 uppercase">A receber</span>
                         <span className="text-lg font-black text-white">
                             <AnimatedCounter value={currentSummary.accountsReceivable} formatter={formatCurrency} />
                         </span>
-                    </Card>
-                    <Card className="glass-card border border-white/5 p-3 h-16 flex flex-col justify-center border-t-2 border-primary spotlight-card border-beam-card tilt-card luxury-shadow rounded-2xl">
+                    </PremiumCard>
+                    <PremiumCard className="p-3 h-16 flex flex-col justify-center border-t-2 border-primary luxury-shadow rounded-2xl" animate={false}>
                         <span className="text-[10px] font-bold text-primary uppercase">Hoje (Entra/Sai)</span>
                         <div className="flex items-baseline gap-2">
                             <span className="text-sm font-black text-emerald-500">+{formatCurrency(currentSummary.entradaHoje).replace('R$', '')}</span>
                             <span className="text-sm font-black text-rose-500">-{formatCurrency(currentSummary.saidaHoje).replace('R$', '')}</span>
                         </div>
-                    </Card>
-                    <Card className="bg-rose-500/10 border border-rose-500/20 p-3 h-16 flex flex-col justify-center border-t-2 border-rose-500 spotlight-card border-beam-card tilt-card luxury-shadow rounded-2xl">
+                    </PremiumCard>
+                    <PremiumCard className="p-3 h-16 flex flex-col justify-center border-t-2 border-rose-500 luxury-shadow rounded-2xl bg-rose-500/5 border-rose-500/20" animate={false}>
                         <span className="text-[10px] font-bold text-rose-500 uppercase">A pagar</span>
                         <span className="text-lg font-black text-white">{formatCurrency(currentSummary.accountsPayable)}</span>
-                    </Card>
-                    <Card className="bg-orange-500/10 border border-orange-500/20 p-3 h-16 flex flex-col justify-center border-t-2 border-orange-500 spotlight-card border-beam-card tilt-card luxury-shadow rounded-2xl">
+                    </PremiumCard>
+                    <PremiumCard className="p-3 h-16 flex flex-col justify-center border-t-2 border-orange-500 luxury-shadow rounded-2xl bg-orange-500/5 border-orange-500/20" animate={false}>
                         <span className="text-[10px] font-bold text-orange-500 uppercase">Vencidos</span>
                         <span className="text-lg font-black text-white">
                             <AnimatedCounter value={currentSummary.inadimplenciaTotal} formatter={formatCurrency} />
                         </span>
-                    </Card>
-                    <Card className="bg-emerald-500/10 border border-emerald-500/20 p-3 h-16 flex flex-col justify-center border-t-2 border-emerald-500 spotlight-card border-beam-card tilt-card luxury-shadow rounded-2xl">
+                    </PremiumCard>
+                    <PremiumCard className="p-3 h-16 flex flex-col justify-center border-t-2 border-emerald-500 luxury-shadow rounded-2xl bg-emerald-500/5 border-emerald-500/20" animate={false}>
                         <span className="text-[10px] font-bold text-emerald-500 uppercase">Saldo Projetado</span>
                         <span className="text-lg font-black text-white">
                             <AnimatedCounter value={currentSummary.projectedBalance} formatter={formatCurrency} />
                         </span>
-                    </Card>
+                    </PremiumCard>
                 </div>
             </div>
+
+            {/* Painel de Boas-Vindas Premium */}
+            <PremiumCard className="relative overflow-hidden p-8 border-none bg-gradient-to-r from-primary/10 via-primary/5 to-transparent flex flex-col md:flex-row justify-between items-center gap-6 rounded-3xl luxury-shadow my-4" delay={0.1}>
+                <div className="space-y-2 text-center md:text-left">
+                    <h2 className="text-3xl font-black text-white tracking-tight">
+                        {greeting}, <span className="shimmer-gold">{userName}</span>!
+                    </h2>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                        Bem-vindo de volta ao seu painel financeiro. Aqui está o resumo de caixa para <span className="font-semibold text-primary">{selectedDashMonth === 'anual' ? `Ano ${selectedYear}` : `${["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][selectedDashMonth as number]} ${selectedYear}`}</span>.
+                    </p>
+                </div>
+                <div className="w-full md:w-80 space-y-2 bg-black/20 p-4 rounded-2xl border border-white/5">
+                    <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-muted-foreground uppercase tracking-widest text-[9px]">Progresso da Meta Mensal</span>
+                        <span className="font-bold text-primary">{percentage.toFixed(0)}%</span>
+                    </div>
+                    <div className="w-full bg-secondary h-3 rounded-full overflow-hidden relative shadow-inner p-[1px]">
+                        <div 
+                            className="bg-gradient-to-r from-primary to-amber-300 h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(245,158,11,0.5)]" 
+                            style={{ width: `${percentage}%` }}
+                        />
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                        <span>{formatCurrency(actualRevenue)}</span>
+                        <span>Meta: {formatCurrency(actualGoal)}</span>
+                    </div>
+                </div>
+            </PremiumCard>
 
             {/* MAIN ROW: Analysis of Month, Evolution, and Initial Cash */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -333,12 +389,19 @@ const DashboardTab = ({
                 </Card>
 
                 {/* 2. ANÁLISE EVOLUTIVA */}
-                <Card className="lg:col-span-6 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden spotlight-card border-beam-card luxury-shadow">
+                <PremiumCard className="lg:col-span-6 border-none p-4 rounded-2xl overflow-hidden luxury-shadow" animate={false}>
                     <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-4">Análise Evolutiva</h3>
                     <div className="h-[320px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
+                                    <filter id="neon-glow-finance" x="-20%" y="-20%" width="140%" height="140%">
+                                        <feGaussianBlur stdDeviation="6" result="blur" />
+                                        <feMerge>
+                                            <feMergeNode in="blur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                        </feMerge>
+                                    </filter>
                                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.4}/>
                                         <stop offset="95%" stopColor="#14b8a6" stopOpacity={0.0}/>
@@ -355,8 +418,8 @@ const DashboardTab = ({
                                     contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
                                     formatter={(val: number) => formatCurrency(val)}
                                 />
-                                <Area type="monotone" dataKey="Receitas" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
-                                <Area type="monotone" dataKey="Despesas" stroke="#f97316" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" />
+                                <Area type="monotone" dataKey="Receitas" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" filter="url(#neon-glow-finance)" />
+                                <Area type="monotone" dataKey="Despesas" stroke="#f97316" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" filter="url(#neon-glow-finance)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -364,7 +427,7 @@ const DashboardTab = ({
                         <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-primary rounded-full" /> <span className="text-[10px] font-black uppercase text-muted-foreground">Receitas</span></div>
                         <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-orange-500 rounded-full" /> <span className="text-[10px] font-black uppercase text-muted-foreground">Despesas</span></div>
                     </div>
-                </Card>
+                </PremiumCard>
 
                 {/* 3. EVOLUÇÃO CAIXA INICIAL (Horizontal Bar Chart) */}
                 <Card className="lg:col-span-3 bg-[#111111] border-none p-4 rounded-2xl overflow-hidden">
@@ -674,12 +737,19 @@ const DashboardTab = ({
                     </div>
                 </Card>
 
-                <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl lg:col-span-2 spotlight-card border-beam-card">
+                <PremiumCard className="border-none p-4 rounded-2xl shadow-xl lg:col-span-2" animate={false}>
                     <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Resultados Mensais (Real x Previsto)</h3>
                     <div className="h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={chartData}>
                                 <defs>
+                                    <filter id="neon-glow-saldo" x="-20%" y="-20%" width="140%" height="140%">
+                                        <feGaussianBlur stdDeviation="6" result="blur" />
+                                        <feMerge>
+                                            <feMergeNode in="blur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                        </feMerge>
+                                    </filter>
                                     <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.4}/>
                                         <stop offset="95%" stopColor="#14b8a6" stopOpacity={0.0}/>
@@ -692,20 +762,27 @@ const DashboardTab = ({
                                     contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
                                     formatter={(val: number) => formatCurrency(val)}
                                 />
-                                <Area type="monotone" dataKey="Saldo" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorSaldo)" />
+                                <Area type="monotone" dataKey="Saldo" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorSaldo)" filter="url(#neon-glow-saldo)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
-                </Card>
+                </PremiumCard>
             </div>
 
-            <Card className="bg-[#111111] border-none p-4 rounded-2xl shadow-xl overflow-hidden relative">
+            <PremiumCard className="border-none p-4 rounded-2xl shadow-xl overflow-hidden relative" animate={false}>
                 <div className="absolute top-4 right-4 bg-orange-500 text-[10px] font-black px-2 py-0.5 rounded text-white uppercase">Acumulado</div>
                 <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-6">Evolução Lucro Acumulado</h3>
                 <div className="h-[250px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={accumulatedData}>
                             <defs>
+                                <filter id="neon-glow-profit" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="6" result="blur" />
+                                    <feMerge>
+                                        <feMergeNode in="blur" />
+                                        <feMergeNode in="SourceGraphic" />
+                                    </feMerge>
+                                </filter>
                                 <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
                                     <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
@@ -718,11 +795,11 @@ const DashboardTab = ({
                                 contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }}
                                 formatter={(val: number) => formatCurrency(val)}
                             />
-                            <Area type="monotone" dataKey="Acumulado" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorProfit)" />
+                            <Area type="monotone" dataKey="Acumulado" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorProfit)" filter="url(#neon-glow-profit)" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
-            </Card>
+            </PremiumCard>
         </div>
     );
 };
