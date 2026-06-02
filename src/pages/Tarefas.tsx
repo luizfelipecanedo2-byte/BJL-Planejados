@@ -83,6 +83,15 @@ const checkTaskVisibility = (dueDate: string, status: string, activeView: string
             } catch (e) {
                 return false;
             }
+        case "proxima-semana":
+            try {
+                const date = parseISO(dueDate);
+                const nextWeekStart = addDays(weekStart, 7);
+                const nextWeekEnd = addDays(weekEnd, 7);
+                return isWithinInterval(date, { start: nextWeekStart, end: nextWeekEnd });
+            } catch (e) {
+                return false;
+            }
         case "todas":
             return true;
         default:
@@ -117,6 +126,7 @@ const Tarefas = () => {
 
     // Weekly Planner State
     const [isPlannerOpen, setIsPlannerOpen] = useState(false);
+    const [plannerWeek, setPlannerWeek] = useState<"current" | "next">("current");
     const [plannerStep, setPlannerStep] = useState<1 | 2>(1);
     const [plannerFocusProjects, setPlannerFocusProjects] = useState<string[]>([]);
     const [plannerCustomProject, setPlannerCustomProject] = useState("");
@@ -157,14 +167,10 @@ const Tarefas = () => {
         }
     }, [tempProject, plannerFocusProjects]);
 
-    const getNextWeekDays = () => {
+    const getPlannerDays = () => {
         const today = new Date();
-        const currentDay = today.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
-        
-        // 0 (Sunday) -> +1
-        // 1 (Monday) -> +0 (plan current week)
-        // 2-6 (Tue-Sat) -> 8 - currentDay (plan next week)
-        const daysToMonday = currentDay === 0 ? 1 : (currentDay === 1 ? 0 : 8 - currentDay);
+        const mondayOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
+        const startMonday = plannerWeek === "current" ? mondayOfCurrentWeek : addDays(mondayOfCurrentWeek, 7);
         
         const dayNames = [
             "Segunda-feira",
@@ -176,8 +182,7 @@ const Tarefas = () => {
         ];
 
         return dayNames.map((name, index) => {
-            const d = new Date(today);
-            d.setDate(today.getDate() + daysToMonday + index);
+            const d = addDays(startMonday, index);
             const labelRaw = format(d, "EEEE (dd/MM)", { locale: ptBR });
             const label = labelRaw.charAt(0).toUpperCase() + labelRaw.slice(1);
             return {
@@ -226,7 +231,7 @@ const Tarefas = () => {
                 return;
             }
 
-            const weekDays = getNextWeekDays();
+            const weekDays = getPlannerDays();
             
             const tasksToInsert = plannerTasks.map(t => {
                 const day = weekDays[t.dayIndex];
@@ -528,7 +533,9 @@ const Tarefas = () => {
         } else if (activeView === "amanha") {
             titleDate = format(addDays(new Date(), 1), "dd/MM/yyyy");
         } else if (activeView === "semana") {
-            titleDate = "Planejamento Semanal";
+            titleDate = "Esta Semana";
+        } else if (activeView === "proxima-semana") {
+            titleDate = "Próxima Semana";
         } else {
             titleDate = "Todas as Tarefas";
         }
@@ -833,6 +840,17 @@ const Tarefas = () => {
                         return false;
                     }
                 });
+            case "proxima-semana":
+                return tasks.filter(t => {
+                    try {
+                        const date = parseISO(t.due_date);
+                        const nextWeekStart = addDays(weekStart, 7);
+                        const nextWeekEnd = addDays(weekEnd, 7);
+                        return isWithinInterval(date, { start: nextWeekStart, end: nextWeekEnd });
+                    } catch (e) {
+                        return false;
+                    }
+                });
             case "todas":
                 return tasks;
             default:
@@ -870,7 +888,8 @@ const Tarefas = () => {
             });
         }
         
-        tabs.push({ value: "semana", label: "Semanal" });
+        tabs.push({ value: "semana", label: "Esta Semana" });
+        tabs.push({ value: "proxima-semana", label: "Próxima Semana" });
         tabs.push({ value: "todas", label: "Todas" });
         
         return tabs;
@@ -945,11 +964,15 @@ const Tarefas = () => {
     const completedTodayTasks = todayTasks.filter(t => t.status === 'completed').length;
     const pendingTodayTasks = totalTodayTasks - completedTodayTasks;
 
-    // Weekly tasks
+    // Weekly tasks (dynamic based on activeView being week or next week)
+    const isNextWeekActive = activeView === "proxima-semana";
+    const hudWeekStart = isNextWeekActive ? addDays(weekStart, 7) : weekStart;
+    const hudWeekEnd = isNextWeekActive ? addDays(weekEnd, 7) : weekEnd;
+
     const weeklyTasks = tasks.filter(t => {
         try {
             const date = parseISO(t.due_date);
-            return isWithinInterval(date, { start: weekStart, end: weekEnd });
+            return isWithinInterval(date, { start: hudWeekStart, end: hudWeekEnd });
         } catch (e) {
             return false;
         }
@@ -1198,7 +1221,9 @@ const Tarefas = () => {
                             <CalendarRange className="h-32 w-32" />
                         </div>
                         <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Tarefas da Semana</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">
+                                {isNextWeekActive ? "Tarefas da Próx. Semana" : "Tarefas da Semana"}
+                            </p>
                             <h3 className="text-3xl font-black text-emerald-500 tracking-tighter flex items-baseline">
                                 <AnimatedCounter value={completedWeeklyTasks} />
                                 <span className="text-xl text-muted-foreground font-bold mx-1">/</span>
@@ -1340,13 +1365,44 @@ const Tarefas = () => {
                     <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
                         {plannerStep === 1 ? (
                             <div className="space-y-6">
-                                <div>
-                                    <h3 className="text-lg font-black uppercase tracking-tight text-amber-500 mb-1">
-                                        Passo 1: Quais projetos você focará esta semana?
-                                    </h3>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
-                                        Selecione os clientes ativos para definir as metas diárias
-                                    </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                                    <div>
+                                        <h3 className="text-lg font-black uppercase tracking-tight text-amber-500 mb-1">
+                                            Passo 1: Escolha a semana e os projetos foco
+                                        </h3>
+                                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
+                                            Selecione a semana de destino e os clientes ativos
+                                        </p>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[9px] font-black uppercase tracking-widest text-amber-500/80">Semana de Destino</Label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setPlannerWeek("current")}
+                                                className={cn(
+                                                    "py-2 px-3 rounded-xl border text-center font-extrabold text-[10px] uppercase tracking-wider transition-all duration-300",
+                                                    plannerWeek === "current"
+                                                        ? "bg-amber-500/20 border-amber-500 text-amber-400"
+                                                        : "bg-white/[0.02] border-white/10 hover:bg-white/[0.05] text-white/70"
+                                                )}
+                                            >
+                                                Esta Semana ({format(startOfWeek(new Date(), { weekStartsOn: 1 }), "dd/MM")} - {format(addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 5), "dd/MM")})
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setPlannerWeek("next")}
+                                                className={cn(
+                                                    "py-2 px-3 rounded-xl border text-center font-extrabold text-[10px] uppercase tracking-wider transition-all duration-300",
+                                                    plannerWeek === "next"
+                                                        ? "bg-amber-500/20 border-amber-500 text-amber-400"
+                                                        : "bg-white/[0.02] border-white/10 hover:bg-white/[0.05] text-white/70"
+                                                )}
+                                            >
+                                                Próx. Semana ({format(addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 7), "dd/MM")} - {format(addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 12), "dd/MM")})
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -1451,7 +1507,7 @@ const Tarefas = () => {
                                 <div className="flex flex-col lg:flex-row gap-6">
                                     {/* Abas dos Dias */}
                                     <div className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 pb-2 lg:pb-0 lg:w-48 shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 pr-0 lg:pr-4">
-                                        {getNextWeekDays().map((day, idx) => {
+                                        {getPlannerDays().map((day, idx) => {
                                             const isSelected = activePlannerDayIndex === idx;
                                             const dayTasksCount = plannerTasks.filter(t => t.dayIndex === idx).length;
 
@@ -1495,7 +1551,7 @@ const Tarefas = () => {
                                         <div className="bg-white/[0.02] border border-white/5 p-6 rounded-3xl space-y-4">
                                             <h4 className="text-xs font-black uppercase tracking-widest text-amber-500 flex items-center gap-1.5">
                                                 <Sparkles className="h-3.5 w-3.5" />
-                                                Planejar para {getNextWeekDays()[activePlannerDayIndex].label}
+                                                Planejar para {getPlannerDays()[activePlannerDayIndex].label}
                                             </h4>
 
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
