@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -5,6 +6,7 @@ import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Building2, Banknot
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface ConciliationTabProps {
     selectedAccount: string;
@@ -41,6 +43,7 @@ const ConciliationTab = ({
 }: ConciliationTabProps) => {
     const isNubank = selectedAccount === 'nubank';
     const isDinheiro = selectedAccount === 'dinheiro';
+    const [selectedDayDetails, setSelectedDayDetails] = useState<any | null>(null);
 
     return (
         <div className="space-y-6 text-foreground">
@@ -167,8 +170,9 @@ const ConciliationTab = ({
                 {reconciliationDailyData.days.map((day, index) => (
                     <div
                         key={index}
+                        onClick={() => setSelectedDayDetails(day)}
                         className={cn(
-                            "bg-slate-900/50 border border-slate-800 rounded-xl p-4 shadow-lg space-y-4 relative overflow-hidden",
+                            "bg-slate-900/50 border border-slate-800 rounded-xl p-4 shadow-lg space-y-4 relative overflow-hidden cursor-pointer hover:border-slate-600 transition-all duration-300 active:scale-[0.99]",
                             day.dailyBalance !== 0 ? "border-slate-700" : "opacity-70"
                         )}
                     >
@@ -279,7 +283,8 @@ const ConciliationTab = ({
                                 {reconciliationDailyData.days.map((day, index) => (
                                     <tr
                                         key={index}
-                                        className={`border-b border-slate-900 group transition-colors ${index % 2 === 0 ? 'bg-transparent' : 'bg-slate-900/20'} hover:bg-primary/5`}
+                                        onClick={() => setSelectedDayDetails(day)}
+                                        className={`border-b border-slate-900 group transition-colors ${index % 2 === 0 ? 'bg-transparent' : 'bg-slate-900/20'} hover:bg-primary/5 cursor-pointer`}
                                     >
                                         <td className="p-4 text-center font-black text-slate-300 border-r border-slate-900/50 uppercase tracking-tighter">
                                             {day.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
@@ -369,6 +374,109 @@ const ConciliationTab = ({
                     </div>
                 </CardContent>
             </Card>
+
+            {selectedDayDetails && (
+                <Dialog open={!!selectedDayDetails} onOpenChange={(open) => !open && setSelectedDayDetails(null)}>
+                    <DialogContent className={cn(
+                        "max-w-2xl bg-slate-950 text-white border rounded-2xl shadow-2xl z-[100] border-slate-800",
+                        isNubank ? "border-purple-500/30" : isDinheiro ? "border-emerald-500/30" : "border-slate-800"
+                    )}>
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-black uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400 flex items-center gap-2">
+                                Detalhamento do Dia {selectedDayDetails.date.toLocaleDateString('pt-BR')}
+                            </DialogTitle>
+                            <DialogDescription className="text-slate-400 text-xs uppercase tracking-widest font-semibold">
+                                Resumo financeiro e fluxo de caixa detalhado para este dia
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="grid grid-cols-2 gap-4 my-2 p-4 rounded-xl bg-slate-900/50 border border-slate-800/80">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Recebido</span>
+                                <span className="text-xl font-bold text-emerald-400">{formatCurrency(selectedDayDetails.income)}</span>
+                            </div>
+                            <div className="flex flex-col text-right">
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Gasto</span>
+                                <span className="text-xl font-bold text-rose-400">{formatCurrency(selectedDayDetails.expense)}</span>
+                            </div>
+                        </div>
+
+                        <div className="max-h-[350px] overflow-y-auto space-y-6 pr-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                            {/* Entradas */}
+                            {selectedDayDetails.incomeTransactions && selectedDayDetails.incomeTransactions.length > 0 && (
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                        Entradas (Recebido)
+                                    </h4>
+                                    <div className="space-y-2">
+                                        {selectedDayDetails.incomeTransactions.map((t: any) => (
+                                            <div key={t.id} className="p-3 bg-slate-900/40 border border-slate-800/60 rounded-xl hover:border-emerald-500/30 hover:bg-slate-900/60 transition-all duration-300">
+                                                <div className="flex justify-between items-start gap-4">
+                                                    <div>
+                                                        <p className="font-bold text-sm text-slate-200">{t.description}</p>
+                                                        <p className="text-xs text-slate-400 mt-1">
+                                                            Categorizado em <strong className="text-slate-300">{t.category}</strong> {t.subcategory && <>• <strong className="text-slate-300">{t.subcategory}</strong></>}
+                                                        </p>
+                                                    </div>
+                                                    <span className="font-black text-sm text-emerald-400 whitespace-nowrap">
+                                                        +{formatCurrency(t.amount)}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 pt-2 border-t border-slate-800/40 text-[9px] text-slate-500 uppercase font-bold tracking-wider">
+                                                    {t.contact && <span>Cliente/Fornecedor: <strong className="text-slate-300">{t.contact}</strong></span>}
+                                                    {t.paymentMethod && <span>Meio: <strong className="text-slate-300">{t.paymentMethod}</strong></span>}
+                                                    {t.invoiceNumber && <span>NF: <strong className="text-slate-300">{t.invoiceNumber}</strong></span>}
+                                                    {t.orderService && <span>OS: <strong className="text-slate-300">{t.orderService}</strong></span>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Saídas */}
+                            {selectedDayDetails.expenseTransactions && selectedDayDetails.expenseTransactions.length > 0 && (
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-rose-400 flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                                        Saídas (Gasto)
+                                    </h4>
+                                    <div className="space-y-2">
+                                        {selectedDayDetails.expenseTransactions.map((t: any) => (
+                                            <div key={t.id} className="p-3 bg-slate-900/40 border border-slate-800/60 rounded-xl hover:border-rose-500/30 hover:bg-slate-900/60 transition-all duration-300">
+                                                <div className="flex justify-between items-start gap-4">
+                                                    <div>
+                                                        <p className="font-bold text-sm text-slate-200">{t.description}</p>
+                                                        <p className="text-xs text-slate-400 mt-1">
+                                                            Categorizado em <strong className="text-slate-300">{t.category}</strong> {t.subcategory && <>• <strong className="text-slate-300">{t.subcategory}</strong></>}
+                                                        </p>
+                                                    </div>
+                                                    <span className="font-black text-sm text-rose-400 whitespace-nowrap">
+                                                        -{formatCurrency(t.amount)}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 pt-2 border-t border-slate-800/40 text-[9px] text-slate-500 uppercase font-bold tracking-wider">
+                                                    {t.contact && <span>Cliente/Fornecedor: <strong className="text-slate-300">{t.contact}</strong></span>}
+                                                    {t.paymentMethod && <span>Meio: <strong className="text-slate-300">{t.paymentMethod}</strong></span>}
+                                                    {t.invoiceNumber && <span>NF: <strong className="text-slate-300">{t.invoiceNumber}</strong></span>}
+                                                    {t.orderService && <span>OS: <strong className="text-slate-300">{t.orderService}</strong></span>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {(!selectedDayDetails.incomeTransactions?.length && !selectedDayDetails.expenseTransactions?.length) && (
+                                <div className="text-center py-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">
+                                    Nenhum lançamento conciliado neste dia.
+                                </div>
+                            )}
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
         </div>
     );
 };
