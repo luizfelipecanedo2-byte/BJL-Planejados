@@ -29,4 +29,5 @@ export interface ServiceOrder {
     productionPriority?: number;
     productionNotes?: string;
     daysEstimated?: number;
+    tasks?: any[];
 }

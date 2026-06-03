@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Check, ChevronsUpDown, File, Upload, X, ExternalLink, Loader2, Clipboard, MessageSquare, Clock, Trash2, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, File, Upload, X, ExternalLink, Loader2, Clipboard, MessageSquare, Clock, Trash2, Plus, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { Client } from "@/types/client";
 import { ServiceOrder, ServiceType, ServiceStatus } from "@/types/serviceOrder";
+import { toast } from "sonner";
 import {
     Dialog,
     DialogContent,
@@ -71,11 +72,27 @@ const ServiceOrderFormDialog = ({
         amount: 0,
         daysEstimated: 1,
         laborLogs: [] as any[],
+        tasks: [] as any[],
     });
     const [isUploading, setIsUploading] = useState(false);
 
     const [clients, setClients] = useState<Client[]>([]);
     const [openClientSelect, setOpenClientSelect] = useState(false);
+    const [profiles, setProfiles] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchProfiles = async () => {
+            try {
+                const { data } = await supabase.from('profiles').select('*').order('full_name');
+                if (data) {
+                    setProfiles(data);
+                }
+            } catch (error) {
+                console.error("Error fetching profiles", error);
+            }
+        };
+        fetchProfiles();
+    }, []);
 
     useEffect(() => {
         const fetchClients = async () => {
@@ -125,6 +142,7 @@ const ServiceOrderFormDialog = ({
                     amount: editingOrder.amount || 0,
                     daysEstimated: editingOrder.daysEstimated || 1,
                     laborLogs: editingOrder.laborLogs || [],
+                    tasks: (editingOrder as any).tasks || [],
                 });
             } else if (open) {
                 let nextNum = 16;
@@ -168,6 +186,7 @@ const ServiceOrderFormDialog = ({
                     amount: 0,
                     daysEstimated: 1,
                     laborLogs: [],
+                    tasks: [],
                 });
             }
         };
@@ -176,6 +195,72 @@ const ServiceOrderFormDialog = ({
             initializeForm();
         }
     }, [editingOrder, open]);
+
+    const [newTask, setNewTask] = useState({
+        title: "",
+        environment_name: "",
+        assigned_to: "",
+        priority: "normal",
+        due_date: "",
+        estimated_hours: 8
+    });
+
+    useEffect(() => {
+        if (form.forecastDate && !newTask.due_date) {
+            setNewTask(prev => ({ ...prev, due_date: form.forecastDate }));
+        }
+    }, [form.forecastDate]);
+
+    const handleAddTask = () => {
+        if (!newTask.title.trim()) {
+            toast.error("O título da tarefa é obrigatório.");
+            return;
+        }
+
+        const taskToAdd = {
+            id: `temp-${Date.now()}`,
+            title: newTask.title.trim(),
+            environment_name: newTask.environment_name.trim() || null,
+            assigned_to: newTask.assigned_to || null,
+            priority: newTask.priority,
+            due_date: newTask.due_date || form.forecastDate || new Date().toISOString().split("T")[0],
+            estimated_hours: Number(newTask.estimated_hours) || 0,
+            status: "pending"
+        };
+
+        const updatedTasks = [...form.tasks, taskToAdd];
+        const totalHours = updatedTasks.reduce((sum, t) => sum + (Number(t.estimated_hours) || 0), 0);
+        const suggestedDays = Math.max(1, Math.ceil(totalHours / 8));
+
+        setForm(prev => ({
+            ...prev,
+            tasks: updatedTasks,
+            daysEstimated: suggestedDays
+        }));
+
+        setNewTask({
+            title: "",
+            environment_name: "",
+            assigned_to: "",
+            priority: "normal",
+            due_date: form.forecastDate || new Date().toISOString().split("T")[0],
+            estimated_hours: 8
+        });
+        toast.success("Tarefa adicionada ao cronograma!");
+    };
+
+    const handleRemoveTask = (idToRemove: string) => {
+        const updatedTasks = form.tasks.filter(t => t.id !== idToRemove);
+        const totalHours = updatedTasks.reduce((sum, t) => sum + (Number(t.estimated_hours) || 0), 0);
+        const suggestedDays = Math.max(1, Math.ceil(totalHours / 8));
+
+        setForm(prev => ({
+            ...prev,
+            tasks: updatedTasks,
+            daysEstimated: suggestedDays
+        }));
+        toast.success("Tarefa removida.");
+    };
 
     const handleDateChange = (field: string, value: string) => {
         setForm((prev) => {
@@ -263,6 +348,7 @@ const ServiceOrderFormDialog = ({
             clientId: form.clientId,
             amount: form.amount,
             daysEstimated: form.daysEstimated || 1,
+            tasks: form.tasks,
             laborLogs: form.laborLogs.map(l => {
                 const dateObj = l.date ? new Date(l.date) : new Date();
                 return {
@@ -291,7 +377,7 @@ const ServiceOrderFormDialog = ({
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <Tabs defaultValue="geral" className="w-full">
-                        <TabsList className="grid w-full grid-cols-4 mb-4">
+                        <TabsList className="grid w-full grid-cols-5 mb-4">
                             <TabsTrigger value="geral" className="gap-2">
                                 <Clipboard className="h-4 w-4" />
                                 Geral
@@ -307,6 +393,10 @@ const ServiceOrderFormDialog = ({
                             <TabsTrigger value="horas" className="gap-2">
                                 <Clock className="h-4 w-4" />
                                 Horas
+                            </TabsTrigger>
+                            <TabsTrigger value="tarefas" className="gap-2">
+                                <CheckSquare className="h-4 w-4" />
+                                Tarefas ({form.tasks.length})
                             </TabsTrigger>
                         </TabsList>
 
@@ -567,6 +657,150 @@ const ServiceOrderFormDialog = ({
                                     </div>
                                 ))}
                             </div>
+                        </TabsContent>
+
+                        <TabsContent value="tarefas" className="space-y-4">
+                            <div className="bg-muted/30 border border-white/5 p-4 rounded-2xl space-y-3">
+                                <Label className="text-xs font-black uppercase tracking-wider text-primary">Nova Atividade para a Produção</Label>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase">Título da Tarefa</Label>
+                                        <Input 
+                                            placeholder="Ex: Corte de chapas" 
+                                            value={newTask.title}
+                                            onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
+                                            className="h-9 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase">Ambiente/Cômodo</Label>
+                                        <Input 
+                                            placeholder="Ex: Cozinha, Quarto" 
+                                            value={newTask.environment_name}
+                                            onChange={(e) => setNewTask(prev => ({ ...prev, environment_name: e.target.value }))}
+                                            className="h-9 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase">Colaborador Responsável</Label>
+                                        <Select 
+                                            value={newTask.assigned_to} 
+                                            onValueChange={(val) => setNewTask(prev => ({ ...prev, assigned_to: val }))}
+                                        >
+                                            <SelectTrigger className="h-9 text-xs">
+                                                <SelectValue placeholder="Selecione..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-slate-900 border-white/10 text-xs">
+                                                {profiles.map((p) => (
+                                                    <SelectItem key={p.id} value={p.id}>{p.full_name || p.email}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase">Horas Estimadas</Label>
+                                        <Input 
+                                            type="number"
+                                            value={newTask.estimated_hours}
+                                            onChange={(e) => setNewTask(prev => ({ ...prev, estimated_hours: parseInt(e.target.value) || 0 }))}
+                                            className="h-9 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase">Prioridade</Label>
+                                        <Select 
+                                            value={newTask.priority} 
+                                            onValueChange={(val) => setNewTask(prev => ({ ...prev, priority: val }))}
+                                        >
+                                            <SelectTrigger className="h-9 text-xs">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-slate-900 border-white/10 text-xs">
+                                                <SelectItem value="low">Baixa</SelectItem>
+                                                <SelectItem value="normal">Normal</SelectItem>
+                                                <SelectItem value="high">Alta</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase">Prazo</Label>
+                                        <Input 
+                                            type="date"
+                                            value={newTask.due_date}
+                                            onChange={(e) => setNewTask(prev => ({ ...prev, due_date: e.target.value }))}
+                                            className="h-9 text-xs"
+                                        />
+                                    </div>
+                                    <Button 
+                                        type="button" 
+                                        onClick={handleAddTask}
+                                        className="h-9 bg-primary text-black font-bold uppercase text-[10px] tracking-wider rounded-xl gap-1 shadow-lg shrink-0"
+                                    >
+                                        <Plus className="h-3.5 w-3.5" />
+                                        Adicionar Tarefa
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Cronograma de Atividades ({form.tasks.length})</Label>
+                                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-2">
+                                    {form.tasks.length === 0 ? (
+                                        <p className="text-xs text-muted-foreground italic text-center py-8 border border-dashed rounded-xl bg-white/[0.01]">
+                                            Nenhuma tarefa planejada para esta OS. Adicione tarefas para estimar o tempo dinamicamente.
+                                        </p>
+                                    ) : (
+                                        form.tasks.map((task, idx) => {
+                                            const assignedProfile = profiles.find(p => p.id === task.assigned_to);
+                                            const collaboratorName = assignedProfile ? (assignedProfile.full_name || assignedProfile.email) : "Não Atribuído";
+                                            return (
+                                                <div key={task.id || idx} className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.04] transition-all text-xs">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                            <span className="font-extrabold text-white text-xs">{task.title}</span>
+                                                            {task.environment_name && (
+                                                                <span className="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded-full text-slate-300">
+                                                                    {task.environment_name}
+                                                                </span>
+                                                            )}
+                                                            <span className="text-[9px] bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">
+                                                                {task.estimated_hours}h estimadas
+                                                            </span>
+                                                            <span className="text-[9px] text-muted-foreground font-semibold">
+                                                                Resp: {collaboratorName}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[10px] text-muted-foreground/60">
+                                                            Prazo: {task.due_date ? new Date(task.due_date + "T12:00:00").toLocaleDateString("pt-BR") : "Não Definido"} • Prioridade: <span className="uppercase font-bold">{task.priority}</span>
+                                                        </p>
+                                                    </div>
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className="text-red-500 hover:bg-red-500/10 h-8 w-8 p-0 shrink-0"
+                                                        onClick={() => handleRemoveTask(task.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+
+                            {form.tasks.length > 0 && (
+                                <div className="p-3 bg-primary/5 border border-primary/10 rounded-xl text-center">
+                                    <p className="text-xs font-bold text-primary uppercase">
+                                        Carga total: {form.tasks.reduce((sum, t) => sum + (Number(t.estimated_hours) || 0), 0)} Horas • Sugerido na OS: {form.daysEstimated} Dias Úteis
+                                    </p>
+                                </div>
+                            )}
                         </TabsContent>
                     </Tabs>
 

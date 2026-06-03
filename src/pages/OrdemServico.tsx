@@ -185,7 +185,21 @@ const OrdemServico = () => {
     };
 
     const handleEditOrder = (order: ServiceOrder) => {
-        setEditingOrder(order);
+        const orderTasks = tasks.filter(t => {
+            if (t.service_order_id === order.id) return true;
+            
+            const projName = t.project_name?.trim().toLowerCase() || "";
+            const clientName = order.client?.trim().toLowerCase() || "";
+            const ticketNum = order.ticketNumber?.trim().toLowerCase() || "";
+            
+            if (projName === clientName) return true;
+            if (ticketNum && projName.includes(ticketNum)) return true;
+            return false;
+        });
+        setEditingOrder({
+            ...order,
+            tasks: orderTasks
+        });
         setIsDialogOpen(true);
     };
 
@@ -209,6 +223,9 @@ const OrdemServico = () => {
 
     const handleSubmit = async (orderData: Omit<ServiceOrder, "id">) => {
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            const userId = user?.id;
+
             const formatDate = (date: any) => {
                 if (!date || isNaN(new Date(date).getTime())) return null;
                 return new Date(date).toISOString().split('T')[0];
@@ -264,6 +281,36 @@ const OrdemServico = () => {
                     }
                 }
 
+                // Inserir tarefas se houver
+                let insertedTasksList: any[] = [];
+                if (orderData.tasks && orderData.tasks.length > 0) {
+                    const tasksToInsert = orderData.tasks.map((t: any) => ({
+                        title: t.title,
+                        environment_name: t.environment_name || null,
+                        assigned_to: t.assigned_to || null,
+                        priority: t.priority || 'normal',
+                        due_date: t.due_date || formatDate(orderData.forecastDate) || new Date().toISOString().split('T')[0],
+                        created_by: userId,
+                        status: 'pending',
+                        project_name: `${insertedOrder.ticket_number || "S/N"} - ${insertedOrder.client}${insertedOrder.action ? ` (${insertedOrder.action})` : ""}`,
+                        service_order_id: insertedOrder.id,
+                        estimated_hours: t.estimated_hours || 0
+                    }));
+
+                    const { data: insertedTasks, error: tasksError } = await supabase
+                        .from('tasks')
+                        .insert(tasksToInsert)
+                        .select();
+
+                    if (tasksError) {
+                        console.error("Erro ao inserir tarefas na criação:", tasksError);
+                        toast.error("OS criada, mas houve erro ao salvar as tarefas.");
+                    } else if (insertedTasks) {
+                        insertedTasksList = insertedTasks;
+                        setTasks(prev => [...insertedTasks, ...prev]);
+                    }
+                }
+
                 const createdOrder: ServiceOrder = {
                     id: insertedOrder.id,
                     ticketNumber: insertedOrder.ticket_number,
@@ -279,7 +326,8 @@ const OrdemServico = () => {
                     attachments: insertedOrder.attachments || [],
                     amount: insertedOrder.amount || 0,
                     daysEstimated: insertedOrder.days_estimated || orderData.daysEstimated || 1,
-                    laborLogs: orderData.laborLogs || []
+                    laborLogs: orderData.laborLogs || [],
+                    tasks: insertedTasksList
                 };
                 setOrders([createdOrder, ...orders]);
             }
@@ -378,6 +426,80 @@ const OrdemServico = () => {
                         toast.error(`Erro nas horas: ${insertError.message}`);
                     }
                 }
+            }
+
+            // Sincronizar tarefas
+            if (updates.tasks) {
+                const { data: { user } } = await supabase.auth.getUser();
+                const userId = user?.id;
+
+                const currentDbTasks = tasks.filter(t => t.service_order_id === id);
+                const updatedTasksWithRealIds = updates.tasks.filter((t: any) => t.id && !t.id.startsWith('temp-'));
+                const realIdsToKeep = updatedTasksWithRealIds.map((t: any) => t.id);
+                
+                const tasksToDelete = currentDbTasks.filter(t => !realIdsToKeep.includes(t.id));
+                if (tasksToDelete.length > 0) {
+                    const deleteIds = tasksToDelete.map(t => t.id);
+                    const { error: deleteTasksErr } = await supabase
+                        .from('tasks')
+                        .delete()
+                        .in('id', deleteIds);
+                    if (deleteTasksErr) console.error("Erro ao deletar tarefas removidas:", deleteTasksErr);
+                }
+
+                const tasksToInsert = updates.tasks.filter((t: any) => !t.id || t.id.startsWith('temp-')).map((t: any) => ({
+                    title: t.title,
+                    environment_name: t.environment_name || null,
+                    assigned_to: t.assigned_to || null,
+                    priority: t.priority || 'normal',
+                    due_date: t.due_date || (updates.forecastDate ? updates.forecastDate.toISOString().split('T')[0] : (editingOrder?.forecastDate ? new Date(editingOrder.forecastDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0])),
+                    created_by: userId,
+                    status: t.status || 'pending',
+                    project_name: `${updates.ticketNumber || editingOrder?.ticketNumber || 'S/N'} - ${updates.client || editingOrder?.client || ''}${updates.action ? ` (${updates.action})` : (editingOrder?.action ? ` (${editingOrder.action})` : "")}`,
+                    service_order_id: id,
+                    estimated_hours: t.estimated_hours || 0
+                }));
+
+                const tasksToUpdate = updates.tasks.filter((t: any) => t.id && !t.id.startsWith('temp-'));
+
+                let newInsertedTasks: any[] = [];
+                if (tasksToInsert.length > 0) {
+                    const { data: inserted, error: insertTasksErr } = await supabase
+                        .from('tasks')
+                        .insert(tasksToInsert)
+                        .select();
+                    if (insertTasksErr) console.error("Erro ao inserir novas tarefas:", insertTasksErr);
+                    else if (inserted) {
+                        newInsertedTasks = inserted;
+                    }
+                }
+
+                if (tasksToUpdate.length > 0) {
+                    for (const t of tasksToUpdate) {
+                        const { error: updateTaskErr } = await supabase
+                            .from('tasks')
+                            .update({
+                                title: t.title,
+                                environment_name: t.environment_name || null,
+                                assigned_to: t.assigned_to || null,
+                                priority: t.priority || 'normal',
+                                due_date: t.due_date,
+                                estimated_hours: t.estimated_hours || 0,
+                                project_name: `${updates.ticketNumber || editingOrder?.ticketNumber || t.project_name?.split(' - ')[0] || 'S/N'} - ${updates.client || editingOrder?.client || t.project_name?.split(' - ')[1]?.split(' (')[0] || ''}`
+                            })
+                            .eq('id', t.id);
+                        if (updateTaskErr) console.error(`Erro ao atualizar tarefa ${t.id}:`, updateTaskErr);
+                    }
+                }
+
+                setTasks(prev => {
+                    const withoutOS = prev.filter(t => t.service_order_id !== id && !tasksToDelete.map(td => td.id).includes(t.id));
+                    const updatedAndNew = [
+                        ...tasksToUpdate,
+                        ...newInsertedTasks
+                    ];
+                    return [...updatedAndNew, ...withoutOS];
+                });
             }
 
             setOrders(orders.map(order =>

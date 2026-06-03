@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send, Pencil, CalendarRange, Check, Sparkles, AlertCircle, ListTodo, Printer } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, User as UserIcon, CheckCircle2, Circle, LayoutGrid, ChevronRight, Filter, ChevronDown, ChevronUp, Send, Pencil, CalendarRange, Check, Sparkles, AlertCircle, ListTodo, Printer, Clock } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -34,6 +34,8 @@ interface Task {
     environment_name: string | null;
     due_date: string;
     order_index?: number;
+    service_order_id?: string | null;
+    estimated_hours?: number | null;
 }
 
 interface Profile {
@@ -1872,6 +1874,12 @@ const SortableTaskItem = ({ task, isAdmin, onEdit, onToggleStatus, onDelete }: S
                         <span className="text-[8px] font-black uppercase tracking-widest text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
                             <UserIcon className="h-2 w-2 text-primary/70" />
                             {parsed.collaborator}
+                        </span>
+                    )}
+                    {task.estimated_hours !== undefined && task.estimated_hours !== null && (
+                        <span className="text-[8px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                            <Clock className="h-2.5 w-2.5 text-amber-400" />
+                            {task.estimated_hours}h
                         </span>
                     )}
                 </div>
