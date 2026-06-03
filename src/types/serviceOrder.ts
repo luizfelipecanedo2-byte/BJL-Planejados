@@ -28,4 +28,5 @@ export interface ServiceOrder {
     priorityLevel?: 'baixa' | 'normal' | 'alta' | 'urgente';
     productionPriority?: number;
     productionNotes?: string;
+    daysEstimated?: number;
 }

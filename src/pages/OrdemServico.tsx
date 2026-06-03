@@ -8,12 +8,13 @@ import ProductionTimeline from "@/components/crm/ProductionTimeline";
 import OSKanbanBoard from "@/components/crm/OSKanbanBoard";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
-import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play, KanbanSquare, ClipboardList } from "lucide-react";
+import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play, KanbanSquare, ClipboardList, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import CapacityTab from "@/components/crm/CapacityTab";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -125,6 +126,7 @@ const OrdemServico = () => {
                 notes: o.notes,
                 attachments: o.attachments || [],
                 amount: o.amount || 0,
+                daysEstimated: o.days_estimated || 1,
                 laborLogs: [],
                 priorityLevel: o.priority_level || 'normal',
                 productionPriority: o.production_priority || 0,
@@ -224,7 +226,8 @@ const OrdemServico = () => {
                 notes: orderData.notes,
                 attachments: orderData.attachments || [],
                 client_id: orderData.clientId || null,
-                amount: orderData.amount || 0
+                amount: orderData.amount || 0,
+                days_estimated: orderData.daysEstimated || 1
             };
 
             console.log("Enviando nova OS:", newOrder);
@@ -275,6 +278,7 @@ const OrdemServico = () => {
                     notes: insertedOrder.notes,
                     attachments: insertedOrder.attachments || [],
                     amount: insertedOrder.amount || 0,
+                    daysEstimated: insertedOrder.days_estimated || orderData.daysEstimated || 1,
                     laborLogs: orderData.laborLogs || []
                 };
                 setOrders([createdOrder, ...orders]);
@@ -325,6 +329,7 @@ const OrdemServico = () => {
             if (updates.priorityLevel !== undefined) updateData.priority_level = updates.priorityLevel;
             if (updates.productionPriority !== undefined) updateData.production_priority = updates.productionPriority;
             if (updates.productionNotes !== undefined) updateData.production_notes = updates.productionNotes;
+            if (updates.daysEstimated !== undefined) updateData.days_estimated = updates.daysEstimated;
 
             const { error } = await supabase
                 .from('service_orders')
@@ -712,6 +717,10 @@ const OrdemServico = () => {
                         <KanbanSquare className="h-3 w-3 mr-2" />
                         Kanban (Visual)
                     </TabsTrigger>
+                    <TabsTrigger value="capacity" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-amber-500 data-[state=active]:text-white">
+                        <Clock className="h-3 w-3 mr-2" />
+                        Capacity Planning
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="definir" className="space-y-4">
@@ -850,6 +859,13 @@ const OrdemServico = () => {
                         orders={orders}
                         onStatusChange={(id, status) => handleUpdate(id, { status })}
                         onEdit={handleEditOrder}
+                    />
+                </TabsContent>
+
+                <TabsContent value="capacity">
+                    <CapacityTab 
+                        orders={orders}
+                        settings={settings}
                     />
                 </TabsContent>
             </Tabs>

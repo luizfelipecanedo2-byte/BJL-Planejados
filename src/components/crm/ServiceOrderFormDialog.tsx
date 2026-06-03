@@ -69,6 +69,7 @@ const ServiceOrderFormDialog = ({
         notes: "",
         attachments: [] as string[],
         amount: 0,
+        daysEstimated: 1,
         laborLogs: [] as any[],
     });
     const [isUploading, setIsUploading] = useState(false);
@@ -122,6 +123,7 @@ const ServiceOrderFormDialog = ({
                     notes: editingOrder.notes || "",
                     attachments: editingOrder.attachments || [],
                     amount: editingOrder.amount || 0,
+                    daysEstimated: editingOrder.daysEstimated || 1,
                     laborLogs: editingOrder.laborLogs || [],
                 });
             } else if (open) {
@@ -164,6 +166,7 @@ const ServiceOrderFormDialog = ({
                     notes: "",
                     attachments: [],
                     amount: 0,
+                    daysEstimated: 1,
                     laborLogs: [],
                 });
             }
@@ -259,6 +262,7 @@ const ServiceOrderFormDialog = ({
             attachments: form.attachments,
             clientId: form.clientId,
             amount: form.amount,
+            daysEstimated: form.daysEstimated || 1,
             laborLogs: form.laborLogs.map(l => {
                 const dateObj = l.date ? new Date(l.date) : new Date();
                 return {
@@ -443,7 +447,19 @@ const ServiceOrderFormDialog = ({
                                         onChange={(e) => handleDateChange("completionDate", e.target.value)}
                                     />
                                 </div>
-                                <div className="col-span-2">
+                                <div>
+                                    <Label htmlFor="daysEstimated">Dias Estimados</Label>
+                                    <Input
+                                        id="daysEstimated"
+                                        type="number"
+                                        min="1"
+                                        value={form.daysEstimated}
+                                        onChange={(e) => update("daysEstimated", parseInt(e.target.value) || 1)}
+                                        placeholder="1"
+                                        required
+                                    />
+                                </div>
+                                <div>
                                     <Label htmlFor="amount">Valor do Serviço (R$)</Label>
                                     <Input
                                         id="amount"

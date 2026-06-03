@@ -11,6 +11,9 @@ export interface CompanySettings {
   instagram: string | null;
   facebook: string | null;
   responsible_name: string | null;
+  capacity_production_staff?: number;
+  capacity_efficiency?: number;
+  capacity_daily_hours?: number;
   created_at: string;
   updated_at: string;
 }

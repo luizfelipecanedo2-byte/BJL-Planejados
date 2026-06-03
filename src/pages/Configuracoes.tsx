@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, MapPin, Phone, Mail, Globe, Instagram, Facebook, User, Save, Loader2 } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, Globe, Instagram, Facebook, User, Save, Loader2, Users, Clock, Percent } from "lucide-react";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { motion } from "framer-motion";
 
@@ -20,7 +20,10 @@ const Configuracoes = () => {
         website: "",
         instagram: "",
         facebook: "",
-        responsible_name: ""
+        responsible_name: "",
+        capacity_production_staff: 3,
+        capacity_daily_hours: 8,
+        capacity_efficiency: 80
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -35,7 +38,10 @@ const Configuracoes = () => {
                 website: settings.website || "",
                 instagram: settings.instagram || "",
                 facebook: settings.facebook || "",
-                responsible_name: settings.responsible_name || ""
+                responsible_name: settings.responsible_name || "",
+                capacity_production_staff: settings.capacity_production_staff || 3,
+                capacity_daily_hours: settings.capacity_daily_hours || 8,
+                capacity_efficiency: settings.capacity_efficiency || 80
             });
         }
     }, [settings]);
@@ -162,6 +168,52 @@ const Configuracoes = () => {
                                         className="h-12 bg-white/5 border-white/10 rounded-xl font-bold focus:bg-white/10 transition-all pl-11" 
                                     />
                                     <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="glass-card border-white/5 shadow-2xl overflow-hidden mt-8">
+                        <CardHeader className="bg-primary/5 border-b border-white/5">
+                            <CardTitle className="text-lg font-black uppercase tracking-widest text-primary flex items-center gap-3">
+                                <Clock className="h-5 w-5" /> Capacity Planning Settings
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Marceneiros / Ajudantes</Label>
+                                <div className="relative group">
+                                    <Input 
+                                        type="number"
+                                        value={formData.capacity_production_staff} 
+                                        onChange={e => setFormData({...formData, capacity_production_staff: parseInt(e.target.value) || 0})}
+                                        className="h-12 bg-white/5 border-white/10 rounded-xl font-bold focus:bg-white/10 transition-all pl-11" 
+                                    />
+                                    <Users className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Horas Diárias por Pessoa</Label>
+                                <div className="relative group">
+                                    <Input 
+                                        type="number"
+                                        value={formData.capacity_daily_hours} 
+                                        onChange={e => setFormData({...formData, capacity_daily_hours: parseInt(e.target.value) || 0})}
+                                        className="h-12 bg-white/5 border-white/10 rounded-xl font-bold focus:bg-white/10 transition-all pl-11" 
+                                    />
+                                    <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Eficiência da Fábrica (%)</Label>
+                                <div className="relative group">
+                                    <Input 
+                                        type="number"
+                                        value={formData.capacity_efficiency} 
+                                        onChange={e => setFormData({...formData, capacity_efficiency: parseInt(e.target.value) || 0})}
+                                        className="h-12 bg-white/5 border-white/10 rounded-xl font-bold focus:bg-white/10 transition-all pl-11" 
+                                    />
+                                    <Percent className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 </div>
                             </div>
                         </CardContent>
