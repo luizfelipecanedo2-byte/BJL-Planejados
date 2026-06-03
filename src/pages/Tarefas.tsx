@@ -515,7 +515,10 @@ const Tarefas = () => {
             "Geral": []
         };
 
-        filteredTasks.forEach(task => {
+        // Filtra para imprimir apenas tarefas não concluídas
+        const nonCompletedTasks = filteredTasks.filter(task => task.status !== 'completed');
+
+        nonCompletedTasks.forEach(task => {
             const parsed = parseTaskDescription(task.description);
             const collab = parsed.collaborator;
             if (collab && ["Samuel", "Felipe", "Lucas", "Zé Luiz"].includes(collab)) {
