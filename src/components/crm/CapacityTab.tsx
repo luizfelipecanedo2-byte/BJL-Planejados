@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import { ServiceOrder } from "@/types/serviceOrder";
 import { CompanySettings } from "@/types/company";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,14 +9,9 @@ import {
   Users, 
   Clock, 
   Percent, 
-  TrendingUp, 
   AlertTriangle, 
   CheckCircle2, 
   Activity, 
-  CalendarDays,
-  Calendar,
-  Layers,
-  ArrowRight,
   Hammer
 } from "lucide-react";
 import {
@@ -49,184 +45,279 @@ const MONTH_NAMES = [
 
 // Helper function to calculate working days (Mon-Fri) in a month
 const getWorkingDaysInMonth = (year: number, monthIndex: number): number => {
-  let count = 0;
-  const date = new Date(year, monthIndex, 1);
-  while (date.getMonth() === monthIndex) {
-    const day = date.getDay();
-    if (day !== 0 && day !== 6) { // Not Sunday (0) and not Saturday (6)
-      count++;
+  try {
+    if (isNaN(year) || isNaN(monthIndex)) return 22;
+    let count = 0;
+    const date = new Date(year, monthIndex, 1);
+    while (date.getMonth() === monthIndex) {
+      const day = date.getDay();
+      if (day !== 0 && day !== 6) { // Not Sunday (0) and not Saturday (6)
+        count++;
+      }
+      date.setDate(date.getDate() + 1);
     }
-    date.setDate(date.getDate() + 1);
+    return count > 0 ? count : 22;
+  } catch (e) {
+    console.error("Error in getWorkingDaysInMonth:", e);
+    return 22;
   }
-  return count;
 };
 
-const CapacityTab = ({ orders, settings }: CapacityTabProps) => {
+const CapacityTab = ({ orders = [], settings }: CapacityTabProps) => {
   const currentYear = new Date().getFullYear();
   const currentMonthIndex = new Date().getMonth();
   
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthIndex.toString());
   const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
 
-  // Extracted config settings
-  const staffCount = settings?.capacity_production_staff || 3;
-  const dailyHours = settings?.capacity_daily_hours || 8;
-  const efficiencyPercent = settings?.capacity_efficiency || 80;
+  // Extracted config settings safely coerced to numbers
+  const staffCount = useMemo(() => {
+    return Number(settings?.capacity_production_staff) || 3;
+  }, [settings?.capacity_production_staff]);
+
+  const dailyHours = useMemo(() => {
+    return Number(settings?.capacity_daily_hours) || 8;
+  }, [settings?.capacity_daily_hours]);
+
+  const efficiencyPercent = useMemo(() => {
+    return Number(settings?.capacity_efficiency) || 80;
+  }, [settings?.capacity_efficiency]);
 
   // Calculate working days and total capacity for selected period
   const workingDays = useMemo(() => {
-    return getWorkingDaysInMonth(parseInt(selectedYear), parseInt(selectedMonth));
+    try {
+      const year = parseInt(selectedYear);
+      const month = parseInt(selectedMonth);
+      if (isNaN(year) || isNaN(month)) return 22;
+      return getWorkingDaysInMonth(year, month);
+    } catch (e) {
+      console.error("Error in workingDays useMemo:", e);
+      return 22;
+    }
   }, [selectedMonth, selectedYear]);
 
   // Nominal Capacity = Staff * Daily Hours * Working Days
   const nominalCapacityHours = useMemo(() => {
-    return staffCount * dailyHours * workingDays;
+    try {
+      const val = staffCount * dailyHours * workingDays;
+      return isNaN(val) ? 0 : val;
+    } catch (e) {
+      console.error("Error in nominalCapacityHours useMemo:", e);
+      return 0;
+    }
   }, [staffCount, dailyHours, workingDays]);
 
   // Real Capacity = Nominal Capacity * (Efficiency / 100)
   const realCapacityHours = useMemo(() => {
-    return Math.round(nominalCapacityHours * (efficiencyPercent / 100));
+    try {
+      const val = Math.round(nominalCapacityHours * (efficiencyPercent / 100));
+      return isNaN(val) ? 0 : val;
+    } catch (e) {
+      console.error("Error in realCapacityHours useMemo:", e);
+      return 0;
+    }
   }, [nominalCapacityHours, efficiencyPercent]);
 
   // Filter orders for the selected month and year
   const activeOrdersInPeriod = useMemo(() => {
-    const month = parseInt(selectedMonth);
-    const year = parseInt(selectedYear);
-    
-    return orders.filter(order => {
-      // Ignore final states that are not from this month
-      const forecastDate = new Date(order.forecastDate);
-      const isSameMonth = forecastDate.getMonth() === month && forecastDate.getFullYear() === year;
+    try {
+      const month = parseInt(selectedMonth);
+      const year = parseInt(selectedYear);
+      if (isNaN(month) || isNaN(year)) return [];
       
-      const isFinished = order.status === "Entregue e Finalizado";
+      const safeOrders = Array.isArray(orders) ? orders : [];
       
-      if (isFinished) {
-        // If finished, check if completion date matches the selected month
-        if (order.completionDate) {
-          const compDate = new Date(order.completionDate);
-          return compDate.getMonth() === month && compDate.getFullYear() === year;
+      return safeOrders.filter(order => {
+        if (!order) return false;
+        
+        // Parse date safely
+        const forecastDate = order.forecastDate ? new Date(order.forecastDate) : null;
+        if (!forecastDate || isNaN(forecastDate.getTime())) return false;
+        
+        const isSameMonth = forecastDate.getMonth() === month && forecastDate.getFullYear() === year;
+        const isFinished = order.status === "Entregue e Finalizado";
+        
+        if (isFinished) {
+          if (order.completionDate) {
+            const compDate = new Date(order.completionDate);
+            if (!isNaN(compDate.getTime())) {
+              return compDate.getMonth() === month && compDate.getFullYear() === year;
+            }
+          }
+          return false;
         }
-        return false;
-      }
-      
-      // If active, it counts if its forecast date is in this month
-      return isSameMonth;
-    });
+        
+        return isSameMonth;
+      });
+    } catch (e) {
+      console.error("Error in activeOrdersInPeriod useMemo:", e);
+      return [];
+    }
   }, [orders, selectedMonth, selectedYear]);
 
   // Calculate workload and logged hours
   const workloadStats = useMemo(() => {
-    let totalEstimatedHours = 0;
-    let totalLoggedHours = 0;
-    
-    activeOrdersInPeriod.forEach(order => {
-      // 1 day of estimation = 8 hours of work
-      const estimatedDays = order.daysEstimated || 1;
-      totalEstimatedHours += estimatedDays * 8;
+    try {
+      let totalEstimatedHours = 0;
+      let totalLoggedHours = 0;
       
-      // Sum labor logs
-      if (order.laborLogs) {
-        order.laborLogs.forEach(log => {
-          totalLoggedHours += Number(log.hours) || 0;
-        });
-      }
-    });
+      activeOrdersInPeriod.forEach(order => {
+        if (!order) return;
+        const estimatedDays = Number(order.daysEstimated) || 1;
+        totalEstimatedHours += estimatedDays * 8;
+        
+        if (order.laborLogs && Array.isArray(order.laborLogs)) {
+          order.laborLogs.forEach(log => {
+            if (log && log.hours) {
+              totalLoggedHours += Number(log.hours) || 0;
+            }
+          });
+        }
+      });
 
-    // Net remaining workload is: Estimated Hours - Logged Hours
-    // (Ensure it doesn't go below 0)
-    const netPendingHours = Math.max(0, totalEstimatedHours - totalLoggedHours);
-    
-    return {
-      estimated: totalEstimatedHours,
-      logged: totalLoggedHours,
-      pending: netPendingHours
-    };
+      const netPendingHours = Math.max(0, totalEstimatedHours - totalLoggedHours);
+      
+      return {
+        estimated: totalEstimatedHours,
+        logged: totalLoggedHours,
+        pending: netPendingHours
+      };
+    } catch (e) {
+      console.error("Error in workloadStats useMemo:", e);
+      return { estimated: 0, logged: 0, pending: 0 };
+    }
   }, [activeOrdersInPeriod]);
 
   // Occupancy rate = Net Pending Hours / Real Capacity Hours
   const occupancyRate = useMemo(() => {
-    if (realCapacityHours === 0) return 0;
-    return Math.round((workloadStats.pending / realCapacityHours) * 100);
+    try {
+      const capacity = Number(realCapacityHours);
+      if (!capacity || isNaN(capacity)) return 0;
+      const rate = Math.round((Number(workloadStats.pending) / capacity) * 100);
+      return isNaN(rate) ? 0 : rate;
+    } catch (e) {
+      console.error("Error in occupancyRate useMemo:", e);
+      return 0;
+    }
   }, [workloadStats.pending, realCapacityHours]);
 
   // Status classification based on occupancy rate
   const capacityStatus = useMemo(() => {
-    if (occupancyRate > 95) {
+    try {
+      const rate = isNaN(occupancyRate) ? 0 : occupancyRate;
+      if (rate > 95) {
+        return {
+          label: "OVERLOAD RISK",
+          color: "text-rose-500",
+          barColor: "bg-rose-500",
+          bgColor: "bg-rose-500/10",
+          borderColor: "border-rose-500/20",
+          desc: "Factory is overloaded. Delay new scheduling or authorize overtime.",
+          icon: AlertTriangle
+        };
+      }
+      if (rate > 75) {
+        return {
+          label: "HIGH DEMAND",
+          color: "text-amber-500",
+          barColor: "bg-amber-500",
+          bgColor: "bg-amber-500/10",
+          borderColor: "border-amber-500/20",
+          desc: "Approaching capacity threshold. Review active timelines.",
+          icon: Activity
+        };
+      }
       return {
-        label: "OVERLOAD RISK",
-        color: "text-rose-500",
-        barColor: "bg-rose-500",
-        bgColor: "bg-rose-500/10",
-        borderColor: "border-rose-500/20",
-        desc: "Factory is overloaded. Delay new scheduling or authorize overtime.",
-        icon: AlertTriangle
+        label: "OPTIMAL CAPACITY",
+        color: "text-emerald-500",
+        barColor: "bg-emerald-500",
+        bgColor: "bg-emerald-500/10",
+        borderColor: "border-emerald-500/20",
+        desc: "Factory operates at safe levels. Ready to receive new orders.",
+        icon: CheckCircle2
+      };
+    } catch (e) {
+      console.error("Error in capacityStatus useMemo:", e);
+      return {
+        label: "OPTIMAL CAPACITY",
+        color: "text-emerald-500",
+        barColor: "bg-emerald-500",
+        bgColor: "bg-emerald-500/10",
+        borderColor: "border-emerald-500/20",
+        desc: "Factory operates at safe levels.",
+        icon: CheckCircle2
       };
     }
-    if (occupancyRate > 75) {
-      return {
-        label: "HIGH DEMAND",
-        color: "text-amber-500",
-        barColor: "bg-amber-500",
-        bgColor: "bg-amber-500/10",
-        borderColor: "border-amber-500/20",
-        desc: "Approaching capacity threshold. Review active timelines.",
-        icon: Activity
-      };
-    }
-    return {
-      label: "OPTIMAL CAPACITY",
-      color: "text-emerald-500",
-      barColor: "bg-emerald-500",
-      bgColor: "bg-emerald-500/10",
-      borderColor: "border-emerald-500/20",
-      desc: "Factory operates at safe levels. Ready to receive new orders.",
-      icon: CheckCircle2
-    };
   }, [occupancyRate]);
 
   // Group active projects by status to detect the Bottleneck (Teoria dos Gargalos)
   const statusGroupData = useMemo(() => {
-    const groups: Record<string, { count: number; hours: number }> = {};
-    
-    activeOrdersInPeriod.forEach(order => {
-      if (order.status === "Entregue e Finalizado" || order.status === "A Definir") return;
+    try {
+      const groups: Record<string, { count: number; hours: number }> = {};
       
-      const statusStr = order.status;
-      const hours = (order.daysEstimated || 1) * 8;
-      
-      if (!groups[statusStr]) {
-        groups[statusStr] = { count: 0, hours: 0 };
-      }
-      groups[statusStr].count += 1;
-      groups[statusStr].hours += hours;
-    });
+      activeOrdersInPeriod.forEach(order => {
+        if (!order || order.status === "Entregue e Finalizado" || order.status === "A Definir") return;
+        
+        const statusStr = order.status || "Plano de corte";
+        const hours = (Number(order.daysEstimated) || 1) * 8;
+        
+        if (!groups[statusStr]) {
+          groups[statusStr] = { count: 0, hours: 0 };
+        }
+        groups[statusStr].count += 1;
+        groups[statusStr].hours += hours;
+      });
 
-    return Object.entries(groups).map(([name, data]) => ({
-      name,
-      Projects: data.count,
-      Hours: data.hours
-    })).sort((a, b) => b.Hours - a.Hours);
+      return Object.entries(groups).map(([name, data]) => ({
+        name,
+        Projects: data.count,
+        Hours: data.hours
+      })).sort((a, b) => b.Hours - a.Hours);
+    } catch (e) {
+      console.error("Error in statusGroupData useMemo:", e);
+      return [];
+    }
   }, [activeOrdersInPeriod]);
 
   // Find the current bottleneck (stage with most hours)
   const currentBottleneck = useMemo(() => {
-    if (statusGroupData.length === 0) return null;
-    return statusGroupData[0];
+    try {
+      if (statusGroupData.length === 0) return null;
+      return statusGroupData[0];
+    } catch (e) {
+      console.error("Error in currentBottleneck useMemo:", e);
+      return null;
+    }
   }, [statusGroupData]);
 
   // Recharts Gauge data
   const pieData = useMemo(() => {
-    const rate = Math.min(occupancyRate, 100);
-    return [
-      { name: "Ocupado", value: rate },
-      { name: "Livre", value: 100 - rate }
-    ];
+    try {
+      const rate = isNaN(occupancyRate) ? 0 : Math.min(occupancyRate, 100);
+      return [
+        { name: "Ocupado", value: rate },
+        { name: "Livre", value: Math.max(0, 100 - rate) }
+      ];
+    } catch (e) {
+      console.error("Error in pieData useMemo:", e);
+      return [
+        { name: "Ocupado", value: 0 },
+        { name: "Livre", value: 100 }
+      ];
+    }
   }, [occupancyRate]);
 
-  const GAUGE_COLORS = [
-    occupancyRate > 95 ? "#f43f5e" : occupancyRate > 75 ? "#f59e0b" : "#10b981", 
-    "rgba(255,255,255,0.05)"
-  ];
+  const GAUGE_COLORS = useMemo(() => {
+    try {
+      const rate = isNaN(occupancyRate) ? 0 : occupancyRate;
+      return [
+        rate > 95 ? "#f43f5e" : rate > 75 ? "#f59e0b" : "#10b981", 
+        "rgba(255,255,255,0.05)"
+      ];
+    } catch (e) {
+      return ["#10b981", "rgba(255,255,255,0.05)"];
+    }
+  }, [occupancyRate]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -500,7 +591,7 @@ const CapacityTab = ({ orders, settings }: CapacityTabProps) => {
             <tbody>
               {activeOrdersInPeriod.length > 0 ? (
                 activeOrdersInPeriod.map((order, idx) => {
-                  const days = order.daysEstimated || 1;
+                  const days = Number(order.daysEstimated) || 1;
                   const hours = days * 8;
                   const workloadPercent = realCapacityHours > 0 ? ((hours / realCapacityHours) * 100).toFixed(1) : 0;
                   
@@ -522,7 +613,7 @@ const CapacityTab = ({ orders, settings }: CapacityTabProps) => {
                       </td>
                       <td className="p-4">
                         <span className="text-xs font-medium text-slate-300">
-                          {new Date(order.forecastDate).toLocaleDateString("pt-BR")}
+                          {order.forecastDate ? new Date(order.forecastDate).toLocaleDateString("pt-BR") : "S/P"}
                         </span>
                       </td>
                       <td className="p-4 text-center font-bold text-xs text-white">
