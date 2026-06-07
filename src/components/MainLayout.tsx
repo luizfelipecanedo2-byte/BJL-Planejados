@@ -5,6 +5,7 @@ import {
     ClipboardList,
     Package,
     Calendar,
+    CalendarDays,
     Menu,
     X,
     Users,
@@ -178,6 +179,7 @@ const MainLayout = () => {
         { icon: ClipboardList, label: "Ordem de Serviço", path: "/admin/ordem-servico", roles: ['admin'], emoji: "📋" },
         { icon: Package, label: "Estoque", path: "/admin/estoque", roles: ['admin', 'colaborador'], emoji: "📦" },
         { icon: Calendar, label: "Pedidos da Semana", path: "/admin/pedidos-semana", roles: ['admin', 'colaborador'], emoji: "🗓️" },
+        { icon: CalendarDays, label: "Agenda Geral", path: "/admin/agenda", roles: ['admin'], emoji: "📅" },
         { icon: CheckSquare, label: "Tarefas", path: "/admin/tarefas", roles: ['admin', 'colaborador'], emoji: "✅" },
         { icon: Settings, label: "Configurações", path: "/admin/configuracoes", roles: ['admin', 'colaborador'], emoji: "⚙️" },
 
