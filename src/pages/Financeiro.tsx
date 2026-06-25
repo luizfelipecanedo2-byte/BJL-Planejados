@@ -292,7 +292,7 @@ const Financeiro = () => {
     });
 
     return mappedProjects;
-  }, [serviceOrders, serviceExpenses, transactionAllocations]);
+  }, [serviceOrders, serviceExpenses, transactionAllocations, transactions]);
 
   const [isPartialPaymentOpen, setIsPartialPaymentOpen] = useState(false);
   const [selectedPartialTransaction, setSelectedPartialTransaction] = useState<Transaction | null>(null);
@@ -926,9 +926,10 @@ const Financeiro = () => {
         description: item.description, amount: item.amount, type: item.type,
         category: item.category, subcategory: item.subcategory, service: item.service,
         contact: item.contact, financial_institution: item.financialInstitution,
-        payment_method: item.paymentMethod, competence_date: item.competenceDate.toISOString().split('T')[0],
-        due_date: item.dueDate.toISOString().split('T')[0],
-        payment_date: item.paymentDate ? item.paymentDate.toISOString().split('T')[0] : null,
+        payment_method: item.paymentMethod,
+        competence_date: item.competenceDate && !isNaN(item.competenceDate.getTime()) ? item.competenceDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        due_date: item.dueDate && !isNaN(item.dueDate.getTime()) ? item.dueDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        payment_date: item.paymentDate && !isNaN(item.paymentDate.getTime()) ? item.paymentDate.toISOString().split('T')[0] : null,
         status: item.status, invoice_number: item.invoiceNumber, order_service: item.orderService, boleto_url: item.boletoUrl
       }));
       const { data: insertedData, error } = await supabase.from('transactions').insert(transactionsToInsert).select();
@@ -960,6 +961,7 @@ const Financeiro = () => {
           costSplits: dataArray[i].costSplits
         }));
         setTransactions(prev => [...newTrans, ...prev]);
+        fetchTransactionAllocations();
       }
       toast.success("Lançamento registrado!");
     } catch (error) { toast.error("Erro ao registrar lançamento."); }
@@ -975,8 +977,21 @@ const Financeiro = () => {
       if (updates.subcategory !== undefined) updateData.subcategory = updates.subcategory;
       if (updates.contact !== undefined) updateData.contact = updates.contact;
       if (updates.status !== undefined) updateData.status = updates.status;
-      if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate.toISOString().split('T')[0];
-      if (updates.paymentDate !== undefined) updateData.payment_date = updates.paymentDate ? updates.paymentDate.toISOString().split('T')[0] : null;
+      if (updates.competenceDate !== undefined) {
+        updateData.competence_date = updates.competenceDate && !isNaN(updates.competenceDate.getTime())
+          ? updates.competenceDate.toISOString().split('T')[0]
+          : null;
+      }
+      if (updates.dueDate !== undefined) {
+        updateData.due_date = updates.dueDate && !isNaN(updates.dueDate.getTime())
+          ? updates.dueDate.toISOString().split('T')[0]
+          : null;
+      }
+      if (updates.paymentDate !== undefined) {
+        updateData.payment_date = updates.paymentDate && !isNaN(updates.paymentDate.getTime())
+          ? updates.paymentDate.toISOString().split('T')[0]
+          : null;
+      }
       if (updates.financialInstitution !== undefined) updateData.financial_institution = updates.financialInstitution;
       if (updates.paymentMethod !== undefined) updateData.payment_method = updates.paymentMethod;
       if (updates.invoiceNumber !== undefined) updateData.invoice_number = updates.invoiceNumber;

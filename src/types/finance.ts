@@ -15,7 +15,7 @@ export interface Transaction {
     paymentMethod: string;
     competenceDate: Date;
     dueDate: Date;
-    paymentDate?: Date; // Data de Efetivação
+    paymentDate?: Date | null; // Data de Efetivação
     status: TransactionStatus;
     invoiceNumber: string;
     orderService?: string;

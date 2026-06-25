@@ -47,6 +47,22 @@ interface TransactionFormDialogProps {
     initialType?: TransactionType | "transfer";
 }
 
+const parseInputDate = (dateStr: string): Date | undefined => {
+    if (!dateStr) return undefined;
+    if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const year = parseInt(parts[2], 10);
+            const d = new Date(year, month, day, 12, 0, 0);
+            return isNaN(d.getTime()) ? undefined : d;
+        }
+    }
+    const d = new Date(dateStr + (dateStr.includes('T') ? '' : 'T12:00:00'));
+    return isNaN(d.getTime()) ? undefined : d;
+};
+
 const TransactionFormDialog = ({
     open,
     onOpenChange,
@@ -288,9 +304,9 @@ const TransactionFormDialog = ({
             type: type === 'transfer' ? 'expense' : type,
             category: type === 'transfer' ? 'Transferência' : category,
             status,
-            competenceDate: new Date(form.competenceDate),
-            dueDate: new Date(form.dueDate),
-            paymentDate: form.paymentDate ? new Date(form.paymentDate) : undefined,
+            competenceDate: parseInputDate(form.competenceDate) || new Date(),
+            dueDate: parseInputDate(form.dueDate) || new Date(),
+            paymentDate: form.paymentDate ? (parseInputDate(form.paymentDate) || null) : null,
             // Ensure recurring fields are consistent if we add them later
         };
 

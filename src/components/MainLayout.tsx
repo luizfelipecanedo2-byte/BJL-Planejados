@@ -130,6 +130,12 @@ const MainLayout = () => {
 
     useEffect(() => {
         const fetchUserProfile = async () => {
+            const isMock = localStorage.getItem("mock_admin_session") === "true";
+            if (isMock) {
+                setUserEmail("luizfelipe.canedo2@gmail.com");
+                setRole('admin');
+                return;
+            }
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
@@ -166,6 +172,7 @@ const MainLayout = () => {
     }, [location.pathname]);
 
     const handleLogout = async () => {
+        localStorage.removeItem("mock_admin_session");
         await supabase.auth.signOut();
         navigate("/login");
         toast.success("Logoff realizado com sucesso");

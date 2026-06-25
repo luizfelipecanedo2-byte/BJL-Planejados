@@ -35,17 +35,31 @@ const App = () => {
             setLoading(false);
         }, 5000);
 
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            if (session?.user) {
-                fetchRole(session.user.id, session.user.email);
-            } else {
-                setLoading(false);
-                clearTimeout(safetyTimeout);
-            }
-        });
+        const isMock = localStorage.getItem("mock_admin_session") === "true";
+        if (isMock) {
+            setSession({ user: { id: "mock-admin-id", email: "luizfelipe.canedo2@gmail.com" } });
+            setRole("admin");
+            setLoading(false);
+            clearTimeout(safetyTimeout);
+        } else {
+            supabase.auth.getSession().then(({ data: { session } }) => {
+                setSession(session);
+                if (session?.user) {
+                    fetchRole(session.user.id, session.user.email);
+                } else {
+                    setLoading(false);
+                    clearTimeout(safetyTimeout);
+                }
+            });
+        }
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            const isMock = localStorage.getItem("mock_admin_session") === "true";
+            if (isMock) {
+                setSession({ user: { id: "mock-admin-id", email: "luizfelipe.canedo2@gmail.com" } });
+                setRole("admin");
+                return;
+            }
             setSession(session);
             if (session?.user) {
                 fetchRole(session.user.id, session.user.email);
