@@ -303,7 +303,8 @@ const Financeiro = () => {
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending">("all");
   const [selectedFilterMonth, setSelectedFilterMonth] = useState<string>(new Date().getMonth().toString());
   const [dateFilterType, setDateFilterType] = useState<"competence" | "due">("due");
-  const [limitDateFilter, setLimitDateFilter] = useState<string>("");
+  const [startDateFilter, setStartDateFilter] = useState<string>("");
+  const [endDateFilter, setEndDateFilter] = useState<string>("");
   const [osFilter, setOsFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -513,8 +514,8 @@ const Financeiro = () => {
       const r = String(tDate.getDate()).padStart(2, '0');
       const tDateStr = `${y}-${m}-${r}`;
 
-      const matchesDate = limitDateFilter
-        ? tDateStr <= limitDateFilter
+      const matchesDate = (startDateFilter || endDateFilter)
+        ? ((!startDateFilter || tDateStr >= startDateFilter) && (!endDateFilter || tDateStr <= endDateFilter))
         : (tDate.getFullYear().toString() === selectedYear && (selectedFilterMonth === "all" || tDate.getMonth().toString() === selectedFilterMonth));
 
       const matchesOS = osFilter === "all" || (t.orderService === osFilter);
@@ -534,10 +535,10 @@ const Financeiro = () => {
     if (showRecentlyAdded) return result.slice(0, 50);
     if (showRecentlyPaid) return result.sort((a,b) => new Date(b.paymentDate || b.dueDate).getTime() - new Date(a.paymentDate || a.dueDate).getTime()).slice(0, 50);
     return result;
-  }, [transactions, searchTerm, typeFilter, statusFilter, selectedYear, selectedFilterMonth, dateFilterType, limitDateFilter, osFilter, paymentMethodFilter, showOverdueOnly, showRecentlyAdded, showRecentlyPaid]);
+  }, [transactions, searchTerm, typeFilter, statusFilter, selectedYear, selectedFilterMonth, dateFilterType, startDateFilter, endDateFilter, osFilter, paymentMethodFilter, showOverdueOnly, showRecentlyAdded, showRecentlyPaid]);
 
-  const pendingAmountUntilLimit = useMemo(() => {
-    if (!limitDateFilter) return 0;
+  const pendingAmountInRange = useMemo(() => {
+    if (!startDateFilter && !endDateFilter) return 0;
     
     return transactions
       .filter(t => {
@@ -547,10 +548,13 @@ const Financeiro = () => {
         const m = String(tDate.getMonth() + 1).padStart(2, '0');
         const r = String(tDate.getDate()).padStart(2, '0');
         const tDateStr = `${y}-${m}-${r}`;
-        return tDateStr <= limitDateFilter;
+        
+        const afterStart = !startDateFilter || tDateStr >= startDateFilter;
+        const beforeEnd = !endDateFilter || tDateStr <= endDateFilter;
+        return afterStart && beforeEnd;
       })
       .reduce((sum, t) => sum + t.amount, 0);
-  }, [transactions, limitDateFilter]);
+  }, [transactions, startDateFilter, endDateFilter]);
 
   const metrics = useMemo(() => {
     const income = filteredTransactions
@@ -1235,12 +1239,54 @@ const Financeiro = () => {
         <TabsContent value="lancamentos" className="space-y-6">
           <Card className="bg-card/40 backdrop-blur-md border-border/40 shadow-xl rounded-2xl overflow-hidden">
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-9 gap-4">
                 <div className="md:col-span-2 lg:col-span-2">
                   <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Filtrar por Termo</label>
                   <div className="relative group">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                     <Input placeholder="Descrição, OS, Cliente..." className="pl-10 h-10 rounded-xl bg-muted/30 border-border/20 text-xs" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                  </div>
+                </div>
+                <div className="md:col-span-2 lg:col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Período Vencimento</label>
+                  <div className="flex gap-1 items-center">
+                    <div className="relative flex-1">
+                      <Input
+                        type="date"
+                        className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs pr-6"
+                        value={startDateFilter}
+                        onChange={(e) => setStartDateFilter(e.target.value)}
+                        placeholder="Início"
+                      />
+                      {startDateFilter && (
+                        <button
+                          onClick={() => setStartDateFilter("")}
+                          className="absolute right-1.5 top-3 text-muted-foreground hover:text-foreground text-[10px] font-bold"
+                          title="Limpar início"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-muted-foreground text-xs font-bold">à</span>
+                    <div className="relative flex-1">
+                      <Input
+                        type="date"
+                        className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs pr-6"
+                        value={endDateFilter}
+                        onChange={(e) => setEndDateFilter(e.target.value)}
+                        placeholder="Fim"
+                      />
+                      {endDateFilter && (
+                        <button
+                          onClick={() => setEndDateFilter("")}
+                          className="absolute right-1.5 top-3 text-muted-foreground hover:text-foreground text-[10px] font-bold"
+                          title="Limpar fim"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -1281,26 +1327,6 @@ const Financeiro = () => {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Pagar Até (Venc.)</label>
-                  <div className="relative flex items-center">
-                    <Input
-                      type="date"
-                      className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs pr-7"
-                      value={limitDateFilter}
-                      onChange={(e) => setLimitDateFilter(e.target.value)}
-                    />
-                    {limitDateFilter && (
-                      <button
-                        onClick={() => setLimitDateFilter("")}
-                        className="absolute right-2.5 text-muted-foreground hover:text-foreground text-xs font-bold w-4 h-4 flex items-center justify-center rounded-full hover:bg-muted"
-                        title="Limpar data"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div>
                   <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Fluxo</label>
                   <Select value={typeFilter} onValueChange={(v: any) => setTypeFilter(v)}>
                     <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs"><SelectValue /></SelectTrigger>
@@ -1330,19 +1356,26 @@ const Financeiro = () => {
             </CardContent>
           </Card>
 
-          {limitDateFilter && (
+          {(startDateFilter || endDateFilter) && (
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center gap-4 text-amber-200 shadow-lg shadow-amber-500/5 transition-all duration-300">
               <div className="flex items-center gap-3">
                 <AlertTriangle className="text-amber-500 h-5 w-5 shrink-0 animate-pulse" />
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-amber-500">Previsão de Caixa Necessário</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Valor total de despesas pendentes a pagar com vencimento até <span className="font-bold text-amber-500">{limitDateFilter.split('-').reverse().join('/')}</span>:
+                    Valor total de despesas pendentes a pagar com vencimento
+                    {startDateFilter && endDateFilter ? (
+                      <> de <span className="font-bold text-amber-500">{startDateFilter.split('-').reverse().join('/')}</span> até <span className="font-bold text-amber-500">{endDateFilter.split('-').reverse().join('/')}</span></>
+                    ) : startDateFilter ? (
+                      <> a partir de <span className="font-bold text-amber-500">{startDateFilter.split('-').reverse().join('/')}</span></>
+                    ) : (
+                      <> até <span className="font-bold text-amber-500">{endDateFilter.split('-').reverse().join('/')}</span></>
+                    )}:
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-xl font-black text-amber-500">{formatCurrency(pendingAmountUntilLimit)}</span>
+                <span className="text-xl font-black text-amber-500">{formatCurrency(pendingAmountInRange)}</span>
               </div>
             </div>
           )}
