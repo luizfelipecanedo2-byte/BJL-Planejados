@@ -303,6 +303,7 @@ const Financeiro = () => {
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending">("all");
   const [selectedFilterMonth, setSelectedFilterMonth] = useState<string>(new Date().getMonth().toString());
   const [dateFilterType, setDateFilterType] = useState<"competence" | "due">("due");
+  const [limitDateFilter, setLimitDateFilter] = useState<string>("");
   const [osFilter, setOsFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -505,8 +506,17 @@ const Financeiro = () => {
       const matchesStatus = statusFilter === "all" || t.status === statusFilter;
       const dateToCheck = dateFilterType === 'competence' ? t.competenceDate : t.dueDate;
       const tDate = new Date(dateToCheck);
-      const matchesYear = tDate.getFullYear().toString() === selectedYear;
-      const matchesMonth = selectedFilterMonth === "all" || tDate.getMonth().toString() === selectedFilterMonth;
+
+      // Formato YYYY-MM-DD local para comparação segura
+      const y = tDate.getFullYear();
+      const m = String(tDate.getMonth() + 1).padStart(2, '0');
+      const r = String(tDate.getDate()).padStart(2, '0');
+      const tDateStr = `${y}-${m}-${r}`;
+
+      const matchesDate = limitDateFilter
+        ? tDateStr <= limitDateFilter
+        : (tDate.getFullYear().toString() === selectedYear && (selectedFilterMonth === "all" || tDate.getMonth().toString() === selectedFilterMonth));
+
       const matchesOS = osFilter === "all" || (t.orderService === osFilter);
       const matchesPaymentMethod = paymentMethodFilter === "all" || t.paymentMethod === paymentMethodFilter;
 
@@ -518,13 +528,29 @@ const Financeiro = () => {
         return matchesSearch && isOverdue;
       }
 
-      return matchesSearch && matchesType && matchesStatus && matchesYear && matchesMonth && matchesOS && matchesPaymentMethod;
+      return matchesSearch && matchesType && matchesStatus && matchesDate && matchesOS && matchesPaymentMethod;
     });
 
     if (showRecentlyAdded) return result.slice(0, 50);
     if (showRecentlyPaid) return result.sort((a,b) => new Date(b.paymentDate || b.dueDate).getTime() - new Date(a.paymentDate || a.dueDate).getTime()).slice(0, 50);
     return result;
-  }, [transactions, searchTerm, typeFilter, statusFilter, selectedYear, selectedFilterMonth, dateFilterType, osFilter, paymentMethodFilter, showOverdueOnly, showRecentlyAdded, showRecentlyPaid]);
+  }, [transactions, searchTerm, typeFilter, statusFilter, selectedYear, selectedFilterMonth, dateFilterType, limitDateFilter, osFilter, paymentMethodFilter, showOverdueOnly, showRecentlyAdded, showRecentlyPaid]);
+
+  const pendingAmountUntilLimit = useMemo(() => {
+    if (!limitDateFilter) return 0;
+    
+    return transactions
+      .filter(t => {
+        if (t.type !== 'expense' || t.status !== 'pending') return false;
+        const tDate = new Date(t.dueDate);
+        const y = tDate.getFullYear();
+        const m = String(tDate.getMonth() + 1).padStart(2, '0');
+        const r = String(tDate.getDate()).padStart(2, '0');
+        const tDateStr = `${y}-${m}-${r}`;
+        return tDateStr <= limitDateFilter;
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [transactions, limitDateFilter]);
 
   const metrics = useMemo(() => {
     const income = filteredTransactions
@@ -1209,12 +1235,12 @@ const Financeiro = () => {
         <TabsContent value="lancamentos" className="space-y-6">
           <Card className="bg-card/40 backdrop-blur-md border-border/40 shadow-xl rounded-2xl overflow-hidden">
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4">
-                <div className="lg:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                <div className="md:col-span-2 lg:col-span-2">
                   <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Filtrar por Termo</label>
                   <div className="relative group">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input placeholder="Descrição, OS, Cliente..." className="pl-10 h-10 rounded-xl bg-muted/30 border-border/20" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <Input placeholder="Descrição, OS, Cliente..." className="pl-10 h-10 rounded-xl bg-muted/30 border-border/20 text-xs" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
                 </div>
                 <div>
@@ -1247,7 +1273,7 @@ const Financeiro = () => {
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Tipo Data</label>
                   <Select value={dateFilterType} onValueChange={(v: any) => setDateFilterType(v)}>
-                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="competence">Data da Compra</SelectItem>
                       <SelectItem value="due">Data do Pagamento</SelectItem>
@@ -1255,23 +1281,43 @@ const Financeiro = () => {
                   </Select>
                 </div>
                 <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Pagar Até (Venc.)</label>
+                  <div className="relative flex items-center">
+                    <Input
+                      type="date"
+                      className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs pr-7"
+                      value={limitDateFilter}
+                      onChange={(e) => setLimitDateFilter(e.target.value)}
+                    />
+                    {limitDateFilter && (
+                      <button
+                        onClick={() => setLimitDateFilter("")}
+                        className="absolute right-2.5 text-muted-foreground hover:text-foreground text-xs font-bold w-4 h-4 flex items-center justify-center rounded-full hover:bg-muted"
+                        title="Limpar data"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div>
                   <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Fluxo</label>
                   <Select value={typeFilter} onValueChange={(v: any) => setTypeFilter(v)}>
-                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="income">Receitas</SelectItem><SelectItem value="expense">Despesas</SelectItem></SelectContent>
                   </Select>
                 </div>
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Status</label>
                   <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="paid">Pagos</SelectItem><SelectItem value="pending">Pendentes</SelectItem></SelectContent>
                   </Select>
                 </div>
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Forma</label>
                   <Select value={paymentMethodFilter} onValueChange={(v: any) => setPaymentMethodFilter(v)}>
-                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas</SelectItem>
                       {PAYMENT_METHODS.map(method => (
@@ -1283,6 +1329,23 @@ const Financeiro = () => {
               </div>
             </CardContent>
           </Card>
+
+          {limitDateFilter && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center gap-4 text-amber-200 shadow-lg shadow-amber-500/5 transition-all duration-300">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="text-amber-500 h-5 w-5 shrink-0 animate-pulse" />
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-500">Previsão de Caixa Necessário</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Valor total de despesas pendentes a pagar com vencimento até <span className="font-bold text-amber-500">{limitDateFilter.split('-').reverse().join('/')}</span>:
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-xl font-black text-amber-500">{formatCurrency(pendingAmountUntilLimit)}</span>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-between items-end gap-4 bg-muted/10 p-4 rounded-2xl border border-border/20">
             <div className="flex gap-4">
