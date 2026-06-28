@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, AlertTriangle, Receipt, FileSearch, Package, Target } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, AlertTriangle, Receipt, FileSearch, Package, Target, Printer } from "lucide-react";
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -933,6 +933,293 @@ const Financeiro = () => {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   };
 
+  const handlePrintReport = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Não foi possível abrir a janela de impressão. Verifique se o bloqueador de pop-ups está ativo.");
+      return;
+    }
+
+    // Determine period label
+    let periodLabel = "Todos os lançamentos";
+    if (startDateFilter && endDateFilter) {
+      periodLabel = `Período: ${startDateFilter.split('-').reverse().join('/')} a ${endDateFilter.split('-').reverse().join('/')}`;
+    } else if (startDateFilter) {
+      periodLabel = `Período: A partir de ${startDateFilter.split('-').reverse().join('/')}`;
+    } else if (endDateFilter) {
+      periodLabel = `Período: Até ${endDateFilter.split('-').reverse().join('/')}`;
+    } else if (selectedFilterMonth !== "all") {
+      const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+      periodLabel = `Referência: ${monthNames[parseInt(selectedFilterMonth)]} de ${selectedYear}`;
+    } else {
+      periodLabel = `Referência: Ano de ${selectedYear}`;
+    }
+
+    // Determine date type label
+    const dateTypeLabel = dateFilterType === "competence" ? "Data da Compra" : "Data do Vencimento/Pagamento";
+
+    // Format currency helper inside the print document context
+    const formatPrintCurrency = (val: number) => {
+      return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
+    };
+
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Relatório Financeiro - BJL Planejados</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            margin: 20px;
+            background: #fff;
+          }
+          .header {
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+          }
+          .header-info h1 {
+            font-size: 22px;
+            color: #0f172a;
+            margin: 0 0 5px 0;
+            text-transform: uppercase;
+          }
+          .header-info p {
+            font-size: 13px;
+            color: #64748b;
+            margin: 0;
+          }
+          .header-logo {
+            font-size: 20px;
+            font-weight: 900;
+            color: #ea580c;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
+          .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+          }
+          .card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            background: #f8fafc;
+          }
+          .card-title {
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            margin-bottom: 5px;
+          }
+          .card-value {
+            font-size: 18px;
+            font-weight: 800;
+            color: #0f172a;
+          }
+          .card-value.income { color: #16a34a; }
+          .card-value.expense { color: #dc2626; }
+          .card-value.balance-pos { color: #16a34a; }
+          .card-value.balance-neg { color: #dc2626; }
+          
+          .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+          }
+          .report-table th {
+            text-align: left;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #475569;
+            padding: 10px 8px;
+            background: #f1f5f9;
+            border-bottom: 2px solid #cbd5e1;
+          }
+          .report-table td {
+            font-size: 12px;
+            padding: 10px 8px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #334155;
+          }
+          .type-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+          }
+          .type-badge.income { background: #dcfce7; color: #166534; }
+          .type-badge.expense { background: #fee2e2; color: #991b1b; }
+          
+          .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+          }
+          .status-badge.paid { background: #dcfce7; color: #15803d; }
+          .status-badge.pending { background: #fef3c7; color: #b45309; }
+
+          .value-cell {
+            font-weight: 700;
+            text-align: right;
+          }
+          .value-cell.income { color: #15803d; }
+          .value-cell.expense { color: #b91c1c; }
+
+          @media print {
+            .no-print {
+              display: none;
+            }
+            body {
+              margin: 10px;
+            }
+          }
+          .print-btn-container {
+            text-align: right;
+            margin-bottom: 20px;
+          }
+          .print-btn {
+            background: #ea580c;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: background-color 0.2s;
+          }
+          .print-btn:hover {
+            background: #c2410c;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-btn-container no-print">
+          <button class="print-btn" onclick="window.print()">Imprimir PDF / Relatório</button>
+        </div>
+        <div class="header">
+          <div class="header-info">
+            <h1>Relatório Financeiro</h1>
+            <p>${periodLabel} &bull; Critério de Data: ${dateTypeLabel}</p>
+          </div>
+          <div class="header-logo">
+            BJL Planejados
+          </div>
+        </div>
+
+        <div class="summary-cards">
+          <div class="card">
+            <div class="card-title">Total Receitas</div>
+            <div class="card-value income">${formatPrintCurrency(metrics.income)}</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Total Despesas</div>
+            <div class="card-value expense">${formatPrintCurrency(metrics.expense)}</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Saldo Líquido</div>
+            <div class="card-value ${metrics.balance >= 0 ? 'balance-pos' : 'balance-neg'}">
+              ${formatPrintCurrency(metrics.balance)}
+            </div>
+          </div>
+        </div>
+
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th style="width: 10%">Data</th>
+              <th style="width: 25%">Descrição</th>
+              <th style="width: 15%">Cliente/Fornecedor</th>
+              <th style="width: 18%">Categoria</th>
+              <th style="width: 10%">Forma</th>
+              <th style="width: 10%">Status</th>
+              <th style="width: 12%; text-align: right;">Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    if (filteredTransactions.length === 0) {
+      html += `
+        <tr>
+          <td colspan="7" style="text-align: center; color: #94a3b8; font-style: italic;">
+            Nenhum lançamento encontrado para os filtros ativos.
+          </td>
+        </tr>
+      `;
+    } else {
+      // Sort transactions chronologically
+      const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+        const dateA = dateFilterType === "competence" ? a.competenceDate : a.dueDate;
+        const dateB = dateFilterType === "competence" ? b.competenceDate : b.dueDate;
+        return new Date(dateA).getTime() - new Date(dateB).getTime();
+      });
+
+      sortedTransactions.forEach(t => {
+        const dateToCheck = dateFilterType === "competence" ? t.competenceDate : t.dueDate;
+        const dateObj = new Date(dateToCheck);
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
+        const formattedDate = `${day}/${month}/${year}`;
+
+        const statusBadge = t.status === "paid" ? "Pago" : "Pendente";
+
+        html += `
+          <tr>
+            <td>${formattedDate}</td>
+            <td style="font-weight: 600;">${t.description}</td>
+            <td>${t.contact || "-"}</td>
+            <td>${t.category}${t.subcategory ? ` &rsaquo; ${t.subcategory}` : ""}</td>
+            <td>${t.paymentMethod || "-"}</td>
+            <td>
+              <span class="status-badge ${t.status}">${statusBadge}</span>
+            </td>
+            <td class="value-cell ${t.type}">
+              ${t.type === "expense" ? "-" : ""}${formatPrintCurrency(t.amount)}
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    html += `
+          </tbody>
+        </table>
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   // Handlers (Simplified and redirected to the same state/Supabase logic)
   const handleNewTransaction = () => { setEditingTransaction(null); setDialogInitialType("expense"); setIsDialogOpen(true); };
   const handleNewTransfer = () => { setEditingTransaction(null); setDialogInitialType("transfer"); setIsDialogOpen(true); };
@@ -1430,6 +1717,14 @@ const Financeiro = () => {
               >
                 <AlertTriangle size={16} className={cn("mr-2", showOverdueOnly ? "text-white" : "text-rose-500")} />
                 {showOverdueOnly ? "Ver Todos" : `Atrasados (${overdueTransactions.length})`}
+              </Button>
+              <Button
+                onClick={handlePrintReport}
+                variant="outline"
+                className="rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20 hover:bg-muted/50"
+              >
+                <Printer size={16} className="mr-2 text-amber-500" />
+                Imprimir Relatório
               </Button>
               <Button onClick={handleNewTransaction} className="rounded-xl px-6 font-black uppercase tracking-widest text-xs h-11 shadow-lg shadow-primary/20 transition-transform active:scale-95"><Plus size={16} className="mr-2" /> Novo Fluxo</Button>
               <Button onClick={handleNewTransfer} className="rounded-xl px-4 font-black uppercase tracking-widest text-xs h-11 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-transform active:scale-95"><Plus size={16} className="mr-2" /> Transferência</Button>
