@@ -119,6 +119,7 @@ const Tarefas = () => {
     const [newDueDate, setNewDueDate] = useState(format(new Date(), "yyyy-MM-dd"));
     const [newAssignedTo, setNewAssignedTo] = useState<string | "all">("all");
     const [newCollaborator, setNewCollaborator] = useState<string>("all");
+    const [newCollaboratorSecondary, setNewCollaboratorSecondary] = useState<string>("none");
     const [newPriority, setNewPriority] = useState("normal");
 
     const [activeView, setActiveView] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -370,6 +371,7 @@ const Tarefas = () => {
         setNewDueDate(format(new Date(), "yyyy-MM-dd"));
         setNewAssignedTo("all");
         setNewCollaborator("all");
+        setNewCollaboratorSecondary("none");
         setNewPriority("normal");
     };
 
@@ -378,7 +380,22 @@ const Tarefas = () => {
         setNewTitle(task.title);
         const parsed = parseTaskDescription(task.description);
         setNewDescription(parsed.description || "");
-        setNewCollaborator(parsed.collaborator || "all");
+        
+        // Split collaborators if they contain " e "
+        if (parsed.collaborator) {
+            const parts = parsed.collaborator.split(/\s+e\s+/);
+            if (parts.length >= 2) {
+                setNewCollaborator(parts[0].trim());
+                setNewCollaboratorSecondary(parts[1].trim());
+            } else {
+                setNewCollaborator(parsed.collaborator);
+                setNewCollaboratorSecondary("none");
+            }
+        } else {
+            setNewCollaborator("all");
+            setNewCollaboratorSecondary("none");
+        }
+
         setNewProject(task.project_name || "");
         setNewEnvironment(task.environment_name || "");
         setNewDueDate(task.due_date);
@@ -411,7 +428,17 @@ const Tarefas = () => {
             const cleanProject = (newProject || "Geral").trim();
             const cleanEnvironment = (newEnvironment || "Geral").trim();
 
-            const collabPrefix = newCollaborator && newCollaborator !== "all" ? `[Colaborador: ${newCollaborator}] ` : "";
+            let finalCollab = "";
+            if (newCollaborator && newCollaborator !== "all") {
+                finalCollab = newCollaborator;
+                if (newCollaboratorSecondary && newCollaboratorSecondary !== "none") {
+                    finalCollab = `${newCollaborator} e ${newCollaboratorSecondary}`;
+                }
+            } else if (newCollaboratorSecondary && newCollaboratorSecondary !== "none") {
+                finalCollab = newCollaboratorSecondary;
+            }
+
+            const collabPrefix = finalCollab ? `[Colaborador: ${finalCollab}] ` : "";
             const finalDescription = `${collabPrefix}${newDescription.trim()}`;
 
             const taskData = {
@@ -523,8 +550,18 @@ const Tarefas = () => {
         nonCompletedTasks.forEach(task => {
             const parsed = parseTaskDescription(task.description);
             const collab = parsed.collaborator;
-            if (collab && ["Samuel", "Felipe", "Lucas", "Zé Luiz"].includes(collab)) {
-                tasksByCollab[collab].push(task);
+            if (collab) {
+                const colabs = collab.split(/\s+e\s+/).map(c => c.trim());
+                let added = false;
+                colabs.forEach(c => {
+                    if (["Samuel", "Felipe", "Lucas", "Zé Luiz"].includes(c)) {
+                        tasksByCollab[c].push(task);
+                        added = true;
+                    }
+                });
+                if (!added) {
+                    tasksByCollab["Geral"].push(task);
+                }
             } else {
                 tasksByCollab["Geral"].push(task);
             }
@@ -913,11 +950,16 @@ const Tarefas = () => {
         
         filteredTasks.forEach(t => {
             const parsed = parseTaskDescription(t.description);
-            if (parsed.collaborator && stats[parsed.collaborator]) {
-                stats[parsed.collaborator].total += 1;
-                if (t.status === 'completed') {
-                    stats[parsed.collaborator].completed += 1;
-                }
+            if (parsed.collaborator) {
+                const colabs = parsed.collaborator.split(/\s+e\s+/).map(c => c.trim());
+                colabs.forEach(colab => {
+                    if (stats[colab]) {
+                        stats[colab].total += 1;
+                        if (t.status === 'completed') {
+                            stats[colab].completed += 1;
+                        }
+                    }
+                });
             }
         });
         
@@ -934,7 +976,9 @@ const Tarefas = () => {
         if (selectedCollaboratorFilter === "all") return true;
         const parsed = parseTaskDescription(t.description);
         if (selectedCollaboratorFilter === "none") return !parsed.collaborator;
-        return parsed.collaborator === selectedCollaboratorFilter;
+        if (!parsed.collaborator) return false;
+        const colabs = parsed.collaborator.split(/\s+e\s+/).map(c => c.trim());
+        return colabs.includes(selectedCollaboratorFilter);
     });
     
     // Grouping robusto (case-insensitive e trim-insensitive nos nomes)
@@ -1148,21 +1192,38 @@ const Tarefas = () => {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Atribuir a</Label>
-                                        <Select value={newCollaborator} onValueChange={setNewCollaborator}>
-                                            <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12">
-                                                <SelectValue placeholder="Selecione um funcionário" />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-slate-900 border-white/10 font-bold">
-                                                <SelectItem value="all">Equipe Inteira / Sem Colaborador</SelectItem>
-                                                <SelectItem value="Samuel">Samuel</SelectItem>
-                                                <SelectItem value="Felipe">Felipe</SelectItem>
-                                                <SelectItem value="Lucas">Lucas</SelectItem>
-                                                <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                         <div className="space-y-2">
+                                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Colaborador 1</Label>
+                                             <Select value={newCollaborator} onValueChange={setNewCollaborator}>
+                                                 <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12">
+                                                     <SelectValue placeholder="Selecione um funcionário" />
+                                                 </SelectTrigger>
+                                                 <SelectContent className="bg-slate-900 border-white/10 font-bold">
+                                                     <SelectItem value="all">Equipe Inteira</SelectItem>
+                                                     <SelectItem value="Samuel">Samuel</SelectItem>
+                                                     <SelectItem value="Felipe">Felipe</SelectItem>
+                                                     <SelectItem value="Lucas">Lucas</SelectItem>
+                                                     <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
+                                                 </SelectContent>
+                                             </Select>
+                                         </div>
+                                         <div className="space-y-2">
+                                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Colaborador 2 (Opcional)</Label>
+                                             <Select value={newCollaboratorSecondary} onValueChange={setNewCollaboratorSecondary}>
+                                                 <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12">
+                                                     <SelectValue placeholder="Nenhum" />
+                                                 </SelectTrigger>
+                                                 <SelectContent className="bg-slate-900 border-white/10 font-bold">
+                                                     <SelectItem value="none">Nenhum</SelectItem>
+                                                     <SelectItem value="Samuel">Samuel</SelectItem>
+                                                     <SelectItem value="Felipe">Felipe</SelectItem>
+                                                     <SelectItem value="Lucas">Lucas</SelectItem>
+                                                     <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
+                                                 </SelectContent>
+                                             </Select>
+                                         </div>
+                                     </div>
 
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Detalhes (Opcional)</Label>
