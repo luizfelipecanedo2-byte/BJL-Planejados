@@ -522,10 +522,10 @@ const Orcamento = () => {
                                                             if (!item) return null;
                                                             const currentPrice = customPrices[id] !== undefined ? customPrices[id] : item.unit_price;
                                                             return (
-                                                                <div key={`selected-${id}`} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:border-primary/30 transition-all gap-4">
+                                                                <div key={`selected-${id}`} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm hover:border-primary/30 transition-all gap-4">
                                                                     <div className="flex flex-col">
-                                                                        <span className="text-[12px] font-black uppercase tracking-tight text-white">{item.name}</span>
-                                                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{item.category} • {item.unit}</span>
+                                                                        <span className="text-[12px] font-black uppercase tracking-tight text-slate-900 dark:text-white">{item.name}</span>
+                                                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{item.category} • {item.unit}</span>
                                                                     </div>
                                                                     <div className="flex flex-wrap items-center gap-4">
                                                                         <div className="flex flex-col gap-1">
@@ -548,7 +548,7 @@ const Orcamento = () => {
                                                                         </div>
                                                                         <div className="flex flex-col gap-1 items-end min-w-[100px]">
                                                                             <Label className="text-[8px] font-black uppercase text-slate-500 mr-1">Subtotal</Label>
-                                                                            <span className="text-sm font-black text-white">{formatCurrency(currentPrice * qty)}</span>
+                                                                            <span className="text-sm font-black text-slate-900 dark:text-white">{formatCurrency(currentPrice * qty)}</span>
                                                                         </div>
                                                                         <Button 
                                                                             variant="ghost" 
@@ -646,11 +646,22 @@ const Orcamento = () => {
                                                                             return (
                                                                                 <div key={item.id} className={cn(
                                                                                     "flex items-center justify-between p-3 rounded-2xl transition-all group",
-                                                                                    quantities[item.id] > 0 ? "bg-primary/5 border-primary/20 border shadow-inner" : "bg-slate-50 hover:bg-slate-100 border border-transparent"
+                                                                                    quantities[item.id] > 0 
+                                                                                        ? "bg-primary/10 border-primary/30 border shadow-inner" 
+                                                                                        : "bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/5"
                                                                                 )}>
                                                                                     <div className="flex flex-col">
-                                                                                        <span className="text-[11px] font-black uppercase tracking-tight text-slate-200">{item.name}</span>
-                                                                                        <span className="text-[9px] font-bold text-slate-500 uppercase">{item.unit} • {formatCurrency(item.unit_price)}</span>
+                                                                                        <span className={cn(
+                                                                                            "text-[11px] font-black uppercase tracking-tight transition-colors",
+                                                                                            quantities[item.id] > 0 
+                                                                                                ? "text-primary-foreground dark:text-primary" 
+                                                                                                : "text-slate-800 dark:text-slate-200"
+                                                                                        )}>
+                                                                                            {item.name}
+                                                                                        </span>
+                                                                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase">
+                                                                                            {item.unit} • {formatCurrency(item.unit_price)}
+                                                                                        </span>
                                                                                     </div>
                                                                                     <div className="flex items-center gap-3">
                                                                                         {quantities[item.id] > 0 && (
@@ -658,7 +669,7 @@ const Orcamento = () => {
                                                                                                 <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Preço Unit.</span>
                                                                                                 <Input
                                                                                                     type="number"
-                                                                                                    className="w-24 h-8 rounded-lg text-right font-black text-[10px] border-slate-200 focus:bg-white/10 text-white bg-white/5"
+                                                                                                    className="w-24 h-8 rounded-lg text-right font-black text-[10px] border-slate-200 focus:bg-slate-200/50 dark:focus:bg-white/10 text-slate-900 dark:text-white bg-slate-200 dark:bg-white/5"
                                                                                                     value={currentPrice || ""}
                                                                                                     onChange={(e) => handlePriceChange(item.id, e.target.value)}
                                                                                                 />
@@ -671,7 +682,7 @@ const Orcamento = () => {
                                                                                             <Input
                                                                                                 type="number"
                                                                                                 placeholder="0"
-                                                                                                className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-white/10 text-white"
+                                                                                                className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-slate-200/50 dark:focus:bg-white/10 text-slate-900 dark:text-white bg-slate-200 dark:bg-white/5"
                                                                                                 value={quantities[item.id] || ""}
                                                                                                 onChange={(e) => handleQuantityChange(item.id, e.target.value)}
                                                                                             />
@@ -690,14 +701,14 @@ const Orcamento = () => {
                                         </div>
 
                                         {Object.keys(calculateTotals.categoryTotals).length > 0 && (
-                                            <div className="mt-12 p-8 border border-primary/20 bg-slate-50/50 rounded-[2.5rem] shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                            <div className="mt-12 p-8 border border-primary/20 bg-slate-100 dark:bg-white/5 rounded-[2.5rem] shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
                                                 <div className="flex items-center gap-3 mb-6">
                                                     <div className="p-2 bg-primary/20 rounded-xl text-primary">
                                                         <Calculator size={18} />
                                                     </div>
                                                     <div>
-                                                        <h4 className="font-black uppercase text-sm tracking-widest text-white">Planilha de Fechamento</h4>
-                                                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest opacity-60">Resumo consolidado dos custos e precificação</p>
+                                                        <h4 className="font-black uppercase text-sm tracking-widest text-slate-900 dark:text-white">Planilha de Fechamento</h4>
+                                                        <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest opacity-60">Resumo consolidado dos custos e precificação</p>
                                                     </div>
                                                 </div>
 
@@ -708,46 +719,46 @@ const Orcamento = () => {
                                                         </span>
                                                         <div className="space-y-2">
                                                             {Object.entries(calculateTotals.categoryTotals).map(([cat, total]) => (
-                                                                <div key={cat} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0 group">
-                                                                    <span className="text-[10px] font-black uppercase text-slate-500 group-hover:text-primary transition-colors">{cat}</span>
-                                                                    <span className="text-xs font-black text-slate-700">{formatCurrency(total)}</span>
+                                                                <div key={cat} className="flex justify-between items-center py-2 border-b border-slate-200 dark:border-white/5 last:border-0 group">
+                                                                    <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 group-hover:text-primary transition-colors">{cat}</span>
+                                                                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">{formatCurrency(total)}</span>
                                                                 </div>
                                                             ))}
-                                                            <div className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0 group">
-                                                                    <span className="text-[10px] font-black uppercase text-slate-500 group-hover:text-primary transition-colors">Custo Operacional ({formData.days_estimated} dias)</span>
-                                                                    <span className="text-xs font-black text-slate-700">{formatCurrency(calculateTotals.fixedCost)}</span>
+                                                            <div className="flex justify-between items-center py-2 border-b border-slate-200 dark:border-white/5 last:border-0 group">
+                                                                    <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 group-hover:text-primary transition-colors">Custo Operacional ({formData.days_estimated} dias)</span>
+                                                                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">{formatCurrency(calculateTotals.fixedCost)}</span>
                                                                 </div>
                                                             <div className="pt-4 flex justify-between items-center text-primary">
                                                                 <span className="text-[11px] font-black uppercase tracking-widest">Base de Custo Total</span>
-                                                                <span className="text-base font-black tracking-tighter">{formatCurrency(calculateTotals.totalCostPower)}</span>
+                                                                <span className="text-base font-black tracking-tighter text-slate-900 dark:text-white">{formatCurrency(calculateTotals.totalCostPower)}</span>
                                                             </div>
                                                         </div>
                                                     </div>
 
-                                                    <div className="space-y-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                                                    <div className="space-y-4 bg-slate-50 dark:bg-black/20 p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm">
                                                         <span className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
                                                             <div className="h-1 w-4 bg-primary rounded-full" /> Apuração de Preço
                                                         </span>
                                                         <div className="space-y-3">
-                                                            <div className="flex justify-between items-center py-1 border-b border-slate-50">
-                                                                <span className="text-[10px] uppercase font-black text-slate-400">Lucro ({formData.profit_margin}%)</span>
-                                                                <span className="text-xs font-black text-slate-600">{formatCurrency(calculateTotals.totalCostPower * (formData.profit_margin / 100))}</span>
+                                                            <div className="flex justify-between items-center py-1 border-b border-slate-200/60 dark:border-white/5">
+                                                                <span className="text-[10px] uppercase font-black text-slate-500 dark:text-slate-400">Lucro ({formData.profit_margin}%)</span>
+                                                                <span className="text-xs font-black text-slate-800 dark:text-slate-200">{formatCurrency(calculateTotals.totalCostPower * (formData.profit_margin / 100))}</span>
                                                             </div>
-                                                            <div className="flex justify-between items-center py-1 border-b border-slate-50">
-                                                                <span className="text-[10px] uppercase font-black text-slate-400">Comissão ({formData.commission}%)</span>
-                                                                <span className="text-xs font-black text-amber-600">{formatCurrency(calculateTotals.totalCostPower * (formData.commission / 100))}</span>
+                                                            <div className="flex justify-between items-center py-1 border-b border-slate-200/60 dark:border-white/5">
+                                                                <span className="text-[10px] uppercase font-black text-slate-500 dark:text-slate-400">Comissão ({formData.commission}%)</span>
+                                                                <span className="text-xs font-black text-amber-600 dark:text-amber-400">{formatCurrency(calculateTotals.totalCostPower * (formData.commission / 100))}</span>
                                                             </div>
-                                                            <div className="flex justify-between items-center py-1 border-b border-slate-50">
-                                                                <span className="text-[10px] uppercase font-black text-slate-400">Imposto ({formData.tax}%)</span>
-                                                                <span className="text-xs font-black text-slate-600">{formatCurrency(calculateTotals.totalCostPower * (formData.tax / 100))}</span>
+                                                            <div className="flex justify-between items-center py-1 border-b border-slate-200/60 dark:border-white/5">
+                                                                <span className="text-[10px] uppercase font-black text-slate-500 dark:text-slate-400">Imposto ({formData.tax}%)</span>
+                                                                <span className="text-xs font-black text-slate-800 dark:text-slate-200">{formatCurrency(calculateTotals.totalCostPower * (formData.tax / 100))}</span>
                                                             </div>
 
                                                             <div className="flex justify-between items-end pt-2">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-[9px] font-black uppercase text-slate-500">Valor Sugerido À Vista</span>
-                                                                    <span className="text-xs font-black text-slate-300 font-bold uppercase tracking-tight">Preço de Tabela</span>
+                                                                    <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400">Valor Sugerido À Vista</span>
+                                                                    <span className="text-xs font-black text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">Preço de Tabela</span>
                                                                 </div>
-                                                                <span className="text-sm font-black text-white underline decoration-primary/30 underline-offset-4">{formatCurrency(calculateTotals.baseValue)}</span>
+                                                                <span className="text-sm font-black text-slate-900 dark:text-white underline decoration-primary/30 underline-offset-4">{formatCurrency(calculateTotals.baseValue)}</span>
                                                             </div>
                                                             <div className="pt-4 border-t border-primary/20 flex justify-between items-end">
                                                                 <div className="flex flex-col">
@@ -765,15 +776,15 @@ const Orcamento = () => {
                                 </ScrollArea>
                             </div>
 
-                            <div className="p-4 sm:p-8 shrink-0 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-4 justify-between items-center">
-                                <div className="flex items-center gap-3 text-slate-400">
+                            <div className="p-4 sm:p-8 shrink-0 bg-slate-100 dark:bg-zinc-950/80 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row gap-4 justify-between items-center">
+                                <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
                                     <Package className="h-5 w-5" />
                                     <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
                                         {Object.values(quantities).filter(q => q > 0).length} itens selecionados
                                     </span>
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto">
-                                    <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="flex-1 sm:flex-none h-12 sm:h-14 px-4 sm:px-8 font-black uppercase tracking-widest text-[10px] rounded-xl sm:rounded-2xl">Descartar</Button>
+                                    <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="flex-1 sm:flex-none h-12 sm:h-14 px-4 sm:px-8 font-black uppercase tracking-widest text-[10px] rounded-xl sm:rounded-2xl text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/5">Descartar</Button>
                                     <Button onClick={handleSaveBudget} className="flex-[2] sm:flex-none h-12 sm:h-14 px-6 sm:px-10 bg-primary font-black uppercase tracking-widest text-[10px] sm:text-xs rounded-xl sm:rounded-2xl shadow-2xl shadow-primary/20 group">
                                         Finalizar e Salvar
                                         <ChevronRight className="h-4 w-4 ml-1 sm:ml-2 group-hover:translate-x-1 transition-transform" />
