@@ -342,13 +342,14 @@ const Index = () => {
         <table class="report-table">
           <thead>
             <tr>
-              <th style="width: 12%">Data</th>
-              <th style="width: 25%">Cliente</th>
-              <th style="width: 20%">Produto/Projeto</th>
-              <th style="width: 13%">Canal</th>
-              <th style="width: 10%">Temp.</th>
-              <th style="width: 10%">Status</th>
-              <th style="width: 10%; text-align: right;">Valor</th>
+              <th style="width: 10%">Data</th>
+              <th style="width: 22%">Cliente</th>
+              <th style="width: 15%">Profissão</th>
+              <th style="width: 18%">Produto/Projeto</th>
+              <th style="width: 11%">Canal</th>
+              <th style="width: 8%">Temp.</th>
+              <th style="width: 8%">Status</th>
+              <th style="width: 8%; text-align: right;">Valor</th>
             </tr>
           </thead>
           <tbody>
@@ -357,7 +358,7 @@ const Index = () => {
     if (sales.length === 0) {
       html += `
         <tr>
-          <td colspan="7" style="text-align: center; color: #94a3b8; font-style: italic; padding: 20px;">
+          <td colspan="8" style="text-align: center; color: #94a3b8; font-style: italic; padding: 20px;">
             Nenhum negócio de venda cadastrado no sistema.
           </td>
         </tr>
@@ -385,6 +386,7 @@ const Index = () => {
           <tr>
             <td>${formattedDate}</td>
             <td style="font-weight: 600;">${sale.clientName}</td>
+            <td>${sale.clientProfession || "-"}</td>
             <td>${sale.product} ${sale.quantity > 1 ? `(x${sale.quantity})` : ''}</td>
             <td>${channelLabel}</td>
             <td class="temp-badge">${tempLabel}</td>

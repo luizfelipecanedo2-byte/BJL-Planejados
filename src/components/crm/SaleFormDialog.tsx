@@ -37,6 +37,7 @@ const SaleFormDialog = ({
     clientName: "",
     clientPhone: "",
     clientEmail: "",
+    clientProfession: "",
     product: "",
     quantity: 1,
     unitPrice: 0,
@@ -54,6 +55,7 @@ const SaleFormDialog = ({
         clientName: editingSale.clientName,
         clientPhone: editingSale.clientPhone,
         clientEmail: editingSale.clientEmail,
+        clientProfession: editingSale.clientProfession || "",
         product: editingSale.product,
         quantity: editingSale.quantity,
         unitPrice: editingSale.unitPrice,
@@ -69,6 +71,7 @@ const SaleFormDialog = ({
         clientName: "",
         clientPhone: "",
         clientEmail: "",
+        clientProfession: "",
         product: "",
         quantity: 1,
         unitPrice: 0,
@@ -156,6 +159,15 @@ const SaleFormDialog = ({
                 value={form.clientEmail}
                 onChange={(e) => update("clientEmail", e.target.value)}
                 placeholder="cliente@email.com"
+              />
+            </div>
+            <div className="col-span-2">
+              <Label htmlFor="clientProfession">Profissão do Cliente</Label>
+              <Input
+                id="clientProfession"
+                value={form.clientProfession}
+                onChange={(e) => update("clientProfession", e.target.value)}
+                placeholder="Ex: Arquiteto, Advogado, Empresário..."
               />
             </div>
             <div className="col-span-2">

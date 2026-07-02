@@ -24,6 +24,7 @@ export function useSales() {
         clientName: item.client_name,
         clientPhone: item.client_phone || "",
         clientEmail: item.client_email || "",
+        clientProfession: item.client_profession || "",
         product: item.product,
         quantity: item.quantity,
         unitPrice: Number(item.unit_price),
@@ -51,6 +52,7 @@ export function useSales() {
         client_name: sale.clientName,
         client_phone: sale.clientPhone,
         client_email: sale.clientEmail,
+        client_profession: sale.clientProfession || null,
         product: sale.product,
         quantity: sale.quantity,
         unit_price: sale.unitPrice,
@@ -89,6 +91,7 @@ export function useSales() {
       if (updates.clientName !== undefined) updateData.client_name = updates.clientName;
       if (updates.clientPhone !== undefined) updateData.client_phone = updates.clientPhone;
       if (updates.clientEmail !== undefined) updateData.client_email = updates.clientEmail;
+      if (updates.clientProfession !== undefined) updateData.client_profession = updates.clientProfession;
       if (updates.product !== undefined) updateData.product = updates.product;
       if (updates.quantity !== undefined) updateData.quantity = updates.quantity;
       if (updates.unitPrice !== undefined) updateData.unit_price = updates.unitPrice;

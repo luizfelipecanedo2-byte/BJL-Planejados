@@ -79,7 +79,9 @@ const SalesTable = ({
                   <h3 className="font-black text-xl text-luxury tracking-tighter leading-none">
                     {sale.clientName}
                   </h3>
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-60 truncate">{sale.clientEmail}</p>
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-60 truncate">
+                    {sale.clientEmail} {sale.clientProfession && `• ${sale.clientProfession}`}
+                  </p>
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {sale.budget_id && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -205,7 +207,7 @@ const SalesTable = ({
                     <div className="space-y-0.5">
                       <p className="font-black text-sm text-luxury tracking-tight group-hover:text-primary transition-colors">{sale.clientName}</p>
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-50">
-                        {sale.clientEmail}
+                        {sale.clientEmail} {sale.clientProfession && `• ${sale.clientProfession}`}
                       </p>
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         {sale.budget_id && (
