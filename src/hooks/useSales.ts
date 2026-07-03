@@ -105,11 +105,21 @@ export function useSales() {
 
       // Handle closedDate based on status
       const currentSale = sales.find(s => s.id === id);
-      const newStatus = updates.status || currentSale?.status;
+      const oldStatus = currentSale?.status;
+      const newStatus = updates.status !== undefined ? updates.status : oldStatus;
       const isClosed = newStatus === "fechado" || newStatus === "pos_venda";
+      const wasClosed = oldStatus === "fechado" || oldStatus === "pos_venda";
 
       if (isClosed) {
-        updateData.closed_date = updates.closedDate || currentSale?.closedDate || new Date().toISOString().split("T")[0];
+        if (updates.closedDate !== undefined) {
+          updateData.closed_date = updates.closedDate || null;
+        } else if (currentSale?.closedDate) {
+          updateData.closed_date = currentSale.closedDate;
+        } else if (!wasClosed) {
+          updateData.closed_date = new Date().toISOString().split("T")[0];
+        } else {
+          updateData.closed_date = null;
+        }
       } else {
         updateData.closed_date = null;
       }
