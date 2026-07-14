@@ -17,6 +17,16 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BudgetPrintView from "@/components/orcamento/BudgetPrintView";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { estimateProjectMaterials, GeminiEstimationResult } from "@/services/geminiService";
+import { Sparkles, Key, UploadCloud, FileImage, Brain, Hammer, Hourglass, Check } from "lucide-react";
+
+const analysisSteps = [
+    "Analisando o desenho do projeto...",
+    "Modelando módulos e estimando volumes de MDF...",
+    "Calculando cortes e fitas de borda...",
+    "Calculando dobradiças, corrediças e ferragens...",
+    "Ajustando suprimentos e estimando dias de produção..."
+];
 
 const Orcamento = () => {
     const { materials: allMaterials, budgets, loading, updateMaterial, addMaterial, deleteMaterial, deleteBudget, saveBudget, refreshBudgets, convertToWeeklyOrders, cancelBudgetApproval } = useBudgets();
@@ -108,6 +118,21 @@ const Orcamento = () => {
 
     const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
 
+    // AI Vision Estimator States
+    const [activeRightTab, setActiveRightTab] = useState("manual");
+    const [geminiKey, setGeminiKey] = useState("");
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [selectedImageName, setSelectedImageName] = useState("");
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisStep, setAnalysisStep] = useState(0);
+    const [aiResult, setAiResult] = useState<GeminiEstimationResult | null>(null);
+    const [aiError, setAiError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const storedKey = localStorage.getItem("bjl_gemini_api_key") || "";
+        setGeminiKey(storedKey);
+    }, []);
+
     // Checklist state: stores quantities for ALL materials
     const [quantities, setQuantities] = useState<Record<string, number>>({});
     // Custom prices state: stores price overrides for this specific budget
@@ -124,6 +149,110 @@ const Orcamento = () => {
         unit: "UNIDADE",
         unit_price: 0
     });
+
+    // Cycle loading steps
+    useEffect(() => {
+        let interval: any;
+        if (isAnalyzing) {
+            interval = setInterval(() => {
+                setAnalysisStep(prev => (prev + 1) % analysisSteps.length);
+            }, 2500);
+        } else {
+            setAnalysisStep(0);
+        }
+        return () => clearInterval(interval);
+    }, [isAnalyzing]);
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setSelectedImageName(file.name);
+        setAiError(null);
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setSelectedImage(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleAnalyzeProject = async () => {
+        if (!geminiKey) {
+            toast.error("Por favor, informe a Chave API do Gemini.");
+            return;
+        }
+        if (!selectedImage) {
+            toast.error("Por favor, selecione uma imagem do projeto.");
+            return;
+        }
+
+        setIsAnalyzing(true);
+        setAiError(null);
+        setAiResult(null);
+
+        try {
+            // Map Materials to the catalog type expected by the Gemini service
+            const catalog = allMaterials.map(m => ({
+                id: m.id,
+                name: m.name,
+                category: m.category,
+                unit: m.unit,
+                unit_price: m.unit_price
+            }));
+
+            const result = await estimateProjectMaterials(geminiKey, selectedImage, catalog);
+            setAiResult(result);
+            toast.success("Análise concluída com sucesso!");
+        } catch (err: any) {
+            console.error("Gemini Analysis Error:", err);
+            setAiError(err.message || "Ocorreu um erro ao analisar o projeto.");
+            toast.error("Erro na análise da IA.");
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleSaveGeminiKeyLocally = () => {
+        if (!geminiKey) {
+            toast.error("Chave inválida.");
+            return;
+        }
+        localStorage.setItem("bjl_gemini_api_key", geminiKey);
+        toast.success("Chave salva localmente no navegador!");
+    };
+
+    const handleApplyAiEstimation = () => {
+        if (!aiResult) return;
+
+        // Reset quantities to reflect the AI recommendation
+        const resetQuantities: Record<string, number> = {};
+
+        aiResult.items.forEach(item => {
+            const material = allMaterials.find(m => m.id === item.id);
+            if (material) {
+                resetQuantities[item.id] = item.qty;
+            }
+        });
+
+        setQuantities(resetQuantities);
+
+        // Also suggest production days
+        if (aiResult.days_estimated > 0) {
+            setFormData(prev => ({
+                ...prev,
+                days_estimated: aiResult.days_estimated
+            }));
+        }
+
+        toast.success("Itens sugeridos pela IA aplicados ao orçamento!");
+        
+        // Reset analysis state and switch back to manual tab for review
+        setSelectedImage(null);
+        setSelectedImageName("");
+        setAiResult(null);
+        setActiveRightTab("manual");
+    };
 
     const handleAddMaterial = async () => {
         if (!newMaterial.name) {
@@ -499,198 +628,203 @@ const Orcamento = () => {
                                             <span>À Vista</span>
                                             <span>{formatCurrency(calculateTotals.baseValue)}</span>
                                         </div>
-                                        <div className="pt-2 border-t border-primary/20 flex justify-between items-end">
+<div className="pt-2 border-t border-primary/20 flex justify-between items-end">
                                             <span className="text-[10px] font-black uppercase text-primary">Prazo</span>
                                             <span className="text-xl font-black text-primary leading-none">{formatCurrency(calculateTotals.cardValue)}</span>
-                                        </div>
                                     </div>
                                 </div>
-
-                                <ScrollArea className="flex-1 p-8 bg-card">
-                                    <div className="space-y-6">
-                                        {Object.values(quantities).some(q => q > 0) && (
-                                            <div className="mb-8 p-6 bg-primary/5 border-2 border-primary/20 rounded-[2rem] shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
-                                                <div className="flex items-center gap-3 mb-6">
-                                                    <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
-                                                    <h4 className="font-black uppercase text-sm tracking-widest text-primary">Preenchimento (Itens do Projeto)</h4>
-                                                </div>
-                                                <div className="space-y-3">
-                                                    {Object.entries(quantities)
-                                                        .filter(([_, qty]) => qty > 0)
-                                                        .map(([id, qty]) => {
-                                                            const item = allMaterials.find(m => m.id === id);
-                                                            if (!item) return null;
-                                                            const currentPrice = customPrices[id] !== undefined ? customPrices[id] : item.unit_price;
-                                                            return (
-                                                                <div key={`selected-${id}`} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm hover:border-primary/30 transition-all gap-4">
-                                                                    <div className="flex flex-col">
-                                                                        <span className="text-[12px] font-black uppercase tracking-tight text-slate-900 dark:text-white">{item.name}</span>
-                                                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{item.category} • {item.unit}</span>
-                                                                    </div>
-                                                                    <div className="flex flex-wrap items-center gap-4">
-                                                                        <div className="flex flex-col gap-1">
-                                                                            <Label className="text-[8px] font-black uppercase text-slate-400 ml-1">Quantidade</Label>
-                                                                            <Input
-                                                                                type="number"
-                                                                                className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:ring-primary/20"
-                                                                                value={qty || ""}
-                                                                                onChange={(e) => handleQuantityChange(id, e.target.value)}
-                                                                            />
+                            </div>
+                            <Tabs value={activeRightTab} onValueChange={setActiveRightTab} className="flex-1 flex flex-col overflow-hidden">
+                                    <div className="px-8 pt-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-card">
+                                        <TabsList className="bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
+                                            <TabsTrigger value="manual" className="px-6 py-2 rounded-lg font-black text-[10px] tracking-widest uppercase data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:shadow-sm">
+                                                Checklist Manual
+                                            </TabsTrigger>
+                                            <TabsTrigger value="ai" className="px-6 py-2 rounded-lg font-black text-[10px] tracking-widest uppercase data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm flex items-center gap-1.5">
+                                                <Sparkles className="h-3.5 w-3.5 animate-pulse text-amber-400" /> Assistente de IA ✨
+                                            </TabsTrigger>
+                                        </TabsList>
+                                    </div>
+                                    
+                                    <TabsContent value="manual" className="flex-1 overflow-hidden m-0 flex flex-col">
+                                        <ScrollArea className="flex-1 p-8 bg-card">
+                                            <div className="space-y-6">
+                                                {Object.values(quantities).some(q => q > 0) && (
+                                                    <div className="mb-8 p-6 bg-primary/5 border-2 border-primary/20 rounded-[2rem] shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+                                                        <div className="flex items-center gap-3 mb-6">
+                                                            <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
+                                                            <h4 className="font-black uppercase text-sm tracking-widest text-primary">Preenchimento (Itens do Projeto)</h4>
+                                                        </div>
+                                                        <div className="space-y-3">
+                                                            {Object.entries(quantities)
+                                                                .filter(([_, qty]) => qty > 0)
+                                                                .map(([id, qty]) => {
+                                                                    const item = allMaterials.find(m => m.id === id);
+                                                                    if (!item) return null;
+                                                                    const currentPrice = customPrices[id] !== undefined ? customPrices[id] : item.unit_price;
+                                                                    return (
+                                                                        <div key={`selected-${id}`} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm hover:border-primary/30 transition-all gap-4">
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[12px] font-black uppercase tracking-tight text-slate-900 dark:text-white">{item.name}</span>
+                                                                                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{item.category} • {item.unit}</span>
+                                                                            </div>
+                                                                            <div className="flex flex-wrap items-center gap-4">
+                                                                                <div className="flex flex-col gap-1">
+                                                                                    <Label className="text-[8px] font-black uppercase text-slate-400 ml-1">Quantidade</Label>
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:ring-primary/20"
+                                                                                        value={qty || ""}
+                                                                                        onChange={(e) => handleQuantityChange(id, e.target.value)}
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="flex flex-col gap-1">
+                                                                                    <Label className="text-[8px] font-black uppercase text-slate-400 ml-1">Preço Unitário (R$)</Label>
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        className="w-28 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:ring-primary/20 text-primary"
+                                                                                        value={currentPrice || ""}
+                                                                                        onChange={(e) => handlePriceChange(id, e.target.value)}
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="flex flex-col gap-1 items-end min-w-[100px]">
+                                                                                    <Label className="text-[8px] font-black uppercase text-slate-500 mr-1">Subtotal</Label>
+                                                                                    <span className="text-sm font-black text-slate-900 dark:text-white">{formatCurrency(currentPrice * qty)}</span>
+                                                                                </div>
+                                                                                <Button 
+                                                                                    variant="ghost" 
+                                                                                    size="icon" 
+                                                                                    className="h-10 w-10 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl"
+                                                                                    onClick={() => handleQuantityChange(id, "0")}
+                                                                                >
+                                                                                    <Trash2 className="h-4 w-4" />
+                                                                                </Button>
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="flex flex-col gap-1">
-                                                                            <Label className="text-[8px] font-black uppercase text-slate-400 ml-1">Preço Unitário (R$)</Label>
-                                                                            <Input
-                                                                                type="number"
-                                                                                className="w-28 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:ring-primary/20 text-primary"
-                                                                                value={currentPrice || ""}
-                                                                                onChange={(e) => handlePriceChange(id, e.target.value)}
-                                                                            />
-                                                                        </div>
-                                                                        <div className="flex flex-col gap-1 items-end min-w-[100px]">
-                                                                            <Label className="text-[8px] font-black uppercase text-slate-500 mr-1">Subtotal</Label>
-                                                                            <span className="text-sm font-black text-slate-900 dark:text-white">{formatCurrency(currentPrice * qty)}</span>
-                                                                        </div>
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="icon" 
-                                                                            className="h-10 w-10 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl"
-                                                                            onClick={() => handleQuantityChange(id, "0")}
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-8 w-1 bg-primary rounded-full" />
-                                                <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Catálogo Geral (Explorar)</h4>
-                                            </div>
-
-                                            <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/5 gap-1">
-                                                {["TODOS", "CHM", "BRUTA", "OUTROS"].map(filter => (
-                                                    <button
-                                                        key={filter}
-                                                        onClick={() => setActiveSupplierFilter(filter as any)}
-                                                        className={cn(
-                                                            "px-4 py-2 rounded-xl font-black text-[10px] tracking-widest transition-all",
-                                                            activeSupplierFilter === filter 
-                                                                ? "bg-primary text-primary-foreground shadow-lg" 
-                                                                : "text-slate-400 hover:bg-white/5"
-                                                        )}
-                                                    >
-                                                        {filter}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-12">
-                                            {Object.entries(groupedBySupplier)
-                                                .filter(([supplier]) => {
-                                                    if (activeSupplierFilter === "TODOS") return true;
-                                                    if (activeSupplierFilter === "CHM") return isCHM(supplier);
-                                                    if (activeSupplierFilter === "BRUTA") return isBRUTA(supplier);
-                                                    if (activeSupplierFilter === "OUTROS") return !isCHM(supplier) && !isBRUTA(supplier);
-                                                    return true;
-                                                })
-                                                .map(([supplier, categories]) => (
-                                                <div key={supplier} className="space-y-6">
-                                                    <div className={cn(
-                                                        "flex items-center gap-4 px-6 py-4 rounded-3xl border shadow-sm",
-                                                        isCHM(supplier) ? "bg-emerald-500/5 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]" :
-                                                        isBRUTA(supplier) ? "bg-orange-500/5 border-orange-500/20 shadow-[0_0_20px_rgba(249,115,22,0.05)]" :
-                                                        "bg-white/5 border-white/5"
-                                                    )}>
-                                                        <div className={cn(
-                                                            "w-2 h-8 rounded-full",
-                                                            isCHM(supplier) ? "bg-emerald-500" :
-                                                            isBRUTA(supplier) ? "bg-orange-500" :
-                                                            "bg-slate-300"
-                                                        )} />
-                                                        <div>
-                                                            <h4 className={cn(
-                                                                "font-black uppercase text-sm tracking-widest",
-                                                                isCHM(supplier) ? "text-emerald-500" :
-                                                                isBRUTA(supplier) ? "text-orange-500" :
-                                                                "text-slate-500"
-                                                            )}>
-                                                                {supplier}
-                                                            </h4>
-                                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">
-                                                                Itens selecionados deste fornecedor
-                                                            </p>
+                                                                    );
+                                                                })}
                                                         </div>
                                                     </div>
+                                                )}
 
-                                                    <Accordion type="multiple" defaultValue={Object.keys(categories)} className="space-y-4">
-                                                        {Object.entries(categories).map(([category, items]) => (
-                                                            <AccordionItem key={`${supplier}-${category}`} value={category} className="border border-white/5 rounded-3xl px-6 bg-white/5 shadow-sm overflow-hidden border-b-0 space-y-2">
-                                                                <AccordionTrigger className="hover:no-underline py-4 border-none">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] uppercase tracking-widest px-3">
-                                                                            {items.length} ITENS
-                                                                        </Badge>
-                                                                        <span className="font-black uppercase text-xs tracking-tighter text-slate-300">{category}</span>
-                                                                    </div>
-                                                                </AccordionTrigger>
-                                                                <AccordionContent className="pb-6 border-none">
-                                                                    <div className="grid grid-cols-1 gap-2">
-                                                                        {items.map(item => {
-                                                                            const currentPrice = customPrices[item.id] !== undefined ? customPrices[item.id] : item.unit_price;
-                                                                            return (
-                                                                                <div key={item.id} className={cn(
-                                                                                    "flex items-center justify-between p-3 rounded-2xl transition-all group",
-                                                                                    quantities[item.id] > 0 
-                                                                                        ? "bg-primary/10 border-primary/30 border shadow-inner" 
-                                                                                        : "bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/5"
-                                                                                )}>
-                                                                                    <div className="flex flex-col">
-                                                                                        <span className={cn(
-                                                                                            "text-[11px] font-black uppercase tracking-tight transition-colors",
-                                                                                            quantities[item.id] > 0 
-                                                                                                ? "text-primary-foreground dark:text-primary" 
-                                                                                                : "text-slate-800 dark:text-slate-200"
-                                                                                        )}>
-                                                                                            {item.name}
-                                                                                        </span>
-                                                                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase">
-                                                                                            {item.unit} • {formatCurrency(item.unit_price)}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                    <div className="flex items-center gap-3">
-                                                                                        {quantities[item.id] > 0 && (
-                                                                                            <div className="flex flex-col items-end mr-4">
-                                                                                                <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Preço Unit.</span>
-                                                                                                <Input
-                                                                                                    type="number"
-                                                                                                    className="w-24 h-8 rounded-lg text-right font-black text-[10px] border-slate-200 focus:bg-slate-200/50 dark:focus:bg-white/10 text-slate-900 dark:text-white bg-slate-200 dark:bg-white/5"
-                                                                                                    value={currentPrice || ""}
-                                                                                                    onChange={(e) => handlePriceChange(item.id, e.target.value)}
-                                                                                                />
-                                                                                            </div>
-                                                                                        )}
-                                                                                        <div className="flex flex-col items-end">
-                                                                                            {quantities[item.id] > 0 && (
-                                                                                                <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Qtd.</span>
-                                                                                            )}
-                                                                                            <Input
-                                                                                                type="number"
-                                                                                                placeholder="0"
-                                                                                                className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-slate-200/50 dark:focus:bg-white/10 text-slate-900 dark:text-white bg-slate-200 dark:bg-white/5"
-                                                                                                value={quantities[item.id] || ""}
-                                                                                                onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                                                                                            />
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            );
-                                                                        })}
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="h-8 w-1 bg-primary rounded-full" />
+                                                        <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Catálogo Geral (Explorar)</h4>
+                                                    </div>
+
+                                                    <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/5 gap-1">
+                                                        {["TODOS", "CHM", "BRUTA", "OUTROS"].map(filter => (
+                                                            <button
+                                                                key={filter}
+                                                                onClick={() => setActiveSupplierFilter(filter as any)}
+                                                                className={cn(
+                                                                    "px-4 py-2 rounded-xl font-black text-[10px] tracking-widest transition-all",
+                                                                    activeSupplierFilter === filter 
+                                                                        ? "bg-primary text-primary-foreground shadow-lg" 
+                                                                        : "text-slate-400 hover:bg-white/5"
+                                                                )}
+                                                            >
+                                                                {filter}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-12">
+                                                    {Object.entries(groupedBySupplier)
+                                                        .filter(([supplier]) => {
+                                                            if (activeSupplierFilter === "TODOS") return true;
+                                                            if (activeSupplierFilter === "CHM") return isCHM(supplier);
+                                                            if (activeSupplierFilter === "BRUTA") return isBRUTA(supplier);
+                                                            if (activeSupplierFilter === "OUTROS") return !isCHM(supplier) && !isBRUTA(supplier);
+                                                            return true;
+                                                        })
+                                                        .map(([supplier, categories]) => (
+                                                        <div key={supplier} className="space-y-6">
+                                                            <div className={cn(
+                                                                "flex items-center gap-4 px-6 py-4 rounded-3xl border shadow-sm",
+                                                                isCHM(supplier) ? "bg-emerald-500/5 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]" :
+                                                                isBRUTA(supplier) ? "bg-orange-500/5 border-orange-500/20 shadow-[0_0_20px_rgba(249,115,22,0.05)]" :
+                                                                "bg-white/5 border-white/5"
+                                                            )}>
+                                                                <div className={cn(
+                                                                    "w-2 h-8 rounded-full",
+                                                                    isCHM(supplier) ? "bg-emerald-500" :
+                                                                    isBRUTA(supplier) ? "bg-orange-500" :
+                                                                    "bg-slate-300"
+                                                                )} />
+                                                                <div>
+                                                                    <h4 className={cn(
+                                                                        "font-black uppercase text-sm tracking-widest",
+                                                                        isCHM(supplier) ? "text-emerald-500" :
+                                                                        isBRUTA(supplier) ? "text-orange-500" :
+                                                                        "text-slate-500"
+                                                                    )}>
+                                                                        {supplier}
+                                                                    </h4>
+                                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">
+                                                                        Itens selecionados deste fornecedor
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+
+                                                            <Accordion type="multiple" defaultValue={Object.keys(categories)} className="space-y-4">
+                                                                {Object.entries(categories).map(([category, items]) => (
+                                                                    <AccordionItem key={`${supplier}-${category}`} value={category} className="border border-white/5 rounded-3xl px-6 bg-white/5 shadow-sm overflow-hidden border-b-0 space-y-2">
+                                                                        <AccordionTrigger className="hover:no-underline py-4 border-none">
+                                                                            <div className="flex items-center gap-3">
+                                                                                <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] uppercase tracking-widest px-3">
+                                                                                    {items.length} ITENS
+                                                                                </Badge>
+                                                                                <span className="font-black uppercase text-xs tracking-tighter text-slate-300">{category}</span>
+                                                                            </div>
+                                                                        </AccordionTrigger>
+                                                                        <AccordionContent className="pb-6 border-none">
+                                                                            <div className="grid grid-cols-1 gap-2">
+                                                                                {items.map(item => {
+                                                                                     const currentPrice = customPrices[item.id] !== undefined ? customPrices[item.id] : item.unit_price;
+                                                                                     return (
+                                                                                         <div key={item.id} className={cn(
+                                                                                             "flex items-center justify-between p-3 rounded-2xl transition-all group border border-transparent",
+                                                                                             quantities[item.id] > 0 
+                                                                                                 ? "bg-primary/10 border-primary/30 shadow-inner" 
+                                                                                                 : "hover:bg-slate-100 dark:hover:bg-white/5"
+                                                                                         )}>
+                                                                                             <div className="flex items-center gap-3">
+                                                                                                 <div className="flex flex-col">
+                                                                                                     <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100 uppercase tracking-tight">{item.name}</span>
+                                                                                                     <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{formatCurrency(currentPrice)} / {item.unit}</span>
+                                                                                                 </div>
+                                                                                             </div>
+                                                                                             <div className="flex items-center gap-3">
+                                                                                                 {quantities[item.id] > 0 && (
+                                                                                                     <div className="flex flex-col items-end mr-4">
+                                                                                                         <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Preço Unit.</span>
+                                                                                                         <Input
+                                                                                                             type="number"
+                                                                                                             className="w-24 h-8 rounded-lg text-right font-black text-[10px] border-slate-200 focus:bg-slate-200/50 dark:focus:bg-white/10 text-slate-900 dark:text-white bg-slate-200 dark:bg-white/5"
+                                                                                                             value={currentPrice || ""}
+                                                                                                             onChange={(e) => handlePriceChange(item.id, e.target.value)}
+                                                                                                         />
+                                                                                                     </div>
+                                                                                                 )}
+                                                                                                 <div className="flex flex-col items-end">
+                                                                                                     {quantities[item.id] > 0 && (
+                                                                                                         <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Qtd.</span>
+                                                                                                     )}
+                                                                                                     <Input
+                                                                                                         type="number"
+                                                                                                         placeholder="0"
+                                                                                                         className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-slate-200/50 dark:focus:bg-white/10 text-slate-900 dark:text-white bg-slate-200 dark:bg-white/5"
+                                                                                                         value={quantities[item.id] || ""}
+                                                                                                         onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                                                                                     />
+                                                                                                 </div>
+                                                                                             </div>
+                                                                                         </div>
+                                                                                     );
+                                                                                 })}
                                                                     </div>
                                                                 </AccordionContent>
                                                             </AccordionItem>
@@ -774,6 +908,194 @@ const Orcamento = () => {
                                         )}
                                     </div>
                                 </ScrollArea>
+                            </TabsContent>
+                                    
+                                    <TabsContent value="ai" className="flex-1 overflow-hidden m-0 flex flex-col">
+                                        <ScrollArea className="flex-1 p-8 bg-card">
+                                            <div className="space-y-6">
+                                                <div className="p-6 bg-primary/5 border-2 border-primary/20 rounded-[2rem] shadow-sm">
+                                                    <div className="flex items-center gap-3 mb-4">
+                                                        <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+                                                        <h4 className="font-black uppercase text-sm tracking-widest text-primary">Análise de Projeto por Visão Computacional</h4>
+                                                    </div>
+                                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider leading-relaxed">
+                                                        Faça o upload de uma imagem do projeto (render 3D, desenho técnico ou croqui com medidas). A IA analisará o projeto e estimará as chapas de MDF, fitas e ferragens necessárias a partir do catálogo da BJL Planejados.
+                                                    </p>
+                                                </div>
+
+                                                {!geminiKey ? (
+                                                    <Card className="border border-amber-500/20 bg-amber-500/5 rounded-3xl p-6 space-y-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <Key className="h-5 w-5 text-amber-500" />
+                                                            <span className="text-xs font-black uppercase tracking-wider text-amber-500">Chave da API do Gemini Necessária</span>
+                                                        </div>
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-relaxed">
+                                                            O assistente de IA usa a API do Gemini. Para começar, cole sua chave de API abaixo. Ela será armazenada localmente e com total segurança no seu próprio navegador.
+                                                        </p>
+                                                        <div className="flex gap-2">
+                                                            <Input 
+                                                                type="password" 
+                                                                value={geminiKey}
+                                                                onChange={e => setGeminiKey(e.target.value)}
+                                                                placeholder="AIzaSy..." 
+                                                                className="h-12 bg-white/5 border-white/10 rounded-xl font-bold"
+                                                            />
+                                                            <Button onClick={handleSaveGeminiKeyLocally} className="h-12 bg-amber-500 hover:bg-amber-600 text-white font-black uppercase text-[10px] tracking-widest rounded-xl px-6">
+                                                                Salvar Chave
+                                                            </Button>
+                                                        </div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                            Não tem uma chave? <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Clique aqui para obter uma chave gratuita no Google AI Studio</a>.
+                                                        </p>
+                                                    </Card>
+                                                ) : (
+                                                    <div className="space-y-6">
+                                                        {/* Upload Area */}
+                                                        <div className="border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[2rem] p-8 flex flex-col items-center justify-center text-center bg-slate-50/50 hover:bg-slate-50 dark:bg-white/5 dark:hover:bg-white/10 transition-all relative overflow-hidden group">
+                                                            <input 
+                                                                type="file" 
+                                                                accept="image/*" 
+                                                                onChange={handleImageChange}
+                                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                                                disabled={isAnalyzing}
+                                                            />
+                                                            {selectedImage ? (
+                                                                <div className="space-y-4">
+                                                                    <div className="relative inline-block max-w-[200px] rounded-xl overflow-hidden shadow-md border border-slate-200">
+                                                                        <img src={selectedImage} alt="Preview do projeto" className="max-h-[150px] object-contain" />
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        <p className="text-xs font-black uppercase text-slate-800 dark:text-white truncate max-w-[250px]">{selectedImageName}</p>
+                                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Clique ou arraste outro arquivo para alterar</p>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="space-y-4 py-4 flex flex-col items-center">
+                                                                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                                                        <UploadCloud className="h-8 w-8 text-primary" />
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        <p className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Selecione a Imagem do Projeto</p>
+                                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Arraste a imagem do render 3D ou projeto técnico aqui</p>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Analysis Action */}
+                                                        {selectedImage && !isAnalyzing && !aiResult && (
+                                                            <Button 
+                                                                onClick={handleAnalyzeProject}
+                                                                className="w-full h-14 bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                                            >
+                                                                <Sparkles className="h-4 w-4" />
+                                                                Analisar e Estimar Materiais
+                                                            </Button>
+                                                        )}
+
+                                                        {/* Loading Screen */}
+                                                        {isAnalyzing && (
+                                                            <div className="p-12 flex flex-col items-center justify-center text-center space-y-6 bg-slate-50 dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/5 animate-pulse">
+                                                                <div className="relative">
+                                                                    <div className="absolute -inset-4 bg-primary/20 rounded-full blur-xl animate-pulse" />
+                                                                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary/30">
+                                                                        <Hammer className="h-8 w-8 text-primary animate-bounce" />
+                                                                    </div>
+                                                                    <Hourglass className="absolute -bottom-1 -right-1 h-5 w-5 text-amber-500 animate-spin" />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <h5 className="font-black uppercase text-xs text-primary tracking-widest">A IA da BJL está trabalhando</h5>
+                                                                    <p className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-wider">{analysisSteps[analysisStep]}</p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Error State */}
+                                                        {aiError && (
+                                                            <div className="p-6 bg-rose-500/10 border-2 border-rose-500/20 rounded-3xl text-center space-y-3">
+                                                                <p className="text-xs font-black uppercase text-rose-500">Erro na Análise</p>
+                                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{aiError}</p>
+                                                                <Button variant="ghost" onClick={handleAnalyzeProject} className="h-10 text-[9px] font-black uppercase tracking-widest hover:bg-rose-500/10 text-rose-500">Tentar Novamente</Button>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Results Preview */}
+                                                        {aiResult && (
+                                                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                                                <div className="p-6 bg-emerald-500/5 border-2 border-emerald-500/20 rounded-[2rem] space-y-3">
+                                                                    <div className="flex items-center gap-2 text-emerald-500">
+                                                                        <Brain className="h-5 w-5" />
+                                                                        <span className="text-xs font-black uppercase tracking-widest">Parecer da IA da BJL</span>
+                                                                    </div>
+                                                                    <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 leading-relaxed uppercase">
+                                                                        {aiResult.reasoning}
+                                                                    </p>
+                                                                </div>
+
+                                                                {aiResult.days_estimated > 0 && (
+                                                                    <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Hourglass className="h-4 w-4 text-amber-500" />
+                                                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tempo Estimado de Produção</span>
+                                                                        </div>
+                                                                        <span className="text-sm font-black text-amber-600">{aiResult.days_estimated} {aiResult.days_estimated === 1 ? 'dia' : 'dias'}</span>
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="space-y-3">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="h-5 w-1 bg-emerald-500 rounded-full" />
+                                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Materiais Recomendados</span>
+                                                                    </div>
+
+                                                                    <div className="space-y-2">
+                                                                        {aiResult.items.map((item, index) => {
+                                                                            const material = allMaterials.find(m => m.id === item.id);
+                                                                            if (!material) return null;
+                                                                            return (
+                                                                                <div key={`ai-recommend-${index}`} className="flex items-center justify-between p-4 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5">
+                                                                                    <div>
+                                                                                        <p className="text-xs font-black uppercase tracking-tight">{material.name}</p>
+                                                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{material.category}</p>
+                                                                                    </div>
+                                                                                    <div className="text-right">
+                                                                                        <p className="text-xs font-black text-primary">{item.qty} {material.unit}</p>
+                                                                                        <p className="text-[9px] font-bold text-slate-400">{formatCurrency(material.unit_price * item.qty)}</p>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex gap-2">
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        onClick={() => {
+                                                                            setAiResult(null);
+                                                                            setSelectedImage(null);
+                                                                            setSelectedImageName("");
+                                                                        }} 
+                                                                        className="flex-1 h-12 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-200 text-slate-600"
+                                                                    >
+                                                                        Limpar
+                                                                    </Button>
+                                                                    <Button 
+                                                                        onClick={handleApplyAiEstimation}
+                                                                        className="flex-[2] h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-1.5"
+                                                                    >
+                                                                        <Check className="h-4 w-4" />
+                                                                        Aplicar Itens no Orçamento
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </ScrollArea>
+                                    </TabsContent>
+                                </Tabs>
                             </div>
 
                             <div className="p-4 sm:p-8 shrink-0 bg-slate-100 dark:bg-zinc-950/80 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row gap-4 justify-between items-center">
