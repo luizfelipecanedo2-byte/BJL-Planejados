@@ -555,7 +555,7 @@ const Orcamento = () => {
                                 Novo Levantamento
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="w-[95vw] sm:max-w-[1100px] max-h-[95vh] border-none shadow-2xl rounded-[1.5rem] sm:rounded-[3rem] overflow-hidden p-0 flex flex-col">
+                        <DialogContent className="w-[95vw] sm:max-w-[1100px] h-[90vh] max-h-[90vh] border-none shadow-2xl rounded-[1.5rem] sm:rounded-[3rem] overflow-hidden p-0 flex flex-col">
                             <div className="bg-primary p-8 text-primary-foreground relative shrink-0">
                                 <div className="absolute top-0 right-0 p-4 opacity-10">
                                     <Calculator size={140} />
@@ -575,7 +575,7 @@ const Orcamento = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                            <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
                                 <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-100 p-6 sm:p-8 space-y-6 sm:space-y-8 bg-slate-50/50 backdrop-blur-sm overflow-y-auto max-h-[40vh] md:max-h-full">
                                     <div className="space-y-4">
                                         <h4 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
@@ -645,7 +645,7 @@ const Orcamento = () => {
                                     </div>
                                 </div>
                             </div>
-                            <Tabs value={activeRightTab} onValueChange={setActiveRightTab} className="flex-1 flex flex-col overflow-hidden">
+                            <Tabs value={activeRightTab} onValueChange={setActiveRightTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
                                     <div className="px-8 pt-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-card">
                                         <TabsList className="bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
                                             <TabsTrigger value="manual" className="px-6 py-2 rounded-lg font-black text-[10px] tracking-widest uppercase data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:shadow-sm">
@@ -657,7 +657,7 @@ const Orcamento = () => {
                                         </TabsList>
                                     </div>
                                     
-                                    <TabsContent value="manual" className="flex-1 overflow-hidden m-0 flex flex-col">
+                                    <TabsContent value="manual" className="flex-1 overflow-hidden m-0 flex flex-col min-h-0">
                                         <ScrollArea className="flex-1 p-8 bg-card">
                                             <div className="space-y-6">
                                                 {Object.values(quantities).some(q => q > 0) && (
@@ -936,7 +936,7 @@ const Orcamento = () => {
                                 </ScrollArea>
                             </TabsContent>
                                     
-                                    <TabsContent value="ai" className="flex-1 overflow-hidden m-0 flex flex-col">
+                                    <TabsContent value="ai" className="flex-1 overflow-hidden m-0 flex flex-col min-h-0">
                                         <ScrollArea className="flex-1 p-8 bg-card">
                                             <div className="space-y-6">
                                                 <div className="p-6 bg-primary/5 border-2 border-primary/20 rounded-[2rem] shadow-sm">
