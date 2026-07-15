@@ -56,6 +56,14 @@ const MainLayout = () => {
         const themes = ["theme-gold", "theme-emerald", "theme-sapphire", "theme-amethyst"];
         themes.forEach(t => document.documentElement.classList.remove(t));
         document.documentElement.classList.add(currentTheme);
+        
+        // Add or remove the 'dark' class to enable Tailwind's dark: variant classes
+        if (currentTheme === "theme-emerald") {
+            document.documentElement.classList.remove("dark");
+        } else {
+            document.documentElement.classList.add("dark");
+        }
+        
         localStorage.setItem("appTheme", currentTheme);
     }, [currentTheme]);
 

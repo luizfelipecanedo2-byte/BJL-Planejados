@@ -46,6 +46,7 @@ const Orcamento = () => {
     }, [allMaterials]);
 
     const [searchTerm, setSearchTerm] = useState("");
+    const [materialSearchTerm, setMaterialSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [activeTab, setActiveTab] = useState("orcamentos");
     const [printingBudget, setPrintingBudget] = useState<any>(null);
@@ -330,10 +331,20 @@ const Orcamento = () => {
 
     const [activeSupplierFilter, setActiveSupplierFilter] = useState<"TODOS" | "CHM" | "BRUTA" | "OUTROS">("TODOS");
 
+    const filteredMaterialsForCatalog = useMemo(() => {
+        if (!materialSearchTerm) return sortedMaterials;
+        const search = materialSearchTerm.toLowerCase();
+        return sortedMaterials.filter(m => 
+            m.name.toLowerCase().includes(search) || 
+            m.category.toLowerCase().includes(search) ||
+            (m.supplier && m.supplier.toLowerCase().includes(search))
+        );
+    }, [sortedMaterials, materialSearchTerm]);
+
     const groupedBySupplier = useMemo(() => {
         const data: Record<string, Record<string, Material[]>> = {};
 
-        sortedMaterials.forEach(m => {
+        filteredMaterialsForCatalog.forEach(m => {
             let supplierGroup = "Outros";
             if (isCHM(m.supplier)) supplierGroup = "CHM Morais / CED";
             else if (isBRUTA(m.supplier)) supplierGroup = "BRUTA";
@@ -344,7 +355,7 @@ const Orcamento = () => {
         });
 
         return data; 
-    }, [sortedMaterials]);
+    }, [filteredMaterialsForCatalog]);
 
     const calculateTotals = useMemo(() => {
         const categoryTotals: Record<string, number> = {};
@@ -707,29 +718,39 @@ const Orcamento = () => {
                                                     </div>
                                                 )}
 
-                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="h-8 w-1 bg-primary rounded-full" />
-                                                        <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Catálogo Geral (Explorar)</h4>
-                                                    </div>
-
-                                                    <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/5 gap-1">
-                                                        {["TODOS", "CHM", "BRUTA", "OUTROS"].map(filter => (
-                                                            <button
-                                                                key={filter}
-                                                                onClick={() => setActiveSupplierFilter(filter as any)}
-                                                                className={cn(
-                                                                    "px-4 py-2 rounded-xl font-black text-[10px] tracking-widest transition-all",
-                                                                    activeSupplierFilter === filter 
-                                                                        ? "bg-primary text-primary-foreground shadow-lg" 
-                                                                        : "text-slate-400 hover:bg-white/5"
-                                                                )}
-                                                            >
-                                                                {filter}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
+                                                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                                                     <div className="flex items-center gap-2">
+                                                         <div className="h-8 w-1 bg-primary rounded-full" />
+                                                         <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Catálogo Geral (Explorar)</h4>
+                                                     </div>
+ 
+                                                     <div className="flex flex-1 sm:max-w-xs relative">
+                                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                         <Input
+                                                             value={materialSearchTerm}
+                                                             onChange={e => setMaterialSearchTerm(e.target.value)}
+                                                             placeholder="Buscar material..."
+                                                             className="pl-9 h-10 rounded-xl bg-white/5 border-white/10 text-white font-bold placeholder:text-slate-500 focus:bg-white/10 transition-all text-xs"
+                                                         />
+                                                     </div>
+ 
+                                                     <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/5 gap-1">
+                                                         {["TODOS", "CHM", "BRUTA", "OUTROS"].map(filter => (
+                                                             <button
+                                                                 key={filter}
+                                                                 onClick={() => setActiveSupplierFilter(filter as any)}
+                                                                 className={cn(
+                                                                     "px-4 py-2 rounded-xl font-black text-[10px] tracking-widest transition-all",
+                                                                     activeSupplierFilter === filter 
+                                                                         ? "bg-primary text-primary-foreground shadow-lg" 
+                                                                         : "text-slate-400 hover:bg-white/5"
+                                                                 )}
+                                                             >
+                                                                 {filter}
+                                                             </button>
+                                                         ))}
+                                                     </div>
+                                                 </div>
 
                                                 <div className="space-y-12">
                                                     {Object.entries(groupedBySupplier)
@@ -769,7 +790,12 @@ const Orcamento = () => {
                                                                 </div>
                                                             </div>
 
-                                                            <Accordion type="multiple" defaultValue={Object.keys(categories)} className="space-y-4">
+                                                            <Accordion 
+                                                                key={`${supplier}-${Object.keys(categories).join('-')}-${materialSearchTerm}`}
+                                                                type="multiple" 
+                                                                defaultValue={Object.keys(categories)} 
+                                                                className="space-y-4"
+                                                            >
                                                                 {Object.entries(categories).map(([category, items]) => (
                                                                     <AccordionItem key={`${supplier}-${category}`} value={category} className="border border-white/5 rounded-3xl px-6 bg-white/5 shadow-sm overflow-hidden border-b-0 space-y-2">
                                                                         <AccordionTrigger className="hover:no-underline py-4 border-none">
