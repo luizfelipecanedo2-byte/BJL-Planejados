@@ -19,8 +19,9 @@ import {
     Settings,
     ChevronLeft,
     ChevronRight,
-    AlertTriangle,
-    Palette
+    Palette,
+    Volume2,
+    VolumeX
 } from "lucide-react";
 
 import { useState, useEffect } from "react";
@@ -51,6 +52,24 @@ const MainLayout = () => {
         return localStorage.getItem("appTheme") || "theme-gold";
     });
     const [isThemePanelOpen, setIsThemePanelOpen] = useState(false);
+    const [soundsEnabled, setSoundsEnabled] = useState(() => {
+        return localStorage.getItem("ui_sounds") !== "false";
+    });
+
+    const toggleSounds = () => {
+        const newValue = !soundsEnabled;
+        setSoundsEnabled(newValue);
+        localStorage.setItem("ui_sounds", newValue ? "true" : "false");
+        if (newValue) {
+            setTimeout(() => {
+                playClickSound();
+            }, 50);
+            toast.success("Efeitos sonoros ativados!");
+        } else {
+            toast.success("Efeitos sonoros desativados.");
+        }
+    };
+
 
     useEffect(() => {
         const themes = ["theme-gold", "theme-emerald", "theme-sapphire", "theme-amethyst"];
@@ -236,7 +255,7 @@ const MainLayout = () => {
                         </div>
                         {!isSidebarCollapsed && (
                             <div className="flex flex-col animate-in fade-in duration-300">
-                                <span className="text-2xl font-black tracking-tighter text-luxury shimmer-gold">{settings?.name?.split(' ')[0] || "BJL"}</span>
+                                <span className="text-2xl font-['Cinzel'] font-bold tracking-widest text-luxury shimmer-gold uppercase">{settings?.name?.split(' ')[0] || "BJL"}</span>
                                 <span className="text-[8px] uppercase tracking-[0.3em] font-bold text-primary/60">{settings?.name?.split(' ').slice(1).join(' ') || "Planejados"}</span>
                             </div>
                         )}
@@ -374,7 +393,7 @@ const MainLayout = () => {
                         <div className="lg:hidden flex items-center gap-3">
                             <img src={settings?.logo_url || "/logo-bjl.png"} alt={settings?.name || "BJL"} className="h-10 w-10 object-contain rounded-full border border-primary/30" />
                             <div className="flex flex-col">
-                                <h1 className="text-xl font-black text-luxury shimmer-gold leading-none">{settings?.name?.split(' ')[0] || "BJL"}</h1>
+                                <h1 className="text-xl font-['Cinzel'] font-bold text-luxury shimmer-gold leading-none uppercase">{settings?.name?.split(' ')[0] || "BJL"}</h1>
                                 <span className="text-[7px] uppercase tracking-[0.2em] font-bold text-primary/60">{settings?.name?.split(' ').slice(1).join(' ') || "Planejados"}</span>
                             </div>
                         </div>
@@ -440,6 +459,18 @@ const MainLayout = () => {
                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                                      </span>
+                                 </Button>
+                             </Magnetic>
+                             <Magnetic range={25} strength={0.25}>
+                                 <Button
+                                     variant="ghost"
+                                     size="icon"
+                                     onClick={toggleSounds}
+                                     onMouseEnter={playHoverSound}
+                                     className="text-muted-foreground hover:text-primary rounded-xl transition-all mr-1"
+                                     title={soundsEnabled ? "Desativar Sons" : "Ativar Sons"}
+                                 >
+                                     {soundsEnabled ? <Volume2 className="h-5 w-5 text-primary animate-pulse" /> : <VolumeX className="h-5 w-5" />}
                                  </Button>
                              </Magnetic>
                              <NotificationBell />
