@@ -39,6 +39,76 @@ const DRETab = ({
     const [analysisResult, setAnalysisResult] = useState<GeminiFinanceAnalysis | null>(null);
     const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
 
+    // Métricas dinâmicas considerando apenas meses transcorridos se for o ano atual
+    const getDREMetricsUpToCurrentMonth = () => {
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const isCurrentYear = parseInt(selectedDREYear) === currentYear;
+        
+        // Se for o ano atual, limitamos a análise até o mês atual (0 a 11)
+        const maxMonthIndex = isCurrentYear ? currentDate.getMonth() : 11;
+
+        const sumCategoryUpToMonth = (cat: any) => {
+            return cat.monthly.slice(0, maxMonthIndex + 1).reduce((acc: number, val: number) => acc + val, 0);
+        };
+
+        let grossRevenue = 0;
+        let taxes = 0;
+        let variableCosts = 0;
+        let fixedExpenses = 0;
+
+        detailedExpenses.forEach(cat => {
+            const categoryAmount = sumCategoryUpToMonth(cat);
+            const catName = cat.category.toLowerCase();
+            
+            if (cat.type === 'income') {
+                grossRevenue += categoryAmount;
+            } else {
+                const isTax = catName.includes('imposto') || 
+                              catName.includes('dedução') || 
+                              catName.includes('simples nacional') || 
+                              catName.includes('iss') || 
+                              catName.includes('pis') || 
+                              catName.includes('cofins');
+
+                const isVariable = !isTax && [
+                    "despesa com serviço",
+                    "custo dos serviços",
+                    "serviços de terceiros",
+                    "despesas com vendas",
+                    "material",
+                    "compra de material",
+                    "insumos",
+                    "mão de obra"
+                ].some(keyword => catName.includes(keyword));
+
+                if (isTax) {
+                    taxes += categoryAmount;
+                } else if (isVariable) {
+                    variableCosts += categoryAmount;
+                } else {
+                    fixedExpenses += categoryAmount;
+                }
+            }
+        });
+
+        const netRevenue = grossRevenue - taxes;
+        const contributionMargin = netRevenue - variableCosts;
+        const netResult = netRevenue - variableCosts - fixedExpenses;
+
+        return {
+            grossRevenue,
+            taxes,
+            netRevenue,
+            variableCosts,
+            contributionMargin,
+            fixedExpenses,
+            netResult,
+            maxMonthIndex,
+            isCurrentYear
+        };
+    };
+
     const handleAnalyzeFinance = async () => {
         const apiKey = localStorage.getItem("bjl_gemini_api_key");
         if (!apiKey) {
@@ -48,7 +118,33 @@ const DRETab = ({
 
         try {
             setIsAnalyzing(true);
-            const result = await analyzeFinancialMetrics(apiKey, selectedDREYear, dreData, detailedExpenses);
+            
+            const metrics = getDREMetricsUpToCurrentMonth();
+            
+            // Filtrar detailedExpenses para mandar apenas o acumulado do período analisado para a IA
+            const filteredExpensesForAI = detailedExpenses.map(cat => {
+                const totalUpToMonth = cat.monthly.slice(0, metrics.maxMonthIndex + 1).reduce((acc: number, val: number) => acc + val, 0);
+                return {
+                    category: cat.category,
+                    type: cat.type,
+                    total: totalUpToMonth
+                };
+            }).filter(cat => cat.total > 0);
+
+            const result = await analyzeFinancialMetrics(
+                apiKey, 
+                selectedDREYear, 
+                {
+                    grossRevenue: metrics.grossRevenue,
+                    taxes: metrics.taxes,
+                    netRevenue: metrics.netRevenue,
+                    variableCosts: metrics.variableCosts,
+                    contributionMargin: metrics.contributionMargin,
+                    fixedExpenses: metrics.fixedExpenses,
+                    netResult: metrics.netResult
+                }, 
+                filteredExpensesForAI
+            );
             setAnalysisResult(result);
             setIsAnalysisOpen(true);
             toast.success("Análise financeira concluída pela Inteligência Artificial!");
@@ -59,6 +155,7 @@ const DRETab = ({
             setIsAnalyzing(false);
         }
     };
+
 
     const handlePrintDRE = () => {
         const printWindow = window.open("", "_blank");
@@ -579,12 +676,41 @@ const DRETab = ({
                             Diagnóstico Financeiro IA - BJL Planejados
                         </DialogTitle>
                         <DialogDescription className="text-slate-400 font-medium text-xs uppercase tracking-wider">
-                            Análise crítica baseada no DRE Gerencial de {selectedDREYear}
+                            Análise crítica baseada no DRE de: {
+                                (() => {
+                                    const metrics = getDREMetricsUpToCurrentMonth();
+                                    const MONTH_NAMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                                    return metrics.isCurrentYear 
+                                        ? `Janeiro a ${MONTH_NAMES[metrics.maxMonthIndex]} de ${selectedDREYear} (Ano em Andamento)`
+                                        : `Janeiro a Dezembro de ${selectedDREYear} (Ano Completo)`;
+                                })()
+                            }
                         </DialogDescription>
                     </DialogHeader>
 
                     {analysisResult && (
                         <div className="space-y-6 mt-4 overflow-y-auto max-h-[70vh] pr-2 scrollbar-none">
+                            {/* Resumo dos Valores Analisados */}
+                            <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Fluxo de Caixa Analisado (Acumulado no Período)</span>
+                                <div className="grid grid-cols-2 gap-y-2 text-xs text-slate-300">
+                                    <span className="opacity-70">Receita Bruta:</span>
+                                    <span className="text-right font-bold text-emerald-400">{formatCurrency(getDREMetricsUpToCurrentMonth().grossRevenue)}</span>
+                                    <span className="opacity-70">Custos Variáveis:</span>
+                                    <span className="text-right font-bold text-rose-400">{formatCurrency(getDREMetricsUpToCurrentMonth().variableCosts)}</span>
+                                    <span className="opacity-70">Despesas Fixas:</span>
+                                    <span className="text-right font-bold text-rose-400">{formatCurrency(getDREMetricsUpToCurrentMonth().fixedExpenses)}</span>
+                                    <div className="col-span-2 border-t border-white/10 my-1"></div>
+                                    <span className="font-bold">Resultado Líquido do Período:</span>
+                                    <span className={cn(
+                                        "text-right font-black",
+                                        getDREMetricsUpToCurrentMonth().netResult >= 0 ? "text-emerald-400" : "text-rose-400"
+                                    )}>
+                                        {formatCurrency(getDREMetricsUpToCurrentMonth().netResult)}
+                                    </span>
+                                </div>
+                            </div>
+
                             {/* Saúde Financeira */}
                             <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
                                 <span className="text-xs font-black uppercase tracking-widest text-slate-400">Saúde de Caixa</span>
