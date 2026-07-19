@@ -521,7 +521,7 @@ const Orcamento = () => {
                 <div className="space-y-1.5">
                     <div className="flex items-center gap-3 mb-1">
                          <div className="h-8 w-1 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
-                         <h1 className="text-4xl font-black text-luxury tracking-tighter shimmer-gold">Orcamentos</h1>
+                         <h1 className="text-4xl font-['Cinzel'] font-bold text-luxury tracking-wider shimmer-gold uppercase">Orçamentos</h1>
                     </div>
                     <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-[10px] opacity-60">Maré de Orçamentos & Engenharia de Valor</p>
                 </div>

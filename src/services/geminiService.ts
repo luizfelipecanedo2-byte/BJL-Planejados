@@ -142,3 +142,106 @@ Você DEVE retornar a resposta EXATAMENTE no formato JSON especificado, combinan
     throw new Error("Erro ao interpretar a resposta da IA. Ela não retornou o formato JSON esperado.");
   }
 }
+
+export interface GeminiFinanceAnalysis {
+  recommendations: string[];
+  health_status: "Excellent" | "Good" | "Regular" | "Bad";
+  analysis_summary: string;
+  variable_cost_feedback: string;
+  fixed_expense_feedback: string;
+}
+
+export async function analyzeFinancialMetrics(
+  apiKey: string,
+  year: string,
+  dreData: {
+    grossRevenue: number;
+    taxes: number;
+    netRevenue: number;
+    variableCosts: number;
+    contributionMargin: number;
+    fixedExpenses: number;
+    netResult: number;
+  },
+  detailedExpenses: any[]
+): Promise<GeminiFinanceAnalysis> {
+  const financePrompt = `Analise os dados financeiros da BJL Planejados para o ano de ${year}:
+Resumo Executivo DRE:
+- Receita Bruta: ${dreData.grossRevenue}
+- Impostos: ${dreData.taxes}
+- Receita Líquida: ${dreData.netRevenue}
+- Custos Variáveis (MDF/Insumos): ${dreData.variableCosts}
+- Margem de Contribuição: ${dreData.contributionMargin}
+- Despesas Fixas (Operacionais/Pessoal): ${dreData.fixedExpenses}
+- Resultado Líquido: ${dreData.netResult}
+
+Detalhamento de Gastos por Categoria:
+${JSON.stringify(detailedExpenses.map(cat => ({ category: cat.category, type: cat.type, total: cat.total })), null, 2)}
+`;
+
+  const systemInstruction = `Você é um Consultor Financeiro e CFO Executivo de alto padrão especializado em marcenarias de luxo e empresas de móveis planejados de alto valor.
+Seu trabalho é fornecer análises críticas de saúde de caixa, conselhos estratégicos para melhorar a lucratividade, otimizar a despesa de materiais (Custos Variáveis), avaliar impostos e reavaliar despesas fixas.
+Seus conselhos devem ser práticos, profissionais, elegantes e direcionados especificamente a um proprietário de fábrica de móveis sob medida.
+Retorne sua resposta estritamente no formato JSON especificado.`;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `${systemInstruction}\n\nDados financeiros para análise:\n${financePrompt}`
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              health_status: { type: "STRING", enum: ["Excellent", "Good", "Regular", "Bad"], description: "Status geral de saúde financeira" },
+              analysis_summary: { type: "STRING", description: "Resumo executivo de análise financeira (2 a 3 parágrafos curtos em português)" },
+              variable_cost_feedback: { type: "STRING", description: "Feedback específico sobre custos variáveis e matéria-prima" },
+              fixed_expense_feedback: { type: "STRING", description: "Feedback específico sobre despesas fixas e gastos administrativos" },
+              recommendations: {
+                type: "ARRAY",
+                items: { type: "STRING" },
+                description: "Recomendações estratégicas e planos de ação práticos (3 a 5 itens curtos)"
+              }
+            },
+            required: ["health_status", "analysis_summary", "variable_cost_feedback", "fixed_expense_feedback", "recommendations"]
+          }
+        }
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData?.error?.message || `Erro da API Gemini (Status ${response.status})`;
+    throw new Error(errorMessage);
+  }
+
+  const result = await response.json();
+  const textContent = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+  
+  if (!textContent) {
+    throw new Error("A IA não retornou uma resposta de análise válida.");
+  }
+
+  try {
+    const parsedResult: GeminiFinanceAnalysis = JSON.parse(textContent);
+    return parsedResult;
+  } catch (err) {
+    console.error("Failed to parse Gemini response as JSON:", textContent, err);
+    throw new Error("Erro ao interpretar a análise financeira da IA.");
+  }
+}
+

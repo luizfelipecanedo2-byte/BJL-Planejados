@@ -456,7 +456,7 @@ const Index = () => {
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="space-y-1">
-          <h2 className="text-5xl font-black tracking-tighter text-luxury shimmer-gold text-glow">Vendas</h2>
+          <h2 className="text-5xl font-['Cinzel'] font-bold text-luxury tracking-wider shimmer-gold text-glow uppercase">Vendas</h2>
           <div className="flex items-center gap-2">
             <div className="h-1 w-12 bg-primary/60 rounded-full" />
             <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary/60">Gestão de Negociações Premium</p>
