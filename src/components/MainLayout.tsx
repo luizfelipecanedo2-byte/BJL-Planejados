@@ -21,8 +21,10 @@ import {
     ChevronRight,
     Palette,
     Volume2,
-    VolumeX
+    VolumeX,
+    AlertTriangle
 } from "lucide-react";
+
 
 import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
