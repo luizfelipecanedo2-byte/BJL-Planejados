@@ -17,6 +17,7 @@ import Orcamento from "./pages/Orcamento";
 import Login from "./pages/Login";
 import Tarefas from "./pages/Tarefas";
 import LandingPage from "./pages/LandingPage";
+import { Session } from "@supabase/supabase-js";
 import Configuracoes from "./pages/Configuracoes";
 import Agenda from "./pages/Agenda";
 
@@ -24,7 +25,7 @@ import Agenda from "./pages/Agenda";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [role, setRole] = useState<string | null>(null);
@@ -37,7 +38,7 @@ const App = () => {
 
         const isMock = localStorage.getItem("mock_admin_session") === "true";
         if (isMock) {
-            setSession({ user: { id: "mock-admin-id", email: "luizfelipe.canedo2@gmail.com" } });
+            setSession({ user: { id: "mock-admin-id", email: "luizfelipe.canedo2@gmail.com" } } as unknown as Session);
             setRole("admin");
             setLoading(false);
             clearTimeout(safetyTimeout);
@@ -56,7 +57,7 @@ const App = () => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             const isMock = localStorage.getItem("mock_admin_session") === "true";
             if (isMock) {
-                setSession({ user: { id: "mock-admin-id", email: "luizfelipe.canedo2@gmail.com" } });
+                setSession({ user: { id: "mock-admin-id", email: "luizfelipe.canedo2@gmail.com" } } as unknown as Session);
                 setRole("admin");
                 return;
             }
