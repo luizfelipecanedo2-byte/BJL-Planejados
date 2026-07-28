@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Sale, STATUS_LABELS, SaleStatus, LeadTemperature, TEMPERATURE_LABELS } from "@/types/sale";
-import { formatCurrency } from "@/lib/salesUtils";
+import { formatCurrency, calculateLeadScore } from "@/lib/salesUtils";
 import { Card, CardContent } from "@/components/ui/card";
-import { Phone, Flame, Clock, Plus } from "lucide-react";
+import { Phone, Flame, Clock, Plus, Target } from "lucide-react";
 import { differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -215,6 +215,21 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
                               {TEMPERATURE_LABELS[sale.temperature]}
                             </span>
                           )}
+                          {/* Lead Scoring Badge (Probabilidade de Fechamento) */}
+                          {(() => {
+                            const score = calculateLeadScore(sale);
+                            return (
+                              <span className={cn(
+                                "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border",
+                                score >= 70 ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
+                                score >= 40 ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
+                                "bg-rose-500/20 text-rose-400 border-rose-500/30"
+                              )}>
+                                <Target size={10} />
+                                <span>{score}% Score</span>
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
 
