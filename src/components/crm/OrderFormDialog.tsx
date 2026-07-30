@@ -60,7 +60,7 @@ const OrderFormDialog = ({
             try {
                 const { data } = await supabase.from('clients').select('*').order('name');
                 if (data) {
-                    const mappedClients: Client[] = data.map((item: any) => ({
+                    const mappedClients: Client[] = data.map((item: { id: string; name: string; phone?: string; email?: string; address?: string; city?: string; state?: string; zip_code?: string; document?: string; notes?: string; created_at: string }) => ({
                         id: item.id,
                         name: item.name,
                         phone: item.phone || "",

@@ -83,7 +83,7 @@ export function useBudgets() {
             // Find existing sale
             const { data: existingSale, error: fetchError } = await supabase
                 .from('sales')
-                .select('id, status')
+                .select('id, status, closed_date')
                 .eq('budget_id', savedBudget.id)
                 .maybeSingle();
 
@@ -116,7 +116,20 @@ export function useBudgets() {
             } else if (savedBudget.status === 'rejeitado') {
                 saleStatus = 'nao_fechou';
             } else if (savedBudget.status === 'em_elaboracao') {
-                saleStatus = existingSale?.status || 'negociacao';
+                if (existingSale?.status === 'fechado' || existingSale?.status === 'pos_venda') {
+                    // Revert to negotiation if it was previously closed/approved
+                    saleStatus = 'negociacao';
+                } else {
+                    saleStatus = existingSale?.status || 'negociacao';
+                }
+            }
+
+            // Map closed date
+            let closedDate: string | null = null;
+            if (saleStatus === 'fechado' || saleStatus === 'pos_venda') {
+                closedDate = existingSale?.closed_date || new Date().toISOString().split('T')[0];
+            } else {
+                closedDate = null;
             }
 
             const saleData: any = {
@@ -126,6 +139,7 @@ export function useBudgets() {
                 unit_price: savedBudget.total_value,
                 total_value: savedBudget.total_value,
                 status: saleStatus,
+                closed_date: closedDate,
                 notes: savedBudget.notes || "",
                 budget_id: savedBudget.id
             };

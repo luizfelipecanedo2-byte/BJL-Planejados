@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, MapPin, Phone, Mail, Globe, Instagram, Facebook, User, Save, Loader2, Users, Clock, Percent } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, Globe, Instagram, Facebook, User, Save, Loader2, Users, Clock, Percent, Sparkles, Key } from "lucide-react";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { motion } from "framer-motion";
 
@@ -26,6 +26,12 @@ const Configuracoes = () => {
         capacity_efficiency: 80
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [geminiApiKey, setGeminiApiKey] = useState("");
+
+    useEffect(() => {
+        const storedKey = localStorage.getItem("bjl_gemini_api_key") || "";
+        setGeminiApiKey(storedKey);
+    }, []);
 
     useEffect(() => {
         if (settings) {
@@ -49,6 +55,7 @@ const Configuracoes = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
+        localStorage.setItem("bjl_gemini_api_key", geminiApiKey);
         await updateSettings(formData);
         setIsSaving(false);
     };
@@ -67,7 +74,7 @@ const Configuracoes = () => {
                 <div className="space-y-1.5">
                     <div className="flex items-center gap-3 mb-1">
                          <div className="h-8 w-1 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
-                         <h1 className="text-4xl font-black text-luxury tracking-tighter shimmer-gold">Configurações</h1>
+                         <h1 className="text-4xl font-['Cinzel'] font-bold text-luxury tracking-wider shimmer-gold uppercase">Configurações</h1>
                     </div>
                     <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-[10px] opacity-60">Perfil da Empresa & Identidade Visual</p>
                 </div>
@@ -216,6 +223,33 @@ const Configuracoes = () => {
                                     <Percent className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 </div>
                             </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="glass-card border-white/5 shadow-2xl overflow-hidden mt-8">
+                        <CardHeader className="bg-primary/5 border-b border-white/5">
+                            <CardTitle className="text-lg font-black uppercase tracking-widest text-primary flex items-center gap-3">
+                                <Sparkles className="h-5 w-5 animate-pulse text-amber-400" /> Configurações de Inteligência Artificial (IA)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-8 space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Chave da API do Gemini</Label>
+                                <div className="relative group">
+                                    <Input 
+                                        type="password"
+                                        value={geminiApiKey} 
+                                        onChange={e => setGeminiApiKey(e.target.value)}
+                                        placeholder="Digite sua API Key (AIzaSy...)"
+                                        className="h-12 bg-white/5 border-white/10 rounded-xl font-bold focus:bg-white/10 transition-all pl-11" 
+                                    />
+                                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                </div>
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                                A chave da API é salva localmente apenas no seu navegador para sua segurança. 
+                                Você pode obter uma chave de API gratuita no <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-black">Google AI Studio</a>.
+                            </p>
                         </CardContent>
                     </Card>
                 </div>

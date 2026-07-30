@@ -22,6 +22,7 @@ export interface Sale {
   clientName: string;
   clientPhone: string;
   clientEmail: string;
+  clientProfession?: string;
   product: string;
   quantity: number;
   unitPrice: number;

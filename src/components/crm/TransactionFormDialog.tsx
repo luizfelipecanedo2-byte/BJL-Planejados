@@ -63,6 +63,13 @@ const parseInputDate = (dateStr: string): Date | undefined => {
     return isNaN(d.getTime()) ? undefined : d;
 };
 
+const safeFormatDateInput = (dateVal: any): string => {
+    if (!dateVal) return "";
+    const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
+    return d && !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : "";
+};
+
+
 const TransactionFormDialog = ({
     open,
     onOpenChange,
@@ -175,9 +182,9 @@ const TransactionFormDialog = ({
                 subcategory: editingTransaction.subcategory,
                 invoiceNumber: editingTransaction.invoiceNumber,
                 paymentMethod: editingTransaction.paymentMethod,
-                competenceDate: new Date(editingTransaction.competenceDate).toISOString().split('T')[0],
-                dueDate: new Date(editingTransaction.dueDate).toISOString().split('T')[0],
-                paymentDate: editingTransaction.paymentDate ? new Date(editingTransaction.paymentDate).toISOString().split('T')[0] : "",
+                competenceDate: safeFormatDateInput(editingTransaction.competenceDate) || new Date().toISOString().split('T')[0],
+                dueDate: safeFormatDateInput(editingTransaction.dueDate) || new Date().toISOString().split('T')[0],
+                paymentDate: safeFormatDateInput(editingTransaction.paymentDate),
                 orderService: editingTransaction.orderService || "",
                 boletoUrl: editingTransaction.boletoUrl || "",
             });

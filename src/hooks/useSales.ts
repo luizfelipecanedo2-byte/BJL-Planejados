@@ -24,6 +24,7 @@ export function useSales() {
         clientName: item.client_name,
         clientPhone: item.client_phone || "",
         clientEmail: item.client_email || "",
+        clientProfession: item.client_profession || "",
         product: item.product,
         quantity: item.quantity,
         unitPrice: Number(item.unit_price),
@@ -51,6 +52,7 @@ export function useSales() {
         client_name: sale.clientName,
         client_phone: sale.clientPhone,
         client_email: sale.clientEmail,
+        client_profession: sale.clientProfession || null,
         product: sale.product,
         quantity: sale.quantity,
         unit_price: sale.unitPrice,
@@ -89,6 +91,7 @@ export function useSales() {
       if (updates.clientName !== undefined) updateData.client_name = updates.clientName;
       if (updates.clientPhone !== undefined) updateData.client_phone = updates.clientPhone;
       if (updates.clientEmail !== undefined) updateData.client_email = updates.clientEmail;
+      if (updates.clientProfession !== undefined) updateData.client_profession = updates.clientProfession;
       if (updates.product !== undefined) updateData.product = updates.product;
       if (updates.quantity !== undefined) updateData.quantity = updates.quantity;
       if (updates.unitPrice !== undefined) updateData.unit_price = updates.unitPrice;
@@ -102,11 +105,21 @@ export function useSales() {
 
       // Handle closedDate based on status
       const currentSale = sales.find(s => s.id === id);
-      const newStatus = updates.status || currentSale?.status;
+      const oldStatus = currentSale?.status;
+      const newStatus = updates.status !== undefined ? updates.status : oldStatus;
       const isClosed = newStatus === "fechado" || newStatus === "pos_venda";
+      const wasClosed = oldStatus === "fechado" || oldStatus === "pos_venda";
 
       if (isClosed) {
-        updateData.closed_date = updates.closedDate || currentSale?.closedDate || new Date().toISOString().split("T")[0];
+        if (updates.closedDate !== undefined) {
+          updateData.closed_date = updates.closedDate || null;
+        } else if (currentSale?.closedDate) {
+          updateData.closed_date = currentSale.closedDate;
+        } else if (!wasClosed) {
+          updateData.closed_date = new Date().toISOString().split("T")[0];
+        } else {
+          updateData.closed_date = null;
+        }
       } else {
         updateData.closed_date = null;
       }

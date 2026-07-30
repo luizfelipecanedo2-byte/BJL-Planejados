@@ -37,6 +37,7 @@ const SaleFormDialog = ({
     clientName: "",
     clientPhone: "",
     clientEmail: "",
+    clientProfession: "",
     product: "",
     quantity: 1,
     unitPrice: 0,
@@ -46,6 +47,7 @@ const SaleFormDialog = ({
     expectedCloseDate: "",
     notes: "",
     temperature: "morno" as LeadTemperature,
+    closedDate: "",
   });
 
   useEffect(() => {
@@ -54,6 +56,7 @@ const SaleFormDialog = ({
         clientName: editingSale.clientName,
         clientPhone: editingSale.clientPhone,
         clientEmail: editingSale.clientEmail,
+        clientProfession: editingSale.clientProfession || "",
         product: editingSale.product,
         quantity: editingSale.quantity,
         unitPrice: editingSale.unitPrice,
@@ -63,12 +66,14 @@ const SaleFormDialog = ({
         expectedCloseDate: editingSale.expectedCloseDate,
         notes: editingSale.notes || "",
         temperature: editingSale.temperature || "morno",
+        closedDate: editingSale.closedDate || "",
       });
     } else {
       setForm({
         clientName: "",
         clientPhone: "",
         clientEmail: "",
+        clientProfession: "",
         product: "",
         quantity: 1,
         unitPrice: 0,
@@ -78,6 +83,7 @@ const SaleFormDialog = ({
         expectedCloseDate: "",
         notes: "",
         temperature: "morno",
+        closedDate: "",
       });
     }
   }, [editingSale, open]);
@@ -104,7 +110,19 @@ const SaleFormDialog = ({
   };
 
   const update = (field: string, value: string | number) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const updated = { ...prev, [field]: value };
+      if (field === "status") {
+        if (value === "fechado" || value === "pos_venda") {
+          if (!prev.closedDate) {
+            updated.closedDate = new Date().toISOString().split("T")[0];
+          }
+        } else {
+          updated.closedDate = "";
+        }
+      }
+      return updated;
+    });
   };
 
   return (
@@ -156,6 +174,15 @@ const SaleFormDialog = ({
                 value={form.clientEmail}
                 onChange={(e) => update("clientEmail", e.target.value)}
                 placeholder="cliente@email.com"
+              />
+            </div>
+            <div className="col-span-2">
+              <Label htmlFor="clientProfession">Profissão do Cliente</Label>
+              <Input
+                id="clientProfession"
+                value={form.clientProfession}
+                onChange={(e) => update("clientProfession", e.target.value)}
+                placeholder="Ex: Arquiteto, Advogado, Empresário..."
               />
             </div>
             <div className="col-span-2">
@@ -263,6 +290,18 @@ const SaleFormDialog = ({
                 onChange={(e) => update("expectedCloseDate", e.target.value)}
               />
             </div>
+            {(form.status === "fechado" || form.status === "pos_venda") && (
+              <div className="col-span-2">
+                <Label htmlFor="closedDate" className="text-emerald-500 font-bold">Data de Fechamento (Vendido)</Label>
+                <Input
+                  id="closedDate"
+                  type="date"
+                  value={form.closedDate}
+                  onChange={(e) => update("closedDate", e.target.value)}
+                  className="border-emerald-500/30 focus-visible:ring-emerald-500 bg-emerald-500/5"
+                />
+              </div>
+            )}
             <div className="col-span-2">
               <Label htmlFor="notes">Observações</Label>
               <Textarea

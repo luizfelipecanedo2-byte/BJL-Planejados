@@ -1372,21 +1372,30 @@ const Financeiro = () => {
       if (updates.subcategory !== undefined) updateData.subcategory = updates.subcategory;
       if (updates.contact !== undefined) updateData.contact = updates.contact;
       if (updates.status !== undefined) updateData.status = updates.status;
+      
+      // Parse dates robustly handling both string representations and Date objects
+      const safeFormatDate = (dateVal: any): string | null => {
+        if (dateVal === null || dateVal === undefined || dateVal === '') return null;
+        const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
+        return d && !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : null;
+      };
+
       if (updates.competenceDate !== undefined) {
-        updateData.competence_date = updates.competenceDate && !isNaN(updates.competenceDate.getTime())
-          ? updates.competenceDate.toISOString().split('T')[0]
-          : null;
+        const formatted = safeFormatDate(updates.competenceDate);
+        if (formatted !== null) {
+          updateData.competence_date = formatted;
+        }
       }
       if (updates.dueDate !== undefined) {
-        updateData.due_date = updates.dueDate && !isNaN(updates.dueDate.getTime())
-          ? updates.dueDate.toISOString().split('T')[0]
-          : null;
+        const formatted = safeFormatDate(updates.dueDate);
+        if (formatted !== null) {
+          updateData.due_date = formatted;
+        }
       }
       if (updates.paymentDate !== undefined) {
-        updateData.payment_date = updates.paymentDate && !isNaN(updates.paymentDate.getTime())
-          ? updates.paymentDate.toISOString().split('T')[0]
-          : null;
+        updateData.payment_date = safeFormatDate(updates.paymentDate);
       }
+      
       if (updates.financialInstitution !== undefined) updateData.financial_institution = updates.financialInstitution;
       if (updates.paymentMethod !== undefined) updateData.payment_method = updates.paymentMethod;
       if (updates.invoiceNumber !== undefined) updateData.invoice_number = updates.invoiceNumber;
@@ -1398,18 +1407,22 @@ const Financeiro = () => {
       if (error) throw error;
 
       if (updates.costSplits !== undefined) {
-        const { error: deleteError } = await supabase.from('transaction_allocations').delete().eq('transaction_id', id);
-        if (deleteError) throw deleteError;
-
-        if (updates.costSplits && updates.costSplits.length > 0) {
-          const splitsToInsert = updates.costSplits.map(split => ({
-            transaction_id: id,
-            client_name: split.client,
-            amount: split.amount,
-            description: split.description
-          }));
-          const { error: splitError } = await supabase.from('transaction_allocations').insert(splitsToInsert);
-          if (splitError) throw splitError;
+        try {
+          const { error: deleteError } = await supabase.from('transaction_allocations').delete().eq('transaction_id', id);
+          if (deleteError) {
+            console.error("Erro ao deletar rateios:", deleteError);
+          } else if (updates.costSplits && updates.costSplits.length > 0) {
+            const splitsToInsert = updates.costSplits.map(split => ({
+              transaction_id: id,
+              client_name: split.client,
+              amount: split.amount,
+              description: split.description
+            }));
+            const { error: splitError } = await supabase.from('transaction_allocations').insert(splitsToInsert);
+            if (splitError) console.error("Erro ao inserir rateios:", splitError);
+          }
+        } catch (splitErr) {
+          console.error("Erro geral no processamento de rateios (pode ser que a tabela transaction_allocations não exista):", splitErr);
         }
       }
 
@@ -1507,7 +1520,7 @@ const Financeiro = () => {
         <div className="space-y-1.5">
           <div className="flex items-center gap-3 mb-1">
              <div className="h-8 w-1 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
-             <h1 className="text-4xl font-black text-luxury tracking-tighter shimmer-gold">Financeiro</h1>
+             <h1 className="text-4xl font-['Cinzel'] font-bold text-luxury tracking-wider shimmer-gold uppercase">Financeiro</h1>
           </div>
           <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-[10px] opacity-60">Gestão de Fluxo de Caixa & Patrimônio Premium</p>
         </div>

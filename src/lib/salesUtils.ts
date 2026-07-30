@@ -56,3 +56,29 @@ export function getMetrics(sales: Sale[]) {
     byStatus,
   };
 }
+
+export function calculateLeadScore(sale: Sale): number {
+  if (!sale) return 0;
+  if (sale.status === "fechado" || sale.status === "pos_venda") return 100;
+  if (sale.status === "nao_fechou" || sale.status === "congelado") return 0;
+
+  const stageWeights: Record<string, number> = {
+    prospecto: 15,
+    contato: 30,
+    visita: 50,
+    projeto: 70,
+    negociacao: 85,
+  };
+
+  let score = stageWeights[sale.status] || 20;
+
+  if (sale.temperature === "quente") score += 10;
+  else if (sale.temperature === "frio") score -= 10;
+
+  const channel = (sale.channel || "").toLowerCase();
+  if (channel.includes("indicacao") || channel.includes("indicação") || channel.includes("arquitet")) {
+    score += 5;
+  }
+
+  return Math.min(99, Math.max(5, score));
+}

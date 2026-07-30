@@ -1040,7 +1040,7 @@ const Tarefas = () => {
             {/* Header Section */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div>
-                    <h2 className="text-5xl font-black tracking-tighter text-luxury shimmer-gold uppercase leading-none">Gestão de Operações</h2>
+                    <h2 className="text-5xl font-['Cinzel'] font-bold text-luxury tracking-wider shimmer-gold uppercase leading-none">Gestão de Operações</h2>
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground mt-2 opacity-60">Operação & Planejamento Estratégico</p>
                 </div>
                 
