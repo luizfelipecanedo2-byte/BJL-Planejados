@@ -108,10 +108,18 @@ const Orcamento = () => {
 
     const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
 
-    // Checklist state: stores quantities for ALL materials
+    // Checklist state: stores numeric quantities for ALL materials
     const [quantities, setQuantities] = useState<Record<string, number>>({});
+    // Raw quantities state: keeps exact user input strings (e.g. "" while backspacing, or "10.5")
+    const [rawQuantities, setRawQuantities] = useState<Record<string, string>>({});
+
     // Custom prices state: stores price overrides for this specific budget
     const [customPrices, setCustomPrices] = useState<Record<string, number>>({});
+    // Raw prices state: keeps exact user input strings for prices
+    const [rawPrices, setRawPrices] = useState<Record<string, string>>({});
+
+    // Selected material IDs: list of materials added to this budget
+    const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
 
     const [isEditMaterialDialogOpen, setIsEditMaterialDialogOpen] = useState(false);
     const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
@@ -172,15 +180,49 @@ const Orcamento = () => {
     };
 
     const handleQuantityChange = (materialId: string, value: string) => {
-        const num = parseFloat(value) || 0;
+        setRawQuantities(prev => ({ ...prev, [materialId]: value }));
+        const normalized = value.replace(',', '.');
+        const num = parseFloat(normalized) || 0;
+        
         setQuantities(prev => ({
             ...prev,
             [materialId]: num
         }));
+
+        if (value.trim() !== "" && num > 0) {
+            setSelectedMaterialIds(prev => prev.includes(materialId) ? prev : [...prev, materialId]);
+        }
+    };
+
+    const handleRemoveMaterial = (materialId: string) => {
+        setSelectedMaterialIds(prev => prev.filter(id => id !== materialId));
+        setQuantities(prev => {
+            const copy = { ...prev };
+            delete copy[materialId];
+            return copy;
+        });
+        setRawQuantities(prev => {
+            const copy = { ...prev };
+            delete copy[materialId];
+            return copy;
+        });
+        setCustomPrices(prev => {
+            const copy = { ...prev };
+            delete copy[materialId];
+            return copy;
+        });
+        setRawPrices(prev => {
+            const copy = { ...prev };
+            delete copy[materialId];
+            return copy;
+        });
     };
 
     const handlePriceChange = (materialId: string, value: string) => {
-        const num = parseFloat(value) || 0;
+        setRawPrices(prev => ({ ...prev, [materialId]: value }));
+        const normalized = value.replace(',', '.');
+        const num = parseFloat(normalized) || 0;
+        
         setCustomPrices(prev => ({
             ...prev,
             [materialId]: num
@@ -221,7 +263,8 @@ const Orcamento = () => {
         const categoryTotals: Record<string, number> = {};
         let materialCost = 0;
         
-        Object.entries(quantities).forEach(([id, qty]) => {
+        selectedMaterialIds.forEach(id => {
+            const qty = quantities[id] || 0;
             const material = allMaterials.find(m => m.id === id);
             if (material && qty > 0) {
                 const unitPrice = customPrices[id] !== undefined ? customPrices[id] : material.unit_price;
@@ -239,7 +282,7 @@ const Orcamento = () => {
         const cardValue = baseValue * (1 + (formData.installment_fee / 100));
 
         return { materialCost, fixedCost, totalCostPower, baseValue, cardValue, categoryTotals };
-    }, [quantities, allMaterials, customPrices, formData.days_estimated, formData.daily_fixed_cost, formData.profit_margin, formData.commission, formData.tax, formData.installment_fee]);
+    }, [selectedMaterialIds, quantities, allMaterials, customPrices, formData.days_estimated, formData.daily_fixed_cost, formData.profit_margin, formData.commission, formData.tax, formData.installment_fee]);
 
     const handleSaveBudget = async () => {
         if (!formData.client_name) {
@@ -247,9 +290,9 @@ const Orcamento = () => {
             return;
         }
 
-        const budgetItems = Object.entries(quantities)
-            .filter(([_, qty]) => qty > 0)
-            .map(([id, qty]) => {
+        const budgetItems = selectedMaterialIds
+            .map(id => {
+                const qty = quantities[id] || 0;
                 const material = allMaterials.find(m => m.id === id);
                 const unitPrice = customPrices[id] !== undefined ? customPrices[id] : (material?.unit_price || 0);
                 return {
@@ -258,7 +301,8 @@ const Orcamento = () => {
                     unit_price_at_time: unitPrice,
                     total_price: unitPrice * qty
                 };
-            });
+            })
+            .filter(item => item.quantity > 0);
 
         if (budgetItems.length === 0) {
             toast.error("Adicione quantidades a pelo menos um item");
@@ -286,9 +330,13 @@ const Orcamento = () => {
         if (success) {
             setIsDialogOpen(false);
             setEditingBudgetId(null);
-            setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 350, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, notes: "" });
+            setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 470, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, notes: "" });
             setQuantities({});
+            setRawQuantities({});
             setCustomPrices({});
+            setRawPrices({});
+            setSelectedMaterialIds([]);
+            localStorage.removeItem('orcamento_new_draft');
         }
     };
 
@@ -298,28 +346,86 @@ const Orcamento = () => {
             client_name: budget.client_name,
             project_name: budget.project_name,
             days_estimated: budget.days_estimated,
-            daily_fixed_cost: 470, // Updated to 470 as requested
-            profit_margin: (budget.markup_factor - 1) * 100 - 7, // Approximate reverse (assuming commission 3% and tax 4%)
+            daily_fixed_cost: 470,
+            profit_margin: (budget.markup_factor - 1) * 100 - 7,
             commission: 3,
             tax: 4,
             installment_fee: budget.card_fee_percent,
             notes: budget.notes || ""
         });
 
-        // Load quantities and custom prices from budget_items
+        // Load quantities, raw quantities, custom prices, and selectedMaterialIds from budget_items
         const newQuantities: Record<string, number> = {};
+        const newRawQuantities: Record<string, string> = {};
         const newCustomPrices: Record<string, number> = {};
+        const newRawPrices: Record<string, string> = {};
+        const newSelectedIds: string[] = [];
         
         if (budget.budget_items) {
             budget.budget_items.forEach((item: any) => {
-                newQuantities[item.material_id] = item.quantity;
-                newCustomPrices[item.material_id] = item.unit_price_at_time;
+                if (item.quantity > 0) {
+                    newSelectedIds.push(item.material_id);
+                    newQuantities[item.material_id] = item.quantity;
+                    newRawQuantities[item.material_id] = String(item.quantity);
+                    newCustomPrices[item.material_id] = item.unit_price_at_time;
+                    newRawPrices[item.material_id] = String(item.unit_price_at_time);
+                }
             });
         }
 
         setQuantities(newQuantities);
+        setRawQuantities(newRawQuantities);
         setCustomPrices(newCustomPrices);
+        setRawPrices(newRawPrices);
+        setSelectedMaterialIds(newSelectedIds);
         setIsDialogOpen(true);
+    };
+
+    // Auto-save & restore unsubmitted draft for new budgets
+    useEffect(() => {
+        if (isDialogOpen && !editingBudgetId) {
+            const draft = localStorage.getItem('orcamento_new_draft');
+            if (draft) {
+                try {
+                    const parsed = JSON.parse(draft);
+                    if (parsed && (parsed.formData?.client_name || (parsed.selectedMaterialIds && parsed.selectedMaterialIds.length > 0))) {
+                        setFormData(parsed.formData || formData);
+                        setQuantities(parsed.quantities || {});
+                        setRawQuantities(parsed.rawQuantities || {});
+                        setCustomPrices(parsed.customPrices || {});
+                        setRawPrices(parsed.rawPrices || {});
+                        setSelectedMaterialIds(parsed.selectedMaterialIds || []);
+                    }
+                } catch (e) {
+                    console.error("Error restoring budget draft", e);
+                }
+            }
+        }
+    }, [isDialogOpen, editingBudgetId]);
+
+    useEffect(() => {
+        if (isDialogOpen && !editingBudgetId) {
+            const draftData = {
+                formData,
+                quantities,
+                rawQuantities,
+                customPrices,
+                rawPrices,
+                selectedMaterialIds
+            };
+            localStorage.setItem('orcamento_new_draft', JSON.stringify(draftData));
+        }
+    }, [isDialogOpen, editingBudgetId, formData, quantities, rawQuantities, customPrices, rawPrices, selectedMaterialIds]);
+
+    const handleDiscardDraft = () => {
+        localStorage.removeItem('orcamento_new_draft');
+        setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 470, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, notes: "" });
+        setQuantities({});
+        setRawQuantities({});
+        setCustomPrices({});
+        setRawPrices({});
+        setSelectedMaterialIds([]);
+        setIsDialogOpen(false);
     };
 
     const handleSaveFromPrintView = async (updatedBudget: any, updatedItems: any[]) => {
@@ -508,60 +614,62 @@ const Orcamento = () => {
 
                                 <ScrollArea className="flex-1 p-8 bg-card">
                                     <div className="space-y-6">
-                                        {Object.values(quantities).some(q => q > 0) && (
+                                        {selectedMaterialIds.length > 0 && (
                                             <div className="mb-8 p-6 bg-primary/5 border-2 border-primary/20 rounded-[2rem] shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
                                                 <div className="flex items-center gap-3 mb-6">
                                                     <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
                                                     <h4 className="font-black uppercase text-sm tracking-widest text-primary">Preenchimento (Itens do Projeto)</h4>
                                                 </div>
                                                 <div className="space-y-3">
-                                                    {Object.entries(quantities)
-                                                        .filter(([_, qty]) => qty > 0)
-                                                        .map(([id, qty]) => {
-                                                            const item = allMaterials.find(m => m.id === id);
-                                                            if (!item) return null;
-                                                            const currentPrice = customPrices[id] !== undefined ? customPrices[id] : item.unit_price;
-                                                            return (
-                                                                <div key={`selected-${id}`} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm hover:border-primary/30 transition-all gap-4">
-                                                                    <div className="flex flex-col">
-                                                                        <span className="text-[12px] font-black uppercase tracking-tight text-slate-900 dark:text-white">{item.name}</span>
-                                                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{item.category} • {item.unit}</span>
-                                                                    </div>
-                                                                    <div className="flex flex-wrap items-center gap-4">
-                                                                        <div className="flex flex-col gap-1">
-                                                                            <Label className="text-[8px] font-black uppercase text-slate-400 ml-1">Quantidade</Label>
-                                                                            <Input
-                                                                                type="number"
-                                                                                className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:ring-primary/20"
-                                                                                value={qty || ""}
-                                                                                onChange={(e) => handleQuantityChange(id, e.target.value)}
-                                                                            />
-                                                                        </div>
-                                                                        <div className="flex flex-col gap-1">
-                                                                            <Label className="text-[8px] font-black uppercase text-slate-400 ml-1">Preço Unitário (R$)</Label>
-                                                                            <Input
-                                                                                type="number"
-                                                                                className="w-28 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:ring-primary/20 text-primary"
-                                                                                value={currentPrice || ""}
-                                                                                onChange={(e) => handlePriceChange(id, e.target.value)}
-                                                                            />
-                                                                        </div>
-                                                                        <div className="flex flex-col gap-1 items-end min-w-[100px]">
-                                                                            <Label className="text-[8px] font-black uppercase text-slate-500 mr-1">Subtotal</Label>
-                                                                            <span className="text-sm font-black text-slate-900 dark:text-white">{formatCurrency(currentPrice * qty)}</span>
-                                                                        </div>
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="icon" 
-                                                                            className="h-10 w-10 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl"
-                                                                            onClick={() => handleQuantityChange(id, "0")}
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </div>
+                                                    {selectedMaterialIds.map((id) => {
+                                                        const item = allMaterials.find(m => m.id === id);
+                                                        if (!item) return null;
+                                                        const qtyNum = quantities[id] || 0;
+                                                        const qtyStr = rawQuantities[id] !== undefined ? rawQuantities[id] : (qtyNum ? String(qtyNum) : "");
+                                                        const currentPrice = customPrices[id] !== undefined ? customPrices[id] : item.unit_price;
+                                                        const priceStr = rawPrices[id] !== undefined ? rawPrices[id] : String(currentPrice);
+
+                                                        return (
+                                                            <div key={`selected-${id}`} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm hover:border-primary/30 transition-all gap-4">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[12px] font-black uppercase tracking-tight text-slate-900 dark:text-white">{item.name}</span>
+                                                                    <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{item.category} • {item.unit}</span>
                                                                 </div>
-                                                            );
-                                                        })}
+                                                                <div className="flex flex-wrap items-center gap-4">
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <Label className="text-[8px] font-black uppercase text-slate-400 ml-1">Quantidade</Label>
+                                                                        <Input
+                                                                            type="number"
+                                                                            className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:ring-primary/20"
+                                                                            value={qtyStr}
+                                                                            onChange={(e) => handleQuantityChange(id, e.target.value)}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <Label className="text-[8px] font-black uppercase text-slate-400 ml-1">Preço Unitário (R$)</Label>
+                                                                        <Input
+                                                                            type="number"
+                                                                            className="w-28 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:ring-primary/20 text-primary"
+                                                                            value={priceStr}
+                                                                            onChange={(e) => handlePriceChange(id, e.target.value)}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="flex flex-col gap-1 items-end min-w-[100px]">
+                                                                        <Label className="text-[8px] font-black uppercase text-slate-500 mr-1">Subtotal</Label>
+                                                                        <span className="text-sm font-black text-slate-900 dark:text-white">{formatCurrency(currentPrice * qtyNum)}</span>
+                                                                    </div>
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="icon" 
+                                                                        className="h-10 w-10 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl"
+                                                                        onClick={() => handleRemoveMaterial(id)}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         )}
@@ -642,18 +750,23 @@ const Orcamento = () => {
                                                                 <AccordionContent className="pb-6 border-none">
                                                                     <div className="grid grid-cols-1 gap-2">
                                                                         {items.map(item => {
+                                                                            const isSelected = selectedMaterialIds.includes(item.id);
+                                                                            const qtyNum = quantities[item.id] || 0;
+                                                                            const qtyStr = rawQuantities[item.id] !== undefined ? rawQuantities[item.id] : (qtyNum ? String(qtyNum) : "");
                                                                             const currentPrice = customPrices[item.id] !== undefined ? customPrices[item.id] : item.unit_price;
+                                                                            const priceStr = rawPrices[item.id] !== undefined ? rawPrices[item.id] : String(currentPrice);
+
                                                                             return (
                                                                                 <div key={item.id} className={cn(
                                                                                     "flex items-center justify-between p-3 rounded-2xl transition-all group",
-                                                                                    quantities[item.id] > 0 
+                                                                                    isSelected 
                                                                                         ? "bg-primary/10 border-primary/30 border shadow-inner" 
                                                                                         : "bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/5"
                                                                                 )}>
                                                                                     <div className="flex flex-col">
                                                                                         <span className={cn(
                                                                                             "text-[11px] font-black uppercase tracking-tight transition-colors",
-                                                                                            quantities[item.id] > 0 
+                                                                                            isSelected 
                                                                                                 ? "text-primary-foreground dark:text-primary" 
                                                                                                 : "text-slate-800 dark:text-slate-200"
                                                                                         )}>
@@ -664,26 +777,26 @@ const Orcamento = () => {
                                                                                         </span>
                                                                                     </div>
                                                                                     <div className="flex items-center gap-3">
-                                                                                        {quantities[item.id] > 0 && (
+                                                                                        {isSelected && (
                                                                                             <div className="flex flex-col items-end mr-4">
                                                                                                 <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Preço Unit.</span>
                                                                                                 <Input
                                                                                                     type="number"
                                                                                                     className="w-24 h-8 rounded-lg text-right font-black text-[10px] border-slate-200 focus:bg-slate-200/50 dark:focus:bg-white/10 text-slate-900 dark:text-white bg-slate-200 dark:bg-white/5"
-                                                                                                    value={currentPrice || ""}
+                                                                                                    value={priceStr}
                                                                                                     onChange={(e) => handlePriceChange(item.id, e.target.value)}
                                                                                                 />
                                                                                             </div>
                                                                                         )}
                                                                                         <div className="flex flex-col items-end">
-                                                                                            {quantities[item.id] > 0 && (
+                                                                                            {isSelected && (
                                                                                                 <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Qtd.</span>
                                                                                             )}
                                                                                             <Input
                                                                                                 type="number"
                                                                                                 placeholder="0"
                                                                                                 className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-slate-200/50 dark:focus:bg-white/10 text-slate-900 dark:text-white bg-slate-200 dark:bg-white/5"
-                                                                                                value={quantities[item.id] || ""}
+                                                                                                value={qtyStr}
                                                                                                 onChange={(e) => handleQuantityChange(item.id, e.target.value)}
                                                                                             />
                                                                                         </div>

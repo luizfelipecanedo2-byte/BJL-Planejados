@@ -255,6 +255,24 @@ const Financeiro = () => {
         if (e.items) items = [...items, ...e.items];
       });
 
+      // Find transactions directly matching this OS ticket number or description
+      const directTransactions = transactions.filter(t => {
+        if (t.type !== 'expense') return false;
+
+        const osTicket = os.ticketNumber;
+        if (!osTicket || osTicket === "S/N") return false;
+
+        const ticketClean = osTicket.trim().toLowerCase();
+
+        const matchesOrderService = t.orderService && t.orderService.trim().toLowerCase().includes(ticketClean);
+        const matchesDesc = t.description && t.description.trim().toLowerCase().includes(ticketClean);
+        const matchesContact = t.contact && os.client && t.contact.trim().toLowerCase() === os.client.trim().toLowerCase();
+
+        return matchesOrderService || matchesDesc || (matchesContact && t.category === "Despesa com Serviço");
+      });
+
+      const directTxCost = directTransactions.reduce((acc, t) => acc + Number(t.amount), 0);
+
       const autoItems = osAllocations.map(a => {
         const parentTx = transactions.find(t => t.id === a.transaction_id);
         const nfText = parentTx?.invoiceNumber ? ` (NF: ${parentTx.invoiceNumber})` : '';
@@ -267,6 +285,17 @@ const Financeiro = () => {
         };
       });
 
+      const directItems = directTransactions.map(t => {
+        const nfText = t.invoiceNumber ? ` (NF: ${t.invoiceNumber})` : '';
+        return {
+          description: `[Lançamento ${t.orderService || ''}] ${t.description || ''}${nfText}`.trim(),
+          unit: 'un',
+          quantity: 1,
+          unitValue: Number(t.amount),
+          totalValue: Number(t.amount)
+        };
+      });
+
       const expenseId = manualExpenses.length > 0 ? manualExpenses[0].id : `os-${os.id}`;
 
       return {
@@ -274,9 +303,9 @@ const Financeiro = () => {
         clientName: `${os.ticketNumber} - ${os.client}`,
         environment: os.action,
         serviceValue: revenue,
-        spentValue: allocCost + manualCost,
+        spentValue: allocCost + manualCost + directTxCost,
         items: items,
-        autoItems: autoItems,
+        autoItems: [...autoItems, ...directItems],
         createdAt: os.openDate
       };
     });
@@ -289,6 +318,55 @@ const Financeiro = () => {
       if (!matchesOS) {
         mappedProjects.push(se);
       }
+    });
+
+    // Also include transactions with OS or "Despesa com Serviço" that don't match any registered OS
+    const unclaimedOSTransactions = transactions.filter(t => {
+      if (t.type !== 'expense') return false;
+      if (!t.orderService && t.category !== "Despesa com Serviço") return false;
+
+      const matchedInOS = serviceOrders.some(os => {
+        if (!os.ticketNumber || os.ticketNumber === "S/N") return false;
+        const ticketClean = os.ticketNumber.trim().toLowerCase();
+        return (t.orderService && t.orderService.trim().toLowerCase().includes(ticketClean)) ||
+               (t.description && t.description.trim().toLowerCase().includes(ticketClean)) ||
+               (t.contact && os.client && t.contact.trim().toLowerCase() === os.client.trim().toLowerCase() && t.category === "Despesa com Serviço");
+      });
+
+      const matchedInServiceExpenses = serviceExpenses.some(se => {
+        return (t.contact && se.clientName.includes(t.contact));
+      });
+
+      return !matchedInOS && !matchedInServiceExpenses;
+    });
+
+    const unclaimedGrouped: Record<string, Transaction[]> = {};
+    unclaimedOSTransactions.forEach(t => {
+      const key = t.orderService ? t.orderService : (t.contact ? `OS - ${t.contact}` : "Outras OS");
+      if (!unclaimedGrouped[key]) unclaimedGrouped[key] = [];
+      unclaimedGrouped[key].push(t);
+    });
+
+    Object.entries(unclaimedGrouped).forEach(([osKey, txs]) => {
+      const totalSpent = txs.reduce((acc, t) => acc + Number(t.amount), 0);
+      const items = txs.map(t => ({
+        description: `[Lançamento] ${t.description || ''}`,
+        unit: 'un',
+        quantity: 1,
+        unitValue: Number(t.amount),
+        totalValue: Number(t.amount)
+      }));
+
+      mappedProjects.push({
+        id: `unclaimed-${osKey}`,
+        clientName: osKey.startsWith("OS") ? osKey : `OS ${osKey}`,
+        environment: txs[0].subcategory || "Compra de Material / Serviço",
+        serviceValue: 0,
+        spentValue: totalSpent,
+        items: [],
+        autoItems: items,
+        createdAt: txs[0].competenceDate || new Date()
+      });
     });
 
     return mappedProjects;
@@ -1751,7 +1829,7 @@ const Financeiro = () => {
         <TabsContent value="gastos_servicos"><ServiceExpensesTab serviceExpenses={combinedServiceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="conciliacao"><ConciliationTab selectedAccount={selectedAccount} setSelectedAccount={setSelectedAccount} currentDateReconciliation={currentDateReconciliation} handlePrevMonth={handlePrevMonth} handleNextMonth={handleNextMonth} totalAccountBalance={totalAccountBalance} reconciliationDailyData={reconciliationDailyData} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="notas_fiscais"><NotaFiscalTab /></TabsContent>
-        <TabsContent value="profitability"><div>Teste Rentabilidade</div></TabsContent>
+        <TabsContent value="profitability"><ProfitabilityTab /></TabsContent>
         <TabsContent value="patrimonio"><AssetsTab assets={assets} handleNewAsset={handleNewAsset} formatCurrency={formatCurrency} /></TabsContent>
       </Tabs>
 
