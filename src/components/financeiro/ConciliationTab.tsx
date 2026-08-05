@@ -263,8 +263,8 @@ const ConciliationTab = ({
 
             <Card className="hidden md:block rounded-2xl border-none shadow-2xl bg-slate-950 overflow-hidden">
                 <CardContent className="p-0">
-                    <div className="relative w-full overflow-auto">
-                        <table className="w-full text-xs border-collapse">
+                    <div className="relative w-full overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch">
+                        <table className="w-full text-xs border-collapse min-w-[650px]">
                             <thead>
                                 <tr className={cn(
                                     "text-slate-400 border-b",

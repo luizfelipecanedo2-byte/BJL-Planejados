@@ -154,8 +154,8 @@ const ServiceExpensesTab = ({
 
                 <Card className="hidden md:block rounded-2xl border-none shadow-2xl bg-card overflow-hidden">
                     <CardContent className="p-0">
-                        <div className="relative w-full overflow-auto">
-                            <table className="w-full text-xs border-collapse">
+                        <div className="relative w-full overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch">
+                            <table className="w-full text-xs border-collapse min-w-[650px]">
                                 <thead>
                                     <tr className="bg-muted/50 text-muted-foreground border-b border-border/50 h-14">
                                         <th className="px-6 text-left font-black uppercase tracking-widest text-[10px]">Cliente</th>

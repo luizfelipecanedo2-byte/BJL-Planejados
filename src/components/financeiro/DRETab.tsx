@@ -602,8 +602,8 @@ const DRETab = ({
                         </div>
 
                         {/* Desktop View: Table */}
-                        <div className="hidden md:block overflow-x-auto min-h-[500px]">
-                            <Table>
+                        <div className="hidden md:block overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch min-h-[500px]">
+                            <Table className="min-w-[900px]">
                                 <TableHeader>
                                     <TableRow className="bg-muted/50 border-b-2 border-primary/10">
                                         <TableHead className="w-[200px] font-black uppercase text-[10px] tracking-widest text-primary px-6 h-14">Categoria</TableHead>

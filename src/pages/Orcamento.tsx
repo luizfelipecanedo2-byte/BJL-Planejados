@@ -396,7 +396,37 @@ const Orcamento = () => {
             data[supplierGroup][m.category].push(m);
         });
 
-        return data; 
+        // Preferred order of suppliers & categories
+        const SUPPLIER_ORDER = ["CHM Morais / CED", "BRUTA", "Outros"];
+        const CATEGORY_ORDER = ["MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"];
+
+        const sortedData: Record<string, Record<string, Material[]>> = {};
+
+        const supplierKeys = Object.keys(data).sort((a, b) => {
+            const idxA = SUPPLIER_ORDER.indexOf(a);
+            const idxB = SUPPLIER_ORDER.indexOf(b);
+            if (idxA === -1 && idxB === -1) return a.localeCompare(b);
+            if (idxA === -1) return 1;
+            if (idxB === -1) return -1;
+            return idxA - idxB;
+        });
+
+        supplierKeys.forEach(supplier => {
+            sortedData[supplier] = {};
+            const catKeys = Object.keys(data[supplier]).sort((a, b) => {
+                const idxA = CATEGORY_ORDER.indexOf(a);
+                const idxB = CATEGORY_ORDER.indexOf(b);
+                if (idxA === -1 && idxB === -1) return a.localeCompare(b);
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxA - idxB;
+            });
+            catKeys.forEach(cat => {
+                sortedData[supplier][cat] = data[supplier][cat];
+            });
+        });
+
+        return sortedData; 
     }, [filteredMaterialsForCatalog]);
 
     const calculateTotals = useMemo(() => {
@@ -661,7 +691,7 @@ const Orcamento = () => {
                                 Novo Levantamento
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="w-[95vw] sm:max-w-[1100px] h-[90vh] max-h-[90vh] border-none shadow-2xl rounded-[1.5rem] sm:rounded-[3rem] overflow-hidden p-0 flex flex-col">
+                        <DialogContent className="w-[98vw] max-w-[1350px] h-[92vh] max-h-[92vh] border-none shadow-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden p-0 flex flex-col">
                             <div className="bg-primary p-8 text-primary-foreground relative shrink-0">
                                 <div className="absolute top-0 right-0 p-4 opacity-10">
                                     <Calculator size={140} />
@@ -823,19 +853,29 @@ const Orcamento = () => {
                                             </div>
                                         )}
 
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                                             <div className="flex items-center gap-2">
                                                 <div className="h-8 w-1 bg-primary rounded-full" />
                                                 <h4 className="font-black uppercase text-sm tracking-widest text-foreground">Catálogo Geral (Explorar)</h4>
                                             </div>
 
-                                            <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/5 gap-1">
+                                            <div className="flex flex-1 sm:max-w-xs relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                <Input
+                                                    value={materialSearchTerm}
+                                                    onChange={e => setMaterialSearchTerm(e.target.value)}
+                                                    placeholder="Buscar material..."
+                                                    className="pl-9 h-10 rounded-xl bg-white/5 border-white/10 text-white font-bold placeholder:text-slate-500 focus:bg-white/10 transition-all text-xs"
+                                                />
+                                            </div>
+
+                                            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 gap-1">
                                                 {["TODOS", "CHM", "BRUTA", "OUTROS"].map(filter => (
                                                     <button
                                                         key={filter}
                                                         onClick={() => setActiveSupplierFilter(filter as any)}
                                                         className={cn(
-                                                            "px-4 py-2 rounded-xl font-black text-[10px] tracking-widest transition-all",
+                                                            "px-3 py-1.5 rounded-lg font-black text-[10px] tracking-widest transition-all",
                                                             activeSupplierFilter === filter 
                                                                 ? "bg-primary text-primary-foreground shadow-lg" 
                                                                 : "text-slate-400 hover:bg-white/5"
@@ -847,7 +887,7 @@ const Orcamento = () => {
                                             </div>
                                         </div>
 
-                                        <div className="space-y-12">
+                                        <div className="space-y-6">
                                             {Object.entries(groupedBySupplier)
                                                 .filter(([supplier]) => {
                                                     if (activeSupplierFilter === "TODOS") return true;
@@ -856,112 +896,63 @@ const Orcamento = () => {
                                                     if (activeSupplierFilter === "OUTROS") return !isCHM(supplier) && !isBRUTA(supplier);
                                                     return true;
                                                 })
-                                                .map(([supplier, categories]) => (
-                                                <div key={supplier} className="space-y-6">
-                                                    <div className={cn(
-                                                        "flex items-center gap-4 px-6 py-4 rounded-3xl border shadow-sm",
-                                                        isCHM(supplier) ? "bg-emerald-500/5 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]" :
-                                                        isBRUTA(supplier) ? "bg-orange-500/5 border-orange-500/20 shadow-[0_0_20px_rgba(249,115,22,0.05)]" :
-                                                        "bg-white/5 border-white/5"
-                                                    )}>
-                                                        <div className={cn(
-                                                            "w-2 h-8 rounded-full",
-                                                            isCHM(supplier) ? "bg-emerald-500" :
-                                                            isBRUTA(supplier) ? "bg-orange-500" :
-                                                            "bg-slate-300"
-                                                        )} />
-                                                        <div>
-                                                            <h4 className={cn(
-                                                                "font-black uppercase text-sm tracking-widest",
-                                                                isCHM(supplier) ? "text-emerald-500" :
-                                                                isBRUTA(supplier) ? "text-orange-500" :
-                                                                "text-slate-500"
+                                                .map(([supplier, categories]) => {
+                                                    const supplierSelectedCount = Object.values(categories).flat().filter(m => quantities[m.id] > 0).length;
+                                                    const supplierTotalCount = Object.values(categories).flat().length;
+
+                                                    return (
+                                                        <div key={supplier} className="space-y-3">
+                                                            <div className={cn(
+                                                                "flex items-center justify-between px-5 py-3 rounded-2xl border shadow-sm",
+                                                                isCHM(supplier) ? "bg-emerald-500/5 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]" :
+                                                                isBRUTA(supplier) ? "bg-orange-500/5 border-orange-500/20 shadow-[0_0_20px_rgba(249,115,22,0.05)]" :
+                                                                "bg-white/5 border-white/5"
                                                             )}>
-                                                                {supplier}
-                                                            </h4>
-                                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">
-                                                                Itens selecionados deste fornecedor
-                                                            </p>
-                                                        </div>
-                                                    </div>
-
-                                                    <Accordion type="multiple" defaultValue={Object.keys(categories)} className="space-y-4">
-                                                        {Object.entries(categories).map(([category, items]) => (
-                                                            <AccordionItem key={`${supplier}-${category}`} value={category} className="border border-white/5 rounded-3xl px-6 bg-white/5 shadow-sm overflow-hidden border-b-0 space-y-2">
-                                                                <AccordionTrigger className="hover:no-underline py-4 border-none">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] uppercase tracking-widest px-3">
-                                                                            {items.length} ITENS
-                                                                        </Badge>
-                                                                        <span className="font-black uppercase text-xs tracking-tighter text-slate-300">{category}</span>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={cn(
+                                                                        "w-2 h-7 rounded-full",
+                                                                        isCHM(supplier) ? "bg-emerald-500" :
+                                                                        isBRUTA(supplier) ? "bg-orange-500" :
+                                                                        "bg-slate-400"
+                                                                    )} />
+                                                                    <div>
+                                                                        <h4 className={cn(
+                                                                            "font-black uppercase text-xs sm:text-sm tracking-widest flex items-center gap-2",
+                                                                            isCHM(supplier) ? "text-emerald-500" :
+                                                                            isBRUTA(supplier) ? "text-orange-500" :
+                                                                            "text-slate-400"
+                                                                        )}>
+                                                                            {supplier}
+                                                                        </h4>
                                                                     </div>
-                                                                </AccordionTrigger>
-                                                                <AccordionContent className="pb-6 border-none">
-                                                                    <div className="grid grid-cols-1 gap-2">
-                                                                        {items.map(item => {
-                                                                            const isSelected = selectedMaterialIds.includes(item.id);
-                                                                            const qtyNum = quantities[item.id] || 0;
-                                                                            const qtyStr = rawQuantities[item.id] !== undefined ? rawQuantities[item.id] : (qtyNum ? String(qtyNum) : "");
-                                                                            const currentPrice = customPrices[item.id] !== undefined ? customPrices[item.id] : item.unit_price;
-                                                                            const priceStr = rawPrices[item.id] !== undefined ? rawPrices[item.id] : String(currentPrice);
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                                                                        {supplierSelectedCount > 0 ? (
+                                                                            <span className="text-emerald-400">{supplierSelectedCount} selecionados</span>
+                                                                        ) : (
+                                                                            `${supplierTotalCount} itens disponíveis`
+                                                                        )}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
 
-                                                                            return (
-                                                                                <div key={item.id} className={cn(
-                                                                                    "flex items-center justify-between p-3 rounded-2xl transition-all group",
-                                                                                    isSelected 
-                                                                                        ? "bg-primary/10 border-primary/30 border shadow-inner" 
-                                                                                        : "bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/5"
-                                                                                )}>
-                                                                                    <div className="flex flex-col">
-                                                                                        <span className={cn(
-                                                                                            "text-[11px] font-black uppercase tracking-tight transition-colors",
-                                                                                            isSelected 
-                                                                                                ? "text-primary-foreground dark:text-primary" 
-                                                                                                : "text-slate-800 dark:text-slate-200"
-                                                                                        )}>
-                                                                                            {item.name}
-                                                                                        </span>
-                                                                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase">
-                                                                                            {item.unit} • {formatCurrency(item.unit_price)}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                    <div className="flex items-center gap-3">
-                                                                                        {isSelected && (
-                                                                                            <div className="flex flex-col items-end mr-4">
-                                                                                                <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Preço Unit.</span>
-                                                                                                <Input
-                                                                                                    type="number"
-                                                                                                    className="w-24 h-8 rounded-lg text-right font-black text-[10px] border-slate-200 focus:bg-slate-200/50 dark:focus:bg-white/10 text-slate-900 dark:text-white bg-slate-200 dark:bg-white/5"
-                                                                                                    value={priceStr}
-                                                                                                    onChange={(e) => handlePriceChange(item.id, e.target.value)}
-                                                                                                />
-                                                                                            </div>
-                                                                                        )}
-                                                                                        <div className="flex flex-col items-end">
-                                                                                            {isSelected && (
-                                                                                                <span className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Qtd.</span>
-                                                                                            )}
-                                                                                            <Input
-                                                                                                type="number"
-                                                                                                placeholder="0"
-                                                                                                className="w-20 h-10 rounded-xl text-center font-black text-xs border-slate-200 focus:bg-slate-200/50 dark:focus:bg-white/10 text-slate-900 dark:text-white bg-slate-200 dark:bg-white/5"
-                                                                                                value={qtyStr}
-                                                                                                onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                                                                                            />
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                </AccordionContent>
-                                                            </AccordionItem>
-                                                        ))}
-                                                    </Accordion>
-                                                </div>
-                                            ))}
-                                        </div>
+                                                            <Accordion 
+                                                                key={`${supplier}-${Object.keys(categories).join('-')}-${materialSearchTerm}`}
+                                                                type="multiple" 
+                                                                defaultValue={Object.keys(categories)} 
+                                                                className="space-y-3"
+                                                            >
+                                                                {Object.entries(categories).map(([category, items]) => {
+                                                                    const catSelectedCount = items.filter(m => quantities[m.id] > 0).length;
 
+                                                                    return (
+                                                                        <AccordionItem key={`${supplier}-${category}`} value={category} className="border border-white/5 rounded-2xl px-4 sm:px-5 bg-white/5 shadow-sm overflow-hidden border-b-0">
+                                                                            <AccordionTrigger className="hover:no-underline py-3 border-none">
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] uppercase tracking-widest px-2.5 py-0.5">
+                                                                                        {items.length} ITENS
+                                                                                    </Badge>
                                         {Object.keys(calculateTotals.categoryTotals).length > 0 && (
                                             <div className="mt-12 p-8 border border-primary/20 bg-slate-100 dark:bg-white/5 rounded-[2.5rem] shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
                                                 <div className="flex items-center gap-3 mb-6">
@@ -1374,8 +1365,8 @@ const Orcamento = () => {
                         </CardHeader>
                          <CardContent className="p-0">
                             {/* Table view for md and up */}
-                            <div className="hidden md:block overflow-x-auto">
-                                <table className="w-full text-xs">
+                            <div className="overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch">
+                                <table className="w-full text-xs min-w-[650px]">
                                     <thead>
                                         <tr className="bg-slate-50 text-muted-foreground/50 h-16 border-b border-border/10">
                                             <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Identificação</th>
@@ -1670,8 +1661,8 @@ const Orcamento = () => {
                         </Dialog>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
+                        <div className="overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch">
+                            <table className="w-full text-xs min-w-[600px]">
                                 <thead>
                                     <tr className="bg-slate-50 text-muted-foreground/50 h-16 border-b border-border/10">
                                         <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Categoria</th>

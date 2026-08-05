@@ -163,7 +163,7 @@ const SalesTable = ({
 
       {/* Desktop View: Table layout */}
       <div className="hidden md:block glass-card rounded-[2.5rem] overflow-hidden luxury-shadow border border-white/5">
-        <Table>
+        <Table className="min-w-[800px]">
           <TableHeader>
             <TableRow className="bg-white/[0.02] hover:bg-white/[0.02] border-b border-white/5 h-16">
               <TableHead className="w-20 text-center">Editar</TableHead>

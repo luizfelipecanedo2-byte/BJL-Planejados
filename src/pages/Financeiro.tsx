@@ -1525,10 +1525,10 @@ const Financeiro = () => {
           <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-[10px] opacity-60">Gestão de Fluxo de Caixa & Patrimônio Premium</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <Button 
             variant="ghost" 
-            className="h-14 px-8 rounded-2xl glass-card border-white/5 luxury-shadow hover:bg-primary/5 hover:text-primary transition-all group overflow-hidden relative"
+            className="h-14 px-8 rounded-2xl glass-card border-white/5 luxury-shadow hover:bg-primary/5 hover:text-primary transition-all group overflow-hidden relative w-full sm:w-auto"
             onClick={handleNewTransaction}
           >
             <Plus className="mr-3 h-5 w-5 group-hover:scale-125 transition-transform" />
@@ -1536,7 +1536,7 @@ const Financeiro = () => {
           </Button>
           <Button 
             variant="ghost"
-            className="h-14 px-8 rounded-2xl glass-card border-white/5 luxury-shadow hover:bg-emerald-500/5 hover:text-emerald-500 transition-all group overflow-hidden relative"
+            className="h-14 px-8 rounded-2xl glass-card border-white/5 luxury-shadow hover:bg-emerald-500/5 hover:text-emerald-500 transition-all group overflow-hidden relative w-full sm:w-auto"
             onClick={handleNewTransfer}
           >
             <TrendingUp className="mr-3 h-5 w-5 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" />
@@ -1546,49 +1546,49 @@ const Financeiro = () => {
       </header>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-10">
-        <div className="px-2 overflow-x-auto hide-scrollbar">
+        <div className="px-2 overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch hide-scrollbar pb-1 max-w-full">
           <TabsList className={cn(
-            "h-20 w-max min-w-full lg:min-w-0 p-2 glass-card rounded-[2rem] luxury-shadow border-white/5 backdrop-blur-3xl transition-all duration-700",
+            "h-16 sm:h-20 w-max min-w-full lg:min-w-0 p-2 glass-card rounded-[2rem] luxury-shadow border-white/5 backdrop-blur-3xl transition-all duration-700",
             activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "bg-purple-900/30 border-purple-500/20" :
             activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-900/30 border-emerald-500/20" :
             "bg-white/[0.03]"
           )}>
-            <TabsTrigger value="dashboard" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <TrendingUp className="mr-3 h-4 w-4" />
-              <span className="font-black text-[10px] uppercase tracking-widest">Dashboard</span>
+            <TabsTrigger value="dashboard" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <TrendingUp className="mr-2 sm:mr-3 h-4 w-4" />
+              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Dashboard</span>
             </TabsTrigger>
-            <TabsTrigger value="lancamentos" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <DollarSign className="mr-3 h-4 w-4" />
-              <span className="font-black text-[10px] uppercase tracking-widest">Lançamentos</span>
+            <TabsTrigger value="lancamentos" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <DollarSign className="mr-2 sm:mr-3 h-4 w-4" />
+              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Lançamentos</span>
             </TabsTrigger>
-            <TabsTrigger value="dre" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <Receipt className="mr-3 h-4 w-4" />
-              <span className="font-black text-[10px] uppercase tracking-widest">DRE</span>
+            <TabsTrigger value="dre" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <Receipt className="mr-2 sm:mr-3 h-4 w-4" />
+              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">DRE</span>
             </TabsTrigger>
-            <TabsTrigger value="gastos_servicos" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <Users className="mr-3 h-4 w-4" />
-              <span className="font-black text-[10px] uppercase tracking-widest">Serviços</span>
+            <TabsTrigger value="gastos_servicos" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <Users className="mr-2 sm:mr-3 h-4 w-4" />
+              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Serviços</span>
             </TabsTrigger>
             <TabsTrigger value="conciliacao" className={cn(
-              "rounded-[1.5rem] px-8 h-full transition-all duration-500",
+              "rounded-[1.5rem] px-5 sm:px-8 h-full transition-all duration-500",
               activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "data-[state=active]:bg-purple-600 data-[state=active]:text-white" :
               activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "data-[state=active]:bg-emerald-600 data-[state=active]:text-white" :
               "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             )}>
-              <AlertTriangle className="mr-3 h-4 w-4" />
-              <span className="font-black text-[10px] uppercase tracking-widest">Conciliação</span>
+              <AlertTriangle className="mr-2 sm:mr-3 h-4 w-4" />
+              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Conciliação</span>
             </TabsTrigger>
-            <TabsTrigger value="notas_fiscais" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <Receipt className="mr-3 h-4 w-4" />
-              <span className="font-black text-[10px] uppercase tracking-widest">Notas</span>
+            <TabsTrigger value="notas_fiscais" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <Receipt className="mr-2 sm:mr-3 h-4 w-4" />
+              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Notas</span>
             </TabsTrigger>
-            <TabsTrigger value="profitability" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <DollarSign className="mr-3 h-4 w-4" />
-              <span className="font-black text-[10px] uppercase tracking-widest">Rentabilidade</span>
+            <TabsTrigger value="profitability" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <DollarSign className="mr-2 sm:mr-3 h-4 w-4" />
+              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Rentabilidade</span>
             </TabsTrigger>
-            <TabsTrigger value="patrimonio" className="rounded-[1.5rem] px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <Package className="mr-3 h-4 w-4" />
-              <span className="font-black text-[10px] uppercase tracking-widest">Ativos</span>
+            <TabsTrigger value="patrimonio" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
+              <Package className="mr-2 sm:mr-3 h-4 w-4" />
+              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Ativos</span>
             </TabsTrigger>
           </TabsList>
         </div>

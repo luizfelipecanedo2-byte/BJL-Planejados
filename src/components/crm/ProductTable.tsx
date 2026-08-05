@@ -105,7 +105,7 @@ const ProductTable = ({ products, onEdit, onDelete, onOrder }: ProductTableProps
 
             {/* Desktop View: Table layout */}
             <div className="hidden md:block rounded-md border overflow-hidden">
-                <Table>
+                <Table className="min-w-[700px]">
                     <TableHeader>
                         <TableRow className="bg-muted/30">
                             <TableHead className="w-[80px]">Editar</TableHead>

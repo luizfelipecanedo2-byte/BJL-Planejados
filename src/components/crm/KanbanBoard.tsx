@@ -125,7 +125,7 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 animate-fade-in">
+    <div className="flex gap-4 overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch max-w-full pb-4 animate-fade-in">
       {statusOrder.map((status) => {
         const columnSales = sales.filter((s) => s.status === status);
         const totalValue = columnSales.reduce(

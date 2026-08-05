@@ -462,34 +462,34 @@ const Index = () => {
             <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary/60">Gestão de Negociações Premium</p>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <Button 
             onClick={handlePrintSalesReport} 
             variant="outline" 
-            className="gap-2.5 h-12 px-6 border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl transition-all hover:scale-105 duration-500"
+            className="gap-2.5 h-12 px-6 border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl transition-all hover:scale-105 duration-500 w-full sm:w-auto"
           >
             <Printer className="h-5 w-5 text-amber-500" />
             <span className="text-luxury font-bold text-white">Imprimir Relatório</span>
           </Button>
-          <MagicButton onClick={handleNewSale} className="gap-2.5 h-12 px-8 shadow-2xl shadow-primary/20 hover:scale-105 transition-transform duration-500 rounded-2xl">
+          <MagicButton onClick={handleNewSale} className="gap-2.5 h-12 px-8 shadow-2xl shadow-primary/20 hover:scale-105 transition-transform duration-500 rounded-2xl w-full sm:w-auto">
             <Plus className="h-5 w-5" />
             <span className="text-luxury font-bold">Nova Venda</span>
           </MagicButton>
         </div>
       </div>
 
-      <Tabs defaultValue="dashboard" className="space-y-8">
-        <div className="flex justify-center sm:justify-start">
-          <TabsList className="bg-white/5 backdrop-blur-2xl border border-white/5 p-1.5 rounded-[2rem] h-auto shadow-2xl inline-flex luxury-shadow">
-            <TabsTrigger value="dashboard" className="gap-2.5 rounded-[1.5rem] px-8 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all duration-500 font-bold text-luxury text-sm">
+      <Tabs defaultValue="dashboard" className="space-y-8 w-full">
+        <div className="flex justify-start overflow-x-auto touch-pan-x no-scrollbar max-w-full pb-1">
+          <TabsList className="bg-white/5 backdrop-blur-2xl border border-white/5 p-1.5 rounded-[2rem] h-auto shadow-2xl inline-flex luxury-shadow min-w-max">
+            <TabsTrigger value="dashboard" className="gap-2 rounded-[1.5rem] px-5 sm:px-8 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all duration-500 font-bold text-luxury text-xs sm:text-sm">
               <LayoutDashboard className="h-4 w-4" />
               Dashboard
             </TabsTrigger>
-            <TabsTrigger value="table" className="gap-2.5 rounded-[1.5rem] px-8 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all duration-500 font-bold text-luxury text-sm">
+            <TabsTrigger value="table" className="gap-2 rounded-[1.5rem] px-5 sm:px-8 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all duration-500 font-bold text-luxury text-xs sm:text-sm">
               <Table2 className="h-4 w-4" />
               Tabela
             </TabsTrigger>
-            <TabsTrigger value="kanban" className="gap-2.5 rounded-[1.5rem] px-8 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all duration-500 font-bold text-luxury text-sm">
+            <TabsTrigger value="kanban" className="gap-2 rounded-[1.5rem] px-5 sm:px-8 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all duration-500 font-bold text-luxury text-xs sm:text-sm">
               <Columns3 className="h-4 w-4" />
               Kanban
             </TabsTrigger>

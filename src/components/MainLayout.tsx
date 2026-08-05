@@ -390,8 +390,8 @@ const MainLayout = () => {
             </aside>
 
             <div className="flex-1 flex flex-col min-w-0 h-[100dvh] lg:h-screen relative z-10">
-                <header className="h-20 glass-card backdrop-blur-2xl flex items-center justify-between px-8 sticky top-0 z-30 border-b border-white/5 shadow-2xl">
-                    <div className="flex items-center gap-8">
+                <header className="h-20 glass-card backdrop-blur-2xl flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 border-b border-white/5 shadow-2xl">
+                    <div className="flex items-center gap-4 md:gap-8">
                         <div className="lg:hidden flex items-center gap-3">
                             <img src={settings?.logo_url || "/logo-bjl.png"} alt={settings?.name || "BJL"} className="h-10 w-10 object-contain rounded-full border border-primary/30" />
                             <div className="flex flex-col">
@@ -430,7 +430,7 @@ const MainLayout = () => {
                         </Magnetic>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2 sm:gap-6">
                         <div className="hidden sm:flex items-center gap-4 bg-white/5 px-4 py-2 rounded-2xl border border-white/5 shadow-inner">
                             <div className="flex flex-col items-end">
                                 <span className="text-xs font-bold truncate max-w-[150px] text-luxury">
@@ -442,7 +442,7 @@ const MainLayout = () => {
                             </div>
                         </div>
                         
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 sm:gap-2">
                              {/* Botão do Customizador de Temas Premium */}
                              <Magnetic range={25} strength={0.25}>
                                  <Button
@@ -508,7 +508,7 @@ const MainLayout = () => {
                     </div>
                 </header>
 
-                <main className="flex-1 p-4 md:p-8 lg:p-10 overflow-y-auto overflow-x-hidden relative">
+                <main className="flex-1 p-3 md:p-8 lg:p-10 overflow-y-auto overflow-x-auto touch-pan-x relative max-w-full">
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 select-none overflow-hidden">
                         <div className="relative w-full h-full flex items-center justify-center opacity-[0.03]">
                              <div className="absolute rotate-[-15deg] scale-[3] blur-[2px]">

@@ -21,7 +21,7 @@ interface ClientTableProps {
 const ClientTable = ({ clients, onEdit, onDelete, onViewTimeline, onViewFiles }: ClientTableProps) => {
     return (
         <div className="rounded-md border">
-            <Table>
+            <Table className="min-w-[650px]">
                 <TableHeader>
                     <TableRow>
                         <TableHead>Nome</TableHead>
