@@ -41,6 +41,27 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     const [budget, setLocalBudget] = React.useState(initialBudget || {});
     const [viewMode, setViewMode] = React.useState<'commercial' | 'technical'>(initialTab || 'commercial');
 
+    const cardFeePercent = Number(initialBudget?.card_fee_percent) || 11;
+    const cardFactor = 1 + (cardFeePercent / 100);
+
+    // Calcula o valor à vista base do orçamento (corrigindo orçamentos legados se necessário)
+    const initialBaseValue = React.useMemo(() => {
+        const rawTotal = Number(initialBudget?.total_value) || 0;
+        const totalCost = Number(initialBudget?.total_cost) || 0;
+        const markupFactor = Number(initialBudget?.markup_factor) || 0;
+
+        if (totalCost > 0 && markupFactor > 0) {
+            const calculatedBase = totalCost * markupFactor;
+            const calculatedCard = calculatedBase * cardFactor;
+            // Se o total_value salvo coincidir com o valor parcelado com cartão, usa a base calculada
+            if (Math.abs(rawTotal - calculatedCard) < 1) {
+                return calculatedBase;
+            }
+            return calculatedBase;
+        }
+        return rawTotal;
+    }, [initialBudget, cardFactor]);
+
     // Analisa se o orçamento contém materiais técnicos específicos do catálogo
     const isTechnicalBudget = React.useMemo(() => {
         const items = initialBudget?.budget_items || [];
@@ -50,29 +71,17 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
         });
     }, [initialBudget]);
 
-    // Inicializa a lista de ambientes
+    // Inicializa a lista de ambientes com o valor à vista base
     const [ambientes, setLocalAmbientes] = React.useState<Ambiente[]>(() => {
         if (initialAmbientes && initialAmbientes.length > 0) {
             return initialAmbientes;
         }
         
-        const items = initialBudget?.budget_items || [];
-        
-        // Se for orçamento técnico ou vazio, consolida o projeto em uma única linha
-        if (isTechnicalBudget || items.length === 0) {
-            return [{
-                id: 'default',
-                description: (initialBudget?.project_name || "MARCENARIA SOB MEDIDA").toUpperCase(),
-                value: initialBudget?.total_value || 0
-            }];
-        } else {
-            // Se for comercial (já salvo como ambientes), carrega as linhas correspondentes
-            return items.map((item: any) => ({
-                id: item.id || Math.random().toString(36).substring(2, 9),
-                description: (item.custom_description || item.budget_materials?.name || "MARCENARIA SOB MEDIDA").toUpperCase(),
-                value: item.unit_price_at_time || item.total_price || 0
-            }));
-        }
+        return [{
+            id: 'default',
+            description: (initialBudget?.project_name || "MARCENARIA SOB MEDIDA").toUpperCase(),
+            value: initialBaseValue || 0
+        }];
     });
 
     if (!initialBudget) {
@@ -98,12 +107,13 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
         setLocalAmbientes(prev => [...prev, newAmbiente]);
     };
 
-    // O valor total exibido depende do modo de visualização
+    // O valor total exibido (À VISTA) depende do modo de visualização
     const totalValue = viewMode === 'commercial'
         ? (ambientes || []).reduce((acc, curr) => acc + (Number(curr?.value) || 0), 0)
-        : (initialBudget.total_value || 0);
+        : initialBaseValue;
 
-    const installmentValue = totalValue * 1.11;
+    // O valor parcelado aplica a taxa de acréscimo sobre o valor à vista
+    const installmentValue = totalValue * cardFactor;
 
     const defaultPaymentTerms = "01. ENTRADA DE 60% NO FECHAMENTO DO CONTRATO.\n02. SALDO RESTANTE DE 40% NA DATA DA ENTREGA TÉCNICA.\n03. PRAZO DE ENTREGA: A DEFINIR CONFORME CRONOGRAMA.";
     

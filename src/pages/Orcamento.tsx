@@ -486,7 +486,7 @@ const Orcamento = () => {
             markup_factor: (formData.profit_margin + formData.commission + formData.tax) / 100 + 1,
             card_fee_percent: formData.installment_fee,
             total_cost: calculateTotals.totalCostPower,
-            total_value: calculateTotals.cardValue,
+            total_value: calculateTotals.baseValue,
             notes: formData.notes,
             status: 'em_elaboracao'
         };
@@ -953,6 +953,79 @@ const Orcamento = () => {
                                                                                     <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] uppercase tracking-widest px-2.5 py-0.5">
                                                                                         {items.length} ITENS
                                                                                     </Badge>
+                                                                                    <span className="font-black uppercase text-xs tracking-tighter text-slate-300">{category}</span>
+                                                                                    {catSelectedCount > 0 && (
+                                                                                        <Badge className="bg-emerald-500/20 text-emerald-400 border-none font-black text-[8px] uppercase tracking-widest px-2 py-0.5">
+                                                                                            {catSelectedCount} NO PROJETO
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                </div>
+                                                                            </AccordionTrigger>
+                                                                            <AccordionContent className="pb-4 border-none">
+                                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                                                                    {items.map(item => {
+                                                                                        const qtyNum = quantities[item.id] || 0;
+                                                                                        const qtyStr = rawQuantities[item.id] !== undefined ? rawQuantities[item.id] : (qtyNum ? String(qtyNum) : "");
+                                                                                        const currentPrice = customPrices[item.id] !== undefined ? customPrices[item.id] : item.unit_price;
+                                                                                        const priceStr = rawPrices[item.id] !== undefined ? rawPrices[item.id] : String(currentPrice);
+                                                                                        const isSelected = (selectedMaterialIds ? selectedMaterialIds.includes(item.id) : quantities[item.id] > 0) || quantities[item.id] > 0;
+                                                                                        return (
+                                                                                            <div key={item.id} className={cn(
+                                                                                                "flex items-center justify-between p-3 rounded-xl transition-all group border",
+                                                                                                isSelected 
+                                                                                                    ? "bg-primary/15 border-primary/40 shadow-sm" 
+                                                                                                    : "bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10"
+                                                                                            )}>
+                                                                                                <div className="flex flex-col min-w-0 flex-1 mr-2">
+                                                                                                    <span className="text-[11px] font-bold text-slate-200 uppercase tracking-tight truncate" title={item.name}>{item.name}</span>
+                                                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{formatCurrency(currentPrice)} / {item.unit}</span>
+                                                                                                </div>
+                                                                                                <div className="flex items-center gap-2 shrink-0">
+                                                                                                    {isSelected && (
+                                                                                                        <div className="flex flex-col items-end">
+                                                                                                            <span className="text-[7px] font-black text-slate-400 uppercase">R$/Unid.</span>
+                                                                                                            <Input
+                                                                                                                type="number"
+                                                                                                                className="w-20 h-8 rounded-lg text-right font-black text-[10px] border-white/10 focus:bg-white/10 text-white bg-white/5 px-2"
+                                                                                                                value={priceStr}
+                                                                                                                onChange={(e) => handlePriceChange(item.id, e.target.value)}
+                                                                                                            />
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                    <div className="flex flex-col items-end">
+                                                                                                        {isSelected && (
+                                                                                                            <span className="text-[7px] font-black text-slate-400 uppercase">Qtd</span>
+                                                                                                        )}
+                                                                                                        <div className="flex items-center gap-1">
+                                                                                                            <Input
+                                                                                                                type="number"
+                                                                                                                placeholder="0"
+                                                                                                                className={cn(
+                                                                                                                    "w-16 sm:w-20 h-8 sm:h-9 rounded-lg text-center font-black text-xs transition-all",
+                                                                                                                    isSelected 
+                                                                                                                        ? "bg-primary text-primary-foreground border-primary font-extrabold shadow-md" 
+                                                                                                                        : "bg-white/5 border-white/10 text-white focus:bg-white/10"
+                                                                                                                )}
+                                                                                                                value={qtyStr}
+                                                                                                                onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                                                                                            />
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        );
+                                                                                    })}
+                                                                                </div>
+                                                                            </AccordionContent>
+                                                                        </AccordionItem>
+                                                                    );
+                                                                })}
+                                                            </Accordion>
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+
                                         {Object.keys(calculateTotals.categoryTotals).length > 0 && (
                                             <div className="mt-12 p-8 border border-primary/20 bg-slate-100 dark:bg-white/5 rounded-[2.5rem] shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
                                                 <div className="flex items-center gap-3 mb-6">
