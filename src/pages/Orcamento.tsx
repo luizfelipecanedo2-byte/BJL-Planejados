@@ -691,7 +691,7 @@ const Orcamento = () => {
                                 Novo Levantamento
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="w-[98vw] max-w-[1350px] h-[92vh] max-h-[92vh] border-none shadow-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden p-0 flex flex-col">
+                        <DialogContent className="w-[95vw] sm:max-w-[1350px] max-w-[1350px] h-[92vh] max-h-[92vh] border-none shadow-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden p-0 flex flex-col">
                             <div className="bg-primary p-8 text-primary-foreground relative shrink-0">
                                 <div className="absolute top-0 right-0 p-4 opacity-10">
                                     <Calculator size={140} />
