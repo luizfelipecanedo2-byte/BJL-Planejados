@@ -11,6 +11,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, AlertTriangle, Receipt, FileSearch, Package, Target, Printer } from "lucide-react";
 import { useState, useMemo, useEffect, Fragment } from "react";
+import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Transaction, CATEGORIES, SUBCATEGORIES, PAYMENT_METHODS } from "@/types/finance";
@@ -35,6 +36,7 @@ import PartialPaymentDialog from "@/components/financeiro/PartialPaymentDialog";
 import ProfitabilityTab from "@/components/financeiro/ProfitabilityTab";
 
 const Financeiro = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
@@ -49,16 +51,21 @@ const Financeiro = () => {
     fetchServiceExpenses();
     fetchTransactionAllocations();
     fetchSales();
-
-    // Detectar se o usuário veio pelo alerta de contas vencidas
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('overdue') === 'true') {
-      setShowOverdueOnly(true);
-      setActiveTab("lancamentos");
-      // Limpa os parâmetros da URL para evitar filtros residuais ao navegar
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('overdue') === 'true') {
+      setShowOverdueOnly(true);
+      setShowRecentlyAdded(false);
+      setShowRecentlyPaid(false);
+      setActiveTab("lancamentos");
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.delete('overdue');
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const fetchSales = async () => {
     try {
@@ -603,6 +610,7 @@ const Financeiro = () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const dueDate = new Date(t.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
         const isOverdue = t.status === 'pending' && dueDate < today;
         return matchesSearch && isOverdue;
       }
@@ -994,6 +1002,7 @@ const Financeiro = () => {
     return transactions.filter(t => {
       if (t.status !== 'pending') return false;
       const dueDate = new Date(t.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
       return dueDate < today;
     });
   }, [transactions]);
