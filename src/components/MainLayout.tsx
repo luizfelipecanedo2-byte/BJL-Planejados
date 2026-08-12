@@ -22,7 +22,8 @@ import {
     Palette,
     Volume2,
     VolumeX,
-    AlertTriangle
+    AlertTriangle,
+    Clock
 } from "lucide-react";
 
 
@@ -107,6 +108,8 @@ const MainLayout = () => {
 
     const [overdueCount, setOverdueCount] = useState<number>(0);
     const [overdueSum, setOverdueSum] = useState<number>(0);
+    const [todayDueCount, setTodayDueCount] = useState<number>(0);
+    const [todayDueSum, setTodayDueSum] = useState<number>(0);
 
     const [role, setRole] = useState<string | null>('colaborador');
     const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -135,25 +138,37 @@ const MainLayout = () => {
         });
     };
 
-    const fetchOverdueTransactions = async () => {
+    const fetchFinancialAlerts = async () => {
         try {
-            const today = new Date().toISOString().split('T')[0];
-            const { data, error } = await supabase
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            // 1. Contas VENCIDAS (due_date < hoje)
+            const { data: overdueData, error: overdueErr } = await supabase
                 .from('transactions')
                 .select('amount, type')
                 .eq('status', 'pending')
-                .lt('due_date', today);
+                .lt('due_date', todayStr);
 
-            if (!error && data) {
-                const unpaidExpenses = data.filter(t => t.type === 'expense');
-                const count = unpaidExpenses.length;
-                const sum = unpaidExpenses.reduce((acc, t) => acc + Number(t.amount), 0);
-                
-                setOverdueCount(count);
-                setOverdueSum(sum);
+            if (!overdueErr && overdueData) {
+                const unpaidOverdueExpenses = overdueData.filter(t => t.type === 'expense');
+                setOverdueCount(unpaidOverdueExpenses.length);
+                setOverdueSum(unpaidOverdueExpenses.reduce((acc, t) => acc + Number(t.amount), 0));
+            }
+
+            // 2. Contas que VENCEM HOJE (due_date = hoje)
+            const { data: todayData, error: todayErr } = await supabase
+                .from('transactions')
+                .select('amount, type')
+                .eq('status', 'pending')
+                .eq('due_date', todayStr);
+
+            if (!todayErr && todayData) {
+                const unpaidTodayExpenses = todayData.filter(t => t.type === 'expense');
+                setTodayDueCount(unpaidTodayExpenses.length);
+                setTodayDueSum(unpaidTodayExpenses.reduce((acc, t) => acc + Number(t.amount), 0));
             }
         } catch (err) {
-            console.error("Erro ao buscar transações vencidas:", err);
+            console.error("Erro ao buscar alertas financeiros:", err);
         }
     };
 
@@ -169,23 +184,13 @@ const MainLayout = () => {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
                     setUserEmail(user.email || null);
-
-                    if (user.email === 'luizfelipe.canedo2@gmail.com') {
-                        setRole('admin');
-                        return;
-                    }
-
-                    const { data, error } = await supabase
+                    const { data: profile } = await supabase
                         .from('profiles')
                         .select('role')
                         .eq('id', user.id)
                         .single();
 
-                    if (data) {
-                        setRole(data.role);
-                    } else {
-                        setRole('colaborador');
-                    }
+                    if (profile) setRole(profile.role);
                 }
             } catch (e) {
                 console.error("Erro ao carregar perfil:", e);
@@ -197,7 +202,7 @@ const MainLayout = () => {
     }, []);
 
     useEffect(() => {
-        fetchOverdueTransactions();
+        fetchFinancialAlerts();
     }, [location.pathname]);
 
     const handleLogout = async () => {
@@ -517,6 +522,30 @@ const MainLayout = () => {
                         </div>
                     </div>
 
+                    {todayDueCount > 0 && (
+                        <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.2)] flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 relative z-20">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-500/20 rounded-xl text-amber-400">
+                                    <Clock className="h-5 w-5 animate-bounce" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-black text-amber-400 uppercase tracking-tight flex items-center gap-2">
+                                        ⏰ ATENÇÃO: CONTAS COM VENCIMENTO HOJE!
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Você possui <span className="text-amber-400 font-bold">{todayDueCount} {todayDueCount === 1 ? 'despesa' : 'despesas'}</span> a pagar hoje totalizando <span className="text-amber-400 font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(todayDueSum)}</span>. Pague hoje para evitar juros!
+                                    </p>
+                                </div>
+                            </div>
+                            <Button 
+                                onClick={() => navigate('/admin/financeiro?today=true')}
+                                className="bg-amber-600 hover:bg-amber-500 text-white font-black uppercase text-[10px] tracking-widest px-6 h-10 rounded-xl shadow-lg shadow-amber-950/20 active:scale-95 transition-all shrink-0"
+                            >
+                                Ver Contas de Hoje
+                            </Button>
+                        </div>
+                    )}
+
                     {overdueCount > 0 && (
                         <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border-2 border-rose-500/20 shadow-[0_0_30px_rgba(244,63,94,0.15)] flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 relative z-20">
                             <div className="flex items-center gap-3">
@@ -532,7 +561,7 @@ const MainLayout = () => {
                                 onClick={() => navigate('/admin/financeiro?overdue=true')}
                                 className="bg-rose-600 hover:bg-rose-500 text-white font-black uppercase text-[10px] tracking-widest px-6 h-10 rounded-xl shadow-lg shadow-rose-950/20 active:scale-95 transition-all shrink-0"
                             >
-                                Ver Pendências
+                                Ver Atrasadas
                             </Button>
                         </div>
                     )}

@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, AlertTriangle, Receipt, FileSearch, Package, Target, Printer } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, AlertTriangle, Receipt, FileSearch, Package, Target, Printer, Clock } from "lucide-react";
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -54,8 +54,20 @@ const Financeiro = () => {
   }, []);
 
   useEffect(() => {
-    if (searchParams.get('overdue') === 'true') {
+    if (searchParams.get('today') === 'true') {
+      setShowTodayOnly(true);
+      setShowOverdueOnly(false);
+      setShowRecentlyAdded(false);
+      setShowRecentlyPaid(false);
+      setActiveTab("lancamentos");
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.delete('today');
+        return next;
+      }, { replace: true });
+    } else if (searchParams.get('overdue') === 'true') {
       setShowOverdueOnly(true);
+      setShowTodayOnly(false);
       setShowRecentlyAdded(false);
       setShowRecentlyPaid(false);
       setActiveTab("lancamentos");
@@ -394,6 +406,7 @@ const Financeiro = () => {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
+  const [showTodayOnly, setShowTodayOnly] = useState(false);
   const [showRecentlyAdded, setShowRecentlyAdded] = useState(false);
   const [showRecentlyPaid, setShowRecentlyPaid] = useState(false);
 
@@ -606,6 +619,15 @@ const Financeiro = () => {
       const matchesOS = osFilter === "all" || (t.orderService === osFilter);
       const matchesPaymentMethod = paymentMethodFilter === "all" || t.paymentMethod === paymentMethodFilter;
 
+      if (showTodayOnly) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(t.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        const isToday = t.status === 'pending' && dueDate.getTime() === today.getTime();
+        return matchesSearch && isToday;
+      }
+
       if (showOverdueOnly) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -621,7 +643,7 @@ const Financeiro = () => {
     if (showRecentlyAdded) return result.slice(0, 50);
     if (showRecentlyPaid) return result.sort((a,b) => new Date(b.paymentDate || b.dueDate).getTime() - new Date(a.paymentDate || a.dueDate).getTime()).slice(0, 50);
     return result;
-  }, [transactions, searchTerm, typeFilter, statusFilter, selectedYear, selectedFilterMonth, dateFilterType, startDateFilter, endDateFilter, osFilter, paymentMethodFilter, showOverdueOnly, showRecentlyAdded, showRecentlyPaid]);
+  }, [transactions, searchTerm, typeFilter, statusFilter, selectedYear, selectedFilterMonth, dateFilterType, startDateFilter, endDateFilter, osFilter, paymentMethodFilter, showOverdueOnly, showTodayOnly, showRecentlyAdded, showRecentlyPaid]);
 
   const pendingAmountInRange = useMemo(() => {
     if (!startDateFilter && !endDateFilter) return 0;
@@ -1004,6 +1026,18 @@ const Financeiro = () => {
       const dueDate = new Date(t.dueDate);
       dueDate.setHours(0, 0, 0, 0);
       return dueDate < today;
+    });
+  }, [transactions]);
+
+  const todayDueTransactions = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return transactions.filter(t => {
+      if (t.status !== 'pending') return false;
+      const dueDate = new Date(t.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate.getTime() === today.getTime();
     });
   }, [transactions]);
 
@@ -1788,7 +1822,7 @@ const Financeiro = () => {
             </div>
             <div className="flex gap-2">
               <Button
-                onClick={() => { setShowRecentlyAdded(!showRecentlyAdded); setShowRecentlyPaid(false); setShowOverdueOnly(false); }}
+                onClick={() => { setShowRecentlyAdded(!showRecentlyAdded); setShowRecentlyPaid(false); setShowOverdueOnly(false); setShowTodayOnly(false); }}
                 variant={showRecentlyAdded ? "default" : "outline"}
                 className={cn(
                   "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
@@ -1798,7 +1832,7 @@ const Financeiro = () => {
                 {showRecentlyAdded ? "Filtro Normal" : "Últimas Lançadas"}
               </Button>
               <Button
-                onClick={() => { setShowRecentlyPaid(!showRecentlyPaid); setShowRecentlyAdded(false); setShowOverdueOnly(false); }}
+                onClick={() => { setShowRecentlyPaid(!showRecentlyPaid); setShowRecentlyAdded(false); setShowOverdueOnly(false); setShowTodayOnly(false); }}
                 variant={showRecentlyPaid ? "default" : "outline"}
                 className={cn(
                   "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
@@ -1808,7 +1842,20 @@ const Financeiro = () => {
                 {showRecentlyPaid ? "Filtro Normal" : "Últimas Pagas"}
               </Button>
               <Button
-                onClick={() => { setShowOverdueOnly(!showOverdueOnly); setShowRecentlyAdded(false); setShowRecentlyPaid(false); }}
+                onClick={() => { setShowTodayOnly(!showTodayOnly); setShowOverdueOnly(false); setShowRecentlyAdded(false); setShowRecentlyPaid(false); }}
+                variant={showTodayOnly ? "default" : "outline"}
+                className={cn(
+                  "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
+                  showTodayOnly 
+                    ? "bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-500/20 border-none animate-pulse" 
+                    : "hover:bg-amber-500/10 hover:text-amber-500 border-amber-500/30 text-amber-500"
+                )}
+              >
+                <Clock size={16} className={cn("mr-2", showTodayOnly ? "text-white" : "text-amber-500")} />
+                {showTodayOnly ? "Ver Todos" : `Vencem Hoje (${todayDueTransactions.length})`}
+              </Button>
+              <Button
+                onClick={() => { setShowOverdueOnly(!showOverdueOnly); setShowTodayOnly(false); setShowRecentlyAdded(false); setShowRecentlyPaid(false); }}
                 variant={showOverdueOnly ? "destructive" : "outline"}
                 className={cn(
                   "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
