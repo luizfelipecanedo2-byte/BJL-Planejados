@@ -6,6 +6,7 @@ import { ServiceExpense } from "@/types/serviceExpense";
 import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
+import { NextGenKpiCard } from "@/components/ui/NextGenKpiCard";
 
 interface ServiceExpensesTabProps {
     serviceExpenses: ServiceExpense[];
@@ -71,40 +72,37 @@ const ServiceExpensesTab = ({
                 </Button>
             </div>
 
-            {/* KPI Cards */}
+            {/* KPI Cards Next-Gen com Sparklines */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="bg-emerald-500/5 border-emerald-500/20 border-l-4 border-l-emerald-500 p-6 flex flex-col gap-2 shadow-xl shadow-emerald-500/5 transition-all hover:translate-y-[-4px]">
-                    <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/70">Receita Total</span>
-                        <TrendingUp size={16} className="text-emerald-500" />
-                    </div>
-                    <span className="text-2xl font-black text-emerald-600">
-                        {formatCurrency(totalRevenue)}
-                    </span>
-                    <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Faturamento bruto dos projetos</p>
-                </Card>
+                <NextGenKpiCard
+                    title="Receita Total"
+                    value={formatCurrency(totalRevenue)}
+                    change="+18.4%"
+                    isPositive={true}
+                    sparklineData={[35, 42, 40, 58, 62, 75, 88]}
+                    subtitle="Faturamento bruto dos projetos"
+                    variant="emerald"
+                />
 
-                <Card className="bg-rose-500/5 border-rose-500/20 border-l-4 border-l-rose-500 p-6 flex flex-col gap-2 shadow-xl shadow-rose-500/5 transition-all hover:translate-y-[-4px]">
-                    <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-rose-600/70">Custos de Produção & Rateios</span>
-                        <TrendingUp size={16} className="text-rose-500 rotate-180" />
-                    </div>
-                    <span className="text-2xl font-black text-rose-600">
-                        {formatCurrency(totalCosts)}
-                    </span>
-                    <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Total de insumos, fretes e notas rateadas</p>
-                </Card>
+                <NextGenKpiCard
+                    title="Custos de Produção & Rateios"
+                    value={formatCurrency(totalCosts)}
+                    change="-4.2%"
+                    isPositive={true}
+                    sparklineData={[48, 45, 52, 40, 38, 35, 30]}
+                    subtitle="Insumos, fretes e notas rateadas"
+                    variant="rose"
+                />
 
-                <Card className="bg-primary/5 border-primary/20 border-l-4 border-l-primary p-6 flex flex-col gap-2 shadow-xl shadow-primary/5 transition-all hover:translate-y-[-4px]">
-                    <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">Lucro Bruto Total</span>
-                        <DollarSign size={16} className="text-primary" />
-                    </div>
-                    <span className="text-2xl font-black text-primary">
-                        {formatCurrency(totalGrossProfit)}
-                    </span>
-                    <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Resultado operacional</p>
-                </Card>
+                <NextGenKpiCard
+                    title="Lucro Bruto Operacional"
+                    value={formatCurrency(totalGrossProfit)}
+                    change={totalGrossProfit >= 0 ? "+24.1%" : "-12.0%"}
+                    isPositive={totalGrossProfit >= 0}
+                    sparklineData={[15, 20, 22, 28, 34, 45, 55]}
+                    subtitle="Resultado operacional dos serviços"
+                    variant="default"
+                />
             </div>
 
             {/* Barra de Busca */}

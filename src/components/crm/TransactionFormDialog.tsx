@@ -12,6 +12,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { NextGenCostSplitter } from "./NextGenCostSplitter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -780,13 +781,15 @@ const TransactionFormDialog = ({
                         </div>
                     )}
 
-                    {/* Seção Cost Split (Rateio por Cliente) */}
+                    {/* Seção Cost Split (Rateio por Cliente - Next Gen) */}
                     {type === 'expense' && (
-                        <div className={`p-4 border rounded-lg space-y-4 ${isCostSplit ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-muted/20'}`}>
+                        <div className={`p-4 border rounded-2xl transition-all duration-300 ${isCostSplit ? 'bg-emerald-500/[0.04] border-emerald-500/30 shadow-sm' : 'bg-muted/20 border-border/50'}`}>
                             <div className="flex items-center justify-between">
                                 <div className="space-y-0.5">
-                                    <Label className="text-sm font-bold text-emerald-600">Dividir Custo entre Clientes</Label>
-                                    <p className="text-[10px] text-muted-foreground">Ratear o valor dessa nota para múltiplos projetos</p>
+                                    <Label className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                        Dividir Custo entre Clientes
+                                    </Label>
+                                    <p className="text-[10px] text-muted-foreground font-medium">Ratear o valor dessa nota para múltiplos projetos</p>
                                 </div>
                                 <Switch
                                     checked={isCostSplit}
@@ -794,8 +797,8 @@ const TransactionFormDialog = ({
                                         setIsCostSplit(checked);
                                         if (checked) {
                                             setCostSplits([
-                                                { client: "", amount: form.amount, description: "Rateio 1" },
-                                                { client: "", amount: "", description: "Rateio 2" }
+                                                { client: "", amount: form.amount || "", description: "Rateio 1", color: "🔴" },
+                                                { client: "", amount: "", description: "Rateio 2", color: "🟢" }
                                             ]);
                                         }
                                     }}
@@ -804,118 +807,13 @@ const TransactionFormDialog = ({
                             </div>
 
                             {isCostSplit && (
-                                <div className="space-y-3 pt-2 border-t">
-                                    {costSplits.map((split, index) => (
-                                        <div key={index} className="flex flex-col gap-2 bg-white/50 p-2 rounded border border-emerald-100">
-                                            <div className="flex gap-2 items-end">
-                                                <div className="flex-1">
-                                                    <Label className="text-[10px]">Cliente / Projeto</Label>
-                                                    <Select
-                                                        value={split.client}
-                                                        onValueChange={(v) => {
-                                                            const newSplits = [...costSplits];
-                                                            newSplits[index].client = v;
-                                                            setCostSplits(newSplits);
-                                                        }}
-                                                    >
-                                                        <SelectTrigger className="h-8 text-xs">
-                                                            <SelectValue placeholder="Selecione o projeto (OS)" />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="max-h-[250px]">
-                                                            <SelectItem value="ESTOQUE">🏢 ESTOQUE GERAL</SelectItem>
-                                                            {serviceOrders.map(os => {
-                                                                const actionText = os.action ? ` (${os.action.trim()})` : '';
-                                                                const valueStr = `${os.ticketNumber} - ${os.client.trim()}${actionText}`;
-                                                                return (
-                                                                    <SelectItem key={os.id} value={valueStr}>
-                                                                        {valueStr}
-                                                                    </SelectItem>
-                                                                );
-                                                            })}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="w-32">
-                                                    <Label className="text-[10px]">Cor na Nota</Label>
-                                                    <Select
-                                                        value={split.color}
-                                                        onValueChange={(v) => {
-                                                            const newSplits = [...costSplits];
-                                                            newSplits[index].color = v;
-                                                            setCostSplits(newSplits);
-                                                        }}
-                                                    >
-                                                        <SelectTrigger className="h-8 text-xs">
-                                                            <SelectValue placeholder="Cor" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="🔴">🔴 Vermelho</SelectItem>
-                                                            <SelectItem value="🟢">🟢 Verde</SelectItem>
-                                                            <SelectItem value="🔵">🔵 Azul</SelectItem>
-                                                            <SelectItem value="🟡">🟡 Amarelo</SelectItem>
-                                                            <SelectItem value="🟠">🟠 Laranja</SelectItem>
-                                                            <SelectItem value="🟣">🟣 Roxo</SelectItem>
-                                                            <SelectItem value="⚫">⚫ Preto</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="w-28">
-                                                    <Label className="text-[10px]">Valor (R$)</Label>
-                                                    <Input
-                                                        type="number"
-                                                        value={split.amount}
-                                                        onChange={(e) => {
-                                                            const newSplits = [...costSplits];
-                                                            newSplits[index].amount = e.target.value;
-                                                            setCostSplits(newSplits);
-                                                        }}
-                                                        className="h-8 text-xs font-bold"
-                                                        placeholder="0,00"
-                                                    />
-                                                </div>
-                                                {costSplits.length > 2 && (
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-red-500 shrink-0"
-                                                        onClick={() => {
-                                                            setCostSplits(costSplits.filter((_, i) => i !== index));
-                                                        }}
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <Label className="text-[10px]">Descrição / Item</Label>
-                                                <Input
-                                                    value={split.description}
-                                                    onChange={(e) => {
-                                                        const newSplits = [...costSplits];
-                                                        newSplits[index].description = e.target.value;
-                                                        setCostSplits(newSplits);
-                                                    }}
-                                                    className="h-8 text-xs"
-                                                    placeholder="Ex: Itens marcados"
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div className="flex justify-between items-center pt-1">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-7 text-[10px] border-emerald-200 text-emerald-600"
-                                            onClick={() => setCostSplits([...costSplits, { client: "", amount: "", description: "" }])}
-                                        >
-                                            + Adicionar Cliente
-                                        </Button>
-                                        <div className={`text-[11px] font-bold ${Math.abs(costSplits.reduce((acc, s) => acc + Number(s.amount), 0) - Number(form.amount)) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
-                                            Total: {costSplits.reduce((acc, s) => acc + Number(s.amount), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} / {Number(form.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                        </div>
-                                    </div>
+                                <div className="mt-4 pt-3 border-t border-border/50">
+                                    <NextGenCostSplitter
+                                        totalInvoiceAmount={Number(form.amount) || 0}
+                                        serviceOrders={serviceOrders}
+                                        costSplits={costSplits}
+                                        onChange={(updatedSplits) => setCostSplits(updatedSplits)}
+                                    />
                                 </div>
                             )}
                         </div>
