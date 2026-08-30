@@ -123,7 +123,9 @@ const Financeiro = () => {
         .from('transaction_allocations')
         .select('*');
 
-      if (allocError) throw allocError;
+      if (!allocError && allocations) {
+        setTransactionAllocations(allocations);
+      }
 
       const mappedTransactions: Transaction[] = (data || []).map(t => {
         const parseDate = (dateStr: string | null) => {
@@ -204,12 +206,13 @@ const Financeiro = () => {
 
       const mappedOrders: ServiceOrder[] = (data || []).map(o => ({
         id: o.id,
-        ticketNumber: o.ticket_number,
+        ticketNumber: o.ticket_number || "S/N",
         openDate: new Date(o.open_date + 'T12:00:00'),
-        client: o.client,
+        client: o.client || "Não informado",
         type: o.type as any,
-        action: o.action,
+        action: o.action || "",
         status: o.status as any,
+        amount: Number(o.amount) || 0,
         forecastDate: new Date(o.forecast_date + 'T12:00:00'),
         completionDate: o.completion_date ? new Date(o.completion_date + 'T12:00:00') : undefined
       }));
@@ -256,36 +259,65 @@ const Financeiro = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const combinedServiceExpenses = useMemo(() => {
+    const norm = (s?: string) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+    // Guardar os IDs de alocações que foram atreladas a alguma OS
+    const claimedAllocationIds = new Set<string>();
+
     const mappedProjects: ServiceExpense[] = serviceOrders.map(os => {
-      const osString = `${os.ticketNumber} - ${os.client} (${os.action})`;
-      const osAllocations = transactionAllocations.filter(a => a.client_name === osString || a.client_name === os.client);
+      const ticketClean = norm(os.ticketNumber);
+      const clientClean = norm(os.client);
+      const actionClean = norm(os.action);
+      const osFullString = norm(`${os.ticketNumber} - ${os.client}${os.action ? ` (${os.action})` : ''}`);
+
+      const osAllocations = transactionAllocations.filter(a => {
+        if (!a.client_name) return false;
+        const aName = norm(a.client_name);
+
+        // 1. Igualdade exata da string completa ou nome do cliente
+        if (aName === osFullString || aName === clientClean) return true;
+        // 2. Número da OS (ex: "OS-028" contido em "OS-028 - Gracinha (COZINHA)")
+        if (ticketClean && ticketClean !== 's/n' && aName.includes(ticketClean)) return true;
+        // 3. Cliente + Ambiente
+        if (clientClean && aName.includes(clientClean) && actionClean && aName.includes(actionClean)) return true;
+        return false;
+      });
+
+      osAllocations.forEach(a => {
+        if (a.id) claimedAllocationIds.add(a.id);
+      });
+
       const allocCost = osAllocations.reduce((acc, a) => acc + Number(a.amount), 0);
 
-      const manualExpenses = serviceExpenses.filter(e => 
-        (e.clientName === os.client && e.environment === os.action) || 
-        (os.ticketNumber && os.ticketNumber !== "S/N" && e.clientName.startsWith(os.ticketNumber + ' - '))
-      );
+      const manualExpenses = serviceExpenses.filter(e => {
+        const eClient = norm(e.clientName);
+        const eEnv = norm(e.environment);
+        if (clientClean && eClient === clientClean && actionClean && eEnv === actionClean) return true;
+        if (ticketClean && ticketClean !== 's/n' && eClient.startsWith(ticketClean)) return true;
+        return false;
+      });
       const manualCost = manualExpenses.reduce((acc, e) => acc + e.spentValue, 0);
 
-      const revenue = os.amount || manualExpenses.reduce((acc, e) => acc + e.serviceValue, 0);
+      const revenue = (os.amount && os.amount > 0) ? os.amount : manualExpenses.reduce((acc, e) => acc + e.serviceValue, 0);
 
       let items: any[] = [];
       manualExpenses.forEach(e => {
         if (e.items) items = [...items, ...e.items];
       });
 
-      // Find transactions directly matching this OS ticket number or description
+      // Transações diretas vinculadas à OS (APENAS aquelas que não foram rateadas)
       const directTransactions = transactions.filter(t => {
         if (t.type !== 'expense') return false;
 
-        const osTicket = os.ticketNumber;
-        if (!osTicket || osTicket === "S/N") return false;
+        const hasSplits = (t.costSplits && t.costSplits.length > 0) ||
+                          transactionAllocations.some(a => a.transaction_id === t.id);
+        if (hasSplits) return false;
 
-        const ticketClean = osTicket.trim().toLowerCase();
+        if (!ticketClean || ticketClean === 's/n') return false;
 
-        const matchesOrderService = t.orderService && t.orderService.trim().toLowerCase().includes(ticketClean);
-        const matchesDesc = t.description && t.description.trim().toLowerCase().includes(ticketClean);
-        const matchesContact = t.contact && os.client && t.contact.trim().toLowerCase() === os.client.trim().toLowerCase();
+        const matchesOrderService = t.orderService && norm(t.orderService).includes(ticketClean);
+        const matchesDesc = t.description && norm(t.description).includes(ticketClean);
+        const matchesContact = t.contact && clientClean && norm(t.contact) === clientClean;
 
         return matchesOrderService || matchesDesc || (matchesContact && t.category === "Despesa com Serviço");
       });
@@ -295,8 +327,9 @@ const Financeiro = () => {
       const autoItems = osAllocations.map(a => {
         const parentTx = transactions.find(t => t.id === a.transaction_id);
         const nfText = parentTx?.invoiceNumber ? ` (NF: ${parentTx.invoiceNumber})` : '';
+        const parentDesc = parentTx?.description ? ` - ${parentTx.description}` : '';
         return {
-          description: `[Rateio] ${parentTx?.description || ''}${nfText} ${a.description ? `(${a.description})` : ''}`.trim(),
+          description: `[Rateio] ${a.description ? a.description : 'Despesa rateada'}${parentDesc}${nfText}`.trim(),
           unit: 'un',
           quantity: 1,
           unitValue: Number(a.amount),
@@ -320,7 +353,7 @@ const Financeiro = () => {
       return {
         id: expenseId,
         clientName: `${os.ticketNumber} - ${os.client}`,
-        environment: os.action,
+        environment: os.action || "Geral",
         serviceValue: revenue,
         spentValue: allocCost + manualCost + directTxCost,
         items: items,
@@ -330,30 +363,81 @@ const Financeiro = () => {
     });
 
     serviceExpenses.forEach(se => {
-      const matchesOS = serviceOrders.some(os => 
-        (se.clientName === os.client && se.environment === os.action) || 
-        (os.ticketNumber && os.ticketNumber !== "S/N" && se.clientName.startsWith(os.ticketNumber + ' - '))
-      );
+      const seClient = norm(se.clientName);
+      const seEnv = norm(se.environment);
+      const matchesOS = serviceOrders.some(os => {
+        const ticketClean = norm(os.ticketNumber);
+        const clientClean = norm(os.client);
+        const actionClean = norm(os.action);
+        return (clientClean && seClient === clientClean && actionClean && seEnv === actionClean) ||
+               (ticketClean && ticketClean !== "s/n" && seClient.startsWith(ticketClean));
+      });
       if (!matchesOS) {
         mappedProjects.push(se);
       }
     });
 
-    // Also include transactions with OS or "Despesa com Serviço" that don't match any registered OS
+    // Rateios não vinculados a uma OS cadastrada (ex: ESTOQUE, ESTOQUE GERAL, ou clientes avulsos)
+    const unclaimedAllocations = transactionAllocations.filter(a => {
+      if (!a.client_name || !a.client_name.trim()) return false;
+      if (claimedAllocationIds.has(a.id)) return false;
+      return true;
+    });
+
+    const unclaimedAllocGrouped: Record<string, typeof transactionAllocations> = {};
+    unclaimedAllocations.forEach(a => {
+      const key = a.client_name.trim();
+      if (!unclaimedAllocGrouped[key]) unclaimedAllocGrouped[key] = [];
+      unclaimedAllocGrouped[key].push(a);
+    });
+
+    Object.entries(unclaimedAllocGrouped).forEach(([clientKey, allocs]) => {
+      const totalSpent = allocs.reduce((acc, a) => acc + Number(a.amount), 0);
+      const isEstoque = norm(clientKey).includes("estoque");
+      const autoItems = allocs.map(a => {
+        const parentTx = transactions.find(t => t.id === a.transaction_id);
+        const nfText = parentTx?.invoiceNumber ? ` (NF: ${parentTx.invoiceNumber})` : '';
+        const parentDesc = parentTx?.description ? ` - ${parentTx.description}` : '';
+        return {
+          description: `[Rateio] ${a.description ? a.description : 'Despesa rateada'}${parentDesc}${nfText}`.trim(),
+          unit: 'un',
+          quantity: 1,
+          unitValue: Number(a.amount),
+          totalValue: Number(a.amount)
+        };
+      });
+
+      mappedProjects.push({
+        id: `unclaimed-alloc-${clientKey}`,
+        clientName: isEstoque ? "🏢 ESTOQUE GERAL" : clientKey,
+        environment: isEstoque ? "Material em Estoque" : "Rateio Avulso",
+        serviceValue: 0,
+        spentValue: totalSpent,
+        items: [],
+        autoItems: autoItems,
+        createdAt: new Date()
+      });
+    });
+
+    // Transações diretas avulsas com OS não registrada
     const unclaimedOSTransactions = transactions.filter(t => {
       if (t.type !== 'expense') return false;
       if (!t.orderService && t.category !== "Despesa com Serviço") return false;
 
+      const hasSplits = (t.costSplits && t.costSplits.length > 0) ||
+                        transactionAllocations.some(a => a.transaction_id === t.id);
+      if (hasSplits) return false;
+
       const matchedInOS = serviceOrders.some(os => {
         if (!os.ticketNumber || os.ticketNumber === "S/N") return false;
-        const ticketClean = os.ticketNumber.trim().toLowerCase();
-        return (t.orderService && t.orderService.trim().toLowerCase().includes(ticketClean)) ||
-               (t.description && t.description.trim().toLowerCase().includes(ticketClean)) ||
-               (t.contact && os.client && t.contact.trim().toLowerCase() === os.client.trim().toLowerCase() && t.category === "Despesa com Serviço");
+        const ticketClean = norm(os.ticketNumber);
+        return (t.orderService && norm(t.orderService).includes(ticketClean)) ||
+               (t.description && norm(t.description).includes(ticketClean)) ||
+               (t.contact && norm(t.contact) === norm(os.client) && t.category === "Despesa com Serviço");
       });
 
       const matchedInServiceExpenses = serviceExpenses.some(se => {
-        return (t.contact && se.clientName.includes(t.contact));
+        return (t.contact && norm(se.clientName).includes(norm(t.contact)));
       });
 
       return !matchedInOS && !matchedInServiceExpenses;
@@ -368,16 +452,19 @@ const Financeiro = () => {
 
     Object.entries(unclaimedGrouped).forEach(([osKey, txs]) => {
       const totalSpent = txs.reduce((acc, t) => acc + Number(t.amount), 0);
-      const items = txs.map(t => ({
-        description: `[Lançamento] ${t.description || ''}`,
-        unit: 'un',
-        quantity: 1,
-        unitValue: Number(t.amount),
-        totalValue: Number(t.amount)
-      }));
+      const items = txs.map(t => {
+        const nfText = t.invoiceNumber ? ` (NF: ${t.invoiceNumber})` : '';
+        return {
+          description: `[Lançamento] ${t.description || ''}${nfText}`,
+          unit: 'un',
+          quantity: 1,
+          unitValue: Number(t.amount),
+          totalValue: Number(t.amount)
+        };
+      });
 
       mappedProjects.push({
-        id: `unclaimed-${osKey}`,
+        id: `unclaimed-tx-${osKey}`,
         clientName: osKey.startsWith("OS") ? osKey : `OS ${osKey}`,
         environment: txs[0].subcategory || "Compra de Material / Serviço",
         serviceValue: 0,
@@ -1377,12 +1464,13 @@ const Financeiro = () => {
         for (let i = 0; i < dataArray.length; i++) {
           const item = dataArray[i];
           const insertedRow = insertedData[i];
-          if (item.costSplits && item.costSplits.length > 0) {
-            const splitsToInsert = item.costSplits.map(split => ({
+          const validSplits = (item.costSplits || []).filter(s => s.client && s.client.trim() !== "" && Number(s.amount) > 0);
+          if (validSplits.length > 0) {
+            const splitsToInsert = validSplits.map(split => ({
               transaction_id: insertedRow.id,
-              client_name: split.client,
-              amount: split.amount,
-              description: split.description
+              client_name: split.client.trim(),
+              amount: Number(split.amount),
+              description: (split.description || "").trim()
             }));
             const { error: splitError } = await supabase.from('transaction_allocations').insert(splitsToInsert);
             if (splitError) console.error("Error inserting cost splits:", splitError);
@@ -1454,12 +1542,14 @@ const Financeiro = () => {
           const { error: deleteError } = await supabase.from('transaction_allocations').delete().eq('transaction_id', id);
           if (deleteError) {
             console.error("Erro ao deletar rateios:", deleteError);
-          } else if (updates.costSplits && updates.costSplits.length > 0) {
-            const splitsToInsert = updates.costSplits.map(split => ({
+          }
+          const validSplits = (updates.costSplits || []).filter(s => s.client && s.client.trim() !== "" && Number(s.amount) > 0);
+          if (validSplits.length > 0) {
+            const splitsToInsert = validSplits.map(split => ({
               transaction_id: id,
-              client_name: split.client,
-              amount: split.amount,
-              description: split.description
+              client_name: split.client.trim(),
+              amount: Number(split.amount),
+              description: (split.description || "").trim()
             }));
             const { error: splitError } = await supabase.from('transaction_allocations').insert(splitsToInsert);
             if (splitError) console.error("Erro ao inserir rateios:", splitError);

@@ -319,15 +319,20 @@ const TransactionFormDialog = ({
 
         let formattedSplits: any[] | undefined = undefined;
         if (isCostSplit && type === 'expense') {
-            const totalSplitAmount = costSplits.reduce((acc, split) => acc + Number(split.amount), 0);
+            const validSplits = costSplits.filter(s => s.client && s.client.trim() !== "" && Number(s.amount) > 0);
+            if (validSplits.length === 0) {
+                alert("Por favor, selecione ao menos um cliente/projeto com valor para o rateio.");
+                return;
+            }
+            const totalSplitAmount = validSplits.reduce((acc, split) => acc + Number(split.amount), 0);
             if (Math.abs(totalSplitAmount - amount) > 0.01) {
                 alert(`A soma dos rateios (${totalSplitAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) deve ser igual ao valor total (${amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
                 return;
             }
-            formattedSplits = costSplits.map(s => ({
-                client: s.client,
+            formattedSplits = validSplits.map(s => ({
+                client: s.client.trim(),
                 amount: Number(s.amount),
-                description: (s as any).color ? `${(s as any).color} ${s.description}`.trim() : s.description
+                description: (s as any).color ? `${(s as any).color} ${s.description || ''}`.trim() : (s.description || "").trim()
             }));
         }
 
@@ -816,13 +821,17 @@ const TransactionFormDialog = ({
                                                         <SelectTrigger className="h-8 text-xs">
                                                             <SelectValue placeholder="Selecione o projeto (OS)" />
                                                         </SelectTrigger>
-                                                        <SelectContent>
+                                                        <SelectContent className="max-h-[250px]">
                                                             <SelectItem value="ESTOQUE">🏢 ESTOQUE GERAL</SelectItem>
-                                                            {serviceOrders.map(os => (
-                                                                <SelectItem key={os.id} value={`${os.ticketNumber} - ${os.client} (${os.action})`}>
-                                                                    {os.ticketNumber} - {os.client} ({os.action})
-                                                                </SelectItem>
-                                                            ))}
+                                                            {serviceOrders.map(os => {
+                                                                const actionText = os.action ? ` (${os.action.trim()})` : '';
+                                                                const valueStr = `${os.ticketNumber} - ${os.client.trim()}${actionText}`;
+                                                                return (
+                                                                    <SelectItem key={os.id} value={valueStr}>
+                                                                        {valueStr}
+                                                                    </SelectItem>
+                                                                );
+                                                            })}
                                                         </SelectContent>
                                                     </Select>
                                                 </div>

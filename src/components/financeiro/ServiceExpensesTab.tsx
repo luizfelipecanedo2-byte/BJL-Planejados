@@ -1,10 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, Home, TrendingUp, DollarSign, Briefcase } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Pencil, Trash2, Home, TrendingUp, DollarSign, ChevronDown, ChevronUp, Search, Layers, FileText, Package } from "lucide-react";
 import { ServiceExpense } from "@/types/serviceExpense";
 import { cn } from "@/lib/utils";
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 
 interface ServiceExpensesTabProps {
@@ -22,215 +22,320 @@ const ServiceExpensesTab = ({
     handleDeleteServiceExpense,
     formatCurrency,
 }: ServiceExpensesTabProps) => {
+    const [searchTerm, setSearchTerm] = useState("");
+    const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+
+    const toggleExpand = (id: string) => {
+        setExpandedIds(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const filteredExpenses = useMemo(() => {
+        if (!searchTerm.trim()) return serviceExpenses;
+        const term = searchTerm.toLowerCase().trim();
+        return serviceExpenses.filter(e => 
+            e.clientName.toLowerCase().includes(term) ||
+            e.environment.toLowerCase().includes(term) ||
+            (e.autoItems && e.autoItems.some(item => item.description.toLowerCase().includes(term))) ||
+            (e.items && e.items.some(item => item.description.toLowerCase().includes(term)))
+        );
+    }, [serviceExpenses, searchTerm]);
+
+    const totalRevenue = useMemo(() => serviceExpenses.reduce((acc, e) => acc + e.serviceValue, 0), [serviceExpenses]);
+    const totalCosts = useMemo(() => serviceExpenses.reduce((acc, e) => acc + e.spentValue, 0), [serviceExpenses]);
+    const totalGrossProfit = totalRevenue - totalCosts;
 
     return (
-        <div className="space-y-10">
-            {/* Seção de Gastos Manuais */}
-            <div className="space-y-6 opacity-80 hover:opacity-100 transition-opacity">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-muted/20 p-6 rounded-2xl border border-border/50 shadow-sm transition-all hover:bg-muted/30">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-secondary/10 rounded-xl text-secondary border border-secondary/20 shadow-lg shadow-secondary/5">
-                            <Home className="h-6 w-6" />
-                        </div>
-                        <div className="space-y-1">
-                            <h3 className="text-2xl font-black tracking-tight text-secondary-foreground uppercase tracking-widest">Análise de Margem <span className="text-[10px] font-normal text-muted-foreground ml-2 tracking-normal lowercase italic">(Lançamentos Manuais)</span></h3>
-                            <p className="text-xs text-muted-foreground font-medium uppercase opacity-70">Cálculo detalhado de insumos e mão de obra por projeto</p>
-                        </div>
+        <div className="space-y-8">
+            {/* Cabeçalho */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-muted/20 p-6 rounded-2xl border border-border/50 shadow-sm transition-all hover:bg-muted/30">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-secondary/10 rounded-xl text-secondary border border-secondary/20 shadow-lg shadow-secondary/5">
+                        <Home className="h-6 w-6" />
                     </div>
-                    <Button onClick={handleNewServiceExpense} size="lg" className="bg-secondary hover:bg-secondary/80 text-secondary-foreground font-black uppercase tracking-widest text-xs px-8 rounded-xl shadow-xl shadow-secondary/10 gap-2 transition-transform hover:scale-105">
-                        <Plus className="h-4 w-4" />
-                        Novo Registro
+                    <div className="space-y-1">
+                        <h3 className="text-2xl font-black tracking-tight text-secondary-foreground uppercase tracking-widest">
+                            Custos & Margem por Serviço
+                        </h3>
+                        <p className="text-xs text-muted-foreground font-medium uppercase opacity-70">
+                            Acompanhe insumos, despesas e rateios de notas vinculados a cada projeto
+                        </p>
+                    </div>
+                </div>
+                <Button 
+                    onClick={handleNewServiceExpense} 
+                    size="lg" 
+                    className="bg-secondary hover:bg-secondary/80 text-secondary-foreground font-black uppercase tracking-widest text-xs px-8 rounded-xl shadow-xl shadow-secondary/10 gap-2 transition-transform hover:scale-105"
+                >
+                    <Plus className="h-4 w-4" />
+                    Novo Registro Manual
+                </Button>
+            </div>
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="bg-emerald-500/5 border-emerald-500/20 border-l-4 border-l-emerald-500 p-6 flex flex-col gap-2 shadow-xl shadow-emerald-500/5 transition-all hover:translate-y-[-4px]">
+                    <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/70">Receita Total</span>
+                        <TrendingUp size={16} className="text-emerald-500" />
+                    </div>
+                    <span className="text-2xl font-black text-emerald-600">
+                        {formatCurrency(totalRevenue)}
+                    </span>
+                    <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Faturamento bruto dos projetos</p>
+                </Card>
+
+                <Card className="bg-rose-500/5 border-rose-500/20 border-l-4 border-l-rose-500 p-6 flex flex-col gap-2 shadow-xl shadow-rose-500/5 transition-all hover:translate-y-[-4px]">
+                    <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-rose-600/70">Custos de Produção & Rateios</span>
+                        <TrendingUp size={16} className="text-rose-500 rotate-180" />
+                    </div>
+                    <span className="text-2xl font-black text-rose-600">
+                        {formatCurrency(totalCosts)}
+                    </span>
+                    <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Total de insumos, fretes e notas rateadas</p>
+                </Card>
+
+                <Card className="bg-primary/5 border-primary/20 border-l-4 border-l-primary p-6 flex flex-col gap-2 shadow-xl shadow-primary/5 transition-all hover:translate-y-[-4px]">
+                    <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">Lucro Bruto Total</span>
+                        <DollarSign size={16} className="text-primary" />
+                    </div>
+                    <span className="text-2xl font-black text-primary">
+                        {formatCurrency(totalGrossProfit)}
+                    </span>
+                    <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Resultado operacional</p>
+                </Card>
+            </div>
+
+            {/* Barra de Busca */}
+            <div className="flex items-center gap-3 bg-muted/20 p-3 rounded-xl border border-border/50">
+                <Search className="h-4 w-4 text-muted-foreground ml-2" />
+                <Input
+                    placeholder="Buscar por cliente, OS, ambiente ou descrição de material/rateio..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="border-none bg-transparent focus-visible:ring-0 text-xs shadow-none"
+                />
+                {searchTerm && (
+                    <Button variant="ghost" size="sm" onClick={() => setSearchTerm("")} className="text-xs h-7">
+                        Limpar
                     </Button>
-                </div>
+                )}
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="bg-emerald-500/5 border-emerald-500/20 border-l-4 border-l-emerald-500 p-6 flex flex-col gap-2 shadow-xl shadow-emerald-500/5 transition-all hover:translate-y-[-4px]">
-                        <div className="flex justify-between items-start">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/70">Receita Total</span>
-                            <TrendingUp size={16} className="text-emerald-500" />
-                        </div>
-                        <span className="text-2xl font-black text-emerald-600">
-                            {formatCurrency(serviceExpenses.reduce((acc, e) => acc + e.serviceValue, 0))}
-                        </span>
-                        <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Faturamento bruto dos projetos</p>
-                    </Card>
+            {/* Lista de Serviços / Projetos */}
+            <div className="space-y-4">
+                {filteredExpenses.length === 0 ? (
+                    <div className="text-center py-14 bg-muted/20 rounded-2xl border-2 border-dashed text-muted-foreground italic text-xs space-y-2">
+                        <Package className="h-8 w-8 mx-auto text-muted-foreground/40" />
+                        <p>{searchTerm ? "Nenhum projeto encontrado para o filtro pesquisado." : "Nenhum gasto ou rateio por serviço cadastrado."}</p>
+                    </div>
+                ) : (
+                    filteredExpenses.map((expense) => {
+                        const grossProfit = expense.serviceValue - expense.spentValue;
+                        const margin = expense.serviceValue > 0 ? (grossProfit / expense.serviceValue) * 100 : 0;
+                        const isExpanded = !!expandedIds[expense.id];
+                        const autoItemsCount = expense.autoItems?.length || 0;
+                        const manualItemsCount = expense.items?.length || 0;
+                        const totalItemsCount = autoItemsCount + manualItemsCount;
+                        const isEstoque = expense.clientName.includes("ESTOQUE");
 
-                    <Card className="bg-rose-500/5 border-rose-500/20 border-l-4 border-l-rose-500 p-6 flex flex-col gap-2 shadow-xl shadow-rose-500/5 transition-all hover:translate-y-[-4px]">
-                        <div className="flex justify-between items-start">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-rose-600/70">Custos de Produção</span>
-                            <TrendingUp size={16} className="text-rose-500 rotate-180" />
-                        </div>
-                        <span className="text-2xl font-black text-rose-600">
-                            {formatCurrency(serviceExpenses.reduce((acc, e) => acc + e.spentValue, 0))}
-                        </span>
-                        <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Total de insumos e gastos diretos</p>
-                    </Card>
-
-                    <Card className="bg-primary/5 border-primary/20 border-l-4 border-l-primary p-6 flex flex-col gap-2 shadow-xl shadow-primary/5 transition-all hover:translate-y-[-4px]">
-                        <div className="flex justify-between items-start">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">Lucro Bruto Total</span>
-                            <DollarSign size={16} className="text-primary" />
-                        </div>
-                        <span className="text-2xl font-black text-primary">
-                            {formatCurrency(serviceExpenses.reduce((acc, e) => acc + (e.serviceValue - e.spentValue), 0))}
-                        </span>
-                        <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-tight mt-1 truncate">Resultado operacional manual</p>
-                    </Card>
-                </div>
-
-                <div className="md:hidden space-y-4">
-                    {serviceExpenses.length === 0 ? (
-                        <div className="text-center py-10 bg-muted/20 rounded-xl border-2 border-dashed text-muted-foreground italic text-xs">
-                            Nenhum gasto por serviço cadastrado para análise.
-                        </div>
-                    ) : (
-                        serviceExpenses.map((expense) => {
-                            const grossProfit = expense.serviceValue - expense.spentValue;
-                            const margin = expense.serviceValue > 0 ? (grossProfit / expense.serviceValue) * 100 : 0;
-                            return (
-                                <div key={expense.id} className="bg-card border rounded-xl p-5 shadow-sm space-y-4 relative overflow-hidden group">
-                                    <div className={cn(
-                                        "absolute top-0 left-0 w-1 h-full",
-                                        margin >= 30 ? "bg-emerald-500" : margin >= 15 ? "bg-amber-500" : "bg-rose-500"
-                                    )} />
-
-                                    <div className="flex justify-between items-start pl-2">
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-black text-base uppercase tracking-tight truncate leading-tight">{expense.clientName}</h3>
-                                            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-0.5">{expense.environment}</p>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                className="h-9 w-9 border-primary/20"
-                                                onClick={() => handleEditServiceExpense(expense)}
-                                            >
-                                                <Pencil className="h-4 w-4 text-primary" />
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                className="h-9 w-9 border-rose-100"
-                                                onClick={() => handleDeleteServiceExpense(expense.id)}
-                                            >
-                                                <Trash2 className="h-4 w-4 text-rose-500" />
-                                            </Button>
+                        return (
+                            <Card 
+                                key={expense.id} 
+                                className={cn(
+                                    "rounded-2xl border bg-card/60 shadow-md transition-all overflow-hidden",
+                                    isEstoque ? "border-amber-500/30 bg-amber-500/[0.02]" : "border-border/60 hover:border-primary/40"
+                                )}
+                            >
+                                <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="flex items-start gap-4 flex-1">
+                                        <div 
+                                            className={cn(
+                                                "w-2.5 h-12 rounded-full shrink-0 mt-1",
+                                                isEstoque ? "bg-amber-500" :
+                                                margin >= 30 ? "bg-emerald-500" :
+                                                margin >= 15 ? "bg-amber-500" : "bg-rose-500"
+                                            )} 
+                                        />
+                                        <div className="space-y-1 flex-1 min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h3 className="font-black text-base uppercase tracking-tight text-foreground truncate">
+                                                    {expense.clientName}
+                                                </h3>
+                                                {isEstoque && (
+                                                    <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[9px] font-bold">
+                                                        Almoxarifado
+                                                    </Badge>
+                                                )}
+                                                {autoItemsCount > 0 && (
+                                                    <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-[9px] font-bold">
+                                                        {autoItemsCount} {autoItemsCount === 1 ? 'Rateio/NF' : 'Rateios/NFs'}
+                                                    </Badge>
+                                                )}
+                                                {manualItemsCount > 0 && (
+                                                    <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/20 text-[9px] font-bold">
+                                                        {manualItemsCount} {manualItemsCount === 1 ? 'Insumo manual' : 'Insumos manuais'}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">
+                                                {expense.environment}
+                                            </p>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4 py-3 border-y border-border/50 pl-2">
+                                    {/* Métricas do Projeto */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-center border-t md:border-t-0 md:border-l border-border/50 pt-3 md:pt-0 md:pl-6">
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Receita</span>
                                             <span className="font-bold text-sm text-emerald-600">{formatCurrency(expense.serviceValue)}</span>
                                         </div>
-                                        <div className="flex flex-col text-right">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Custos</span>
+
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Valor Gasto</span>
                                             <span className="font-bold text-sm text-rose-500">{formatCurrency(expense.spentValue)}</span>
                                         </div>
-                                    </div>
 
-                                    <div className="flex items-center justify-between pt-1 pl-2">
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Lucro Bruto</span>
-                                            <span className="font-black text-base text-primary">{formatCurrency(grossProfit)}</span>
+                                            <span className={cn("font-black text-sm", grossProfit >= 0 ? "text-primary" : "text-rose-500")}>
+                                                {formatCurrency(grossProfit)}
+                                            </span>
                                         </div>
-                                        <div className="text-right">
+
+                                        <div className="flex items-center justify-between sm:justify-end gap-3">
                                             <Badge variant="outline" className={cn(
-                                                "font-black text-[11px] px-3 py-1 rounded-lg",
+                                                "font-black text-[10px] px-2.5 py-1 rounded-lg shrink-0",
+                                                isEstoque ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
                                                 margin >= 30 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
-                                                    margin >= 15 ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
-                                                        "bg-rose-500/10 text-rose-500 border-rose-500/20"
+                                                margin >= 15 ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+                                                "bg-rose-500/10 text-rose-500 border-rose-500/20"
                                             )}>
-                                                MARGEM: {margin.toFixed(1)}%
+                                                {isEstoque ? 'ESTOQUE' : `${margin.toFixed(1)}%`}
                                             </Badge>
+
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                    onClick={() => handleEditServiceExpense(expense)}
+                                                    title="Editar serviço e insumos manuais"
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </Button>
+
+                                                {!expense.id.startsWith('os-') && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-rose-500"
+                                                        onClick={() => handleDeleteServiceExpense(expense.id)}
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                )}
+
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 px-2.5 text-xs gap-1 font-bold text-muted-foreground hover:text-foreground"
+                                                    onClick={() => toggleExpand(expense.id)}
+                                                >
+                                                    <span className="hidden sm:inline">{isExpanded ? "Ocultar" : "Detalhes"}</span>
+                                                    {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            );
-                        })
-                    )}
-                </div>
 
-                <Card className="hidden md:block rounded-2xl border-none shadow-2xl bg-card overflow-hidden">
-                    <CardContent className="p-0">
-                        <div className="relative w-full overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch">
-                            <table className="w-full text-xs border-collapse min-w-[650px]">
-                                <thead>
-                                    <tr className="bg-muted/50 text-muted-foreground border-b border-border/50 h-14">
-                                        <th className="px-6 text-left font-black uppercase tracking-widest text-[10px]">Cliente</th>
-                                        <th className="px-6 text-left font-black uppercase tracking-widest text-[10px]">Ambiente</th>
-                                        <th className="px-6 text-right font-black uppercase tracking-widest text-[10px]">Valor Serviço</th>
-                                        <th className="px-6 text-right font-black uppercase tracking-widest text-[10px]">Valor Gasto</th>
-                                        <th className="px-6 text-right font-black uppercase tracking-widest text-[10px] bg-primary/5 text-primary">Lucro Bruto</th>
-                                        <th className="px-6 text-center font-black uppercase tracking-widest text-[10px]">Margem (%)</th>
-                                        <th className="px-6 text-center font-black uppercase tracking-widest text-[10px] w-[140px]">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {serviceExpenses.length === 0 ? (
-                                        <tr className="border-b border-border/30 h-32 text-center text-muted-foreground italic">
-                                            <td colSpan={7}>Nenhum gasto por serviço cadastrado para análise.</td>
-                                        </tr>
-                                    ) : (
-                                        serviceExpenses.map((expense) => {
-                                            const grossProfit = expense.serviceValue - expense.spentValue;
-                                            const margin = expense.serviceValue > 0 ? (grossProfit / expense.serviceValue) * 100 : 0;
-                                            return (
-                                                <tr key={expense.id} className="border-b border-border/30 hover:bg-muted/30 transition-all group">
-                                                    <td className="px-6 py-5 font-black text-sm uppercase text-foreground group-hover:text-primary transition-colors">{expense.clientName}</td>
-                                                    <td className="px-6 py-5 font-bold text-xs uppercase text-muted-foreground">{expense.environment}</td>
-                                                    <td className="px-6 py-5 text-right font-semibold text-emerald-500">{formatCurrency(expense.serviceValue)}</td>
-                                                    <td className="px-6 py-5 text-right font-semibold text-rose-500">{formatCurrency(expense.spentValue)}</td>
-                                                    <td className="px-6 py-5 text-right font-black text-sm bg-primary/[0.03] group-hover:bg-primary/[0.08] transition-colors">{formatCurrency(grossProfit)}</td>
-                                                    <td className="px-6 py-5 text-center">
-                                                        <span className={cn(
-                                                            "px-3 py-1 rounded-full font-black text-[9px] border",
-                                                            margin >= 30 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
-                                                                margin >= 15 ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
-                                                                    "bg-rose-500/10 text-rose-500 border-rose-500/20"
-                                                        )}>
-                                                            {margin.toFixed(1)}%
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-5">
-                                                        <div className="flex justify-center gap-2">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleEditServiceExpense(expense)}
-                                                                className="h-9 w-9 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleDeleteServiceExpense(expense.id)}
-                                                                className="h-9 w-9 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
+                                {/* Seção Expansível com o Detalhamento de Gastos / Rateios */}
+                                {isExpanded && (
+                                    <div className="border-t border-border/60 bg-muted/10 p-5 space-y-6 animate-in slide-in-from-top-2 duration-200">
+                                        {/* Rateios e Despesas Vinculadas */}
+                                        {expense.autoItems && expense.autoItems.length > 0 && (
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <FileText className="h-4 w-4 text-blue-500" />
+                                                    <h4 className="text-xs font-black uppercase tracking-wider text-blue-600">
+                                                        Rateios de Notas & Lançamentos Financeiros ({expense.autoItems.length})
+                                                    </h4>
+                                                </div>
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    {expense.autoItems.map((item, idx) => (
+                                                        <div 
+                                                            key={`auto-${idx}`} 
+                                                            className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 gap-2 text-xs"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-semibold text-foreground/90">{item.description}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-4 text-right shrink-0">
+                                                                <span className="text-[10px] text-muted-foreground font-mono">Qtd: {item.quantity} {item.unit}</span>
+                                                                <span className="font-bold text-rose-500 text-sm">{formatCurrency(item.totalValue)}</span>
+                                                            </div>
                                                         </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Insumos Manuais */}
+                                        {expense.items && expense.items.length > 0 && (
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <Layers className="h-4 w-4 text-purple-500" />
+                                                    <h4 className="text-xs font-black uppercase tracking-wider text-purple-600">
+                                                        Insumos e Materiais Manuais ({expense.items.length})
+                                                    </h4>
+                                                </div>
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    {expense.items.map((item, idx) => (
+                                                        <div 
+                                                            key={`manual-${idx}`} 
+                                                            className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 gap-2 text-xs"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-medium text-foreground">{item.description}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-4 text-right shrink-0">
+                                                                <span className="text-[10px] text-muted-foreground font-mono">
+                                                                    {item.quantity} {item.unit} x {formatCurrency(item.unitValue)}
+                                                                </span>
+                                                                <span className="font-bold text-purple-600 text-sm">{formatCurrency(item.totalValue)}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {totalItemsCount === 0 && (
+                                            <div className="text-center py-6 text-muted-foreground italic text-xs">
+                                                Nenhum insumo manual ou rateio financeiro vinculado a este serviço até o momento.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </Card>
+                        );
+                    })
+                )}
             </div>
 
+            {/* Dica de Performance */}
             <div className="p-6 bg-amber-500/5 rounded-2xl border border-amber-500/20 shadow-xl shadow-amber-500/5 flex items-start gap-4">
                 <div className="p-2 bg-amber-500/20 rounded-lg text-amber-600 mt-1">
                     <TrendingUp className="h-5 w-5" />
                 </div>
                 <div>
                     <h4 className="font-black text-amber-700 text-xs uppercase tracking-widest mb-1">Dica de Performance</h4>
-                    <p className="text-[11px] text-amber-600/80 font-medium leading-relaxed">Consideramos margens acima de 30% como saudáveis para serviços de marcenaria e design. Ambientes com margens abaixo de 15% devem ser revisados quanto aos custos de material ou tempo de produção.</p>
+                    <p className="text-[11px] text-amber-600/80 font-medium leading-relaxed">
+                        Consideramos margens acima de 30% como saudáveis para serviços de marcenaria e design. Ambientes com margens abaixo de 15% devem ser revisados quanto aos custos de material ou tempo de produção.
+                    </p>
                 </div>
             </div>
         </div>

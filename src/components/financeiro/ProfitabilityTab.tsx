@@ -65,6 +65,11 @@ export default function ProfitabilityTab() {
                 .select('*')
                 .eq('type', 'expense');
 
+            // Fetch allocations
+            const { data: allocations } = await supabase
+                .from('transaction_allocations')
+                .select('*');
+
             const projectsMap = new Map<string, { revenue: number, expenses: number }>();
 
             (sales || []).forEach(s => {
@@ -73,10 +78,33 @@ export default function ProfitabilityTab() {
                 projectsMap.set(key, { ...current, revenue: current.revenue + Number(s.total_value) });
             });
 
+            const allocMap = new Map<string, any[]>();
+            (allocations || []).forEach(a => {
+                const list = allocMap.get(a.transaction_id) || [];
+                list.push(a);
+                allocMap.set(a.transaction_id, list);
+            });
+
             (expenses || []).forEach(e => {
-                const key = e.contact || e.order_service || "Outros";
-                const current = projectsMap.get(key) || { revenue: 0, expenses: 0 };
-                projectsMap.set(key, { ...current, expenses: current.expenses + Number(e.amount) });
+                const txAllocs = allocMap.get(e.id);
+                if (txAllocs && txAllocs.length > 0) {
+                    txAllocs.forEach(a => {
+                        let cleanName = (a.client_name || '').trim();
+                        if (cleanName.startsWith("OS-") || cleanName.startsWith("OS ")) {
+                            const parts = cleanName.split(" - ");
+                            if (parts.length > 1) {
+                                cleanName = parts[1].split("(")[0].trim();
+                            }
+                        }
+                        const key = cleanName || "Outros";
+                        const current = projectsMap.get(key) || { revenue: 0, expenses: 0 };
+                        projectsMap.set(key, { ...current, expenses: current.expenses + Number(a.amount) });
+                    });
+                } else {
+                    const key = e.contact || e.order_service || "Outros";
+                    const current = projectsMap.get(key) || { revenue: 0, expenses: 0 };
+                    projectsMap.set(key, { ...current, expenses: current.expenses + Number(e.amount) });
+                }
             });
 
             const calculatedMargins: ProjectMargin[] = Array.from(projectsMap.entries())
