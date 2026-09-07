@@ -54,6 +54,7 @@ import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { Link } from "react-router-dom";
+import { ExecutiveBIAnalytics } from "./ExecutiveBIAnalytics";
 
 interface Task {
   id: string;
@@ -768,6 +769,13 @@ const Dashboard = ({ sales }: DashboardProps) => {
             </AreaChart>
           </ResponsiveContainer>
         </PremiumCard>
+
+        {/* BI 360°: Funil de Conversão, Velocidade, Forecast Ponderado, Perdas e Parcerias */}
+        <ExecutiveBIAnalytics
+          sales={filteredSales}
+          titleSuffix={titleSuffix}
+          salesGoal={salesGoal}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="border border-white/10 backdrop-blur-xl bg-card/60 shadow-xl rounded-[2.5rem]">
