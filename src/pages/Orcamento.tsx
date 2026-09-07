@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import BudgetPrintView from "@/components/orcamento/BudgetPrintView";
 import { estimateProjectMaterials, GeminiEstimationResult } from "@/services/geminiService";
 import { Sparkles, Key, UploadCloud, FileImage, Brain, Hammer, Hourglass, Check, ShieldCheck } from "lucide-react";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 const analysisSteps = [
     "Analisando o desenho do projeto...",
@@ -203,7 +204,7 @@ const Orcamento = () => {
                 name: m.name,
                 category: m.category,
                 unit: m.unit,
-                price: m.unit_price
+                unit_price: m.unit_price
             }));
 
             const result = await estimateProjectMaterials(geminiKey || undefined, selectedImage, catalog);

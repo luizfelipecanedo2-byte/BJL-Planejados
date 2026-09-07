@@ -38,7 +38,8 @@ export async function estimateProjectMaterials(
     resolvedKey = localStorage.getItem("bjl_gemini_api_key") || undefined;
   }
 
-  if (!resolvedImage) {
+  const match = resolvedImage?.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+  if (!match) {
     throw new Error("Formato de imagem inválido. Certifique-se de que é uma imagem válida.");
   }
 
