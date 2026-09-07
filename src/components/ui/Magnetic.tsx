@@ -18,6 +18,7 @@ export const Magnetic = ({ children, range = 60, strength = 0.35, className }: M
   const springY = useSpring(y, springConfig);
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) return;
     if (!ref.current) return;
     const { clientX, clientY } = e;
     const { left, top, width, height } = ref.current.getBoundingClientRect();

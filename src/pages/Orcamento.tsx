@@ -54,6 +54,7 @@ const Orcamento = () => {
 
     // Spotlight effect tracker with cached rect to avoid layout thrashing
     const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (typeof window !== "undefined" && window.innerWidth < 1024) return;
         const card = e.currentTarget;
         let rect = (card as any)._cachedRect;
         if (!rect) {
@@ -686,28 +687,28 @@ const Orcamento = () => {
                                 Novo Levantamento
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="w-[95vw] sm:max-w-[1350px] max-w-[1350px] h-[92vh] max-h-[92vh] border-none shadow-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden p-0 flex flex-col">
-                            <div className="bg-primary p-8 text-primary-foreground relative shrink-0">
+                        <DialogContent className="w-[98vw] sm:w-[95vw] sm:max-w-[1350px] max-w-[1350px] h-[95vh] sm:h-[92vh] max-h-[95vh] sm:max-h-[92vh] border-none shadow-2xl rounded-2xl sm:rounded-[2.5rem] overflow-hidden p-0 flex flex-col">
+                            <div className="bg-primary p-4 sm:p-8 text-primary-foreground relative shrink-0">
                                 <div className="absolute top-0 right-0 p-4 opacity-10">
                                     <Calculator size={140} />
                                 </div>
-                                <div className="relative z-10 flex justify-between items-end">
+                                <div className="relative z-10 flex justify-between items-end gap-2">
                                     <div>
-                                        <h3 className="text-xl sm:text-3xl font-black uppercase tracking-tighter">
+                                        <h3 className="text-lg sm:text-3xl font-black uppercase tracking-tighter">
                                             {editingBudgetId ? "Ajustar Orçamento" : "Levantamento de Materiais"}
                                         </h3>
-                                        <p className="text-[10px] opacity-80 font-black uppercase tracking-[0.2em] mt-2">
+                                        <p className="text-[9px] sm:text-[10px] opacity-80 font-black uppercase tracking-[0.2em] mt-1 sm:mt-2">
                                             {editingBudgetId ? "Refinando os valores para o fechamento" : "Checklist inteligente para não esquecer nenhum detalhe do projeto"}
                                         </p>
                                     </div>
-                                    <div className="text-right mt-4 sm:mt-0">
-                                        <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">Valor Final Sugerido</p>
-                                        <p className="text-2xl sm:text-4xl font-black tracking-tighter">{formatCurrency(calculateTotals.cardValue)}</p>
+                                    <div className="text-right shrink-0">
+                                        <p className="text-[9px] sm:text-[10px] font-black uppercase opacity-60 tracking-widest">Valor Sugerido</p>
+                                        <p className="text-xl sm:text-4xl font-black tracking-tighter">{formatCurrency(calculateTotals.cardValue)}</p>
                                     </div>
                                 </div>
                             </div>
                             <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
-                                <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-100 p-6 sm:p-8 space-y-6 sm:space-y-8 bg-slate-50/50 backdrop-blur-sm overflow-y-auto max-h-[40vh] md:max-h-full">
+                                <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-100 p-4 sm:p-8 space-y-4 sm:space-y-8 bg-slate-50/50 backdrop-blur-sm overflow-y-auto max-h-[32vh] md:max-h-full shrink-0">
                                     <div className="space-y-4">
                                         <h4 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
                                             <AlertCircle className="h-3 w-3" /> Identificação
@@ -804,19 +805,19 @@ const Orcamento = () => {
                             </div>
 
                             <Tabs value={activeRightTab} onValueChange={setActiveRightTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
-                                <div className="px-8 pt-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-card">
+                                <div className="px-4 sm:px-8 pt-4 sm:pt-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-card">
                                     <TabsList className="bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
-                                        <TabsTrigger value="manual" className="px-6 py-2 rounded-lg font-black text-[10px] tracking-widest uppercase data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:shadow-sm">
+                                        <TabsTrigger value="manual" className="px-4 sm:px-6 py-2 rounded-lg font-black text-[10px] tracking-widest uppercase data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:shadow-sm">
                                             Checklist Manual
                                         </TabsTrigger>
-                                        <TabsTrigger value="ai" className="px-6 py-2 rounded-lg font-black text-[10px] tracking-widest uppercase data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm flex items-center gap-1.5">
+                                        <TabsTrigger value="ai" className="px-4 sm:px-6 py-2 rounded-lg font-black text-[10px] tracking-widest uppercase data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm flex items-center gap-1.5">
                                             <Sparkles className="h-3.5 w-3.5 animate-pulse text-amber-400" /> Assistente de IA ✨
                                         </TabsTrigger>
                                     </TabsList>
                                 </div>
                                 
                                 <TabsContent value="manual" className="flex-1 overflow-hidden m-0 flex flex-col min-h-0">
-                                    <ScrollArea className="flex-1 p-8 bg-card">
+                                    <ScrollArea className="flex-1 p-3 sm:p-8 bg-card">
                                     <div className="space-y-6">
                                         {selectedMaterialIds.length > 0 && (
                                             <div className="mb-8 p-6 bg-primary/5 border-2 border-primary/20 rounded-[2rem] shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
@@ -1314,16 +1315,16 @@ const Orcamento = () => {
                                 </Tabs>
                             </div>
 
-                            <div className="p-4 sm:p-8 shrink-0 bg-slate-100 dark:bg-zinc-950/80 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row gap-4 justify-between items-center">
-                                <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
-                                    <Package className="h-5 w-5" />
+                            <div className="p-3 sm:p-6 shrink-0 bg-slate-100 dark:bg-zinc-950/80 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row gap-2.5 sm:gap-4 justify-between items-center">
+                                <div className="flex items-center gap-2 sm:gap-3 text-slate-500 dark:text-slate-400 self-start sm:self-auto">
+                                    <Package className="h-4 w-4 sm:h-5 sm:w-5" />
                                     <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
                                         {Object.values(quantities).filter(q => q > 0).length} itens selecionados
                                     </span>
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto">
-                                    <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="flex-1 sm:flex-none h-12 sm:h-14 px-4 sm:px-8 font-black uppercase tracking-widest text-[10px] rounded-xl sm:rounded-2xl text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/5">Descartar</Button>
-                                    <Button onClick={handleSaveBudget} className="flex-[2] sm:flex-none h-12 sm:h-14 px-6 sm:px-10 bg-primary font-black uppercase tracking-widest text-[10px] sm:text-xs rounded-xl sm:rounded-2xl shadow-2xl shadow-primary/20 group">
+                                    <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="flex-1 sm:flex-none h-11 sm:h-14 px-3 sm:px-8 font-black uppercase tracking-widest text-[10px] rounded-xl sm:rounded-2xl text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/5">Descartar</Button>
+                                    <Button onClick={handleSaveBudget} className="flex-[2] sm:flex-none h-11 sm:h-14 px-4 sm:px-10 bg-primary font-black uppercase tracking-widest text-[10px] sm:text-xs rounded-xl sm:rounded-2xl shadow-2xl shadow-primary/20 group">
                                         Finalizar e Salvar
                                         <ChevronRight className="h-4 w-4 ml-1 sm:ml-2 group-hover:translate-x-1 transition-transform" />
                                     </Button>

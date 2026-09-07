@@ -1989,6 +1989,7 @@ const TaskCard = ({ title, tasks, serviceOrders, defaultDueDate, currentUserId, 
     
     // Spotlight effect logic
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (typeof window !== "undefined" && window.innerWidth < 1024) return;
         const card = e.currentTarget;
         const rect = card.getBoundingClientRect();
         const x = e.clientX - rect.left;

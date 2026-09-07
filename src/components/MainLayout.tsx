@@ -247,8 +247,8 @@ const MainLayout = () => {
                 style={{ left: glowX, top: glowY }}
             />
 
-            {/* Mesh Gradient Background (Fundo Dinâmico Animado de Última Geração) */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 select-none">
+            {/* Mesh Gradient Background (Desativado no mobile para máxima fluidez e 60 FPS) */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 select-none hidden lg:block">
                 <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-[radial-gradient(circle,hsl(var(--mesh-color-1)/0.08)_0%,transparent_70%)] animate-[float-slow_25s_infinite_alternate]" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-[radial-gradient(circle,hsl(var(--mesh-color-2)/0.06)_0%,transparent_70%)] animate-[float-medium_20s_infinite_alternate]" />
                 <div className="absolute top-[30%] right-[20%] w-[40vw] h-[40vw] rounded-full bg-[radial-gradient(circle,hsl(var(--mesh-color-1)/0.05)_0%,transparent_70%)] animate-[float-reverse_30s_infinite_alternate]" />
@@ -401,10 +401,17 @@ const MainLayout = () => {
             <div className="flex-1 flex flex-col min-w-0 h-[100dvh] lg:h-screen relative z-10">
                 <header className="h-20 glass-panel-pro backdrop-blur-2xl flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 border-b border-white/[0.08] shadow-2xl">
                     <div className="flex items-center gap-4 md:gap-8">
-                        <div className="lg:hidden flex items-center gap-3">
-                            <img src={settings?.logo_url || "/logo-bjl.png"} alt={settings?.name || "BJL"} className="h-10 w-10 object-contain rounded-full border border-primary/30" />
+                        <div className="lg:hidden flex items-center gap-2.5">
+                            <button
+                                onClick={() => setIsSidebarOpen(true)}
+                                className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-foreground hover:text-primary transition-colors flex items-center justify-center shrink-0"
+                                title="Abrir Menu Completo"
+                            >
+                                <Menu className="h-5 w-5" />
+                            </button>
+                            <img src={settings?.logo_url || "/logo-bjl.png"} alt={settings?.name || "BJL"} className="h-9 w-9 object-contain rounded-full border border-primary/30" />
                             <div className="flex flex-col">
-                                <h1 className="text-xl font-['Cinzel'] font-bold text-luxury shimmer-gold leading-none uppercase">{settings?.name?.split(' ')[0] || "BJL"}</h1>
+                                <h1 className="text-base font-['Cinzel'] font-bold text-luxury shimmer-gold leading-none uppercase">{settings?.name?.split(' ')[0] || "BJL"}</h1>
                                 <span className="text-[7px] uppercase tracking-[0.2em] font-bold text-primary/60">{settings?.name?.split(' ').slice(1).join(' ') || "Planejados"}</span>
                             </div>
                         </div>
@@ -522,7 +529,7 @@ const MainLayout = () => {
                     </div>
                 </header>
 
-                <main className="flex-1 p-3 md:p-8 lg:p-10 overflow-y-auto overflow-x-auto touch-pan-x relative max-w-full">
+                <main className="flex-1 p-3 md:p-8 lg:p-10 pb-28 lg:pb-10 overflow-y-auto overflow-x-auto touch-pan-x relative max-w-full">
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 select-none overflow-hidden">
                         <div className="relative w-full h-full flex items-center justify-center opacity-[0.03]">
                              <div className="absolute rotate-[-15deg] scale-[3] blur-[2px]">
@@ -590,23 +597,209 @@ const MainLayout = () => {
                 </main>
             </div>
 
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-white/5 flex flex-row items-center justify-between h-[76px] px-3 shadow-2xl overflow-x-auto hide-scrollbar safe-area-bottom">
-                {menuItems.map((item) => (
-                    <Link
-                        key={item.path}
-                        to={item.path}
-                        className={cn(
-                            "flex flex-col items-center justify-center min-w-[68px] flex-shrink-0 h-14 space-y-1.5 transition-all duration-500 rounded-2xl relative",
-                            location.pathname === item.path
-                                ? "text-primary font-bold bg-primary/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] scale-105"
-                                : "text-muted-foreground hover:text-foreground active:scale-95"
-                        )}
-                    >
-                        <item.icon className={cn("h-5 w-5", location.pathname === item.path ? "scale-110 drop-shadow-[0_0_8px_rgba(var(--primary),0.5)]" : "")} />
-                        <span className="text-[9px] text-center font-bold tracking-tight text-luxury truncate px-1 w-full">{item.label}</span>
-                    </Link>
-                ))}
+            {/* Mobile Bottom Navigation - 5 botões táteis e espaçados */}
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-white/10 grid grid-cols-5 h-[72px] px-1 shadow-2xl safe-area-bottom backdrop-blur-xl bg-background/90">
+                <Link
+                    to="/admin"
+                    onClick={playClickSound}
+                    className={cn(
+                        "flex flex-col items-center justify-center h-full space-y-1 transition-all",
+                        location.pathname === "/admin"
+                            ? "text-primary font-bold"
+                            : "text-muted-foreground hover:text-foreground active:scale-95"
+                    )}
+                >
+                    <TrendingUp className={cn("h-5 w-5", location.pathname === "/admin" ? "scale-110 drop-shadow-[0_0_8px_rgba(var(--primary),0.5)]" : "")} />
+                    <span className="text-[10px] text-center font-bold tracking-tight truncate w-full">CRM</span>
+                </Link>
+
+                <Link
+                    to="/admin/orcamento"
+                    onClick={playClickSound}
+                    className={cn(
+                        "flex flex-col items-center justify-center h-full space-y-1 transition-all",
+                        location.pathname === "/admin/orcamento"
+                            ? "text-primary font-bold"
+                            : "text-muted-foreground hover:text-foreground active:scale-95"
+                    )}
+                >
+                    <Calculator className={cn("h-5 w-5", location.pathname === "/admin/orcamento" ? "scale-110 drop-shadow-[0_0_8px_rgba(var(--primary),0.5)]" : "")} />
+                    <span className="text-[10px] text-center font-bold tracking-tight truncate w-full">Orçamento</span>
+                </Link>
+
+                <Link
+                    to="/admin/tarefas"
+                    onClick={playClickSound}
+                    className={cn(
+                        "flex flex-col items-center justify-center h-full space-y-1 transition-all",
+                        location.pathname === "/admin/tarefas"
+                            ? "text-primary font-bold"
+                            : "text-muted-foreground hover:text-foreground active:scale-95"
+                    )}
+                >
+                    <CheckSquare className={cn("h-5 w-5", location.pathname === "/admin/tarefas" ? "scale-110 drop-shadow-[0_0_8px_rgba(var(--primary),0.5)]" : "")} />
+                    <span className="text-[10px] text-center font-bold tracking-tight truncate w-full">Tarefas</span>
+                </Link>
+
+                <Link
+                    to="/admin/financeiro"
+                    onClick={playClickSound}
+                    className={cn(
+                        "flex flex-col items-center justify-center h-full space-y-1 transition-all",
+                        location.pathname === "/admin/financeiro"
+                            ? "text-primary font-bold"
+                            : "text-muted-foreground hover:text-foreground active:scale-95"
+                    )}
+                >
+                    <DollarSign className={cn("h-5 w-5", location.pathname === "/admin/financeiro" ? "scale-110 drop-shadow-[0_0_8px_rgba(var(--primary),0.5)]" : "")} />
+                    <span className="text-[10px] text-center font-bold tracking-tight truncate w-full">Financeiro</span>
+                </Link>
+
+                <button
+                    type="button"
+                    onClick={() => {
+                        playClickSound();
+                        setIsSidebarOpen(true);
+                    }}
+                    className={cn(
+                        "flex flex-col items-center justify-center h-full space-y-1 transition-all text-muted-foreground hover:text-primary active:scale-95",
+                        isSidebarOpen ? "text-primary font-bold" : ""
+                    )}
+                >
+                    <Menu className="h-5 w-5" />
+                    <span className="text-[10px] text-center font-bold tracking-tight truncate w-full">Mais</span>
+                </button>
             </nav>
+
+            {/* Gaveta de Navegação Mobile Completa (Drawer) */}
+            <AnimatePresence>
+                {isSidebarOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsSidebarOpen(false)}
+                            className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 cursor-pointer lg:hidden"
+                        />
+                        <motion.div
+                            initial={{ x: "-100%" }}
+                            animate={{ x: 0 }}
+                            exit={{ x: "-100%" }}
+                            transition={{ type: "spring", damping: 26, stiffness: 220 }}
+                            className="fixed left-0 top-0 bottom-0 w-[85vw] max-w-[340px] bg-background/95 backdrop-blur-2xl border-r border-white/10 z-50 p-5 shadow-2xl flex flex-col justify-between lg:hidden"
+                        >
+                            <div className="flex flex-col min-h-0 flex-1">
+                                {/* Header da Gaveta */}
+                                <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
+                                    <div className="flex items-center gap-3">
+                                        <img src={settings?.logo_url || "/logo-bjl.png"} alt={settings?.name || "BJL"} className="h-10 w-10 object-contain rounded-full border border-primary/40 bg-black/40 p-0.5" />
+                                        <div className="flex flex-col">
+                                            <span className="text-base font-['Cinzel'] font-bold text-luxury uppercase tracking-wider">{settings?.name?.split(' ')[0] || "BJL"}</span>
+                                            <span className="text-[8px] uppercase tracking-[0.25em] font-black text-primary/70">{settings?.name?.split(' ').slice(1).join(' ') || "Planejados"}</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsSidebarOpen(false)}
+                                        className="p-2 rounded-xl bg-white/5 border border-white/10 text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
+
+                                {/* Perfil no topo do menu */}
+                                <div className="my-3 p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between shrink-0">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="h-8 w-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                                            <UserCircle className="h-4 w-4" />
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-xs font-bold text-luxury truncate">
+                                                {role === 'admin' ? 'Luiz Felipe Canedo' : userEmail?.split('@')[0]}
+                                            </span>
+                                            <span className="text-[9px] uppercase font-black text-primary/60 tracking-wider">
+                                                {role === 'admin' ? 'Administrador' : 'Colaborador'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Lista dos 10 Módulos com Rolagem Suave */}
+                                <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 py-1 hide-scrollbar">
+                                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-2 py-1">Todos os Módulos</p>
+                                    {menuItems.map((item) => {
+                                        const isActive = location.pathname === item.path;
+                                        return (
+                                            <Link
+                                                key={item.path}
+                                                to={item.path}
+                                                onClick={() => {
+                                                    playClickSound();
+                                                    setIsSidebarOpen(false);
+                                                }}
+                                                className={cn(
+                                                    "flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all duration-300 relative font-medium group text-sm",
+                                                    isActive 
+                                                        ? "bg-primary/20 text-white border border-primary/40 font-bold shadow-[0_0_20px_rgba(var(--primary),0.15)]" 
+                                                        : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-transparent"
+                                                )}
+                                            >
+                                                <div className={cn(
+                                                    "p-2 rounded-xl transition-all shrink-0",
+                                                    isActive ? "bg-primary text-primary-foreground shadow-md" : "bg-white/5 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10"
+                                                )}>
+                                                    <item.icon className="h-4 w-4" />
+                                                </div>
+                                                <span className="font-bold tracking-tight text-luxury flex-1">{item.label}</span>
+                                                {item.emoji && <span className="text-xs">{item.emoji}</span>}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Ações Rápidas no Rodapé da Gaveta */}
+                            <div className="pt-3 border-t border-white/10 space-y-2 shrink-0">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            playClickSound();
+                                            setIsSidebarOpen(false);
+                                            setIsThemePanelOpen(true);
+                                        }}
+                                        className="h-10 text-[10px] font-black uppercase tracking-wider rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center gap-1.5"
+                                    >
+                                        <Palette className="h-3.5 w-3.5 text-primary" /> Temas
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={toggleSounds}
+                                        className="h-10 text-[10px] font-black uppercase tracking-wider rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center gap-1.5"
+                                    >
+                                        {soundsEnabled ? <Volume2 className="h-3.5 w-3.5 text-primary" /> : <VolumeX className="h-3.5 w-3.5" />}
+                                        {soundsEnabled ? "Som On" : "Som Off"}
+                                    </Button>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        playClickSound();
+                                        setIsSidebarOpen(false);
+                                        handleLogout();
+                                    }}
+                                    className="w-full h-10 text-[10px] font-black uppercase tracking-wider rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <LogOut className="h-3.5 w-3.5" /> Sair da Conta
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
 
             {/* Painel Lateral de Personalização de Temas */}
             <AnimatePresence>

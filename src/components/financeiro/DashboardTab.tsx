@@ -308,6 +308,7 @@ const DashboardTab = ({
     const COLORS = ['#14b8a6', '#f97316', '#06b6d4', '#8b5cf6', '#ec4899', '#eab308'];
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (typeof window !== "undefined" && window.innerWidth < 1024) return;
         const cards = document.getElementsByClassName("spotlight-card");
         for (const card of cards) {
             const rect = (card as HTMLElement).getBoundingClientRect();
