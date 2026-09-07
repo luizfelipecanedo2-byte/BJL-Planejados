@@ -261,7 +261,7 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/orcamento?client=${encodeURIComponent(sale.clientName)}&saleId=${sale.id}&phone=${encodeURIComponent(sale.clientPhone || '')}&project=${encodeURIComponent(sale.product || '')}&new=true`);
+                              navigate(`/admin/orcamento?client=${encodeURIComponent(sale.clientName)}&saleId=${sale.id}&phone=${encodeURIComponent(sale.clientPhone || '')}&project=${encodeURIComponent(sale.product || '')}&new=true`);
                             }}
                             className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 transition-all hover:scale-110 active:scale-95 flex items-center gap-1"
                             title="Criar / Abrir Orçamento no Sistema"

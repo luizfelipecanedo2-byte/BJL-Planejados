@@ -142,6 +142,10 @@ const App = () => {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/admin" />} />
+            <Route path="/orcamento" element={<Navigate to="/admin/orcamento" replace />} />
+            <Route path="/crm" element={<Navigate to="/admin" replace />} />
+            <Route path="/clientes" element={<Navigate to="/admin/clientes" replace />} />
+            <Route path="/financeiro" element={<Navigate to="/admin/financeiro" replace />} />
 
             <Route path="/admin" element={session ? <MainLayout /> : <Navigate to="/login" />}>
               <Route index element={isAdmin ? <Index /> : <Navigate to="estoque" />} />

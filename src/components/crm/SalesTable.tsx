@@ -119,7 +119,7 @@ const SalesTable = ({
                     size="icon"
                     className="h-10 w-10 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-xl transition-all"
                     onClick={() => {
-                      navigate(`/orcamento?client=${encodeURIComponent(sale.clientName)}&saleId=${sale.id}&phone=${encodeURIComponent(sale.clientPhone || '')}&project=${encodeURIComponent(sale.product || '')}&new=true`);
+                      navigate(`/admin/orcamento?client=${encodeURIComponent(sale.clientName)}&saleId=${sale.id}&phone=${encodeURIComponent(sale.clientPhone || '')}&project=${encodeURIComponent(sale.product || '')}&new=true`);
                     }}
                     title="Fazer Orçamento no Sistema"
                   >
@@ -321,7 +321,7 @@ const SalesTable = ({
                         size="icon"
                         className="h-9 w-9 text-amber-400 hover:bg-amber-500/10 rounded-xl transition-all"
                         onClick={() => {
-                          navigate(`/orcamento?client=${encodeURIComponent(sale.clientName)}&saleId=${sale.id}&phone=${encodeURIComponent(sale.clientPhone || '')}&project=${encodeURIComponent(sale.product || '')}&new=true`);
+                          navigate(`/admin/orcamento?client=${encodeURIComponent(sale.clientName)}&saleId=${sale.id}&phone=${encodeURIComponent(sale.clientPhone || '')}&project=${encodeURIComponent(sale.product || '')}&new=true`);
                         }}
                         title="Fazer Orçamento no Sistema"
                       >

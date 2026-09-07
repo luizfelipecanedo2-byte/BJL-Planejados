@@ -138,7 +138,7 @@ const SaleFormDialog = ({
             <div className="bg-emerald-500/10 border border-emerald-500/20 p-3.5 rounded-2xl flex items-center justify-between text-xs text-emerald-400">
               <span className="font-medium">Esta venda está vinculada a um orçamento ativo.</span>
               <a 
-                href="/orcamento" 
+                href="/admin/orcamento" 
                 className="underline hover:text-emerald-300 font-black uppercase tracking-wider text-[10px]"
                 onClick={() => onOpenChange(false)}
               >
