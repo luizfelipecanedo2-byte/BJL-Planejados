@@ -23,7 +23,11 @@ import {
     Volume2,
     VolumeX,
     AlertTriangle,
-    Clock
+    Clock,
+    ShieldCheck,
+    Zap,
+    Sparkles,
+    Plus
 } from "lucide-react";
 
 
@@ -251,7 +255,7 @@ const MainLayout = () => {
             </div>
 
             <aside className={cn(
-                "hidden lg:flex fixed lg:static top-6 bottom-6 left-6 z-50 glass-card border border-white/10 shadow-2xl flex-col transition-all duration-500 rounded-3xl m-4 lg:mr-0 lg:my-6 overflow-hidden",
+                "hidden lg:flex fixed lg:static top-6 bottom-6 left-6 z-50 glass-panel-pro shadow-2xl flex-col transition-all duration-500 rounded-3xl m-4 lg:mr-0 lg:my-6 overflow-hidden",
                 isSidebarCollapsed ? "w-20" : "w-72"
             )}>
                 <div className={cn("h-28 flex items-center justify-between shrink-0 relative overflow-hidden group", isSidebarCollapsed ? "px-2" : "px-6")}>
@@ -395,7 +399,7 @@ const MainLayout = () => {
             </aside>
 
             <div className="flex-1 flex flex-col min-w-0 h-[100dvh] lg:h-screen relative z-10">
-                <header className="h-20 glass-card backdrop-blur-2xl flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 border-b border-white/5 shadow-2xl">
+                <header className="h-20 glass-panel-pro backdrop-blur-2xl flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 border-b border-white/[0.08] shadow-2xl">
                     <div className="flex items-center gap-4 md:gap-8">
                         <div className="lg:hidden flex items-center gap-3">
                             <img src={settings?.logo_url || "/logo-bjl.png"} alt={settings?.name || "BJL"} className="h-10 w-10 object-contain rounded-full border border-primary/30" />
@@ -405,9 +409,14 @@ const MainLayout = () => {
                             </div>
                         </div>
 
-                        <div className="hidden lg:flex flex-col">
-                             <h2 className="text-sm font-bold text-primary/60 uppercase tracking-[0.3em] text-luxury">Sistema de Gestão Premium</h2>
-                             <div className="h-0.5 w-12 bg-primary/40 mt-1 rounded-full" />
+                        <div className="hidden lg:flex items-center gap-4">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-semibold">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                </span>
+                                <span>Sistema Online • Gateway Seguro</span>
+                            </div>
                         </div>
 
                         <Magnetic range={25} strength={0.2}>
@@ -770,6 +779,35 @@ const MainLayout = () => {
                     </>
                 )}
             </AnimatePresence>
+
+            {/* High-Tech Floating Quick Actions Dock */}
+            <div className="fixed bottom-6 right-6 z-40 hidden sm:flex items-center gap-2 p-1.5 glass-panel-pro rounded-2xl shadow-2xl border border-white/10">
+                <Link
+                    to="/admin/orcamento"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-semibold transition-all hover:scale-105"
+                >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Orçamento</span>
+                </Link>
+                <Link
+                    to="/admin/tarefas"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-foreground border border-white/5 text-xs font-semibold transition-all hover:scale-105"
+                >
+                    <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>Tarefa</span>
+                </Link>
+                <button
+                    onClick={() => {
+                        const e = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, metaKey: true, bubbles: true });
+                        document.dispatchEvent(e);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-muted-foreground text-xs font-medium transition-all"
+                    title="Buscar (Ctrl+K)"
+                >
+                    <Search className="h-3.5 w-3.5" />
+                    <span className="text-[10px] font-mono opacity-70">⌘K</span>
+                </button>
+            </div>
         </div>
     );
 };

@@ -61,6 +61,44 @@ interface Task {
   due_date?: string;
 }
 
+const MiniSparkline = ({ color = "#f59e0b", trend = "up" }: { color?: string; trend?: "up" | "down" | "neutral" }) => {
+  const points = trend === "up" 
+    ? "0,25 15,22 30,24 45,18 60,20 75,12 90,14 105,6 120,4"
+    : trend === "down"
+    ? "0,6 15,8 30,14 45,12 60,18 75,16 90,22 105,20 120,26"
+    : "0,16 15,14 30,18 45,15 60,16 75,14 90,17 105,15 120,16";
+
+  const areaPoints = trend === "up"
+    ? "0,25 15,22 30,24 45,18 60,20 75,12 90,14 105,6 120,4 120,30 0,30"
+    : trend === "down"
+    ? "0,6 15,8 30,14 45,12 60,18 75,16 90,22 105,20 120,26 120,30 0,30"
+    : "0,16 15,14 30,18 45,15 60,16 75,14 90,17 105,15 120,16 120,30 0,30";
+
+  const gradId = `spark-grad-${color.replace(/[^a-zA-Z0-9]/g, '')}`;
+
+  return (
+    <div className="w-full h-7 overflow-hidden mt-1 select-none pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity duration-300">
+      <svg viewBox="0 0 120 30" className="w-full h-full" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        <polygon points={areaPoints} fill={`url(#${gradId})`} />
+        <polyline
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={points}
+        />
+      </svg>
+    </div>
+  );
+};
+
 interface DashboardProps {
   sales: Sale[];
 }
@@ -357,36 +395,48 @@ const Dashboard = ({ sales }: DashboardProps) => {
 
     const cards = [
       {
-        title: "Valor Total de Orçamentos",
+        title: "Valor Total Orçado",
         value: totalBudget,
         isCurrency: true,
         icon: DollarSign,
         color: "text-amber-500",
+        hexColor: "#f59e0b",
         bgColor: "bg-amber-500/10",
+        trend: "up" as const,
+        trendBadge: "+12.4%",
       },
       {
-        title: "Receita (Fechado + Pós-Venda)",
+        title: "Receita (Fechado + Pós)",
         value: totalRevenue,
         isCurrency: true,
         icon: Target,
         color: "text-primary",
+        hexColor: "#eab308",
         bgColor: "bg-primary/10",
+        trend: "up" as const,
+        trendBadge: "+18.2%",
       },
       {
-        title: "Dinheiro na Mesa (Perdidos)",
+        title: "Perdidos / Congelados",
         value: lostSalesValue,
         isCurrency: true,
         icon: TrendingDown,
         color: "text-rose-500",
+        hexColor: "#f43f5e",
         bgColor: "bg-rose-500/10",
+        trend: "down" as const,
+        trendBadge: "-3.5%",
       },
       {
-        title: "Pipeline Atual (Andamento)",
+        title: "Pipeline em Andamento",
         value: pipelineValue,
         isCurrency: true,
         icon: TrendingUp,
         color: "text-amber-400",
+        hexColor: "#fbbf24",
         bgColor: "bg-amber-400/10",
+        trend: "up" as const,
+        trendBadge: "Em fluxo",
       },
       {
         title: "Ticket Médio (Fechadas)",
@@ -394,38 +444,43 @@ const Dashboard = ({ sales }: DashboardProps) => {
         isCurrency: true,
         icon: Receipt,
         color: "text-primary",
+        hexColor: "#eab308",
         bgColor: "bg-primary/10",
+        trend: "up" as const,
+        trendBadge: "+9.1%",
       },
       {
-        title: "Ticket Médio (Geral)",
+        title: "Ticket Médio Geral",
         value: avgTicketAll,
         isCurrency: true,
         icon: Receipt,
         color: "text-amber-500",
+        hexColor: "#f59e0b",
         bgColor: "bg-amber-500/10",
+        trend: "neutral" as const,
+        trendBadge: "Estável",
       },
       {
-        title: "Conversão Geral",
+        title: "Taxa de Conversão",
         value: conversionRate,
         isPercentage: true,
         label: `${numClosed}/${numBudgets}`,
         icon: BarChart3,
         color: "text-amber-300",
+        hexColor: "#fde047",
         bgColor: "bg-amber-300/10",
-      },
-      {
-        title: "Leads Perdidos",
-        value: numLost,
-        icon: XCircle,
-        color: "text-rose-500",
-        bgColor: "bg-rose-500/10",
+        trend: "up" as const,
+        trendBadge: "Meta 25%",
       },
       {
         title: "Tarefas Pendentes",
         value: totalPendingTasks,
         icon: CheckSquare,
         color: "text-emerald-500",
+        hexColor: "#10b981",
         bgColor: "bg-emerald-500/10",
+        trend: "neutral" as const,
+        trendBadge: "Em dia",
         isTask: true,
       }
     ];
@@ -495,26 +550,42 @@ const Dashboard = ({ sales }: DashboardProps) => {
           </div>
         </PremiumCard>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-5">
           {cards.map((card, idx) => (
             <PremiumCard
               key={card.title}
               delay={idx * 0.04}
-              className="hover:border-primary/40 rounded-[2rem] luxury-shadow"
+              className="glass-panel-pro rounded-[2rem] hover:border-primary/40 transition-all duration-300 group overflow-hidden relative"
             >
-              <div className="relative w-full h-full">
-                <div className={`absolute -right-6 -bottom-6 opacity-[0.03] group-hover:opacity-[0.08] group-hover:scale-150 transition-all duration-700 ${card.color}`}>
-                  <card.icon size={100} />
+              <div className="relative w-full h-full flex flex-col justify-between">
+                <div className={`absolute -right-6 -bottom-6 opacity-[0.03] group-hover:opacity-[0.08] group-hover:scale-125 transition-all duration-700 ${card.color}`}>
+                  <card.icon size={90} />
                 </div>
-                <div className="flex flex-col gap-4 relative z-10">
-                  <div className={`p-3 rounded-2xl ${card.bgColor} shadow-xl w-fit group-hover:scale-110 transition-transform duration-500`}>
-                    <card.icon className={`h-6 w-6 ${card.color}`} />
+                
+                <div className="flex flex-col gap-3 relative z-10">
+                  <div className="flex items-center justify-between">
+                    <div className={`p-2.5 rounded-xl ${card.bgColor} w-fit group-hover:scale-110 transition-transform duration-300`}>
+                      <card.icon className={`h-5 w-5 ${card.color}`} />
+                    </div>
+                    {card.trendBadge && (
+                      <span className={cn(
+                        "text-[9px] font-semibold px-2 py-0.5 rounded-full border tracking-wide",
+                        card.trend === "up" 
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                          : card.trend === "down"
+                          ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                          : "bg-white/5 text-muted-foreground border-white/10"
+                      )}>
+                        {card.trendBadge}
+                      </span>
+                    )}
                   </div>
+
                   <div className="space-y-1">
-                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.2em] opacity-60 text-luxury">
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider opacity-75">
                       {card.title}
                     </p>
-                    <div className={cn("text-3xl font-black tracking-tighter text-luxury", card.color)}>
+                    <div className={cn("text-2xl md:text-3xl font-black metric-value tracking-tight", card.color)}>
                       <AnimatedCounter 
                         value={card.value} 
                         formatter={(v) => {
@@ -526,6 +597,8 @@ const Dashboard = ({ sales }: DashboardProps) => {
                     </div>
                   </div>
                 </div>
+
+                <MiniSparkline color={card.hexColor} trend={card.trend} />
               </div>
             </PremiumCard>
           ))}

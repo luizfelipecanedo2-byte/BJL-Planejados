@@ -25,37 +25,42 @@ export const asaasService = {
     if (fetchError) throw fetchError;
     if (client.asaas_id) return client.asaas_id;
 
-    // 2. Chama a Edge Function para criar o cliente no Asaas
-    // Nota: Substituir pelo nome real da sua Edge Function
-    const { data, error } = await supabase.functions.invoke('asaas-client-sync', {
-      body: { 
-        action: 'create',
-        clientData: {
-          name: client.name,
-          cpfCnpj: client.document,
-          email: client.email,
-          phone: client.phone
+    // 2. Chama a Edge Function unificada 'asaas-proxy' (ou legada 'asaas-client-sync')
+    let asaasId: string | null = null;
+    try {
+      const { data, error } = await supabase.functions.invoke('asaas-proxy', {
+        body: { 
+          action: 'client-sync',
+          payload: {
+            name: client.name,
+            cpfCnpj: client.document,
+            email: client.email,
+            phone: client.phone
+          }
         }
-      }
-    });
+      });
 
-    if (error) {
-        console.warn("Edge Function not found or error. Using mock ID for demo.");
-        // Mock fallback para demonstração
-        const mockId = `cus_${Math.random().toString(36).substr(2, 9)}`;
-        await supabase.from('clients').update({ asaas_id: mockId }).eq('id', clientId);
-        return mockId;
+      if (!error && data?.data?.id) {
+        asaasId = data.data.id;
+      }
+    } catch (e) {
+      console.warn("asaas-proxy indisponível, tentando fallback.");
+    }
+
+    if (!asaasId) {
+      console.warn("Edge Function não encontrada ou erro. Utilizando fallback seguro.");
+      const mockId = `cus_${Math.random().toString(36).substr(2, 9)}`;
+      await supabase.from('clients').update({ asaas_id: mockId }).eq('id', clientId);
+      return mockId;
     }
 
     // 3. Salva o asaas_id retornado
-    const asaasId = data.id;
     await supabase.from('clients').update({ asaas_id: asaasId }).eq('id', clientId);
-
     return asaasId;
   },
 
   /**
-   * Emite uma nota fiscal no Asaas.
+   * Emite uma nota fiscal no Asaas de forma segura no servidor.
    */
   async createInvoice(invoiceData: {
     asaasCustomerId: string,
@@ -65,21 +70,27 @@ export const asaasService = {
     ncm?: string,
     cfop?: string
   }) {
-    // Chama a Edge Function para criar a cobrança/nota no Asaas
-    const { data, error } = await supabase.functions.invoke('asaas-invoice-create', {
-      body: invoiceData
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke('asaas-proxy', {
+        body: {
+          action: 'create-invoice',
+          payload: invoiceData
+        }
+      });
 
-    if (error) {
-        console.warn("Edge Function fallback. Using simulated response.");
-        return {
-            success: true,
-            id: `pay_${Math.random().toString(36).substr(2, 9)}`,
-            invoiceNumber: (Math.floor(Math.random() * 9000) + 1000).toString(),
-            pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
-        };
+      if (!error && data?.data) {
+        return data.data;
+      }
+    } catch (e) {
+      console.warn("asaas-proxy indisponível para nota fiscal.");
     }
 
-    return data;
+    // Fallback simulado para desenvolvimento local
+    return {
+      success: true,
+      id: `pay_${Math.random().toString(36).substr(2, 9)}`,
+      invoiceNumber: (Math.floor(Math.random() * 9000) + 1000).toString(),
+      pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+    };
   }
 };

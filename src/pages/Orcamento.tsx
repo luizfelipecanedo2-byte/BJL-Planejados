@@ -16,9 +16,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BudgetPrintView from "@/components/orcamento/BudgetPrintView";
-import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { estimateProjectMaterials, GeminiEstimationResult } from "@/services/geminiService";
-import { Sparkles, Key, UploadCloud, FileImage, Brain, Hammer, Hourglass, Check } from "lucide-react";
+import { Sparkles, Key, UploadCloud, FileImage, Brain, Hammer, Hourglass, Check, ShieldCheck } from "lucide-react";
 
 const analysisSteps = [
     "Analisando o desenho do projeto...",
@@ -187,10 +186,6 @@ const Orcamento = () => {
     };
 
     const handleAnalyzeProject = async () => {
-        if (!geminiKey) {
-            toast.error("Por favor, informe a Chave API do Gemini.");
-            return;
-        }
         if (!selectedImage) {
             toast.error("Por favor, selecione uma imagem do projeto.");
             return;
@@ -207,16 +202,16 @@ const Orcamento = () => {
                 name: m.name,
                 category: m.category,
                 unit: m.unit,
-                unit_price: m.unit_price
+                price: m.unit_price
             }));
 
-            const result = await estimateProjectMaterials(geminiKey, selectedImage, catalog);
+            const result = await estimateProjectMaterials(geminiKey || undefined, selectedImage, catalog);
             setAiResult(result);
             toast.success("Análise concluída com sucesso!");
         } catch (err: any) {
             console.error("Gemini Analysis Error:", err);
             setAiError(err.message || "Ocorreu um erro ao analisar o projeto.");
-            toast.error("Erro na análise da IA.");
+            toast.error(err.message || "Erro na análise da IA.");
         } finally {
             setIsAnalyzing(false);
         }
@@ -766,16 +761,46 @@ const Orcamento = () => {
                                         </div>
                                     </div>
 
-                                    <div className="p-6 bg-primary/10 rounded-3xl space-y-3 border border-primary/10 mt-auto">
-                                        <div className="flex justify-between text-[10px] font-black uppercase opacity-60">
-                                            <span>Base (Mat + Operac)</span>
-                                            <span>{formatCurrency(calculateTotals.totalCostPower)}</span>
+                                    <div className="p-5 glass-panel-pro rounded-3xl space-y-3 border border-white/10 mt-auto">
+                                        <div className="flex justify-between text-[10px] font-semibold text-muted-foreground">
+                                            <span>Custo Base (Mat + Operac)</span>
+                                            <span className="font-mono text-foreground font-bold">{formatCurrency(calculateTotals.totalCostPower)}</span>
                                         </div>
-                                        <div className="flex justify-between text-[10px] font-black uppercase opacity-60">
-                                            <span>À Vista</span>
-                                            <span>{formatCurrency(calculateTotals.baseValue)}</span>
+                                        <div className="flex justify-between text-[10px] font-semibold text-muted-foreground">
+                                            <span>Valor À Vista Sugerido</span>
+                                            <span className="font-mono text-primary font-bold">{formatCurrency(calculateTotals.baseValue)}</span>
                                         </div>
-                                </div>
+
+                                        {/* Régua de Lucro e Margem */}
+                                        <div className="pt-2 border-t border-white/10 space-y-1.5">
+                                            <div className="flex justify-between items-center text-[10px]">
+                                                <span className="font-bold uppercase tracking-wider text-[9px] text-muted-foreground">Margem Comercial</span>
+                                                <span className={cn(
+                                                    "font-bold px-2 py-0.5 rounded-full text-[9px] border",
+                                                    formData.profit_margin >= 25 
+                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                                                        : formData.profit_margin >= 15
+                                                        ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                                        : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                                                )}>
+                                                    {formData.profit_margin}% {formData.profit_margin >= 25 ? '• Excelente' : formData.profit_margin >= 15 ? '• Saudável' : '• Alerta'}
+                                                </span>
+                                            </div>
+                                            <div className="w-full bg-secondary h-2 rounded-full overflow-hidden p-[1px]">
+                                                <div 
+                                                    className={cn(
+                                                        "h-full rounded-full transition-all duration-500",
+                                                        formData.profit_margin >= 25 
+                                                            ? "bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_8px_rgba(16,185,129,0.5)]" 
+                                                            : formData.profit_margin >= 15
+                                                            ? "bg-gradient-to-r from-amber-500 to-yellow-400 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                                                            : "bg-gradient-to-r from-rose-500 to-red-400 shadow-[0_0_8px_rgba(244,63,94,0.5)]"
+                                                    )}
+                                                    style={{ width: `${Math.min(Math.max((formData.profit_margin / 40) * 100, 5), 100)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                             </div>
 
                             <Tabs value={activeRightTab} onValueChange={setActiveRightTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
@@ -1115,33 +1140,33 @@ const Orcamento = () => {
                                                     </p>
                                                 </div>
 
-                                                {!geminiKey ? (
-                                                    <Card className="border border-amber-500/20 bg-amber-500/5 rounded-3xl p-6 space-y-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <Key className="h-5 w-5 text-amber-500" />
-                                                            <span className="text-xs font-black uppercase tracking-wider text-amber-500">Chave da API do Gemini Necessária</span>
+                                                {/* Gateway Seguro Supabase Status */}
+                                                <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+                                                        <div>
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary">Gateway Seguro Ativo (Edge Function)</p>
+                                                            <p className="text-[9px] font-medium text-slate-500">Chaves de API protegidas no servidor Supabase sem exposição no navegador.</p>
                                                         </div>
-                                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-relaxed">
-                                                            O assistente de IA usa a API do Gemini. Para começar, cole sua chave de API abaixo. Ela será armazenada localmente e com total segurança no seu próprio navegador.
-                                                        </p>
-                                                        <div className="flex gap-2">
+                                                    </div>
+                                                    <details className="text-[10px] font-bold text-slate-500 cursor-pointer">
+                                                        <summary className="hover:text-primary transition-colors">Chave local (opcional)</summary>
+                                                        <div className="mt-3 p-3 bg-white dark:bg-black/40 rounded-xl border border-border flex gap-2">
                                                             <Input 
                                                                 type="password" 
                                                                 value={geminiKey}
                                                                 onChange={e => setGeminiKey(e.target.value)}
-                                                                placeholder="AIzaSy..." 
-                                                                className="h-12 bg-white/5 border-white/10 rounded-xl font-bold"
+                                                                placeholder="Chave local..." 
+                                                                className="h-9 text-xs"
                                                             />
-                                                            <Button onClick={handleSaveGeminiKeyLocally} className="h-12 bg-amber-500 hover:bg-amber-600 text-white font-black uppercase text-[10px] tracking-widest rounded-xl px-6">
-                                                                Salvar Chave
+                                                            <Button size="sm" onClick={handleSaveGeminiKeyLocally} className="h-9 px-3 text-[10px] uppercase font-bold">
+                                                                Salvar
                                                             </Button>
                                                         </div>
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                            Não tem uma chave? <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Clique aqui para obter uma chave gratuita no Google AI Studio</a>.
-                                                        </p>
-                                                    </Card>
-                                                ) : (
-                                                    <div className="space-y-6">
+                                                    </details>
+                                                </div>
+
+                                                <div className="space-y-6">
                                                         {/* Upload Area */}
                                                         <div className="border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[2rem] p-8 flex flex-col items-center justify-center text-center bg-slate-50/50 hover:bg-slate-50 dark:bg-white/5 dark:hover:bg-white/10 transition-all relative overflow-hidden group">
                                                             <input 
@@ -1283,7 +1308,6 @@ const Orcamento = () => {
                                                             </div>
                                                         )}
                                                     </div>
-                                                )}
                                             </div>
                                         </ScrollArea>
                                     </TabsContent>
@@ -1312,91 +1336,83 @@ const Orcamento = () => {
 
             {activeTab === "orcamentos" ? (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <Card 
-                            onMouseMove={handleCardMouseMove}
-                            onMouseLeave={handleCardMouseLeave}
-                            className="spotlight-card tilt-card bg-blue-500/5 border-blue-500/20 border-l-4 border-l-blue-500 p-6 flex flex-col gap-3 shadow-xl shadow-blue-500/5 transition-all group"
-                        >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <div className="glass-panel-pro rounded-3xl p-6 flex flex-col justify-between group relative overflow-hidden">
                             <div className="flex justify-between items-start">
-                                <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500 animate-pulse">
-                                    <Calculator size={18} />
+                                <div className="p-2.5 bg-blue-500/10 rounded-2xl text-blue-400 group-hover:scale-110 transition-transform">
+                                    <Calculator size={20} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600/50 group-hover:text-blue-600 transition-colors">Em Aberto ({selectedYear})</span>
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 uppercase tracking-wider">
+                                    {selectedYear} • Em Aberto
+                                </span>
                             </div>
-                            <div>
-                                <span className="text-3xl font-black text-blue-600 tracking-tighter">
+                            <div className="mt-4">
+                                <div className="text-3xl font-black text-blue-400 metric-value tracking-tight">
                                     <AnimatedCounter 
                                         value={filteredBudgetsByYear.filter(b => b.status === "em_elaboracao").reduce((acc, curr) => acc + curr.total_value, 0)} 
                                         formatter={formatCurrency}
                                     />
-                                </span>
-                                <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Total de propostas pendentes</p>
-                            </div>
-                        </Card>
-
-                        <Card 
-                            onMouseMove={handleCardMouseMove}
-                            onMouseLeave={handleCardMouseLeave}
-                            className="spotlight-card tilt-card bg-emerald-500/5 border-emerald-500/20 border-l-4 border-l-emerald-500 p-6 flex flex-col gap-3 shadow-xl shadow-emerald-500/5 transition-all group"
-                        >
-                            <div className="flex justify-between items-start">
-                                <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500 animate-pulse">
-                                    <TrendingUp size={18} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/50 group-hover:text-emerald-600 transition-colors">Conversão ({selectedYear})</span>
+                                <p className="text-[10px] text-muted-foreground font-semibold mt-1">Total em propostas pendentes</p>
                             </div>
-                            <div>
-                                <span className="text-3xl font-black text-emerald-600 tracking-tighter">
+                        </div>
+
+                        <div className="glass-panel-pro rounded-3xl p-6 flex flex-col justify-between group relative overflow-hidden">
+                            <div className="flex justify-between items-start">
+                                <div className="p-2.5 bg-emerald-500/10 rounded-2xl text-emerald-400 group-hover:scale-110 transition-transform">
+                                    <TrendingUp size={20} />
+                                </div>
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 uppercase tracking-wider">
+                                    {selectedYear} • Conversão
+                                </span>
+                            </div>
+                            <div className="mt-4">
+                                <div className="text-3xl font-black text-emerald-400 metric-value tracking-tight">
                                     <AnimatedCounter 
                                         value={filteredBudgetsByYear.length > 0 ? (filteredBudgetsByYear.filter(b => b.status === 'aprovado').length / filteredBudgetsByYear.length) * 100 : 0} 
                                         formatter={(v) => `${v.toFixed(0)}%`}
                                     />
-                                </span>
-                                <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Taxa de fechamento global</p>
-                            </div>
-                        </Card>
-
-                        <Card 
-                            onMouseMove={handleCardMouseMove}
-                            onMouseLeave={handleCardMouseLeave}
-                            className="spotlight-card tilt-card bg-amber-500/5 border-amber-500/20 border-l-4 border-l-amber-500 p-6 flex flex-col gap-3 shadow-xl shadow-amber-500/5 transition-all group"
-                        >
-                            <div className="flex justify-between items-start">
-                                <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500 animate-pulse">
-                                    <DollarSign size={18} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-amber-600/50 group-hover:text-amber-600 transition-colors">Ticket Médio ({selectedYear})</span>
+                                <p className="text-[10px] text-muted-foreground font-semibold mt-1">Taxa de fechamento global</p>
                             </div>
-                            <div>
-                                <span className="text-3xl font-black text-amber-600 tracking-tighter">
+                        </div>
+
+                        <div className="glass-panel-pro rounded-3xl p-6 flex flex-col justify-between group relative overflow-hidden">
+                            <div className="flex justify-between items-start">
+                                <div className="p-2.5 bg-amber-500/10 rounded-2xl text-amber-400 group-hover:scale-110 transition-transform">
+                                    <DollarSign size={20} />
+                                </div>
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 uppercase tracking-wider">
+                                    {selectedYear} • Médio
+                                </span>
+                            </div>
+                            <div className="mt-4">
+                                <div className="text-3xl font-black text-amber-400 metric-value tracking-tight">
                                     <AnimatedCounter 
                                         value={filteredBudgetsByYear.length > 0 ? (filteredBudgetsByYear.reduce((acc, curr) => acc + curr.total_value, 0) / filteredBudgetsByYear.length) : 0} 
                                         formatter={formatCurrency}
                                     />
-                                </span>
-                                <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Valor médio por proposta</p>
-                            </div>
-                        </Card>
-
-                        <Card 
-                            onMouseMove={handleCardMouseMove}
-                            onMouseLeave={handleCardMouseLeave}
-                            className="spotlight-card tilt-card bg-primary/5 border-primary/20 border-l-4 border-l-primary p-6 flex flex-col gap-3 shadow-xl shadow-primary/5 transition-all group"
-                        >
-                            <div className="flex justify-between items-start">
-                                <div className="p-2 bg-primary/10 rounded-lg text-primary animate-pulse">
-                                    <Layers size={18} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-primary/50 group-hover:text-primary transition-colors">Catálogo</span>
+                                <p className="text-[10px] text-muted-foreground font-semibold mt-1">Ticket médio por proposta</p>
                             </div>
-                            <div>
-                                <span className="text-3xl font-black text-primary tracking-tighter">
-                                    <AnimatedCounter value={allMaterials.length} />
+                        </div>
+
+                        <div className="glass-panel-pro rounded-3xl p-6 flex flex-col justify-between group relative overflow-hidden">
+                            <div className="flex justify-between items-start">
+                                <div className="p-2.5 bg-primary/10 rounded-2xl text-primary group-hover:scale-110 transition-transform">
+                                    <Layers size={20} />
+                                </div>
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary uppercase tracking-wider">
+                                    Catálogo BJL
                                 </span>
-                                <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Itens cadastrados na lista</p>
                             </div>
-                        </Card>
+                            <div className="mt-4">
+                                <div className="text-3xl font-black text-primary metric-value tracking-tight">
+                                    <AnimatedCounter value={allMaterials.length} />
+                                </div>
+                                <p className="text-[10px] text-muted-foreground font-semibold mt-1">Materiais e insumos ativos</p>
+                            </div>
+                        </div>
                     </div>
 
                     <Card className="border-none shadow-2xl bg-card overflow-hidden rounded-[2.5rem]">

@@ -34,47 +34,36 @@ export async function getAsaasApiKey() {
 }
 
 /**
- * Realiza fetch direto na API do Asaas.
- * Nota: Pode haver problemas de CORS dependendo da configuração do Asaas.
- * Em produção, geralmente é recomendado usar um proxy ou Edge Function.
+ * Busca boletos DDA no Asaas de forma segura via Edge Function do Supabase.
+ * Elimina o envio de chaves secretas para proxies públicos.
  */
 export async function fetchDDABoletos(): Promise<AsaasDDABill[]> {
-    const apiKey = await getAsaasApiKey();
-    if (!apiKey) throw new Error("Chave de API do Asaas não configurada.");
-
-    // Detecta se é sandbox ou produção com base na chave (geralmente chaves de sandbox começam com $) 
-    // ou apenas tenta produção por padrão
-    const isSandbox = apiKey.startsWith('$');
-    const baseUrl = isSandbox ? 'https://sandbox.asaas.com/api/v3' : 'https://www.asaas.com/api/v3';
-
-    // Proxy to avoid CORS issues in the browser
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(baseUrl + '/bills/dda')}`;
-
+    // 1. Tenta buscar via Supabase Edge Function (Recomendado / Enterprise)
     try {
-        const response = await fetch(proxyUrl, {
-            method: 'GET',
-            headers: {
-                'access_token': apiKey,
-                'Content-Type': 'application/json'
-            }
+        const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke("asaas-proxy", {
+            body: { action: "bills-dda" }
         });
 
-        if (!response.ok) {
-            let errorMsg = "Erro ao buscar boletos no Asaas.";
-            try {
-                const errorData = await response.json();
-                errorMsg = errorData.errors?.[0]?.description || errorData.message || response.statusText;
-            } catch(e) {
-                errorMsg = response.statusText || "Erro desconhecido HTTP " + response.status;
-            }
-            console.error("Erro Asaas DDA:", errorMsg);
-            throw new Error(errorMsg);
+        if (!edgeErr && edgeRes?.data) {
+            return edgeRes.data as AsaasDDABill[];
         }
 
-        const result = await response.json();
-        return result.data || [];
-    } catch (error: any) {
-        console.error("Fetch DDA error completo:", error);
-        throw error;
+        if (edgeErr) {
+            console.warn("Edge Function asaas-proxy não respondeu:", edgeErr.message);
+        }
+    } catch (fnErr) {
+        console.warn("Falha ao invocar Edge Function asaas-proxy:", fnErr);
     }
+
+    // 2. Fallback seguro: Verifica se há chave configurada no banco
+    const apiKey = await getAsaasApiKey();
+    if (!apiKey || apiKey === 'SUA_CHAVE_AQUI') {
+        throw new Error("Integração Asaas necessária: Implante a Edge Function 'asaas-proxy' ou configure a chave na tabela api_settings.");
+    }
+
+    // Caso a Edge function ainda não esteja implantada, avisa o usuário com segurança
+    throw new Error(
+        "Para sua segurança bancária, a consulta DDA direta pelo navegador foi desativada. " +
+        "Implante a Edge Function 'asaas-proxy' no Supabase conforme as instruções em supabase/README_EDGE_FUNCTIONS.md."
+    );
 }

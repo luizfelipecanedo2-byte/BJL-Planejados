@@ -110,11 +110,7 @@ const DRETab = ({
     };
 
     const handleAnalyzeFinance = async () => {
-        const apiKey = localStorage.getItem("bjl_gemini_api_key");
-        if (!apiKey) {
-            toast.error("Por favor, configure sua chave de API do Gemini na página de Configurações para usar o diagnóstico de IA.");
-            return;
-        }
+        const apiKey = localStorage.getItem("bjl_gemini_api_key") || undefined;
 
         try {
             setIsAnalyzing(true);

@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase";
+
 export interface EstimatedItem {
   id: string;
   qty: number;
@@ -19,16 +21,54 @@ export interface CatalogMaterial {
 
 /**
  * Sends the project image and the materials catalog to Gemini 2.5 Flash to estimate materials.
+ * Tenta primeiro via Supabase Edge Function (segurança máxima sem expor chave).
+ * Caso a Edge Function não esteja implantada, recorre ao fallback local.
  */
 export async function estimateProjectMaterials(
-  apiKey: string,
-  base64DataUrl: string,
-  catalog: CatalogMaterial[]
+  apiKey?: string,
+  base64DataUrl?: string,
+  catalog: CatalogMaterial[] = []
 ): Promise<GeminiEstimationResult> {
-  // Extract base64 and mime type from data URL
-  const match = base64DataUrl.match(/^data:(image\/[a-zA-Z0-9.-]+);base64,(.+)$/);
-  if (!match) {
+  // Trata chamada com 2 ou 3 parâmetros
+  let resolvedImage = base64DataUrl;
+  let resolvedKey = apiKey;
+
+  if (!base64DataUrl && apiKey && apiKey.startsWith("data:image")) {
+    resolvedImage = apiKey;
+    resolvedKey = localStorage.getItem("bjl_gemini_api_key") || undefined;
+  }
+
+  if (!resolvedImage) {
     throw new Error("Formato de imagem inválido. Certifique-se de que é uma imagem válida.");
+  }
+
+  // 1. Tenta executar via Edge Function no servidor Supabase (Recomendado / Enterprise)
+  try {
+    const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke("gemini-proxy", {
+      body: {
+        action: "estimate-materials",
+        payload: {
+          base64DataUrl: resolvedImage,
+          catalog
+        }
+      }
+    });
+
+    if (!edgeErr && edgeRes?.data) {
+      return edgeRes.data as GeminiEstimationResult;
+    }
+
+    if (edgeErr) {
+      console.warn("Edge Function gemini-proxy indisponível ou em configuração:", edgeErr.message);
+    }
+  } catch (fnErr) {
+    console.warn("Falha ao invocar Edge Function gemini-proxy. Tentando fallback local.", fnErr);
+  }
+
+  // 2. Fallback: Chamada direta com a chave local se disponível
+  const activeKey = resolvedKey || localStorage.getItem("bjl_gemini_api_key");
+  if (!activeKey) {
+    throw new Error("Configuração de IA necessária: Ative a Edge Function 'gemini-proxy' no Supabase ou informe a chave do Gemini nas Configurações.");
   }
   
   const mimeType = match[1];
@@ -152,7 +192,7 @@ export interface GeminiFinanceAnalysis {
 }
 
 export async function analyzeFinancialMetrics(
-  apiKey: string,
+  apiKey: string | undefined,
   year: string,
   dreData: {
     grossRevenue: number;
@@ -165,6 +205,32 @@ export async function analyzeFinancialMetrics(
   },
   detailedExpenses: any[]
 ): Promise<GeminiFinanceAnalysis> {
+  // 1. Tenta executar via Edge Function no servidor Supabase
+  try {
+    const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke("gemini-proxy", {
+      body: {
+        action: "analyze-finance",
+        payload: { year, dreData, detailedExpenses }
+      }
+    });
+
+    if (!edgeErr && edgeRes?.data) {
+      return edgeRes.data as GeminiFinanceAnalysis;
+    }
+
+    if (edgeErr) {
+      console.warn("Edge Function gemini-proxy indisponível para finanças:", edgeErr.message);
+    }
+  } catch (fnErr) {
+    console.warn("Falha ao invocar Edge Function gemini-proxy no DRE:", fnErr);
+  }
+
+  // 2. Fallback: Chamada direta com a chave local se disponível
+  const activeKey = apiKey || localStorage.getItem("bjl_gemini_api_key");
+  if (!activeKey) {
+    throw new Error("Chave de API do Gemini não encontrada. Configure nos Secrets do Supabase (Edge Function) ou na página de Configurações.");
+  }
+
   const financePrompt = `Analise os dados financeiros da BJL Planejados para o ano de ${year}:
 Resumo Executivo DRE:
 - Receita Bruta: ${dreData.grossRevenue}
@@ -185,7 +251,7 @@ Seus conselhos devem ser práticos, profissionais, elegantes e direcionados espe
 Retorne sua resposta estritamente no formato JSON especificado.`;
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKey}`,
     {
       method: "POST",
       headers: {

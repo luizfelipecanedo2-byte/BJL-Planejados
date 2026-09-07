@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSales } from "@/hooks/useSales";
 import { Sale, STATUS_LABELS, CHANNEL_LABELS, TEMPERATURE_LABELS } from "@/types/sale";
 import { formatCurrency } from "@/lib/salesUtils";
+import { cn } from "@/lib/utils";
 import Dashboard from "@/components/crm/Dashboard";
 import SalesTable from "@/components/crm/SalesTable";
 import KanbanBoard from "@/components/crm/KanbanBoard";
@@ -17,12 +18,34 @@ import {
   Plus,
   TrendingUp,
   Printer,
+  Sparkles,
+  Flame,
+  MessageSquare,
+  CheckCircle2
 } from "lucide-react";
 
 const Index = () => {
   const { sales, addSale, updateSale, deleteSale, updateStatus } = useSales();
   const [formOpen, setFormOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [activeFilter, setActiveFilter] = useState<"all" | "hot" | "negotiation" | "closed">("all");
+
+  const hotCount = useMemo(() => sales.filter(s => s.temperature === "alta" || s.status === "visita" || s.status === "projeto").length, [sales]);
+  const negotiationCount = useMemo(() => sales.filter(s => s.status === "negociacao").length, [sales]);
+  const closedCount = useMemo(() => sales.filter(s => s.status === "fechado" || s.status === "pos_venda").length, [sales]);
+
+  const filteredSales = useMemo(() => {
+    if (activeFilter === "hot") {
+      return sales.filter(s => s.temperature === "alta" || s.status === "visita" || s.status === "projeto");
+    }
+    if (activeFilter === "negotiation") {
+      return sales.filter(s => s.status === "negociacao");
+    }
+    if (activeFilter === "closed") {
+      return sales.filter(s => s.status === "fechado" || s.status === "pos_venda");
+    }
+    return sales;
+  }, [sales, activeFilter]);
 
   const handlePrintSalesReport = () => {
     const printWindow = window.open("", "_blank");
@@ -456,44 +479,105 @@ const Index = () => {
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="space-y-1">
-          <h2 className="text-5xl font-['Cinzel'] font-bold text-luxury tracking-wider shimmer-gold text-glow uppercase">Vendas</h2>
           <div className="flex items-center gap-2">
-            <div className="h-1 w-12 bg-primary/60 rounded-full" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary/60">Gestão de Negociações Premium</p>
+            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary/70">CRM Comercial</span>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+              Ativo
+            </span>
           </div>
+          <h2 className="text-4xl md:text-5xl font-['Cinzel'] font-bold text-luxury tracking-wider shimmer-gold text-glow uppercase">Vendas</h2>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <Button 
             onClick={handlePrintSalesReport} 
             variant="outline" 
-            className="gap-2.5 h-12 px-6 border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl transition-all hover:scale-105 duration-500 w-full sm:w-auto"
+            className="gap-2 h-11 px-5 border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl transition-all hover:scale-105 duration-300 w-full sm:w-auto font-semibold text-xs"
           >
-            <Printer className="h-5 w-5 text-amber-500" />
-            <span className="text-luxury font-bold text-white">Imprimir Relatório</span>
+            <Printer className="h-4 w-4 text-amber-500" />
+            <span>Imprimir Relatório</span>
           </Button>
-          <MagicButton onClick={handleNewSale} className="gap-2.5 h-12 px-8 shadow-2xl shadow-primary/20 hover:scale-105 transition-transform duration-500 rounded-2xl w-full sm:w-auto">
-            <Plus className="h-5 w-5" />
-            <span className="text-luxury font-bold">Nova Venda</span>
+          <MagicButton onClick={handleNewSale} className="gap-2 h-11 px-6 shadow-xl shadow-primary/20 hover:scale-105 transition-transform duration-300 rounded-2xl w-full sm:w-auto font-bold text-xs">
+            <Plus className="h-4 w-4" />
+            <span>Nova Venda</span>
           </MagicButton>
         </div>
       </div>
 
-      <Tabs defaultValue="dashboard" className="space-y-8 w-full">
-        <div className="flex justify-start overflow-x-auto touch-pan-x no-scrollbar max-w-full pb-1">
-          <TabsList className="bg-white/5 backdrop-blur-2xl border border-white/5 p-1.5 rounded-[2rem] h-auto shadow-2xl inline-flex luxury-shadow min-w-max">
-            <TabsTrigger value="dashboard" className="gap-2 rounded-[1.5rem] px-5 sm:px-8 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all duration-500 font-bold text-luxury text-xs sm:text-sm">
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="table" className="gap-2 rounded-[1.5rem] px-5 sm:px-8 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all duration-500 font-bold text-luxury text-xs sm:text-sm">
-              <Table2 className="h-4 w-4" />
-              Tabela
-            </TabsTrigger>
-            <TabsTrigger value="kanban" className="gap-2 rounded-[1.5rem] px-5 sm:px-8 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all duration-500 font-bold text-luxury text-xs sm:text-sm">
-              <Columns3 className="h-4 w-4" />
-              Kanban
-            </TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="dashboard" className="space-y-6 w-full">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex justify-start overflow-x-auto touch-pan-x no-scrollbar max-w-full pb-1">
+            <TabsList className="glass-panel-pro p-1.5 rounded-2xl h-auto shadow-xl inline-flex min-w-max">
+              <TabsTrigger value="dashboard" className="gap-2 rounded-xl px-5 sm:px-7 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold text-xs transition-all duration-300">
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </TabsTrigger>
+              <TabsTrigger value="table" className="gap-2 rounded-xl px-5 sm:px-7 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold text-xs transition-all duration-300">
+                <Table2 className="h-4 w-4" />
+                Tabela
+              </TabsTrigger>
+              <TabsTrigger value="kanban" className="gap-2 rounded-xl px-5 sm:px-7 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold text-xs transition-all duration-300">
+                <Columns3 className="h-4 w-4" />
+                Kanban
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          {/* High-Tech Pill Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            <button
+              onClick={() => setActiveFilter("all")}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-semibold pill-filter-item border flex items-center gap-1.5 shrink-0 transition-all",
+                activeFilter === "all"
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-white/5 text-muted-foreground border-white/5 hover:border-white/20 hover:text-foreground"
+              )}
+            >
+              <span>Todos</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/20 font-bold">{sales.length}</span>
+            </button>
+            <button
+              onClick={() => setActiveFilter("hot")}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-semibold pill-filter-item border flex items-center gap-1.5 shrink-0 transition-all",
+                activeFilter === "hot"
+                  ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                  : "bg-white/5 text-muted-foreground border-white/5 hover:border-amber-500/30 hover:text-amber-400"
+              )}
+            >
+              <Flame className="h-3 w-3" />
+              <span>Quentes</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/20 font-bold">{hotCount}</span>
+            </button>
+            <button
+              onClick={() => setActiveFilter("negotiation")}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-semibold pill-filter-item border flex items-center gap-1.5 shrink-0 transition-all",
+                activeFilter === "negotiation"
+                  ? "bg-purple-600 text-white border-purple-600 shadow-sm"
+                  : "bg-white/5 text-muted-foreground border-white/5 hover:border-purple-500/30 hover:text-purple-400"
+              )}
+            >
+              <MessageSquare className="h-3 w-3" />
+              <span>Negociação</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/20 font-bold">{negotiationCount}</span>
+            </button>
+            <button
+              onClick={() => setActiveFilter("closed")}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-semibold pill-filter-item border flex items-center gap-1.5 shrink-0 transition-all",
+                activeFilter === "closed"
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                  : "bg-white/5 text-muted-foreground border-white/5 hover:border-emerald-500/30 hover:text-emerald-400"
+              )}
+            >
+              <CheckCircle2 className="h-3 w-3" />
+              <span>Fechados</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/20 font-bold">{closedCount}</span>
+            </button>
+          </div>
         </div>
 
         <TabsContent value="dashboard">
@@ -502,7 +586,7 @@ const Index = () => {
 
         <TabsContent value="table">
           <SalesTable
-            sales={sales}
+            sales={filteredSales}
             onStatusChange={updateStatus}
             onDelete={deleteSale}
             onEdit={handleEdit}
@@ -511,7 +595,7 @@ const Index = () => {
 
         <TabsContent value="kanban">
           <KanbanBoard
-            sales={sales}
+            sales={filteredSales}
             onStatusChange={updateStatus}
             onEdit={handleEdit}
             onAddQuickSale={handleQuickAddSale}
