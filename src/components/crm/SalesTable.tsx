@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Sale, STATUS_LABELS, SaleStatus, CHANNEL_LABELS, LeadTemperature, TEMPERATURE_LABELS } from "@/types/sale";
 import { formatCurrency, formatDate } from "@/lib/salesUtils";
 import {
@@ -17,7 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, MessageSquare } from "lucide-react";
+import { WhatsAppQuickDialog } from "./WhatsAppQuickDialog";
+import { SaleClosedWorkflowDialog } from "./SaleClosedWorkflowDialog";
 
 interface SalesTableProps {
   sales: Sale[];
@@ -50,6 +53,19 @@ const SalesTable = ({
   onDelete,
   onEdit,
 }: SalesTableProps) => {
+  const [workflowSale, setWorkflowSale] = useState<Sale | null>(null);
+  const [isWorkflowOpen, setIsWorkflowOpen] = useState(false);
+  const [whatsAppSale, setWhatsAppSale] = useState<Sale | null>(null);
+  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
+
+  const handleStatusSelect = (sale: Sale, newStatus: SaleStatus) => {
+    onStatusChange(sale.id, newStatus);
+    if (newStatus === "fechado") {
+      setWorkflowSale(sale);
+      setIsWorkflowOpen(true);
+    }
+  };
+
   return (
     <div className="animate-in fade-in duration-700 space-y-6">
       {/* Mobile View: Card-based layout */}
@@ -96,6 +112,20 @@ const SalesTable = ({
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
+                  {sale.clientPhone && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-xl transition-all"
+                      onClick={() => {
+                        setWhatsAppSale(sale);
+                        setIsWhatsAppOpen(true);
+                      }}
+                      title="Enviar WhatsApp"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button variant="ghost" size="icon" className="h-10 w-10 bg-primary/5 hover:bg-primary/10 rounded-xl transition-all" onClick={() => onEdit(sale)}>
                     <Pencil className="h-4 w-4 text-primary" />
                   </Button>
@@ -139,7 +169,7 @@ const SalesTable = ({
               <div className="pt-2">
                 <Select
                   value={sale.status}
-                  onValueChange={(v) => onStatusChange(sale.id, v as SaleStatus)}
+                  onValueChange={(v) => handleStatusSelect(sale, v as SaleStatus)}
                 >
                   <SelectTrigger className="w-full h-12 bg-white/[0.03] border-white/5 rounded-2xl px-5 font-black text-[10px] uppercase tracking-[0.2em] text-luxury focus:ring-0">
                     <div className="flex items-center justify-between w-full">
@@ -238,7 +268,7 @@ const SalesTable = ({
                     <Select
                       value={sale.status}
                       onValueChange={(v) =>
-                        onStatusChange(sale.id, v as SaleStatus)
+                        handleStatusSelect(sale, v as SaleStatus)
                       }
                     >
                       <SelectTrigger className="w-fit h-7 border-none p-0 shadow-none hover:bg-transparent focus:ring-0">
@@ -271,15 +301,41 @@ const SalesTable = ({
                   <TableCell className="text-[11px] font-bold text-emerald-500 text-luxury">
                     {formatDate(sale.expectedCloseDate)}
                   </TableCell>
-                  <TableCell className="text-right pr-10">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all"
-                      onClick={() => onDelete(sale.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <TableCell className="text-right pr-6">
+                    <div className="flex items-center justify-end gap-1">
+                      {sale.clientPhone && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all"
+                          onClick={() => {
+                            setWhatsAppSale(sale);
+                            setIsWhatsAppOpen(true);
+                          }}
+                          title="Enviar WhatsApp"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-primary hover:bg-primary/10 rounded-xl transition-all"
+                        onClick={() => onEdit(sale)}
+                        title="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all"
+                        onClick={() => onDelete(sale.id)}
+                        title="Remover"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -287,6 +343,27 @@ const SalesTable = ({
           </TableBody>
         </Table>
       </div>
+
+      {/* Modais de Fechamento e WhatsApp */}
+      {workflowSale && (
+        <SaleClosedWorkflowDialog
+          open={isWorkflowOpen}
+          onOpenChange={setIsWorkflowOpen}
+          sale={workflowSale}
+        />
+      )}
+
+      {whatsAppSale && (
+        <WhatsAppQuickDialog
+          open={isWhatsAppOpen}
+          onOpenChange={setIsWhatsAppOpen}
+          clientName={whatsAppSale.clientName}
+          clientPhone={whatsAppSale.clientPhone}
+          projectName={whatsAppSale.product}
+          totalValue={whatsAppSale.totalValue}
+          context={whatsAppSale.status === "visita" ? "measurement" : whatsAppSale.status === "projeto" ? "project_3d" : whatsAppSale.status === "fechado" ? "closed" : "general"}
+        />
+      )}
     </div>
   );
 };

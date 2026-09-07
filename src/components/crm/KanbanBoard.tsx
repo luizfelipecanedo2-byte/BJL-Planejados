@@ -2,11 +2,13 @@ import { useState } from "react";
 import { Sale, STATUS_LABELS, SaleStatus, LeadTemperature, TEMPERATURE_LABELS } from "@/types/sale";
 import { formatCurrency, calculateLeadScore } from "@/lib/salesUtils";
 import { Card, CardContent } from "@/components/ui/card";
-import { Phone, Flame, Clock, Plus, Target } from "lucide-react";
+import { Phone, Flame, Clock, Plus, Target, MessageSquare } from "lucide-react";
 import { differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { WhatsAppQuickDialog } from "./WhatsAppQuickDialog";
+import { SaleClosedWorkflowDialog } from "./SaleClosedWorkflowDialog";
 
 interface KanbanBoardProps {
   sales: Sale[];
@@ -66,6 +68,10 @@ const statusOrder: SaleStatus[] = [
 
 const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBoardProps) => {
   const [draggedOverColumn, setDraggedOverColumn] = useState<SaleStatus | null>(null);
+  const [workflowSale, setWorkflowSale] = useState<Sale | null>(null);
+  const [isWorkflowOpen, setIsWorkflowOpen] = useState(false);
+  const [whatsAppSale, setWhatsAppSale] = useState<Sale | null>(null);
+  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
 
   const handleDragStart = (e: React.DragEvent, saleId: string) => {
     e.dataTransfer.setData("saleId", saleId);
@@ -77,6 +83,13 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
     const saleId = e.dataTransfer.getData("saleId");
     if (saleId) {
       onStatusChange(saleId, status);
+      if (status === "fechado") {
+        const found = (sales || []).find((s) => s.id === saleId);
+        if (found) {
+          setWorkflowSale(found);
+          setIsWorkflowOpen(true);
+        }
+      }
     }
   };
 
@@ -241,11 +254,27 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
                             </p>
                         </div>
                         
-                        <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity">
-                            <Phone className="h-3 w-3 text-white/40" />
-                            <span className="text-[9px] font-black text-white/60 tracking-tighter">
-                                {sale.clientPhone ? sale.clientPhone.split(' ').pop() : '---'}
-                            </span>
+                        <div className="flex items-center gap-1.5">
+                          {sale.clientPhone && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setWhatsAppSale(sale);
+                                setIsWhatsAppOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all hover:scale-110 active:scale-95"
+                              title="Enviar WhatsApp"
+                            >
+                              <MessageSquare className="h-3 w-3" />
+                            </button>
+                          )}
+                          <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity">
+                              <Phone className="h-3 w-3 text-white/40" />
+                              <span className="text-[9px] font-black text-white/60 tracking-tighter">
+                                  {sale.clientPhone ? sale.clientPhone.split(' ').pop() : '---'}
+                              </span>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -264,6 +293,28 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
           </div>
         );
       })}
+
+      {/* Modal de Integração Automática de Venda Fechada */}
+      {workflowSale && (
+        <SaleClosedWorkflowDialog
+          open={isWorkflowOpen}
+          onOpenChange={setIsWorkflowOpen}
+          sale={workflowSale}
+        />
+      )}
+
+      {/* Modal de Envio Rápido via WhatsApp */}
+      {whatsAppSale && (
+        <WhatsAppQuickDialog
+          open={isWhatsAppOpen}
+          onOpenChange={setIsWhatsAppOpen}
+          clientName={whatsAppSale.clientName}
+          clientPhone={whatsAppSale.clientPhone}
+          projectName={whatsAppSale.product}
+          totalValue={whatsAppSale.totalValue}
+          context={whatsAppSale.status === "visita" ? "measurement" : whatsAppSale.status === "projeto" ? "project_3d" : whatsAppSale.status === "fechado" ? "closed" : "general"}
+        />
+      )}
     </div>
   );
 };

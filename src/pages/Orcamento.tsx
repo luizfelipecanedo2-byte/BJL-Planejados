@@ -19,6 +19,7 @@ import BudgetPrintView from "@/components/orcamento/BudgetPrintView";
 import { estimateProjectMaterials, GeminiEstimationResult } from "@/services/geminiService";
 import { Sparkles, Key, UploadCloud, FileImage, Brain, Hammer, Hourglass, Check, ShieldCheck } from "lucide-react";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { BudgetStockSyncDialog } from "@/components/orcamento/BudgetStockSyncDialog";
 
 const analysisSteps = [
     "Analisando o desenho do projeto...",
@@ -52,6 +53,7 @@ const Orcamento = () => {
     const [printingBudget, setPrintingBudget] = useState<any>(null);
     const [printingTab, setPrintingTab] = useState<'commercial' | 'technical'>('commercial');
     const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+    const [stockSyncBudget, setStockSyncBudget] = useState<any>(null);
 
     // Spotlight effect tracker with cached rect to avoid layout thrashing
     const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1538,18 +1540,27 @@ const Orcamento = () => {
                                                          >
                                                              <Pencil size={16} />
                                                          </Button>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-500 transition-all active:scale-95 border border-border/5"
-                                                            onClick={() => {
-                                                                setPrintingBudget(orc);
-                                                                setPrintingTab('commercial');
-                                                            }}
-                                                            title="Imprimir Orçamento"
-                                                        >
-                                                            <FileText size={16} />
-                                                        </Button>
+                                                         <Button 
+                                                             variant="ghost" 
+                                                             size="icon" 
+                                                             className="h-10 w-10 rounded-xl hover:bg-amber-500/10 text-amber-500 hover:text-amber-600 transition-all active:scale-95 border border-amber-500/20"
+                                                             onClick={() => setStockSyncBudget(orc)}
+                                                             title="Conciliar Estoque & Lista de Compras"
+                                                         >
+                                                             <Package size={16} />
+                                                         </Button>
+                                                         <Button 
+                                                             variant="ghost" 
+                                                             size="icon" 
+                                                             className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-500 transition-all active:scale-95 border border-border/5"
+                                                             onClick={() => {
+                                                                 setPrintingBudget(orc);
+                                                                 setPrintingTab('commercial');
+                                                             }}
+                                                             title="Imprimir Orçamento"
+                                                         >
+                                                             <FileText size={16} />
+                                                         </Button>
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon" 
@@ -1633,6 +1644,15 @@ const Orcamento = () => {
                                                     onClick={() => handleEditBudget(orc)}
                                                 >
                                                     <Pencil size={16} />
+                                                </Button>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-10 w-10 rounded-xl border border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                                                    onClick={() => setStockSyncBudget(orc)}
+                                                    title="Conciliar Estoque & Lista de Compras"
+                                                >
+                                                    <Package size={16} />
                                                 </Button>
                                                 <Button 
                                                     variant="ghost" 
@@ -1915,6 +1935,15 @@ const Orcamento = () => {
                     onClose={() => setPrintingBudget(null)} 
                     onSave={handleSaveFromPrintView}
                     budgetNumber={600 + [...budgets].reverse().findIndex(b => b.id === printingBudget.id)}
+                />
+            )}
+
+            {/* Modal de Conciliação de Estoque & Lista de Compras */}
+            {stockSyncBudget && (
+                <BudgetStockSyncDialog
+                    open={!!stockSyncBudget}
+                    onOpenChange={(open) => !open && setStockSyncBudget(null)}
+                    budget={stockSyncBudget}
                 />
             )}
         </div>

@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { ServiceOrder, ServiceStatus } from "@/types/serviceOrder";
 import { Card, CardContent } from "@/components/ui/card";
-import { Phone, Calendar, ClipboardList } from "lucide-react";
+import { Phone, Calendar, ClipboardList, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WhatsAppQuickDialog } from "./WhatsAppQuickDialog";
 
 interface OSKanbanBoardProps {
   orders: ServiceOrder[];
@@ -55,6 +57,9 @@ const dotColors: Record<ServiceStatus, string> = {
 };
 
 const OSKanbanBoard = ({ orders, onStatusChange, onEdit }: OSKanbanBoardProps) => {
+  const [whatsAppOrder, setWhatsAppOrder] = useState<ServiceOrder | null>(null);
+  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
+
   const handleDragStart = (e: React.DragEvent, orderId: string) => {
     e.dataTransfer.setData("orderId", orderId);
   };
@@ -171,9 +176,24 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit }: OSKanbanBoardProps) =
                       </div>
 
                       {order.clientPhone && (
-                        <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity w-fit text-[9px] font-black text-white/60">
-                          <Phone className="h-3 w-3 text-white/40" />
-                          <span>{order.clientPhone}</span>
+                        <div className="flex items-center justify-between gap-1.5 pt-1">
+                          <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity w-fit text-[9px] font-black text-white/60">
+                            <Phone className="h-3 w-3 text-white/40" />
+                            <span>{order.clientPhone}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setWhatsAppOrder(order);
+                              setIsWhatsAppOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all flex items-center gap-1 text-[9px] font-black"
+                            title="Avisar cliente no WhatsApp"
+                          >
+                            <MessageSquare className="h-3 w-3" />
+                            <span>Avisar</span>
+                          </button>
                         </div>
                       )}
                     </CardContent>
@@ -190,6 +210,17 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit }: OSKanbanBoardProps) =
           </div>
         );
       })}
+
+      <WhatsAppQuickDialog
+        open={isWhatsAppOpen}
+        onOpenChange={setIsWhatsAppOpen}
+        clientName={whatsAppOrder?.client || ""}
+        clientPhone={whatsAppOrder?.clientPhone || ""}
+        projectName={whatsAppOrder?.action || "Móveis Planejados"}
+        totalValue={whatsAppOrder?.amount || 0}
+        deliveryDate={whatsAppOrder?.forecastDate ? new Date(whatsAppOrder.forecastDate).toLocaleDateString('pt-BR') : ""}
+        context={whatsAppOrder?.status === "Instalação" ? "installation" : "factory_status"}
+      />
     </div>
   );
 };

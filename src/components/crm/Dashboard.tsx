@@ -55,6 +55,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { Link } from "react-router-dom";
 import { ExecutiveBIAnalytics } from "./ExecutiveBIAnalytics";
+import { ExecutiveMorningBriefing } from "./ExecutiveMorningBriefing";
 
 interface Task {
   id: string;
@@ -411,6 +412,9 @@ const Dashboard = ({ sales }: DashboardProps) => {
 
     return (
       <div className="space-y-8">
+        {/* Centro de Comando Matinal */}
+        <ExecutiveMorningBriefing />
+
         {/* Executive Cockpit Header & Monthly Target Module */}
         <div className="executive-card p-6 sm:p-8 rounded-[2.5rem] border-metallic relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />

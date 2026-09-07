@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Client } from "@/types/client";
 import {
     Table,
@@ -8,7 +9,8 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, History, FolderOpen } from "lucide-react";
+import { Pencil, Trash2, History, FolderOpen, MessageSquare } from "lucide-react";
+import { WhatsAppQuickDialog } from "./WhatsAppQuickDialog";
 
 interface ClientTableProps {
     clients: Client[];
@@ -19,6 +21,8 @@ interface ClientTableProps {
 }
 
 const ClientTable = ({ clients, onEdit, onDelete, onViewTimeline, onViewFiles }: ClientTableProps) => {
+    const [whatsAppClient, setWhatsAppClient] = useState<Client | null>(null);
+
     return (
         <div className="rounded-md border">
             <Table className="min-w-[650px]">
@@ -29,7 +33,7 @@ const ClientTable = ({ clients, onEdit, onDelete, onViewTimeline, onViewFiles }:
                         <TableHead>Telefone</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Cidade/UF</TableHead>
-                        <TableHead className="w-[100px]">Ações</TableHead>
+                        <TableHead className="w-[120px]">Ações</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -42,13 +46,24 @@ const ClientTable = ({ clients, onEdit, onDelete, onViewTimeline, onViewFiles }:
                             <TableCell>{client.city}/{client.state}</TableCell>
                             <TableCell>
                                 <div className="flex items-center gap-2">
+                                    {client.phone && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
+                                            onClick={() => setWhatsAppClient(client)}
+                                            title="Enviar WhatsApp"
+                                        >
+                                            <MessageSquare className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                     {onViewFiles && (
                                         <Button variant="ghost" size="icon" className="text-blue-500 hover:text-blue-600 hover:bg-blue-500/10" onClick={() => onViewFiles(client)} title="Arquivos e Fotos">
                                             <FolderOpen className="h-4 w-4" />
                                         </Button>
                                     )}
                                     {onViewTimeline && (
-                                        <Button variant="ghost" size="icon" className="text-primary hover:text-primary hover:bg-primary/10" onClick={() => onViewTimeline(client)} title="Ver Histórico 360º">
+                                        <Button variant="ghost" size="icon" className="text-primary hover:text-primary hover:bg-primary/10" onClick={() => onViewTimeline(client)} title="Ver Central 360º">
                                             <History className="h-4 w-4" />
                                         </Button>
                                     )}
@@ -76,6 +91,16 @@ const ClientTable = ({ clients, onEdit, onDelete, onViewTimeline, onViewFiles }:
                     )}
                 </TableBody>
             </Table>
+
+            {whatsAppClient && (
+                <WhatsAppQuickDialog
+                    open={!!whatsAppClient}
+                    onOpenChange={(open) => !open && setWhatsAppClient(null)}
+                    clientName={whatsAppClient.name}
+                    clientPhone={whatsAppClient.phone}
+                    context="general"
+                />
+            )}
         </div>
     );
 };
