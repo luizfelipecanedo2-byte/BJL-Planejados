@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { Award, Trash2, X, Phone, Mail, MapPin, Globe } from 'lucide-react';
+import { Award, Trash2, X, Phone, Mail, MapPin, Globe, ShieldCheck, Clock, Percent, Wrench, ArrowRight, Check } from 'lucide-react';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { cn } from '@/lib/utils';
 
@@ -19,7 +19,12 @@ interface BudgetPrintViewProps {
     budgetNumber?: string | number;
     initialTab?: 'commercial' | 'technical';
     onClose?: () => void;
-    onSave?: (budget: any, items: any[]) => void;
+    onSave?: (
+        budget: any, 
+        items: any[], 
+        adjustmentMode?: 'days' | 'commission' | 'service_item' | 'none',
+        extraData?: any
+    ) => void;
 }
 
 const formatCurrency = (value: number): string => {
@@ -71,10 +76,24 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
         });
     }, [initialBudget]);
 
-    // Inicializa a lista de ambientes com o valor à vista base
+    // Inicializa a lista de ambientes com o valor à vista base (preservando salvos se existirem)
     const [ambientes, setLocalAmbientes] = React.useState<Ambiente[]>(() => {
         if (initialAmbientes && initialAmbientes.length > 0) {
             return initialAmbientes;
+        }
+
+        if (initialBudget?.notes && typeof initialBudget.notes === 'string' && initialBudget.notes.includes('<!--BJL_AMBIENTES:')) {
+            try {
+                const match = initialBudget.notes.match(/<!--BJL_AMBIENTES:([\s\S]*?)-->/);
+                if (match && match[1]) {
+                    const parsed = JSON.parse(match[1]);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        return parsed;
+                    }
+                }
+            } catch (e) {
+                console.error("Erro ao carregar ambientes salvos:", e);
+            }
         }
         
         return [{
@@ -117,7 +136,79 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
 
     const defaultPaymentTerms = "01. ENTRADA DE 60% NO FECHAMENTO DO CONTRATO.\n02. SALDO RESTANTE DE 40% NA DATA DA ENTREGA TÉCNICA.\n03. PRAZO DE ENTREGA: A DEFINIR CONFORME CRONOGRAMA.";
     
-    const [paymentTerms, setLocalPaymentTerms] = React.useState<string>(budget.notes || defaultPaymentTerms);
+    const cleanInitialNotes = React.useMemo(() => {
+        if (!initialBudget?.notes) return defaultPaymentTerms;
+        const cleaned = initialBudget.notes.replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '').trim();
+        return cleaned || defaultPaymentTerms;
+    }, [initialBudget?.notes]);
+
+    const [paymentTerms, setLocalPaymentTerms] = React.useState<string>(cleanInitialNotes);
+
+    const [isAdjustModalOpen, setIsAdjustModalOpen] = React.useState(false);
+    const [adjustmentMode, setAdjustmentMode] = React.useState<'days' | 'commission' | 'service_item'>('days');
+
+    // Cálculos de ajuste
+    const priceDiff = totalValue - initialBaseValue;
+
+    const materialCost = React.useMemo(() => {
+        return (initialBudget?.budget_items || [])
+            .filter((item: any) => {
+                const cat = item.budget_materials?.category;
+                return cat !== 'SERVICOS';
+            })
+            .reduce((acc: number, item: any) => acc + (Number(item.total_price) || 0), 0);
+    }, [initialBudget]);
+
+    const dailyCost = 470;
+    const currentDays = Number(initialBudget?.days_estimated) || 1;
+    const currentMarkup = Number(initialBudget?.markup_factor) || 1.22;
+
+    // Cálculo prévio para Opção 1: Dias de Serviço
+    const calculatedDays = React.useMemo(() => {
+        const targetTotalCost = totalValue / currentMarkup;
+        const targetFixedCost = Math.max(0, targetTotalCost - materialCost);
+        return Math.max(1, Math.round(targetFixedCost / dailyCost));
+    }, [totalValue, currentMarkup, materialCost]);
+
+    const calculatedFixedCost = calculatedDays * dailyCost;
+
+    // Cálculo prévio para Opção 2: Comissão / Margem
+    const calculatedMarkup = React.useMemo(() => {
+        const fixedCost = currentDays * dailyCost;
+        const totalCost = materialCost + fixedCost;
+        return totalCost > 0 ? (totalValue / totalCost) : currentMarkup;
+    }, [totalValue, currentDays, materialCost, currentMarkup]);
+
+    const calculatedMargin = React.useMemo(() => {
+        return Math.max(0, (calculatedMarkup - 1) * 100 - 7);
+    }, [calculatedMarkup]);
+
+    const handleSaveClick = () => {
+        if (Math.abs(priceDiff) < 1) {
+            handleConfirmSave('none');
+        } else {
+            setIsAdjustModalOpen(true);
+        }
+    };
+
+    const handleConfirmSave = (mode: 'days' | 'commission' | 'service_item' | 'none') => {
+        if (onSave) {
+            onSave(
+                budget, 
+                initialBudget?.budget_items || [], 
+                mode, 
+                {
+                    newTargetValue: totalValue,
+                    ambientes,
+                    paymentTerms,
+                    priceDiff,
+                    calculatedDays,
+                    calculatedMarkup
+                }
+            );
+        }
+        setIsAdjustModalOpen(false);
+    };
 
     // Sync budget.notes com estado local
     React.useEffect(() => {
@@ -399,16 +490,12 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                         Voltar
                     </button>
                     
-                    {onSave && viewMode === 'commercial' && (
+                    {onSave && (
                         <button 
-                            onClick={() => onSave(budget, ambientes.map(a => ({ 
-                                material_name: a.description, 
-                                quantity: 1, 
-                                unit_price_at_time: a.value, 
-                                total_price: a.value 
-                            })))}
-                            className="bg-emerald-500 text-white px-8 py-4 rounded-full font-black uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 text-xs"
+                            onClick={handleSaveClick}
+                            className="bg-emerald-500 text-white px-8 py-4 rounded-full font-black uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 text-xs flex items-center gap-2"
                         >
+                            <Check size={16} />
                             Salvar Alterações
                         </button>
                     )}
@@ -422,6 +509,159 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                     </button>
                 </div>
             </div>
+
+            {/* MODAL DE AJUSTE AUTOMÁTICO DE VALOR DO ORÇAMENTO */}
+            {isAdjustModalOpen && (
+                <div className="fixed inset-0 z-[10002] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 no-print animate-in fade-in duration-200">
+                    <div className="bg-slate-900 border border-amber-500/30 text-white rounded-[2rem] p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6 animate-in zoom-in-95 duration-200">
+                        {/* Cabeçalho */}
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl">
+                                        <Wrench size={20} />
+                                    </div>
+                                    <h3 className="text-xl font-black uppercase tracking-tight text-white">
+                                        Ajustar Orçamento no Sistema
+                                    </h3>
+                                </div>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                                    O valor da proposta comercial foi alterado no PDF
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setIsAdjustModalOpen(false)}
+                                className="text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Card Comparativo de Valores */}
+                        <div className="bg-slate-950/80 border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-4">
+                            <div>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Valor Original</span>
+                                <p className="text-sm font-bold text-slate-300">{formatCurrency(initialBaseValue)}</p>
+                            </div>
+                            <ArrowRight className="text-amber-400 shrink-0" size={18} />
+                            <div>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-amber-400">Novo Valor no PDF</span>
+                                <p className="text-lg font-black text-amber-400">{formatCurrency(totalValue)}</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Diferença</span>
+                                <p className={cn("text-xs font-black", priceDiff >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                                    {priceDiff >= 0 ? "+" : ""}{formatCurrency(priceDiff)}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Selo de Garantia dos Materiais */}
+                        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3.5 flex items-center gap-3 text-emerald-300">
+                            <ShieldCheck size={26} className="shrink-0 text-emerald-400" />
+                            <p className="text-[11px] font-bold leading-relaxed">
+                                <strong className="text-emerald-400 uppercase">Garantia BJL:</strong> Todas as chapas de MDF, ferragens, fitas e fixação da sua lista continuarão 100% intactas!
+                            </p>
+                        </div>
+
+                        {/* Opções de Ajuste */}
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Onde você deseja aplicar essa diferença para fechar a conta?
+                            </label>
+
+                            {/* Opção 1: Dias de Serviço */}
+                            <div 
+                                onClick={() => setAdjustmentMode('days')}
+                                className={cn(
+                                    "p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5",
+                                    adjustmentMode === 'days' 
+                                        ? "bg-amber-500/10 border-amber-500 text-white shadow-lg shadow-amber-500/10" 
+                                        : "bg-slate-950/40 border-white/5 text-slate-300 hover:border-white/20"
+                                )}
+                            >
+                                <div className={cn("p-2 rounded-xl mt-0.5", adjustmentMode === 'days' ? "bg-amber-500 text-slate-950" : "bg-white/5 text-slate-400")}>
+                                    <Clock size={16} />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-black uppercase tracking-tight">1. Aumentar nos Dias de Serviço</span>
+                                        {adjustmentMode === 'days' && <span className="text-[9px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full uppercase">Selecionado</span>}
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 leading-snug">
+                                        Recalcula para <strong className="text-amber-400">{calculatedDays} {calculatedDays === 1 ? 'dia' : 'dias'} de produção</strong> na diária de R$ 470 (Custo operacional: {formatCurrency(calculatedFixedCost)}). Não altera nenhum material.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Opção 2: Comissão / Margem */}
+                            <div 
+                                onClick={() => setAdjustmentMode('commission')}
+                                className={cn(
+                                    "p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5",
+                                    adjustmentMode === 'commission' 
+                                        ? "bg-amber-500/10 border-amber-500 text-white shadow-lg shadow-amber-500/10" 
+                                        : "bg-slate-950/40 border-white/5 text-slate-300 hover:border-white/20"
+                                )}
+                            >
+                                <div className={cn("p-2 rounded-xl mt-0.5", adjustmentMode === 'commission' ? "bg-amber-500 text-slate-950" : "bg-white/5 text-slate-400")}>
+                                    <Percent size={16} />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-black uppercase tracking-tight">2. Aumentar na Comissão / Margem</span>
+                                        {adjustmentMode === 'commission' && <span className="text-[9px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full uppercase">Selecionado</span>}
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 leading-snug">
+                                        Mantém os <strong className="text-white">{currentDays} dias</strong> e ajusta a comissão comercial para cobrir a diferença (Markup <strong className="text-amber-400">{calculatedMarkup.toFixed(2)}x</strong>).
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Opção 3: Valor do Serviço na Lista */}
+                            <div 
+                                onClick={() => setAdjustmentMode('service_item')}
+                                className={cn(
+                                    "p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5",
+                                    adjustmentMode === 'service_item' 
+                                        ? "bg-amber-500/10 border-amber-500 text-white shadow-lg shadow-amber-500/10" 
+                                        : "bg-slate-950/40 border-white/5 text-slate-300 hover:border-white/20"
+                                )}
+                            >
+                                <div className={cn("p-2 rounded-xl mt-0.5", adjustmentMode === 'service_item' ? "bg-amber-500 text-slate-950" : "bg-white/5 text-slate-400")}>
+                                    <Wrench size={16} />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-black uppercase tracking-tight">3. Mudar o Valor do Serviço na Lista</span>
+                                        {adjustmentMode === 'service_item' && <span className="text-[9px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full uppercase">Selecionado</span>}
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 leading-snug">
+                                        Adiciona/atualiza o item de <strong className="text-amber-400">Mão de Obra e Serviços</strong> na lista com a diferença necessária, sem tocar em nenhum MDF ou ferragem.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Ações do Modal */}
+                        <div className="flex gap-3 pt-2">
+                            <button 
+                                onClick={() => setIsAdjustModalOpen(false)}
+                                className="flex-1 py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 font-black text-xs uppercase tracking-widest transition-all"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={() => handleConfirmSave(adjustmentMode)}
+                                className="flex-[2] py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Check size={16} />
+                                Salvar e Aplicar no Orçamento
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {

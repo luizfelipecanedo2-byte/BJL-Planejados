@@ -597,6 +597,17 @@ const Orcamento = () => {
             return;
         }
 
+        let savedNotes = formData.notes || "";
+        if (editingBudgetId) {
+            const currentOrc = budgets.find(b => b.id === editingBudgetId);
+            if (currentOrc?.notes && currentOrc.notes.includes('<!--BJL_AMBIENTES:')) {
+                const match = currentOrc.notes.match(/<!--BJL_AMBIENTES:[\s\S]*?-->/);
+                if (match) {
+                    savedNotes = `${savedNotes.trim()}\n\n${match[0]}`;
+                }
+            }
+        }
+
         const budgetData: any = {
             client_name: formData.client_name,
             project_name: formData.project_name,
@@ -605,7 +616,7 @@ const Orcamento = () => {
             card_fee_percent: formData.installment_fee,
             total_cost: calculateTotals.totalCostPower,
             total_value: calculateTotals.baseValue,
-            notes: formData.notes,
+            notes: savedNotes,
             status: 'em_elaboracao',
             sale_id: selectedSaleId,
         };
@@ -632,6 +643,7 @@ const Orcamento = () => {
 
     const handleEditBudget = (budget: any) => {
         setEditingBudgetId(budget.id);
+        const cleanNotes = (budget.notes || "").replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '').trim();
         setFormData({
             client_name: budget.client_name,
             project_name: budget.project_name,
@@ -641,7 +653,7 @@ const Orcamento = () => {
             commission: 3,
             tax: 4,
             installment_fee: budget.card_fee_percent,
-            notes: budget.notes || ""
+            notes: cleanNotes
         });
 
         // Load quantities, raw quantities, custom prices, and selectedMaterialIds from budget_items
@@ -742,56 +754,130 @@ const Orcamento = () => {
         }
     };
 
-    const handleSaveFromPrintView = async (updatedBudget: any, updatedItems: any[]) => {
+    const handleSaveFromPrintView = async (
+        updatedBudget: any, 
+        itemsToSave: any[], 
+        adjustmentMode: 'days' | 'commission' | 'service_item' | 'none' = 'none',
+        extraData?: any
+    ) => {
         if (!allMaterials || allMaterials.length === 0) {
             toast.error("Capacidade técnica não detectada (Catálogo vazio)");
             return;
         }
 
-        // Tenta encontrar um material genérico para itens avulsos da visualização de impressão
-        const othersMaterial = allMaterials.find(m => 
-            m.name.toUpperCase().includes('OUTRO') || 
-            m.category === 'OUTROS' ||
-            m.category === 'SERVICOS'
-        );
-        
-        const fallbackMaterial = othersMaterial?.id || allMaterials[0].id;
-        
-        const finalItems = updatedItems
-            .filter(item => {
-                if (item.material_id) return true;
-                return item && item.material_name && typeof item.material_name === 'string' && item.material_name.trim() !== "";
-            })
-            .map(item => ({
-                material_id: item.material_id || fallbackMaterial,
-                quantity: parseFloat(item.quantity) || 0,
-                unit_price_at_time: parseFloat(item.unit_price_at_time) || 0,
-                total_price: parseFloat(item.total_price) || 0,
-                custom_description: item.material_name
+        try {
+            const newTargetValue = Number(extraData?.newTargetValue) || Number(updatedBudget.total_value) || 0;
+            const ambientes = extraData?.ambientes || [];
+            const paymentTerms = extraData?.paymentTerms || updatedBudget.notes || "";
+            
+            // Limpa notas de comentários de metadados antigos e anexa ambientes atualizados
+            const cleanNotes = paymentTerms.replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '').trim();
+            const notesWithAmbientes = ambientes.length > 0 
+                ? `${cleanNotes}\n\n<!--BJL_AMBIENTES:${JSON.stringify(ambientes)}-->` 
+                : cleanNotes;
+
+            // 1. PRESERVAÇÃO TOTAL DOS MATERIAIS ORIGINAIS (MDF, ferragens, fitas, parafusos, etc.)
+            let finalItems = (itemsToSave || []).map((item: any) => ({
+                material_id: item.material_id,
+                quantity: Number(item.quantity) || 0,
+                unit_price_at_time: Number(item.unit_price_at_time) || 0,
+                total_price: Number(item.total_price) || 0,
+                custom_description: item.custom_description || item.budget_materials?.name || null
             }));
 
-        if (finalItems.length === 0) {
-            toast.error("O orçamento não possui nenhum item válido.");
-            return;
-        }
+            // Custo de materiais (desconsiderando categoria SERVICOS para os cálculos de mão de obra)
+            const materialCost = finalItems
+                .filter(item => {
+                    const mat = allMaterials.find(m => m.id === item.material_id);
+                    return mat?.category !== 'SERVICOS';
+                })
+                .reduce((acc, item) => acc + item.total_price, 0);
 
-        // Recalcular os totais para garantir que a capa do orçamento (tabela budgets) fique correta
-        const newTotalValue = finalItems.reduce((acc, item) => acc + item.total_price, 0);
-        
-        // Estimar o custo total (total_cost) baseado no markup_factor se existir, ou apenas usar o total_value
-        const markup = updatedBudget.markup_factor || 1.25;
-        const newTotalCost = newTotalValue / markup;
+            const dailyCost = 470;
+            let finalDays = Number(updatedBudget.days_estimated) || 1;
+            let finalMarkup = Number(updatedBudget.markup_factor) || 1.22;
+            let finalTotalCost = Number(updatedBudget.total_cost) || (materialCost + (finalDays * dailyCost));
 
-        const budgetToSave = {
-            ...updatedBudget,
-            total_value: newTotalValue,
-            total_cost: newTotalCost
-        };
+            if (adjustmentMode === 'days') {
+                // Opção 1: Aumentar nos dias de serviço / produção
+                const targetTotalCost = newTargetValue / finalMarkup;
+                const targetFixedCost = Math.max(0, targetTotalCost - materialCost);
+                finalDays = Math.max(1, Math.round(targetFixedCost / dailyCost));
+                finalTotalCost = materialCost + (finalDays * dailyCost);
+                finalMarkup = finalTotalCost > 0 ? (newTargetValue / finalTotalCost) : finalMarkup;
+            } else if (adjustmentMode === 'commission') {
+                // Opção 2: Aumentar na comissão / margem
+                finalTotalCost = materialCost + (finalDays * dailyCost);
+                finalMarkup = finalTotalCost > 0 ? (newTargetValue / finalTotalCost) : finalMarkup;
+            } else if (adjustmentMode === 'service_item') {
+                // Opção 3: Mudar o valor do serviço na lista de materiais
+                const targetTotalCost = newTargetValue / finalMarkup;
+                const currentFixedCost = finalDays * dailyCost;
+                const neededServiceCost = Math.max(0, targetTotalCost - materialCost - currentFixedCost);
 
-        const result = await saveBudget(budgetToSave, finalItems);
-        if (result) {
-            setPrintingBudget(null);
-            refreshBudgets();
+                const serviceMaterial = allMaterials.find(m => 
+                    m.id === '80b2903e-4634-4b84-90f4-7edc0b761df9' ||
+                    m.name.toLowerCase().includes('mão de obra') ||
+                    m.name.toLowerCase().includes('mao de obra') ||
+                    m.category === 'SERVICOS'
+                ) || allMaterials[0];
+
+                const existingServiceIndex = finalItems.findIndex(i => {
+                    const mat = allMaterials.find(m => m.id === i.material_id);
+                    return mat?.category === 'SERVICOS' || (i.custom_description && i.custom_description.toLowerCase().includes('serviço'));
+                });
+
+                if (existingServiceIndex >= 0) {
+                    finalItems[existingServiceIndex].unit_price_at_time = neededServiceCost;
+                    finalItems[existingServiceIndex].total_price = neededServiceCost;
+                    finalItems[existingServiceIndex].quantity = 1;
+                } else if (neededServiceCost > 0) {
+                    finalItems.push({
+                        material_id: serviceMaterial.id,
+                        quantity: 1,
+                        unit_price_at_time: neededServiceCost,
+                        total_price: neededServiceCost,
+                        custom_description: "Mão de Obra e Serviços de Produção"
+                    });
+                }
+
+                finalTotalCost = materialCost + neededServiceCost + currentFixedCost;
+                finalMarkup = finalTotalCost > 0 ? (newTargetValue / finalTotalCost) : finalMarkup;
+            } else {
+                // Modo 'none' (sem alteração de preço, apenas texto ou ambientes)
+                finalTotalCost = materialCost + (finalDays * dailyCost);
+            }
+
+            // Fallback de segurança apenas para orçamentos que venham completamente vazios
+            if (finalItems.length === 0) {
+                const defaultMat = allMaterials.find(m => m.category === 'SERVICOS') || allMaterials[0];
+                finalItems.push({
+                    material_id: defaultMat.id,
+                    quantity: 1,
+                    unit_price_at_time: newTargetValue,
+                    total_price: newTargetValue,
+                    custom_description: updatedBudget.project_name || "Móveis Planejados"
+                });
+            }
+
+            const budgetToSave = {
+                ...updatedBudget,
+                days_estimated: finalDays,
+                markup_factor: finalMarkup,
+                total_cost: finalTotalCost,
+                total_value: newTargetValue,
+                notes: notesWithAmbientes
+            };
+
+            const result = await saveBudget(budgetToSave, finalItems);
+            if (result) {
+                toast.success("Orçamento atualizado com sucesso! Materiais 100% preservados.");
+                setPrintingBudget(null);
+                refreshBudgets();
+            }
+        } catch (err: any) {
+            console.error("Erro ao salvar do print view:", err);
+            toast.error("Erro ao atualizar orçamento: " + (err?.message || ""));
         }
     };
 
