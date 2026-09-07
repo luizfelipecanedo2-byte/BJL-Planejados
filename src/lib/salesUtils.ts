@@ -1,6 +1,9 @@
 import { Sale, SaleStatus } from "@/types/sale";
 
-export function formatCurrency(value: number): string {
+export function formatCurrency(value: number | undefined | null): string {
+  if (value === null || value === undefined || isNaN(value) || !Number.isFinite(value)) {
+    return "R$ 0,00";
+  }
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",

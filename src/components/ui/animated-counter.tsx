@@ -11,11 +11,12 @@ export const AnimatedCounter = ({
     duration = 1200, 
     formatter = (v: number) => v.toFixed(0) 
 }: AnimatedCounterProps) => {
-    const [displayValue, setDisplayValue] = useState(value);
+    const safeEnd = Number.isFinite(value) ? value : 0;
+    const [displayValue, setDisplayValue] = useState(safeEnd);
 
     useEffect(() => {
-        const start = displayValue;
-        const end = value;
+        const start = Number.isFinite(displayValue) ? displayValue : 0;
+        const end = Number.isFinite(value) ? value : 0;
         let startTimestamp: number | null = null;
 
         const step = (timestamp: number) => {

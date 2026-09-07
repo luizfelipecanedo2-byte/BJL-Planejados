@@ -176,14 +176,14 @@ const Dashboard = ({ sales }: DashboardProps) => {
   }, []);
 
   const recentSales = useMemo(() => {
-    return [...sales]
+    return [...(sales || [])]
       .sort((a, b) => new Date(b.contactDate || b.createdAt || 0).getTime() - new Date(a.contactDate || a.createdAt || 0).getTime())
       .slice(0, 4);
   }, [sales]);
 
   const years = useMemo(() => {
     const yearsSet = new Set<string>();
-    sales.forEach(sale => {
+    (sales || []).forEach(sale => {
       const dates = [sale.contactDate, sale.createdAt, sale.closedDate];
       dates.forEach(dateStr => {
         if (dateStr) {
@@ -405,6 +405,8 @@ const Dashboard = ({ sales }: DashboardProps) => {
     const currentDay = Math.max(today.getDate(), 1);
     const projectedRevenue = (totalRevenue / currentDay) * daysInCurrentMonth;
     const projectedPercent = salesGoal > 0 ? Math.round((projectedRevenue / salesGoal) * 100) : 0;
+    const progressPercent = salesGoal > 0 ? (totalRevenue / salesGoal) * 100 : 0;
+    const progressBarWidth = Math.min(Math.max(progressPercent, 0), 100);
 
     return (
       <div className="space-y-8">
@@ -469,7 +471,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
               <div className="w-full bg-white/5 h-3 rounded-full overflow-hidden relative border border-white/10 p-[1px]">
                 <div 
                   className="bg-gradient-to-r from-amber-600 via-primary to-amber-300 h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(245,158,11,0.6)]" 
-                  style={{ width: `${progressPercent}%` }}
+                  style={{ width: `${progressBarWidth}%` }}
                 />
               </div>
 
@@ -655,7 +657,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {recentSales.slice(0, 2).map((sale) => (
+            {(recentSales || []).slice(0, 2).map((sale) => (
               <div key={sale.id} className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-primary/20 transition-colors flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 shrink-0">
@@ -663,7 +665,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="text-xs font-bold text-white truncate">{sale.clientName}</span>
-                    <span className="text-[10px] text-muted-foreground truncate">{sale.projectName || "Projeto Planejado"}</span>
+                    <span className="text-[10px] text-muted-foreground truncate">{sale.projectName || sale.product || "Projeto Planejado"}</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
@@ -673,7 +675,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
               </div>
             ))}
 
-            {recentTasks.slice(0, 2).map((task) => (
+            {(recentTasks || []).slice(0, 2).map((task) => (
               <div key={task.id} className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-emerald-500/20 transition-colors flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0">
