@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Sale, STATUS_LABELS, SaleStatus, LeadTemperature, TEMPERATURE_LABELS } from "@/types/sale";
 import { formatCurrency, calculateLeadScore } from "@/lib/salesUtils";
 import { Card, CardContent } from "@/components/ui/card";
-import { Phone, Flame, Clock, Plus, Target, MessageSquare } from "lucide-react";
+import { Phone, Flame, Clock, Plus, Target, MessageSquare, Calculator } from "lucide-react";
 import { differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -67,6 +68,7 @@ const statusOrder: SaleStatus[] = [
 ];
 
 const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBoardProps) => {
+  const navigate = useNavigate();
   const [draggedOverColumn, setDraggedOverColumn] = useState<SaleStatus | null>(null);
   const [workflowSale, setWorkflowSale] = useState<Sale | null>(null);
   const [isWorkflowOpen, setIsWorkflowOpen] = useState(false);
@@ -255,6 +257,19 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
                         </div>
                         
                         <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/orcamento?client=${encodeURIComponent(sale.clientName)}&saleId=${sale.id}&phone=${encodeURIComponent(sale.clientPhone || '')}&project=${encodeURIComponent(sale.product || '')}&new=true`);
+                            }}
+                            className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 transition-all hover:scale-110 active:scale-95 flex items-center gap-1"
+                            title="Criar / Abrir Orçamento no Sistema"
+                          >
+                            <Calculator className="h-3 w-3" />
+                            <span className="text-[8px] font-black uppercase hidden sm:inline">Orçar</span>
+                          </button>
+
                           {sale.clientPhone && (
                             <button
                               type="button"

@@ -1,5 +1,7 @@
 
 import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
@@ -17,9 +19,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BudgetPrintView from "@/components/orcamento/BudgetPrintView";
 import { estimateProjectMaterials, GeminiEstimationResult } from "@/services/geminiService";
-import { Sparkles, Key, UploadCloud, FileImage, Brain, Hammer, Hourglass, Check, ShieldCheck } from "lucide-react";
+import { Sparkles, Key, UploadCloud, FileImage, Brain, Hammer, Hourglass, Check, ShieldCheck, UserCheck, UserPlus } from "lucide-react";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { BudgetStockSyncDialog } from "@/components/orcamento/BudgetStockSyncDialog";
+import { SaleClosedWorkflowDialog } from "@/components/crm/SaleClosedWorkflowDialog";
+import { Sale } from "@/types/sale";
 
 const analysisSteps = [
     "Analisando o desenho do projeto...",
@@ -54,6 +58,8 @@ const Orcamento = () => {
     const [printingTab, setPrintingTab] = useState<'commercial' | 'technical'>('commercial');
     const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
     const [stockSyncBudget, setStockSyncBudget] = useState<any>(null);
+    const [closedWorkflowSale, setClosedWorkflowSale] = useState<Sale | null>(null);
+    const [isClosedWorkflowOpen, setIsClosedWorkflowOpen] = useState(false);
 
     // Spotlight effect tracker with cached rect to avoid layout thrashing
     const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -107,7 +113,12 @@ const Orcamento = () => {
         );
     }, [filteredBudgetsByYear, searchTerm]);
 
-    // Form State
+    // Form State & CRM Integration
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+    const [crmClientsList, setCrmClientsList] = useState<Array<{ id: string; name: string; phone?: string; type: 'lead' | 'client'; status?: string; product?: string }>>([]);
+    const [isClientSuggestionsOpen, setIsClientSuggestionsOpen] = useState(false);
+
     const [formData, setFormData] = useState({
         client_name: "",
         project_name: "",
@@ -121,6 +132,88 @@ const Orcamento = () => {
     });
 
     const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
+
+    // Carregar Leads do CRM e Clientes da Base para Autocomplete
+    useEffect(() => {
+        const loadCrmAndClients = async () => {
+            try {
+                const [salesRes, clientsRes] = await Promise.all([
+                    supabase.from('sales').select('id, client_name, client_phone, product, status').order('created_at', { ascending: false }).limit(60),
+                    supabase.from('clients').select('id, name, phone').order('name', { ascending: true }).limit(60),
+                ]);
+
+                const combined: Array<{ id: string; name: string; phone?: string; type: 'lead' | 'client'; status?: string; product?: string }> = [];
+
+                if (salesRes.data) {
+                    salesRes.data.forEach(s => {
+                        if (s.client_name) {
+                            combined.push({
+                                id: s.id,
+                                name: s.client_name,
+                                phone: s.client_phone || undefined,
+                                type: 'lead',
+                                status: s.status,
+                                product: s.product || undefined,
+                            });
+                        }
+                    });
+                }
+
+                if (clientsRes.data) {
+                    clientsRes.data.forEach(c => {
+                        if (c.name && !combined.some(item => item.name.toLowerCase() === c.name.toLowerCase())) {
+                            combined.push({
+                                id: c.id,
+                                name: c.name,
+                                phone: c.phone || undefined,
+                                type: 'client',
+                            });
+                        }
+                    });
+                }
+
+                setCrmClientsList(combined);
+            } catch (err) {
+                console.error("Erro ao carregar lista de leads/clientes para orçamento:", err);
+            }
+        };
+
+        loadCrmAndClients();
+    }, []);
+
+    // Escutar parâmetros de URL vindos do CRM (ex: clique no botão 'Orçar')
+    useEffect(() => {
+        const clientParam = searchParams.get("client");
+        const saleIdParam = searchParams.get("saleId");
+        const projectParam = searchParams.get("project");
+        const openNewParam = searchParams.get("new");
+
+        if (clientParam && (openNewParam === "true" || saleIdParam)) {
+            setFormData(prev => ({
+                ...prev,
+                client_name: clientParam,
+                project_name: projectParam && projectParam !== "Projeto de Móveis" ? projectParam : (prev.project_name || "Móveis Planejados"),
+            }));
+            if (saleIdParam) {
+                setSelectedSaleId(saleIdParam);
+            }
+            setIsDialogOpen(true);
+            toast.info(`Orçamento iniciado para o lead: ${clientParam}`);
+            // Limpar query params para evitar reabertura involuntária em refresh
+            setSearchParams({}, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
+
+    // Filtrar sugestões de clientes do CRM conforme digitação
+    const filteredCrmClients = useMemo(() => {
+        const query = (formData.client_name || "").toLowerCase().trim();
+        if (!query) return crmClientsList.slice(0, 10);
+        return crmClientsList.filter(c =>
+            c.name.toLowerCase().includes(query) ||
+            (c.phone && c.phone.includes(query)) ||
+            (c.product && c.product.toLowerCase().includes(query))
+        ).slice(0, 10);
+    }, [crmClientsList, formData.client_name]);
 
     // AI Vision Estimator States
     const [activeRightTab, setActiveRightTab] = useState("manual");
@@ -487,7 +580,8 @@ const Orcamento = () => {
             total_cost: calculateTotals.totalCostPower,
             total_value: calculateTotals.baseValue,
             notes: formData.notes,
-            status: 'em_elaboracao'
+            status: 'em_elaboracao',
+            sale_id: selectedSaleId,
         };
 
         if (editingBudgetId) {
@@ -499,6 +593,7 @@ const Orcamento = () => {
         if (success) {
             setIsDialogOpen(false);
             setEditingBudgetId(null);
+            setSelectedSaleId(null);
             setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 470, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, notes: "" });
             setQuantities({});
             setRawQuantities({});
@@ -595,6 +690,30 @@ const Orcamento = () => {
         setRawPrices({});
         setSelectedMaterialIds([]);
         setIsDialogOpen(false);
+    };
+
+    const handleApproveBudgetWithWorkflow = async (orc: any) => {
+        const ok = await convertToWeeklyOrders(orc);
+        if (ok) {
+            const pseudoSale: Sale = {
+                id: orc.id,
+                clientName: orc.client_name,
+                clientPhone: "",
+                clientEmail: "",
+                product: orc.project_name || "Móveis Planejados",
+                quantity: 1,
+                unitPrice: orc.total_value,
+                totalValue: orc.total_value,
+                status: "fechado",
+                contactDate: new Date().toISOString().split('T')[0],
+                expectedCloseDate: new Date().toISOString().split('T')[0],
+                notes: orc.notes || "",
+                createdAt: orc.created_at,
+                budget_id: orc.id
+            };
+            setClosedWorkflowSale(pseudoSale);
+            setIsClosedWorkflowOpen(true);
+        }
     };
 
     const handleSaveFromPrintView = async (updatedBudget: any, updatedItems: any[]) => {
@@ -716,9 +835,94 @@ const Orcamento = () => {
                                         <h4 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
                                             <AlertCircle className="h-3 w-3" /> Identificação
                                         </h4>
-                                        <div className="space-y-2">
-                                            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Cliente</Label>
-                                            <Input value={formData.client_name} onChange={e => setFormData({ ...formData, client_name: e.target.value })} placeholder="Nome completo" className="rounded-xl h-12 bg-white/5 border-white/10 text-white font-bold focus:bg-white/10 transition-all" />
+                                        <div className="space-y-2 relative">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    Cliente (CRM / Base)
+                                                </Label>
+                                                {selectedSaleId ? (
+                                                    <span className="text-[8px] font-bold text-emerald-400 flex items-center gap-1 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                                        <Check className="h-2.5 w-2.5" /> Vinculado ao CRM
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[8px] text-muted-foreground font-mono">
+                                                        Lead ou Novo
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="relative">
+                                                <Input
+                                                    value={formData.client_name}
+                                                    onFocus={() => setIsClientSuggestionsOpen(true)}
+                                                    onChange={e => {
+                                                        setFormData({ ...formData, client_name: e.target.value });
+                                                        setIsClientSuggestionsOpen(true);
+                                                    }}
+                                                    placeholder="Digite o nome ou selecione do CRM..."
+                                                    className="rounded-xl h-12 bg-white/5 border-white/10 text-white font-bold focus:bg-white/10 transition-all pr-8"
+                                                />
+                                                {formData.client_name && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setFormData({ ...formData, client_name: "" });
+                                                            setSelectedSaleId(null);
+                                                        }}
+                                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white p-1"
+                                                    >
+                                                        <X className="h-3.5 w-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {isClientSuggestionsOpen && filteredCrmClients.length > 0 && (
+                                                <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-52 overflow-y-auto bg-slate-900/95 border border-white/15 rounded-xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl custom-scrollbar">
+                                                    <div className="flex items-center justify-between px-2 py-1 text-[8px] font-black uppercase tracking-widest text-muted-foreground border-b border-white/5">
+                                                        <span>Clientes / Leads do CRM</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setIsClientSuggestionsOpen(false)}
+                                                            className="text-white/40 hover:text-white"
+                                                        >
+                                                            Fechar
+                                                        </button>
+                                                    </div>
+                                                    {filteredCrmClients.map(c => (
+                                                        <button
+                                                            key={c.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    client_name: c.name,
+                                                                    project_name: (!prev.project_name || prev.project_name === "Móveis Planejados") && c.product ? c.product : prev.project_name
+                                                                }));
+                                                                if (c.type === 'lead') {
+                                                                    setSelectedSaleId(c.id);
+                                                                } else {
+                                                                    setSelectedSaleId(null);
+                                                                }
+                                                                setIsClientSuggestionsOpen(false);
+                                                                toast.success(`Cliente ${c.name} selecionado!`);
+                                                            }}
+                                                            className="w-full text-left p-2 rounded-lg hover:bg-white/10 transition-colors flex items-center justify-between text-xs group"
+                                                        >
+                                                            <div className="truncate pr-2">
+                                                                <p className="font-bold text-white text-xs group-hover:text-primary transition-colors truncate">{c.name}</p>
+                                                                <p className="text-[10px] text-muted-foreground truncate">
+                                                                    {c.phone || "Sem fone"} {c.product ? `• ${c.product}` : ""}
+                                                                </p>
+                                                            </div>
+                                                            <span className={cn(
+                                                                "text-[8px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0",
+                                                                c.type === 'lead' ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                            )}>
+                                                                {c.type === 'lead' ? (c.status || "Lead CRM") : "Cliente BJL"}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Ambiente/Projeto</Label>
@@ -1509,8 +1713,8 @@ const Orcamento = () => {
                                                                  size="icon" 
                                                                  className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-600 transition-all active:scale-95 border border-emerald-500/10"
                                                                  onClick={() => {
-                                                                     if (confirm(`Aprovar projeto e lançar materiais no pedido da semana para "${orc.client_name}"?`)) {
-                                                                         convertToWeeklyOrders(orc);
+                                                                     if (confirm(`Aprovar projeto e oficializar cliente para "${orc.client_name}"?`)) {
+                                                                         handleApproveBudgetWithWorkflow(orc);
                                                                      }
                                                                  }}
                                                                  title="Aprovar e Pedir Materiais"
@@ -1616,8 +1820,8 @@ const Orcamento = () => {
                                                         size="icon" 
                                                         className="h-10 w-10 rounded-xl border border-emerald-500/50 text-emerald-500"
                                                         onClick={() => {
-                                                            if (confirm(`Aprovar projeto e lançar materiais?`)) {
-                                                                convertToWeeklyOrders(orc);
+                                                            if (confirm(`Aprovar projeto e oficializar cliente para "${orc.client_name}"?`)) {
+                                                                handleApproveBudgetWithWorkflow(orc);
                                                             }
                                                         }}
                                                     >
@@ -1944,6 +2148,18 @@ const Orcamento = () => {
                     open={!!stockSyncBudget}
                     onOpenChange={(open) => !open && setStockSyncBudget(null)}
                     budget={stockSyncBudget}
+                />
+            )}
+
+            {/* Modal de Oficialização de Cliente, OS na Fábrica & Fechamento */}
+            {closedWorkflowSale && (
+                <SaleClosedWorkflowDialog
+                    open={isClosedWorkflowOpen}
+                    onOpenChange={setIsClosedWorkflowOpen}
+                    sale={closedWorkflowSale}
+                    onWorkflowCompleted={() => {
+                        refreshBudgets();
+                    }}
                 />
             )}
         </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Sale, STATUS_LABELS, SaleStatus, CHANNEL_LABELS, LeadTemperature, TEMPERATURE_LABELS } from "@/types/sale";
 import { formatCurrency, formatDate } from "@/lib/salesUtils";
 import {
@@ -18,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Pencil, MessageSquare } from "lucide-react";
+import { Trash2, Pencil, MessageSquare, Calculator } from "lucide-react";
 import { WhatsAppQuickDialog } from "./WhatsAppQuickDialog";
 import { SaleClosedWorkflowDialog } from "./SaleClosedWorkflowDialog";
 
@@ -53,6 +54,7 @@ const SalesTable = ({
   onDelete,
   onEdit,
 }: SalesTableProps) => {
+  const navigate = useNavigate();
   const [workflowSale, setWorkflowSale] = useState<Sale | null>(null);
   const [isWorkflowOpen, setIsWorkflowOpen] = useState(false);
   const [whatsAppSale, setWhatsAppSale] = useState<Sale | null>(null);
@@ -112,6 +114,17 @@ const SalesTable = ({
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-xl transition-all"
+                    onClick={() => {
+                      navigate(`/orcamento?client=${encodeURIComponent(sale.clientName)}&saleId=${sale.id}&phone=${encodeURIComponent(sale.clientPhone || '')}&project=${encodeURIComponent(sale.product || '')}&new=true`);
+                    }}
+                    title="Fazer Orçamento no Sistema"
+                  >
+                    <Calculator className="h-4 w-4" />
+                  </Button>
                   {sale.clientPhone && (
                     <Button
                       variant="ghost"
@@ -303,6 +316,17 @@ const SalesTable = ({
                   </TableCell>
                   <TableCell className="text-right pr-6">
                     <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-amber-400 hover:bg-amber-500/10 rounded-xl transition-all"
+                        onClick={() => {
+                          navigate(`/orcamento?client=${encodeURIComponent(sale.clientName)}&saleId=${sale.id}&phone=${encodeURIComponent(sale.clientPhone || '')}&project=${encodeURIComponent(sale.product || '')}&new=true`);
+                        }}
+                        title="Fazer Orçamento no Sistema"
+                      >
+                        <Calculator className="h-4 w-4" />
+                      </Button>
                       {sale.clientPhone && (
                         <Button
                           variant="ghost"

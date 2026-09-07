@@ -80,36 +80,61 @@ export function useBudgets() {
 
     const syncBudgetToSale = async (savedBudget: any) => {
         try {
-            // Find existing sale
-            const { data: existingSale, error: fetchError } = await supabase
-                .from('sales')
-                .select('id, status, closed_date')
-                .eq('budget_id', savedBudget.id)
-                .maybeSingle();
+            let existingSale: any = null;
 
-            if (fetchError) {
-                console.error("Error fetching existing sale:", fetchError);
-                return;
-            }
-
-            // Look up client phone and email from the clients table
-            let clientPhone = "";
-            let clientEmail = "";
-            try {
-                const { data: clientData } = await supabase
-                    .from('clients')
-                    .select('phone, email')
-                    .ilike('name', savedBudget.client_name || "")
+            // 1. Procurar por budget_id
+            if (savedBudget.id) {
+                const { data: byBudget } = await supabase
+                    .from('sales')
+                    .select('id, status, closed_date, client_phone, client_email, product')
+                    .eq('budget_id', savedBudget.id)
                     .maybeSingle();
-                if (clientData) {
-                    clientPhone = clientData.phone || "";
-                    clientEmail = clientData.email || "";
-                }
-            } catch (err) {
-                console.error("Error looking up client details for CRM sync:", err);
+                if (byBudget) existingSale = byBudget;
             }
 
-            // Map status
+            // 2. Se não encontrou e veio sale_id explícito
+            if (!existingSale && savedBudget.sale_id) {
+                const { data: bySaleId } = await supabase
+                    .from('sales')
+                    .select('id, status, closed_date, client_phone, client_email, product')
+                    .eq('id', savedBudget.sale_id)
+                    .maybeSingle();
+                if (bySaleId) existingSale = bySaleId;
+            }
+
+            // 3. Se ainda não encontrou, procurar por nome do cliente (case-insensitive)
+            if (!existingSale && savedBudget.client_name?.trim()) {
+                const { data: byClientName } = await supabase
+                    .from('sales')
+                    .select('id, status, closed_date, client_phone, client_email, product')
+                    .ilike('client_name', savedBudget.client_name.trim())
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+                if (byClientName && byClientName.length > 0) {
+                    existingSale = byClientName[0];
+                }
+            }
+
+            // Look up client phone and email from the clients table se não vier da venda
+            let clientPhone = existingSale?.client_phone || "";
+            let clientEmail = existingSale?.client_email || "";
+            if (!clientPhone || !clientEmail) {
+                try {
+                    const { data: clientData } = await supabase
+                        .from('clients')
+                        .select('phone, email')
+                        .ilike('name', savedBudget.client_name?.trim() || "")
+                        .maybeSingle();
+                    if (clientData) {
+                        if (!clientPhone) clientPhone = clientData.phone || "";
+                        if (!clientEmail) clientEmail = clientData.email || "";
+                    }
+                } catch (err) {
+                    console.error("Error looking up client details for CRM sync:", err);
+                }
+            }
+
+            // Mapear status
             let saleStatus: any = 'negociacao';
             if (savedBudget.status === 'aprovado') {
                 saleStatus = 'fechado';
@@ -117,14 +142,16 @@ export function useBudgets() {
                 saleStatus = 'nao_fechou';
             } else if (savedBudget.status === 'em_elaboracao') {
                 if (existingSale?.status === 'fechado' || existingSale?.status === 'pos_venda') {
-                    // Revert to negotiation if it was previously closed/approved
                     saleStatus = 'negociacao';
+                } else if (existingSale?.status === 'prospecto' || existingSale?.status === 'contato' || existingSale?.status === 'visita') {
+                    // Avança o lead para 'projeto' pois já há um orçamento elaborado
+                    saleStatus = 'projeto';
                 } else {
                     saleStatus = existingSale?.status || 'negociacao';
                 }
             }
 
-            // Map closed date
+            // Mapear data de fechamento
             let closedDate: string | null = null;
             if (saleStatus === 'fechado' || saleStatus === 'pos_venda') {
                 closedDate = existingSale?.closed_date || new Date().toISOString().split('T')[0];
@@ -148,16 +175,17 @@ export function useBudgets() {
             if (clientEmail) saleData.client_email = clientEmail;
 
             if (existingSale) {
+                // Atualiza a venda existente no CRM sem duplicar
                 const { error: updateError } = await supabase
                     .from('sales')
                     .update(saleData)
                     .eq('id', existingSale.id);
                 if (updateError) {
-                    console.error("Error updating sale from budget sync:", updateError);
+                    console.error("Error updating existing sale from budget sync:", updateError);
                 }
             } else {
+                // Se o cliente realmente não existia no CRM, cria a venda
                 saleData.contact_date = new Date().toISOString().split('T')[0];
-                // Set expected close date to 15 days from now
                 const expectedDate = new Date();
                 expectedDate.setDate(expectedDate.getDate() + 15);
                 saleData.expected_close_date = expectedDate.toISOString().split('T')[0];
@@ -169,6 +197,7 @@ export function useBudgets() {
                     console.error("Error inserting sale from budget sync:", insertError);
                 }
             }
+            queryClient.invalidateQueries({ queryKey: ["sales"] });
         } catch (e) {
             console.error("Error syncing budget to CRM:", e);
         }
@@ -321,7 +350,7 @@ export function useBudgets() {
             toast.success(budget.id ? "Orçamento atualizado!" : "Orçamento salvo com sucesso!");
             
             // Sync to CRM
-            await syncBudgetToSale(budgetData);
+            await syncBudgetToSale({ ...budgetData, sale_id: budget.sale_id });
 
             queryClient.invalidateQueries({ queryKey: ["budgets"] });
             queryClient.invalidateQueries({ queryKey: ["sales"] });
