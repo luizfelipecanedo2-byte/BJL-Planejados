@@ -236,6 +236,8 @@ const MainLayout = () => {
         return item.roles.includes('colaborador');
     });
 
+    const currentSectionName = allMenuItems.find(item => item.path === location.pathname)?.label || "Visão Geral";
+
     return (
         <div className="h-[100dvh] h-dvh bg-background/50 flex flex-col lg:flex-row overflow-hidden w-full relative">
             <CommandMenu />
@@ -320,7 +322,9 @@ const MainLayout = () => {
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                                 </span>
-                                <span className="text-[7px] uppercase font-black text-primary/70 tracking-widest leading-none">{role === 'admin' ? 'Administrador' : 'Colaborador'}</span>
+                                <span className="text-[8px] uppercase font-black text-primary/80 tracking-widest leading-none flex items-center gap-1">
+                                    {role === 'admin' ? 'CEO & Diretor Executivo' : 'Colaborador'}
+                                </span>
                             </div>
                         </div>
                     )}
@@ -417,12 +421,20 @@ const MainLayout = () => {
                         </div>
 
                         <div className="hidden lg:flex items-center gap-4">
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-semibold">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground/90">
+                                <span className="text-white/40 font-mono text-[11px]">BJL.HQ</span>
+                                <span className="text-white/20">/</span>
+                                <span className="text-primary font-bold tracking-wide">{currentSectionName}</span>
+                            </div>
+
+                            <div className="h-4 w-px bg-white/10" />
+
+                            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-semibold tracking-tight">
                                 <span className="relative flex h-2 w-2">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                 </span>
-                                <span>Sistema Online • Gateway Seguro</span>
+                                <span>Cloud Enterprise • Latência 18ms</span>
                             </div>
                         </div>
 
@@ -452,13 +464,20 @@ const MainLayout = () => {
                     </div>
 
                     <div className="flex items-center gap-2 sm:gap-6">
-                        <div className="hidden sm:flex items-center gap-4 bg-white/5 px-4 py-2 rounded-2xl border border-white/5 shadow-inner">
+                        <div className="hidden sm:flex items-center gap-3 bg-white/5 px-4 py-2 rounded-2xl border border-white/5 shadow-inner">
                             <div className="flex flex-col items-end">
-                                <span className="text-xs font-bold truncate max-w-[150px] text-luxury">
+                                <span className="text-xs font-bold truncate max-w-[160px] text-luxury flex items-center gap-1">
                                     {role === 'admin' ? 'Luiz Felipe Canedo' : userEmail?.split('@')[0]}
                                 </span>
-                                <span className="text-[9px] uppercase font-black text-primary/60 tracking-widest leading-none">
-                                    {role === 'admin' ? 'Administrador' : 'Colaborador'}
+                                <span className="text-[8px] uppercase font-black text-primary/80 tracking-widest leading-none flex items-center gap-1">
+                                    {role === 'admin' ? (
+                                        <>
+                                            <Sparkles className="h-2 w-2 text-amber-400" />
+                                            CEO & Diretor Executivo
+                                        </>
+                                    ) : (
+                                        'Colaborador'
+                                    )}
                                 </span>
                             </div>
                         </div>

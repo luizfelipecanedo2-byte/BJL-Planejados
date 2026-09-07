@@ -14,7 +14,10 @@ import {
   ClipboardList,
   Package,
   FileText,
-  CheckSquare
+  CheckSquare,
+  Plus,
+  Sparkles,
+  Zap
 } from "lucide-react";
 import {
   CommandDialog,
@@ -59,8 +62,33 @@ export function CommandMenu() {
         <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
           Nenhum resultado encontrado.
         </CommandEmpty>
+
+        <CommandGroup heading="Ações Rápidas Executivas">
+          <CommandItem onSelect={() => runCommand(() => navigate("/admin"))}>
+            <Zap className="mr-2.5 h-4 w-4 text-primary animate-pulse" />
+            <span className="text-luxury font-bold">Nova Venda / Negociação</span>
+            <CommandShortcut className="text-[10px] font-mono text-primary font-bold">NV</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => navigate("/admin/orcamento"))}>
+            <Plus className="mr-2.5 h-4 w-4 text-amber-400" />
+            <span className="text-luxury font-bold">Novo Orçamento & Projeto</span>
+            <CommandShortcut className="text-[10px] font-mono text-amber-400 font-bold">ORC</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => navigate("/admin/tarefas"))}>
+            <CheckSquare className="mr-2.5 h-4 w-4 text-emerald-400" />
+            <span className="text-luxury font-bold">Nova Tarefa de Produção</span>
+            <CommandShortcut className="text-[10px] font-mono text-emerald-400 font-bold">TAR</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => navigate("/admin/financeiro"))}>
+            <DollarSign className="mr-2.5 h-4 w-4 text-emerald-500" />
+            <span className="text-luxury font-bold">Novo Lançamento Financeiro</span>
+            <CommandShortcut className="text-[10px] font-mono text-emerald-500 font-bold">FIN</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator className="my-2 bg-white/10" />
         
-        <CommandGroup heading="Central de Comando">
+        <CommandGroup heading="Navegação Central">
           <CommandItem onSelect={() => runCommand(() => navigate("/admin"))}>
             <TrendingUp className="mr-2.5 h-4 w-4 text-amber-500" />
             <span className="text-luxury font-bold">CRM Dashboard</span>

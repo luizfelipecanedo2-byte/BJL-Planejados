@@ -18,7 +18,10 @@ import {
   ArrowRight,
   Pencil,
   Check,
-  X
+  X,
+  Sparkles,
+  ArrowUpRight,
+  Activity
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PremiumCard } from "@/components/ui/PremiumCard";
@@ -172,7 +175,11 @@ const Dashboard = ({ sales }: DashboardProps) => {
     fetchTasks();
   }, []);
 
-  // Spotlight event handlers removed in favor of PremiumCard component
+  const recentSales = useMemo(() => {
+    return [...sales]
+      .sort((a, b) => new Date(b.contactDate || b.createdAt || 0).getTime() - new Date(a.contactDate || a.createdAt || 0).getTime())
+      .slice(0, 4);
+  }, [sales]);
 
   const years = useMemo(() => {
     const yearsSet = new Set<string>();
@@ -393,215 +400,298 @@ const Dashboard = ({ sales }: DashboardProps) => {
     const channelData = getChannelData(revenueSales, true);
     const allChannelData = getChannelData(budgetSales, false);
 
-    const cards = [
-      {
-        title: "Valor Total Orçado",
-        value: totalBudget,
-        isCurrency: true,
-        icon: DollarSign,
-        color: "text-amber-500",
-        hexColor: "#f59e0b",
-        bgColor: "bg-amber-500/10",
-        trend: "up" as const,
-        trendBadge: "+12.4%",
-      },
-      {
-        title: "Receita (Fechado + Pós)",
-        value: totalRevenue,
-        isCurrency: true,
-        icon: Target,
-        color: "text-primary",
-        hexColor: "#eab308",
-        bgColor: "bg-primary/10",
-        trend: "up" as const,
-        trendBadge: "+18.2%",
-      },
-      {
-        title: "Perdidos / Congelados",
-        value: lostSalesValue,
-        isCurrency: true,
-        icon: TrendingDown,
-        color: "text-rose-500",
-        hexColor: "#f43f5e",
-        bgColor: "bg-rose-500/10",
-        trend: "down" as const,
-        trendBadge: "-3.5%",
-      },
-      {
-        title: "Pipeline em Andamento",
-        value: pipelineValue,
-        isCurrency: true,
-        icon: TrendingUp,
-        color: "text-amber-400",
-        hexColor: "#fbbf24",
-        bgColor: "bg-amber-400/10",
-        trend: "up" as const,
-        trendBadge: "Em fluxo",
-      },
-      {
-        title: "Ticket Médio (Fechadas)",
-        value: avgTicketClosed,
-        isCurrency: true,
-        icon: Receipt,
-        color: "text-primary",
-        hexColor: "#eab308",
-        bgColor: "bg-primary/10",
-        trend: "up" as const,
-        trendBadge: "+9.1%",
-      },
-      {
-        title: "Ticket Médio Geral",
-        value: avgTicketAll,
-        isCurrency: true,
-        icon: Receipt,
-        color: "text-amber-500",
-        hexColor: "#f59e0b",
-        bgColor: "bg-amber-500/10",
-        trend: "neutral" as const,
-        trendBadge: "Estável",
-      },
-      {
-        title: "Taxa de Conversão",
-        value: conversionRate,
-        isPercentage: true,
-        label: `${numClosed}/${numBudgets}`,
-        icon: BarChart3,
-        color: "text-amber-300",
-        hexColor: "#fde047",
-        bgColor: "bg-amber-300/10",
-        trend: "up" as const,
-        trendBadge: "Meta 25%",
-      },
-      {
-        title: "Tarefas Pendentes",
-        value: totalPendingTasks,
-        icon: CheckSquare,
-        color: "text-emerald-500",
-        hexColor: "#10b981",
-        bgColor: "bg-emerald-500/10",
-        trend: "neutral" as const,
-        trendBadge: "Em dia",
-        isTask: true,
-      }
-    ];
-
-    const progressPercent = Math.min((totalRevenue / salesGoal) * 100, 100);
+    const today = new Date();
+    const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const currentDay = Math.max(today.getDate(), 1);
+    const projectedRevenue = (totalRevenue / currentDay) * daysInCurrentMonth;
+    const projectedPercent = salesGoal > 0 ? Math.round((projectedRevenue / salesGoal) * 100) : 0;
 
     return (
       <div className="space-y-8">
-        {/* Painel de Boas-Vindas Premium */}
-        <PremiumCard className="relative overflow-hidden p-8 border-none bg-gradient-to-r from-primary/10 via-primary/5 to-transparent flex flex-col md:flex-row justify-between items-center gap-6 rounded-3xl luxury-shadow">
-          <div className="space-y-2 text-center md:text-left">
-            <h2 className="text-3xl font-black text-foreground tracking-tight">
-              {greeting}, <span className="shimmer-gold">{userName}</span>!
-            </h2>
-            <p className="text-sm text-muted-foreground max-w-md">
-              Bem-vindo de volta ao seu painel. Aqui está o desempenho comercial de <span className="font-semibold text-primary">{titleSuffix}</span>.
-            </p>
-          </div>
-          <div className="w-full md:w-80 space-y-2 bg-black/20 p-4 rounded-2xl border border-white/5">
-            <div className="flex justify-between items-center text-xs">
-              <span className="font-bold text-muted-foreground uppercase tracking-widest text-[9px]">Meta de Vendas Mensal</span>
-              {isEditingGoal ? (
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    value={goalInput}
-                    onChange={(e) => setGoalInput(e.target.value)}
-                    className="w-20 text-[10px] bg-black border border-white/20 text-white rounded px-1.5 py-0.5 font-bold"
-                    autoFocus
-                  />
-                  <button onClick={handleSaveGoal} className="text-emerald-500 hover:text-emerald-400 p-0.5">
-                    <Check size={12} />
-                  </button>
-                  <button 
-                    onClick={() => { 
-                      setIsEditingGoal(false); 
-                      setGoalInput(salesGoal.toString()); 
-                    }} 
-                    className="text-rose-500 hover:text-rose-400 p-0.5"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-primary">{progressPercent.toFixed(0)}%</span>
-                  <button 
-                    onClick={() => setIsEditingGoal(true)}
-                    className="text-[9px] font-black uppercase text-primary/60 hover:text-primary transition-colors p-0.5 flex items-center"
-                    title="Editar Meta"
-                  >
-                    <Pencil size={10} />
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="w-full bg-secondary h-3 rounded-full overflow-hidden relative shadow-inner p-[1px]">
-              <div 
-                className="bg-gradient-to-r from-primary to-amber-300 h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(245,158,11,0.5)]" 
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <div className="flex justify-between items-center text-[10px] text-muted-foreground">
-              <span>{formatCurrency(totalRevenue)}</span>
-              <span>Meta: {formatCurrency(salesGoal)}</span>
-            </div>
-          </div>
-        </PremiumCard>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-5">
-          {cards.map((card, idx) => (
-            <PremiumCard
-              key={card.title}
-              delay={idx * 0.04}
-              className="glass-panel-pro rounded-[2rem] hover:border-primary/40 transition-all duration-300 group overflow-hidden relative"
-            >
-              <div className="relative w-full h-full flex flex-col justify-between">
-                <div className={`absolute -right-6 -bottom-6 opacity-[0.03] group-hover:opacity-[0.08] group-hover:scale-125 transition-all duration-700 ${card.color}`}>
-                  <card.icon size={90} />
-                </div>
-                
-                <div className="flex flex-col gap-3 relative z-10">
-                  <div className="flex items-center justify-between">
-                    <div className={`p-2.5 rounded-xl ${card.bgColor} w-fit group-hover:scale-110 transition-transform duration-300`}>
-                      <card.icon className={`h-5 w-5 ${card.color}`} />
-                    </div>
-                    {card.trendBadge && (
-                      <span className={cn(
-                        "text-[9px] font-semibold px-2 py-0.5 rounded-full border tracking-wide",
-                        card.trend === "up" 
-                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
-                          : card.trend === "down"
-                          ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                          : "bg-white/5 text-muted-foreground border-white/10"
-                      )}>
-                        {card.trendBadge}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider opacity-75">
-                      {card.title}
-                    </p>
-                    <div className={cn("text-2xl md:text-3xl font-black metric-value tracking-tight", card.color)}>
-                      <AnimatedCounter 
-                        value={card.value} 
-                        formatter={(v) => {
-                          if (card.isCurrency) return formatCurrency(v);
-                          if (card.isPercentage) return `${card.label} (${v.toFixed(0)}%)`;
-                          return v.toFixed(0);
-                        }} 
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <MiniSparkline color={card.hexColor} trend={card.trend} />
+        {/* Executive Cockpit Header & Monthly Target Module */}
+        <div className="executive-card p-6 sm:p-8 rounded-[2.5rem] border-metallic relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+          
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="pulse-badge text-primary border-primary/20 bg-primary/5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
+                  Executive Cockpit
+                </span>
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+                  BJL Enterprise • {titleSuffix}
+                </span>
               </div>
-            </PremiumCard>
-          ))}
+              
+              <h2 className="text-2xl sm:text-4xl font-['Cinzel'] font-bold text-foreground tracking-wide flex items-center gap-3">
+                {greeting}, <span className="shimmer-gold uppercase">{userName}</span>
+              </h2>
+              <p className="text-xs text-muted-foreground max-w-lg leading-relaxed">
+                Painel gerencial de alta precisão comercial e desempenho fabril. Monitorando fluxo de receita, conversão e pipeline estratégico em tempo real.
+              </p>
+            </div>
+
+            {/* Target Progress Module */}
+            <div className="w-full lg:w-[400px] bg-black/40 backdrop-blur-xl p-5 rounded-2xl border border-white/10 space-y-3 shrink-0 shadow-2xl">
+              <div className="flex justify-between items-center text-xs">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-amber-400" />
+                  <span className="font-bold text-white uppercase tracking-wider text-[10px]">Meta Mensal Corporativa</span>
+                </div>
+                {isEditingGoal ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={goalInput}
+                      onChange={(e) => setGoalInput(e.target.value)}
+                      className="w-24 text-xs bg-black/80 border border-primary/40 text-white rounded-lg px-2 py-1 font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                      autoFocus
+                    />
+                    <button onClick={handleSaveGoal} className="text-emerald-400 hover:text-emerald-300 p-1 bg-emerald-500/10 rounded-lg">
+                      <Check size={14} />
+                    </button>
+                    <button onClick={() => { setIsEditingGoal(false); setGoalInput(salesGoal.toString()); }} className="text-rose-400 hover:text-rose-300 p-1 bg-rose-500/10 rounded-lg">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-sm text-primary font-mono">{progressPercent.toFixed(1)}%</span>
+                    <button onClick={() => setIsEditingGoal(true)} className="text-[10px] text-muted-foreground hover:text-primary transition-colors p-1" title="Ajustar Meta">
+                      <Pencil size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* High-Tech Metallic Progress Bar */}
+              <div className="w-full bg-white/5 h-3 rounded-full overflow-hidden relative border border-white/10 p-[1px]">
+                <div 
+                  className="bg-gradient-to-r from-amber-600 via-primary to-amber-300 h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(245,158,11,0.6)]" 
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+
+              <div className="flex justify-between items-center text-[10px] font-mono tabular-nums">
+                <span className="text-emerald-400 font-bold">{formatCurrency(totalRevenue)}</span>
+                <span className="text-muted-foreground">Alvo: {formatCurrency(salesGoal)}</span>
+              </div>
+
+              <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[9px] font-mono text-muted-foreground">
+                <span className="flex items-center gap-1 text-primary/80">
+                  <Sparkles className="h-3 w-3 text-amber-400" />
+                  Ritmo: {projectedPercent}% estimado
+                </span>
+                <span>Projeção: <strong className="text-white">{formatCurrency(projectedRevenue)}</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bento Grid 2.0 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+          {/* HERO CARD (Spans 2 columns on desktop) */}
+          <div className="md:col-span-2 lg:col-span-2 executive-card p-6 sm:p-7 rounded-[2.5rem] border-metallic flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
+            
+            <div className="relative z-10 flex flex-col justify-between h-full space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 text-primary">
+                    <Target className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Receita Faturada & Contratos</h3>
+                    <p className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 mt-0.5 font-mono">
+                      <TrendingUp className="h-3 w-3" /> +18.2% vs período anterior
+                    </p>
+                  </div>
+                </div>
+
+                <div className="px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-mono text-[10px] font-bold shadow-inner">
+                  {numClosed} {numClosed === 1 ? 'Contrato Fechado' : 'Contratos Fechados'}
+                </div>
+              </div>
+
+              <div className="space-y-1.5 my-2">
+                <div className="text-3xl sm:text-5xl font-black metric-value tracking-tight text-white font-mono">
+                  <AnimatedCounter value={totalRevenue} formatter={formatCurrency} />
+                </div>
+                <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-muted-foreground">
+                  <span>Pipeline Ativo: <strong className="text-amber-400 font-mono">{formatCurrency(pipelineValue)}</strong></span>
+                  <span>•</span>
+                  <span>Conversão: <strong className="text-emerald-400 font-mono">{conversionRate}%</strong></span>
+                </div>
+              </div>
+
+              <MiniSparkline color="#f59e0b" trend="up" />
+            </div>
+          </div>
+
+          {/* SATELLITE 1: Valor Total Orçado */}
+          <div className="executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col justify-between relative overflow-hidden group">
+            <div className="flex items-center justify-between relative z-10">
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                <DollarSign className="h-5 w-5" />
+              </div>
+              <span className="text-[9px] font-bold font-mono px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-muted-foreground">
+                {numBudgets} propostas
+              </span>
+            </div>
+
+            <div className="space-y-1 my-3 relative z-10">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Total Orçado</span>
+              <div className="text-2xl font-black text-white metric-value font-mono">
+                <AnimatedCounter value={totalBudget} formatter={formatCurrency} />
+              </div>
+            </div>
+
+            <MiniSparkline color="#eab308" trend="up" />
+          </div>
+
+          {/* SATELLITE 2: Ticket Médio Fechado */}
+          <div className="executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col justify-between relative overflow-hidden group">
+            <div className="flex items-center justify-between relative z-10">
+              <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 text-primary">
+                <Receipt className="h-5 w-5" />
+              </div>
+              <span className="text-[9px] font-bold font-mono px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                +9.1%
+              </span>
+            </div>
+
+            <div className="space-y-1 my-3 relative z-10">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Ticket Médio (Fechado)</span>
+              <div className="text-2xl font-black text-primary metric-value font-mono">
+                <AnimatedCounter value={avgTicketClosed} formatter={formatCurrency} />
+              </div>
+            </div>
+
+            <MiniSparkline color="#f59e0b" trend="up" />
+          </div>
+
+          {/* SATELLITE 3: Taxa de Conversão */}
+          <div className="executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col justify-between relative overflow-hidden group">
+            <div className="flex items-center justify-between relative z-10">
+              <div className="p-3 rounded-2xl bg-amber-400/10 border border-amber-400/20 text-amber-300">
+                <BarChart3 className="h-5 w-5" />
+              </div>
+              <span className="text-[9px] font-bold font-mono px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                Meta: 25%
+              </span>
+            </div>
+
+            <div className="space-y-1 my-3 relative z-10">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Taxa de Conversão</span>
+              <div className="text-2xl font-black text-white metric-value font-mono">
+                {conversionRate}% <span className="text-xs text-muted-foreground font-normal">({numClosed}/{numBudgets})</span>
+              </div>
+            </div>
+
+            <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/10 mt-2">
+              <div className="bg-amber-400 h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(conversionRate, 100)}%` }} />
+            </div>
+          </div>
+
+          {/* SATELLITE 4: Perdidos / Congelados */}
+          <div className="executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col justify-between relative overflow-hidden group">
+            <div className="flex items-center justify-between relative z-10">
+              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
+                <TrendingDown className="h-5 w-5" />
+              </div>
+              <span className="text-[9px] font-bold font-mono px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400">
+                {numLost} perdas
+              </span>
+            </div>
+
+            <div className="space-y-1 my-3 relative z-10">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Perdidos / Congelados</span>
+              <div className="text-2xl font-black text-rose-400 metric-value font-mono">
+                <AnimatedCounter value={lostSalesValue} formatter={formatCurrency} />
+              </div>
+            </div>
+
+            <MiniSparkline color="#f43f5e" trend="down" />
+          </div>
+
+          {/* SATELLITE 5: Tarefas Operacionais da Fábrica (Spans 2 cols) */}
+          <div className="md:col-span-2 lg:col-span-2 executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden group">
+            <div className="flex items-center gap-3 relative z-10">
+              <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                <CheckSquare className="h-6 w-6" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white tracking-tight">Operação Fabril & Produção</h4>
+                <p className="text-xs text-muted-foreground">
+                  <strong className="text-emerald-400 font-mono">{totalPendingTasks} tarefas</strong> ativas em linha de corte, montagem e expedição.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              to="/admin/tarefas"
+              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs font-semibold tracking-wider uppercase transition-all flex items-center gap-1.5 shrink-0 hover:scale-105 active:scale-95 shadow-lg"
+            >
+              <span>Ver Fábrica</span>
+              <ArrowRight className="h-3.5 w-3.5 text-primary" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Live Activity Feed - Movimentações Corporativas em Tempo Real */}
+        <div className="executive-card p-6 rounded-[2.5rem] border-metallic space-y-4">
+          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+            <div className="flex items-center gap-2.5">
+              <Activity className="h-4 w-4 text-primary animate-pulse" />
+              <h3 className="text-xs font-black uppercase tracking-widest text-white">
+                Telemetria & Atividades Recentes
+              </h3>
+            </div>
+            <span className="text-[9px] font-mono text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+              Live Updates
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {recentSales.slice(0, 2).map((sale) => (
+              <div key={sale.id} className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-primary/20 transition-colors flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 shrink-0">
+                    <DollarSign className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-white truncate">{sale.clientName}</span>
+                    <span className="text-[10px] text-muted-foreground truncate">{sale.projectName || "Projeto Planejado"}</span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-mono font-bold text-primary block">{formatCurrency(sale.totalValue)}</span>
+                  <span className="text-[8px] uppercase tracking-wider text-muted-foreground">{STATUS_LABELS[sale.status] || sale.status}</span>
+                </div>
+              </div>
+            ))}
+
+            {recentTasks.slice(0, 2).map((task) => (
+              <div key={task.id} className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-emerald-500/20 transition-colors flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0">
+                    <CheckSquare className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-white truncate">{task.title}</span>
+                    <span className="text-[10px] text-muted-foreground truncate">{task.project_name || "Produção"}</span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-[9px] uppercase font-bold text-amber-400 px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/20">
+                    {task.priority === 'high' ? 'Crítica' : 'Normal'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <PremiumCard className="rounded-[2.5rem] luxury-shadow overflow-hidden group">

@@ -17,6 +17,9 @@ const isAudioEnabled = () => {
 export const playClickSound = () => {
   if (!isAudioEnabled()) return;
   try {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      try { navigator.vibrate(12); } catch (vErr) { /* ignore */ }
+    }
     const ctx = getAudioContext();
     if (ctx.state === "suspended") {
       ctx.resume();
