@@ -237,7 +237,7 @@ const MainLayout = () => {
     });
 
     return (
-        <div className="min-h-[100dvh] bg-background/50 flex pb-[72px] lg:pb-0 overflow-hidden">
+        <div className="h-[100dvh] h-dvh bg-background/50 flex flex-col lg:flex-row overflow-hidden w-full relative">
             <CommandMenu />
             <div className="aurora-bg" />
             
@@ -398,8 +398,8 @@ const MainLayout = () => {
                 </div>
             </aside>
 
-            <div className="flex-1 flex flex-col min-w-0 h-[100dvh] lg:h-screen relative z-10">
-                <header className="h-20 glass-panel-pro backdrop-blur-2xl flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 border-b border-white/[0.08] shadow-2xl">
+            <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative z-10">
+                <header className="h-16 md:h-20 shrink-0 glass-panel-pro backdrop-blur-2xl flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 border-b border-white/[0.08] shadow-2xl">
                     <div className="flex items-center gap-4 md:gap-8">
                         <div className="lg:hidden flex items-center gap-2.5">
                             <button
@@ -529,7 +529,7 @@ const MainLayout = () => {
                     </div>
                 </header>
 
-                <main className="flex-1 p-3 md:p-8 lg:p-10 pb-28 lg:pb-10 overflow-y-auto overflow-x-auto touch-pan-x relative max-w-full">
+                <main className="flex-1 min-h-0 p-3 md:p-8 lg:p-10 pb-28 lg:pb-10 overflow-y-auto overflow-x-hidden relative max-w-full overscroll-y-contain webkit-overflow-scrolling-touch">
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 select-none overflow-hidden">
                         <div className="relative w-full h-full flex items-center justify-center opacity-[0.03]">
                              <div className="absolute rotate-[-15deg] scale-[3] blur-[2px]">
@@ -589,7 +589,7 @@ const MainLayout = () => {
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.98, y: -12 }}
                             transition={{ type: "spring", damping: 25, stiffness: 190 }}
-                            className="relative z-10 w-full h-full"
+                            className="relative z-10 w-full min-h-full"
                         >
                             <Outlet />
                         </motion.div>

@@ -576,7 +576,7 @@ const CapacityTab = ({ orders = [], settings }: CapacityTabProps) => {
           </span>
         </div>
         
-        <div className="overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch">
+        <div className="overflow-x-auto webkit-overflow-scrolling-touch">
           <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.01]">

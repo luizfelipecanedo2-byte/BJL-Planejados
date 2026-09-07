@@ -40,7 +40,7 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-black relative overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center p-4 py-8 bg-black relative overflow-y-auto webkit-overflow-scrolling-touch">
             {/* Ambient Background Layer */}
             <div className="absolute inset-0 aurora-bg opacity-30 pointer-events-none"></div>
             <div className="absolute inset-0 stardust opacity-50 pointer-events-none"></div>

@@ -1679,7 +1679,7 @@ const Financeiro = () => {
       </header>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-10">
-        <div className="px-2 overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch hide-scrollbar pb-1 max-w-full">
+        <div className="px-2 overflow-x-auto webkit-overflow-scrolling-touch hide-scrollbar pb-1 max-w-full">
           <TabsList className={cn(
             "h-16 sm:h-20 w-max min-w-full lg:min-w-0 p-2 glass-card rounded-[2rem] luxury-shadow border-white/5 backdrop-blur-3xl transition-all duration-700",
             activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "bg-purple-900/30 border-purple-500/20" :

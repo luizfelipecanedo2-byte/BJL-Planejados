@@ -507,7 +507,7 @@ const Index = () => {
 
       <Tabs defaultValue="dashboard" className="space-y-6 w-full">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex justify-start overflow-x-auto touch-pan-x no-scrollbar max-w-full pb-1">
+          <div className="flex justify-start overflow-x-auto no-scrollbar max-w-full pb-1">
             <TabsList className="glass-panel-pro p-1.5 rounded-2xl h-auto shadow-xl inline-flex min-w-max">
               <TabsTrigger value="dashboard" className="gap-2 rounded-xl px-5 sm:px-7 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold text-xs transition-all duration-300">
                 <LayoutDashboard className="h-4 w-4" />

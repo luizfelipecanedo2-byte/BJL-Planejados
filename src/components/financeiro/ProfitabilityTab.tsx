@@ -241,7 +241,7 @@ export default function ProfitabilityTab() {
 
             <Card className="glass-card rounded-[2.5rem] luxury-shadow border-white/5 overflow-hidden">
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch">
+                    <div className="overflow-x-auto webkit-overflow-scrolling-touch">
                         <table className="w-full text-left min-w-[650px]">
                         <thead className="bg-white/5">
                             <tr className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">

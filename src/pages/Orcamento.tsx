@@ -1456,7 +1456,7 @@ const Orcamento = () => {
                         </CardHeader>
                          <CardContent className="p-0">
                             {/* Table view for md and up */}
-                            <div className="overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch">
+                            <div className="overflow-x-auto webkit-overflow-scrolling-touch">
                                 <table className="w-full text-xs min-w-[650px]">
                                     <thead>
                                         <tr className="bg-slate-50 text-muted-foreground/50 h-16 border-b border-border/10">
@@ -1752,7 +1752,7 @@ const Orcamento = () => {
                         </Dialog>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto touch-pan-x webkit-overflow-scrolling-touch">
+                        <div className="overflow-x-auto webkit-overflow-scrolling-touch">
                             <table className="w-full text-xs min-w-[600px]">
                                 <thead>
                                     <tr className="bg-slate-50 text-muted-foreground/50 h-16 border-b border-border/10">
