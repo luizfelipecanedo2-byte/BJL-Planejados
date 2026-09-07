@@ -521,6 +521,32 @@ const Orcamento = () => {
         return sortedData; 
     }, [filteredMaterialsForCatalog]);
 
+    const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>("TODAS");
+
+    const allAvailableCategories = useMemo(() => {
+        const cats = new Set<string>();
+        Object.values(groupedBySupplier).forEach(supplierObj => {
+            Object.keys(supplierObj).forEach(cat => cats.add(cat));
+        });
+        const CATEGORY_ORDER = ["MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"];
+        return Array.from(cats).sort((a, b) => {
+            const idxA = CATEGORY_ORDER.indexOf(a);
+            const idxB = CATEGORY_ORDER.indexOf(b);
+            if (idxA === -1 && idxB === -1) return a.localeCompare(b);
+            if (idxA === -1) return 1;
+            if (idxB === -1) return -1;
+            return idxA - idxB;
+        });
+    }, [groupedBySupplier]);
+
+    const [openCategories, setOpenCategories] = useState<string[]>([]);
+
+    // Automatically expand all visible categories when supplier or search changes, so no empty space is left
+    useEffect(() => {
+        const allCats = Object.values(groupedBySupplier).flatMap(c => Object.keys(c));
+        setOpenCategories(Array.from(new Set(allCats)));
+    }, [groupedBySupplier]);
+
     const calculateTotals = useMemo(() => {
         const categoryTotals: Record<string, number> = {};
         let materialCost = 0;
@@ -1102,22 +1128,81 @@ const Orcamento = () => {
                                                 />
                                             </div>
 
-                                            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 gap-1">
-                                                {["TODOS", "CHM", "BRUTA", "OUTROS"].map(filter => (
-                                                    <button
-                                                        key={filter}
-                                                        onClick={() => setActiveSupplierFilter(filter as any)}
-                                                        className={cn(
-                                                            "px-3 py-1.5 rounded-lg font-black text-[10px] tracking-widest transition-all",
-                                                            activeSupplierFilter === filter 
-                                                                ? "bg-primary text-primary-foreground shadow-lg" 
-                                                                : "text-slate-400 hover:bg-white/5"
-                                                        )}
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 gap-1">
+                                                    {["TODOS", "CHM", "BRUTA", "OUTROS"].map(filter => (
+                                                        <button
+                                                            key={filter}
+                                                            onClick={() => setActiveSupplierFilter(filter as any)}
+                                                            className={cn(
+                                                                "px-3 py-1.5 rounded-lg font-black text-[10px] tracking-widest transition-all",
+                                                                activeSupplierFilter === filter 
+                                                                    ? "bg-primary text-primary-foreground shadow-lg" 
+                                                                    : "text-slate-400 hover:bg-white/5"
+                                                            )}
+                                                        >
+                                                            {filter}
+                                                        </button>
+                                                    ))}
+                                                </div>
+
+                                                <div className="flex items-center gap-1.5">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            const allCats = Object.values(groupedBySupplier).flatMap(c => Object.keys(c));
+                                                            setOpenCategories(Array.from(new Set(allCats)));
+                                                        }}
+                                                        className="h-8 px-2.5 text-[9px] font-black uppercase tracking-wider rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5"
+                                                        title="Expandir todas as categorias"
                                                     >
-                                                        {filter}
-                                                    </button>
-                                                ))}
+                                                        Expandir Tudo
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setOpenCategories([])}
+                                                        className="h-8 px-2.5 text-[9px] font-black uppercase tracking-wider rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 border border-white/5"
+                                                        title="Recolher todas as categorias"
+                                                    >
+                                                        Recolher
+                                                    </Button>
+                                                </div>
                                             </div>
+                                        </div>
+
+                                        {/* Quick Category Pills */}
+                                        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
+                                            <button
+                                                type="button"
+                                                onClick={() => setActiveCategoryFilter("TODAS")}
+                                                className={cn(
+                                                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all shrink-0 border",
+                                                    activeCategoryFilter === "TODAS"
+                                                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                                        : "bg-white/5 text-slate-400 border-white/5 hover:bg-white/10 hover:text-slate-200"
+                                                )}
+                                            >
+                                                Todas Categorias
+                                            </button>
+                                            {allAvailableCategories.map(cat => (
+                                                <button
+                                                    key={cat}
+                                                    type="button"
+                                                    onClick={() => setActiveCategoryFilter(activeCategoryFilter === cat ? "TODAS" : cat)}
+                                                    className={cn(
+                                                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all shrink-0 border",
+                                                        activeCategoryFilter === cat
+                                                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                                            : "bg-white/5 text-slate-400 border-white/5 hover:bg-white/10 hover:text-slate-200"
+                                                    )}
+                                                >
+                                                    {cat}
+                                                </button>
+                                            ))}
                                         </div>
 
                                         <div className="space-y-6">
@@ -1130,8 +1215,13 @@ const Orcamento = () => {
                                                     return true;
                                                 })
                                                 .map(([supplier, categories]) => {
-                                                    const supplierSelectedCount = Object.values(categories).flat().filter(m => quantities[m.id] > 0).length;
-                                                    const supplierTotalCount = Object.values(categories).flat().length;
+                                                    const filteredCategories = Object.entries(categories).filter(([cat]) => 
+                                                        activeCategoryFilter === "TODAS" || activeCategoryFilter === cat
+                                                    );
+                                                    if (filteredCategories.length === 0) return null;
+
+                                                    const supplierSelectedCount = filteredCategories.flatMap(([_, items]) => items).filter(m => quantities[m.id] > 0).length;
+                                                    const supplierTotalCount = filteredCategories.flatMap(([_, items]) => items).length;
 
                                                     return (
                                                         <div key={supplier} className="space-y-3">
@@ -1171,12 +1261,12 @@ const Orcamento = () => {
                                                             </div>
 
                                                             <Accordion 
-                                                                key={`${supplier}-${Object.keys(categories).join('-')}-${materialSearchTerm}`}
                                                                 type="multiple" 
-                                                                defaultValue={Object.keys(categories)} 
+                                                                value={openCategories}
+                                                                onValueChange={setOpenCategories}
                                                                 className="space-y-3"
                                                             >
-                                                                {Object.entries(categories).map(([category, items]) => {
+                                                                {filteredCategories.map(([category, items]) => {
                                                                     const catSelectedCount = items.filter(m => quantities[m.id] > 0).length;
 
                                                                     return (
@@ -1195,7 +1285,7 @@ const Orcamento = () => {
                                                                                 </div>
                                                                             </AccordionTrigger>
                                                                             <AccordionContent className="pb-4 border-none">
-                                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-2.5">
                                                                                     {items.map(item => {
                                                                                         const qtyNum = quantities[item.id] || 0;
                                                                                         const qtyStr = rawQuantities[item.id] !== undefined ? rawQuantities[item.id] : (qtyNum ? String(qtyNum) : "");
@@ -1204,22 +1294,22 @@ const Orcamento = () => {
                                                                                         const isSelected = (selectedMaterialIds ? selectedMaterialIds.includes(item.id) : quantities[item.id] > 0) || quantities[item.id] > 0;
                                                                                         return (
                                                                                             <div key={item.id} className={cn(
-                                                                                                "flex items-center justify-between p-3 rounded-xl transition-all group border",
+                                                                                                "flex items-center justify-between p-2.5 sm:p-3 rounded-xl transition-all group border",
                                                                                                 isSelected 
-                                                                                                    ? "bg-primary/15 border-primary/40 shadow-sm" 
+                                                                                                    ? "bg-primary/15 border-primary/40 shadow-sm ring-1 ring-primary/20" 
                                                                                                     : "bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10"
                                                                                             )}>
                                                                                                 <div className="flex flex-col min-w-0 flex-1 mr-2">
                                                                                                     <span className="text-[11px] font-bold text-slate-200 uppercase tracking-tight truncate" title={item.name}>{item.name}</span>
                                                                                                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{formatCurrency(currentPrice)} / {item.unit}</span>
                                                                                                 </div>
-                                                                                                <div className="flex items-center gap-2 shrink-0">
+                                                                                                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                                                                                                     {isSelected && (
                                                                                                         <div className="flex flex-col items-end">
                                                                                                             <span className="text-[7px] font-black text-slate-400 uppercase">R$/Unid.</span>
                                                                                                             <Input
                                                                                                                 type="number"
-                                                                                                                className="w-20 h-8 rounded-lg text-right font-black text-[10px] border-white/10 focus:bg-white/10 text-white bg-white/5 px-2"
+                                                                                                                className="w-18 sm:w-20 h-8 rounded-lg text-right font-black text-[10px] border-white/10 focus:bg-white/10 text-white bg-white/5 px-1.5"
                                                                                                                 value={priceStr}
                                                                                                                 onChange={(e) => handlePriceChange(item.id, e.target.value)}
                                                                                                             />
@@ -1234,7 +1324,7 @@ const Orcamento = () => {
                                                                                                                 type="number"
                                                                                                                 placeholder="0"
                                                                                                                 className={cn(
-                                                                                                                    "w-16 sm:w-20 h-8 sm:h-9 rounded-lg text-center font-black text-xs transition-all",
+                                                                                                                    "w-14 sm:w-16 h-8 rounded-lg text-center font-black text-xs transition-all",
                                                                                                                     isSelected 
                                                                                                                         ? "bg-primary text-primary-foreground border-primary font-extrabold shadow-md" 
                                                                                                                         : "bg-white/5 border-white/10 text-white focus:bg-white/10"
