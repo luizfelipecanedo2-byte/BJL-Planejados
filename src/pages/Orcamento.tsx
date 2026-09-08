@@ -23,6 +23,9 @@ import { Sparkles, Key, UploadCloud, FileImage, Brain, Hammer, Hourglass, Check,
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { BudgetStockSyncDialog } from "@/components/orcamento/BudgetStockSyncDialog";
 import { SaleClosedWorkflowDialog } from "@/components/crm/SaleClosedWorkflowDialog";
+import { WhatsAppQuickDialog } from "@/components/crm/WhatsAppQuickDialog";
+import { MessageSquare, Clock, PhoneCall } from "lucide-react";
+import { differenceInDays } from "date-fns";
 import { Sale } from "@/types/sale";
 
 const analysisSteps = [
@@ -60,6 +63,9 @@ const Orcamento = () => {
     const [stockSyncBudget, setStockSyncBudget] = useState<any>(null);
     const [closedWorkflowSale, setClosedWorkflowSale] = useState<Sale | null>(null);
     const [isClosedWorkflowOpen, setIsClosedWorkflowOpen] = useState(false);
+    const [whatsAppBudget, setWhatsAppBudget] = useState<any>(null);
+    const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
+    const [followUpFilter, setFollowUpFilter] = useState<'all' | 'followup_due' | 'pending' | 'aprovado'>('all');
 
     // Spotlight effect tracker with cached rect to avoid layout thrashing
     const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -79,6 +85,15 @@ const Orcamento = () => {
 
     const handleCardMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
         delete (e.currentTarget as any)._cachedRect;
+    };
+
+    const getBudgetDaysSinceCreation = (budget: any) => {
+        if (!budget?.created_at) return 0;
+        try {
+            return differenceInDays(new Date(), new Date(budget.created_at));
+        } catch {
+            return 0;
+        }
     };
 
     const availableYears = useMemo(() => {
@@ -107,11 +122,21 @@ const Orcamento = () => {
     }, [budgets, selectedYear]);
 
     const filteredBudgets = useMemo(() => {
-        return filteredBudgetsByYear.filter(b => 
-            b.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            b.project_name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [filteredBudgetsByYear, searchTerm]);
+        return filteredBudgetsByYear.filter(b => {
+            const matchesSearch = b.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                b.project_name.toLowerCase().includes(searchTerm.toLowerCase());
+            if (!matchesSearch) return false;
+
+            if (followUpFilter === 'all') return true;
+            if (followUpFilter === 'aprovado') return b.status === 'aprovado';
+            if (followUpFilter === 'pending') return b.status !== 'aprovado' && b.status !== 'rejeitado';
+            if (followUpFilter === 'followup_due') {
+                const days = getBudgetDaysSinceCreation(b);
+                return b.status !== 'aprovado' && b.status !== 'rejeitado' && days >= 3;
+            }
+            return true;
+        });
+    }, [filteredBudgetsByYear, searchTerm, followUpFilter]);
 
     // Form State & CRM Integration
     const [searchParams, setSearchParams] = useSearchParams();
@@ -386,19 +411,67 @@ const Orcamento = () => {
         return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
     };
 
-    const getStatusBadge = (status: string) => {
+    const getStatusBadge = (status: string, budget?: any) => {
+        const days = budget ? getBudgetDaysSinceCreation(budget) : 0;
+        const isStalled = status !== 'aprovado' && status !== 'rejeitado';
+
+        let followUpBadge = null;
+        if (isStalled && days >= 6) {
+            followUpBadge = (
+                <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-500 border border-rose-500/30 animate-pulse">
+                    <Clock size={10} />
+                    {days}d • Esfriando
+                </span>
+            );
+        } else if (isStalled && days >= 3) {
+            followUpBadge = (
+                <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 border border-amber-500/30">
+                    <Clock size={10} />
+                    {days}d • Follow-up
+                </span>
+            );
+        }
+
+        let mainBadge = null;
         switch (status) {
             case "em_elaboracao":
-                return <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-200 font-bold uppercase text-[9px] tracking-widest px-2 py-0.5">Em Elaboração</Badge>;
+                mainBadge = <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-200 font-bold uppercase text-[9px] tracking-widest px-2 py-0.5">Em Elaboração</Badge>;
+                break;
             case "enviado":
-                return <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border-blue-200 font-bold uppercase text-[9px] tracking-widest px-2 py-0.5">Enviado</Badge>;
+                mainBadge = <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border-blue-200 font-bold uppercase text-[9px] tracking-widest px-2 py-0.5">Enviado</Badge>;
+                break;
             case "aprovado":
-                return <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 border-emerald-200 font-bold uppercase text-[9px] tracking-widest px-2 py-0.5">Aprovado</Badge>;
+                mainBadge = <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 border-emerald-200 font-bold uppercase text-[9px] tracking-widest px-2 py-0.5">Aprovado</Badge>;
+                break;
             case "rejeitado":
-                return <Badge variant="secondary" className="bg-rose-500/10 text-rose-600 border-rose-200 font-bold uppercase text-[9px] tracking-widest px-2 py-0.5">Rejeitado</Badge>;
+                mainBadge = <Badge variant="secondary" className="bg-rose-500/10 text-rose-600 border-rose-200 font-bold uppercase text-[9px] tracking-widest px-2 py-0.5">Rejeitado</Badge>;
+                break;
             default:
-                return <Badge className="uppercase text-[9px] tracking-widest">{status}</Badge>;
+                mainBadge = <Badge className="uppercase text-[9px] tracking-widest">{status}</Badge>;
         }
+
+        return (
+            <div className="flex flex-col sm:items-end items-start gap-1">
+                {mainBadge}
+                {followUpBadge}
+            </div>
+        );
+    };
+
+    const handleOpenWhatsAppFollowUp = (budget: any) => {
+        const matchingClient = crmClientsList.find(c => 
+            c.name.trim().toLowerCase() === budget.client_name.trim().toLowerCase()
+        );
+        const clientPhone = matchingClient?.phone || "";
+
+        setWhatsAppBudget({
+            clientName: budget.client_name,
+            clientPhone: clientPhone,
+            projectName: budget.project_name,
+            totalValue: budget.total_value,
+            deliveryDate: ""
+        });
+        setIsWhatsAppOpen(true);
     };
 
     const handleQuantityChange = (materialId: string, value: string) => {
@@ -1610,14 +1683,69 @@ const Orcamento = () => {
                                     <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-60">Acompanhamento de orçamentos emitidos</p>
                                 </div>
                             </div>
-                            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                                <Tabs value={selectedYear} onValueChange={setSelectedYear} className="bg-white/50 border border-border/50 p-1 rounded-2xl h-12 shadow-sm">
+                            <div className="flex flex-col lg:flex-row items-center gap-3 w-full lg:w-auto">
+                                <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                                    <div className="bg-white/80 border border-border/50 p-1 rounded-2xl h-11 flex items-center shadow-sm">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFollowUpFilter('all')}
+                                            className={cn(
+                                                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                                                followUpFilter === 'all'
+                                                    ? "bg-primary text-white shadow-sm"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            Todos
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFollowUpFilter('followup_due')}
+                                            className={cn(
+                                                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1",
+                                                followUpFilter === 'followup_due'
+                                                    ? "bg-amber-500 text-white shadow-sm"
+                                                    : "text-amber-600 hover:text-amber-700"
+                                            )}
+                                            title="Propostas em aberto há 3 ou mais dias sem fechamento"
+                                        >
+                                            <Clock size={11} />
+                                            Follow-up (3d+)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFollowUpFilter('pending')}
+                                            className={cn(
+                                                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                                                followUpFilter === 'pending'
+                                                    ? "bg-slate-800 text-white shadow-sm"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            Em Aberto
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFollowUpFilter('aprovado')}
+                                            className={cn(
+                                                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                                                followUpFilter === 'aprovado'
+                                                    ? "bg-emerald-600 text-white shadow-sm"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            Aprovados
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <Tabs value={selectedYear} onValueChange={setSelectedYear} className="bg-white/50 border border-border/50 p-1 rounded-2xl h-11 shadow-sm">
                                     <TabsList className="bg-transparent h-full">
                                         {availableYears.map(year => (
                                             <TabsTrigger 
                                                 key={year} 
                                                 value={year} 
-                                                className="px-6 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest transition-all"
+                                                className="px-4 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest transition-all"
                                             >
                                                 {year}
                                             </TabsTrigger>
@@ -1625,11 +1753,11 @@ const Orcamento = () => {
                                     </TabsList>
                                 </Tabs>
 
-                                <div className="relative w-full sm:w-80">
+                                <div className="relative w-full sm:w-72">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                                     <Input
                                         placeholder="Pesquisar cliente..."
-                                        className="pl-12 bg-white border-border/50 h-12 rounded-2xl text-xs font-medium shadow-inner focus:ring-2 focus:ring-primary/20"
+                                        className="pl-12 bg-white border-border/50 h-11 rounded-2xl text-xs font-medium shadow-inner focus:ring-2 focus:ring-primary/20"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                     />
@@ -1673,7 +1801,7 @@ const Orcamento = () => {
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
-                                                    {getStatusBadge(orc.status)}
+                                                    {getStatusBadge(orc.status, orc)}
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
                                                     <div className="flex flex-col items-end">
@@ -1683,6 +1811,16 @@ const Orcamento = () => {
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
                                                      <div className="flex justify-end gap-2 pr-2">
+                                                         {/* WhatsApp Follow-up Rápido */}
+                                                         <Button
+                                                             variant="ghost"
+                                                             size="icon"
+                                                             className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-emerald-600 hover:text-emerald-700 transition-all active:scale-95 border border-emerald-500/20"
+                                                             onClick={() => handleOpenWhatsAppFollowUp(orc)}
+                                                             title="Enviar Follow-up no WhatsApp"
+                                                         >
+                                                             <MessageSquare size={16} />
+                                                         </Button>
                                                          {orc.status !== 'aprovado' ? (
                                                              <Button 
                                                                  variant="ghost" 
@@ -1764,7 +1902,7 @@ const Orcamento = () => {
 
                             {/* Card view for mobile */}
                             <div className="md:hidden divide-y divide-border/5">
-                                {budgets.filter(b => b.client_name.toLowerCase().includes(searchTerm.toLowerCase())).map((orc) => (
+                                {filteredBudgets.map((orc) => (
                                     <div key={orc.id} className="p-6 space-y-4">
                                         <div className="flex justify-between items-start">
                                             <div className="flex items-center gap-3">
@@ -1776,7 +1914,7 @@ const Orcamento = () => {
                                                     <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{600 + [...budgets].reverse().findIndex(b => b.id === orc.id)}</span>
                                                 </div>
                                             </div>
-                                            {getStatusBadge(orc.status)}
+                                            {getStatusBadge(orc.status, orc)}
                                         </div>
                                         
                                         <div className="flex flex-col gap-1">
@@ -1789,7 +1927,16 @@ const Orcamento = () => {
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor</span>
                                                 <span className="font-black text-lg text-primary tabular-nums">{formatCurrency(orc.total_value)}</span>
                                             </div>
-                                            <div className="flex gap-2">
+                                            <div className="flex flex-wrap gap-2 justify-end">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-10 w-10 rounded-xl border border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
+                                                    onClick={() => handleOpenWhatsAppFollowUp(orc)}
+                                                    title="Enviar WhatsApp"
+                                                >
+                                                    <MessageSquare size={16} />
+                                                </Button>
                                                 {orc.status !== 'aprovado' ? (
                                                     <Button 
                                                         variant="ghost" 
@@ -2136,6 +2283,23 @@ const Orcamento = () => {
                     onWorkflowCompleted={() => {
                         refreshBudgets();
                     }}
+                />
+            )}
+
+            {/* Modal de Disparo Rápido de WhatsApp / Follow-up */}
+            {whatsAppBudget && (
+                <WhatsAppQuickDialog
+                    open={isWhatsAppOpen}
+                    onOpenChange={(open) => {
+                        setIsWhatsAppOpen(open);
+                        if (!open) setWhatsAppBudget(null);
+                    }}
+                    clientName={whatsAppBudget.clientName}
+                    clientPhone={whatsAppBudget.clientPhone}
+                    projectName={whatsAppBudget.projectName}
+                    totalValue={whatsAppBudget.totalValue}
+                    deliveryDate={whatsAppBudget.deliveryDate}
+                    context="follow_up"
                 />
             )}
         </div>

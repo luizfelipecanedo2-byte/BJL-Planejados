@@ -20,7 +20,7 @@ export interface WhatsAppQuickDialogProps {
   projectName?: string;
   totalValue?: number;
   deliveryDate?: string;
-  context?: "closed" | "measurement" | "project_3d" | "factory_status" | "installation" | "payment" | "general";
+  context?: "closed" | "measurement" | "project_3d" | "factory_status" | "installation" | "payment" | "general" | "follow_up" | "budget_sent";
 }
 
 export const WhatsAppQuickDialog: React.FC<WhatsAppQuickDialogProps> = ({
@@ -38,6 +38,14 @@ export const WhatsAppQuickDialog: React.FC<WhatsAppQuickDialogProps> = ({
 
   // Templates profissionais e humanizados para a BJL Planejados
   const templates: Record<string, { title: string; text: string }> = {
+    follow_up: {
+      title: "🔥 Follow-up de Proposta Comercial",
+      text: `Olá ${firstName}, tudo bem? Aqui é da BJL Planejados! 🌟\n\nPassando para saber se você conseguiu dar uma olhada na proposta que preparamos para o seu projeto (${projectName}).\n\nFicou alguma dúvida sobre o projeto, materiais ou condições de pagamento? Conseguimos alinhar os detalhes para encaixar perfeitamente no seu planejamento! Como podemos avançar?`,
+    },
+    budget_sent: {
+      title: "📋 Envio de Proposta Comercial",
+      text: `Olá ${firstName}, tudo bem? Aqui é da BJL Planejados! ✨\n\nFinalizamos o estudo do seu projeto (${projectName})! Segue o resumo dos valores:\n\n💰 Valor Especial À Vista: ${formattedValue}\n💳 Ou Parcelado no Cartão em até 10x\n\nPodemos marcar para alinhar os detalhes e já reservar a sua data no cronograma de fabricação da marcenaria?`,
+    },
     closed: {
       title: "🎉 Boas-Vindas & Contrato Fechado",
       text: `Olá ${firstName}, tudo bem? Aqui é da BJL Planejados! 🌟\n\nPassando para oficializar as boas-vindas à nossa família e agradecer imensamente pela confiança no projeto do seu espaço (${projectName})!\n\nNosso próximo passo estratégico é o agendamento da medição técnica fina in loco para iniciarmos a fabricação com precisão milimétrica. Qualquer dúvida que surgir, estou 100% à sua disposição por aqui!`,

@@ -17,7 +17,7 @@ interface BudgetPrintViewProps {
     handleAmbienteChange?: (id: string, field: string, value: any) => void;
     removeAmbiente?: (id: string) => void;
     budgetNumber?: string | number;
-    initialTab?: 'commercial' | 'technical';
+    initialTab?: 'commercial' | 'technical' | 'contract';
     onClose?: () => void;
     onSave?: (
         budget: any, 
@@ -44,7 +44,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
 }) => {
     const { settings } = useCompanySettings();
     const [budget, setLocalBudget] = React.useState(initialBudget || {});
-    const [viewMode, setViewMode] = React.useState<'commercial' | 'technical'>(initialTab || 'commercial');
+    const [viewMode, setViewMode] = React.useState<'commercial' | 'technical' | 'contract'>(initialTab || 'commercial');
 
     const cardFeePercent = Number(initialBudget?.card_fee_percent) || 11;
     const cardFactor = 1 + (cardFeePercent / 100);
@@ -247,12 +247,14 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                     <div className="h-8 bg-[#f59e0b] w-full"></div>
                 </div>
 
-                {/* 2. PROPOSTA */}
+                {/* 2. PROPOSTA / CONTRATO */}
                 <div className="px-12 py-10 flex justify-between items-start">
                     <div className="bg-[#f59e0b] rounded-3xl px-12 py-8 min-w-[480px] shadow-xl text-white">
                         <div className="flex items-center gap-2 mb-3">
                              <Award size={14} className="text-white/60" />
-                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">PROPOSTA COMERCIAL PARA</span>
+                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+                                 {viewMode === 'contract' ? 'INSTRUMENTO CONTRATUAL PARA' : 'PROPOSTA COMERCIAL PARA'}
+                             </span>
                         </div>
                         <input 
                             value={budget.client_name || ''}
@@ -262,32 +264,157 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                         />
                     </div>
                     <div className="text-right">
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 underline decoration-[#f59e0b] decoration-2 underline-offset-4">REF. DO PROJETO</p>
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 underline decoration-[#f59e0b] decoration-2 underline-offset-4">
+                            {viewMode === 'contract' ? 'CONTRATO Nº' : 'REF. DO PROJETO'}
+                        </p>
                         <p className="text-4xl font-black text-slate-900 leading-none">#{budgetNumber || "000"}</p>
                         <div className="mt-8">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">DATA DE VALIDADE</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                                {viewMode === 'contract' ? 'DATA DE EMISSÃO' : 'DATA DE VALIDADE'}
+                            </p>
                             <p className="text-sm font-black text-slate-700">{new Date().toLocaleDateString('pt-BR')}</p>
                         </div>
                     </div>
                 </div>
 
-                {/* 3. CONTEÚDO IMPRESSO (AMBIENTES OU MATERIAIS) */}
+                {/* 3. CONTEÚDO IMPRESSO (AMBIENTES, MATERIAIS OU CONTRATO) */}
                 <div className="px-16 mt-4">
-                    <div className="bg-[#0f172a] text-white px-10 py-5 rounded-2xl mb-8 flex justify-between shadow-xl">
-                        {viewMode === 'commercial' ? (
-                            <>
-                                <span className="text-[11px] font-black uppercase tracking-[0.3em]">DETALHAMENTO DOS AMBIENTES</span>
-                                <span className="text-[11px] font-black uppercase tracking-[0.3em]">VALOR À VISTA</span>
-                            </>
-                        ) : (
-                            <>
-                                <span className="text-[11px] font-black uppercase tracking-[0.3em]">RELAÇÃO TÉCNICA DE MATERIAIS</span>
-                                <span className="text-[11px] font-black uppercase tracking-[0.3em]">VALOR TOTAL</span>
-                            </>
-                        )}
-                    </div>
+                    {viewMode !== 'contract' && (
+                        <div className="bg-[#0f172a] text-white px-10 py-5 rounded-2xl mb-8 flex justify-between shadow-xl">
+                            {viewMode === 'commercial' ? (
+                                <>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.3em]">DETALHAMENTO DOS AMBIENTES</span>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.3em]">VALOR À VISTA</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.3em]">RELAÇÃO TÉCNICA DE MATERIAIS</span>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.3em]">VALOR TOTAL</span>
+                                </>
+                            )}
+                        </div>
+                    )}
 
-                    {viewMode === 'commercial' ? (
+                    {viewMode === 'contract' ? (
+                        /* VISUALIZAÇÃO DO CONTRATO DE PRESTAÇÃO DE SERVIÇOS */
+                        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 text-slate-800 space-y-6 text-justify text-xs leading-relaxed print:p-0 print:border-none shadow-sm">
+                            <div className="text-center pb-4 border-b border-slate-200">
+                                <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900">
+                                    CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE MARCENARIA E FABRICAÇÃO SOB MEDIDA
+                                </h2>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                                    Ref. Proposta #{budgetNumber || "000"} • Emissão: {new Date().toLocaleDateString('pt-BR')}
+                                </p>
+                            </div>
+
+                            {/* 1. DAS PARTES */}
+                            <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">1. QUALIFICAÇÃO DAS PARTES</h4>
+                                <p>
+                                    <strong>CONTRATADA:</strong> <strong>{settings?.name || "BJL PLANEJADOS"}</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº <strong>{settings?.cnpj || "Conforme cadastro da fábrica"}</strong>, com sede em <strong>{settings?.address || "Endereço comercial da fábrica"}</strong>, telefone <strong>{settings?.phone || ""}</strong>, e-mail <strong>{settings?.email || ""}</strong>.
+                                </p>
+                                <p>
+                                    <strong>CONTRATANTE:</strong> <strong>{budget.client_name || "NOME DO CLIENTE"}</strong>.
+                                </p>
+                            </div>
+
+                            {/* 2. DO OBJETO */}
+                            <div className="space-y-2">
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">2. DO OBJETO DO CONTRATO</h4>
+                                <p>
+                                    O presente instrumento tem por objeto a fabricação, fornecimento e instalação especializada de mobiliário sob medida pela <strong>CONTRATADA</strong> em favor do <strong>CONTRATANTE</strong>, conforme especificações técnicas, padrões de acabamento e ambientes aprovados a seguir:
+                                </p>
+                                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Relação de Ambientes Contratados:</span>
+                                    <ul className="list-disc list-inside space-y-1 font-bold text-[11px] text-slate-800">
+                                        {(ambientes || []).map((amb, idx) => (
+                                            <li key={amb.id || idx}>
+                                                <strong>{amb.description || `Ambiente 0${idx+1}`}:</strong> {formatCurrency(amb.value || 0)}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+
+                            {/* 3. DO VALOR E FORMA DE PAGAMENTO */}
+                            <div className="space-y-2">
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">3. DO VALOR E FORMA DE PAGAMENTO</h4>
+                                <p>
+                                    Pelos serviços e materiais contratados, o <strong>CONTRATANTE</strong> pagará à <strong>CONTRATADA</strong> a quantia total ajustada de:
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-2">
+                                    <div className="bg-slate-900 text-white p-3.5 rounded-xl">
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Valor Total à Vista</span>
+                                        <p className="text-lg font-black text-white">{formatCurrency(totalValue)}</p>
+                                    </div>
+                                    <div className="bg-slate-100 text-slate-900 p-3.5 rounded-xl border border-slate-200">
+                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Opção Parcelada (Cartão)</span>
+                                        <p className="text-lg font-black text-amber-600">{formatCurrency(installmentValue)}</p>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-[10px] font-bold whitespace-pre-wrap leading-relaxed">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">Condições Específicas Acordadas:</span>
+                                    {paymentTerms}
+                                </div>
+                            </div>
+
+                            {/* 4. DO PRAZO DE FABRICAÇÃO E INSTALAÇÃO */}
+                            <div className="space-y-2">
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">4. DO PRAZO E DA MEDIÇÃO TÉCNICA</h4>
+                                <p>
+                                    O prazo estimado para fabricação e montagem é de <strong>30 a 45 dias úteis</strong>, com início de contagem a partir da:
+                                </p>
+                                <p className="pl-4 border-l-2 border-amber-400 text-slate-700 font-medium">
+                                    a) Realização da medição técnica fina in loco no imóvel pelo técnico da CONTRATADA;<br />
+                                    b) Aprovação final do projeto 3D executivo e escolha de cores/padrões;<br />
+                                    c) Quitação da entrada acordada ou compensação das garantias financeiras.
+                                </p>
+                            </div>
+
+                            {/* 5. DAS OBRIGAÇÕES DO CLIENTE */}
+                            <div className="space-y-2">
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">5. DAS OBRIGAÇÕES DO CONTRATANTE</h4>
+                                <p>
+                                    O <strong>CONTRATANTE</strong> compromete-se a entregar o local da montagem limpo, com pisos e revestimentos assentados, pontos de água, esgoto, gás e tomadas elétricas devidamente posicionados e testados antes do início da instalação.
+                                </p>
+                            </div>
+
+                            {/* 6. DA GARANTIA */}
+                            <div className="space-y-2">
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">6. DO TERMO DE GARANTIA</h4>
+                                <p>
+                                    A <strong>CONTRATADA</strong> assegura garantia de <strong>05 (cinco) anos</strong> sobre a integridade estrutural e colagem dos móveis de fabricação própria contra vícios ou defeitos de fabricação, e garantia de <strong>01 (um) ano</strong> para dobradiças, corrediças e ferragens conforme especificação dos fabricantes. A garantia não cobre danos decorrentes de umidade externa, infiltrações ou mau uso.
+                                </p>
+                            </div>
+
+                            {/* 7. DO FORO */}
+                            <div className="space-y-2">
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">7. DO FORO</h4>
+                                <p>
+                                    Para dirimir quaisquer controvérsias oriundas do presente contrato, as partes elegem o foro da Comarca local, renunciando a qualquer outro por mais privilegiado que seja.
+                                </p>
+                            </div>
+
+                            {/* LOCAL E DATA */}
+                            <div className="pt-4 text-center text-xs font-bold text-slate-600">
+                                {settings?.address ? settings.address.split('-').pop()?.trim() : "Brasil"}, {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.
+                            </div>
+
+                            {/* ASSINATURAS */}
+                            <div className="pt-8 grid grid-cols-2 gap-8 text-center text-[10px] uppercase font-bold">
+                                <div className="space-y-2">
+                                    <div className="border-t border-slate-900 w-4/5 mx-auto pt-2"></div>
+                                    <p className="font-black text-slate-900">{budget.client_name || "CONTRATANTE"}</p>
+                                    <p className="text-slate-400 font-normal">CONTRATANTE</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="border-t border-slate-900 w-4/5 mx-auto pt-2"></div>
+                                    <p className="font-black text-slate-900">{settings?.name || "BJL PLANEJADOS"}</p>
+                                    <p className="text-slate-400 font-normal">CONTRATADA (CNPJ: {settings?.cnpj || "BJL"})</p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : viewMode === 'commercial' ? (
                         <div className="space-y-4">
                             {(ambientes || []).map((amb, index) => (
                                 <div key={amb.id} className="group transition-all bg-slate-50 rounded-2xl p-6 border border-slate-100 flex justify-between items-start relative">
@@ -374,7 +501,8 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                     )}
                 </div>
 
-                {/* 4. TOTAIS */}
+                {/* 4. TOTAIS (Apenas para Proposta e Relatório Técnico) */}
+                {viewMode !== 'contract' && (
                 <div className="px-16 py-8 mt-12 bg-slate-50/50">
                     <div className="flex justify-between gap-12">
                         <div className="flex-1 space-y-6">
@@ -410,6 +538,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                         </div>
                     </div>
                 </div>
+                )}
 
                 {/* 5. RODAPÉ / CONTATOS */}
                 <div className="px-16 py-8 border-t border-slate-100 flex justify-between items-center bg-slate-50">
@@ -479,6 +608,17 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                         )}
                     >
                         Relatório Técnico
+                    </button>
+                    <button
+                        onClick={() => setViewMode('contract')}
+                        className={cn(
+                            "px-6 py-2.5 rounded-full font-black uppercase text-[10px] tracking-widest transition-all",
+                            viewMode === 'contract' 
+                                ? "bg-amber-600 text-white shadow-md" 
+                                : "text-slate-600 hover:text-slate-950 hover:bg-slate-200/50"
+                        )}
+                    >
+                        Contrato de Venda
                     </button>
                 </div>
 

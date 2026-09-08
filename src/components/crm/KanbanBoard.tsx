@@ -184,6 +184,9 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
               {columnSales.map((sale) => {
                 const hot = isHotLead(sale);
                 const lostDays = getDaysWithoutContact(sale);
+                const isPendingProposal = sale.status && ['visita', 'projeto', 'negociacao'].includes(sale.status);
+                const isFreezing = isPendingProposal && lostDays >= 6;
+                const isFollowUp = isPendingProposal && lostDays >= 3 && lostDays < 6;
                 const showWarning = lostDays >= 15 && sale.status && !['fechado', 'nao_fechou', 'congelado'].includes(sale.status);
 
                 return (
@@ -203,14 +206,28 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
                       </div>
                     )}
                     <CardContent className="p-4 relative z-10">
-                      {showWarning && (
+                      {isFreezing ? (
+                        <div className="flex items-center gap-1.5 text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full mb-3 w-fit border border-rose-500/30 backdrop-blur-sm animate-pulse">
+                          <Clock size={12} className="text-rose-400" />
+                          <span className="text-[9px] uppercase font-black tracking-widest">
+                            {lostDays}D S/ RETORNO • ESFRIANDO
+                          </span>
+                        </div>
+                      ) : isFollowUp ? (
+                        <div className="flex items-center gap-1.5 text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full mb-3 w-fit border border-amber-500/30 backdrop-blur-sm">
+                          <Clock size={12} className="text-amber-400" />
+                          <span className="text-[9px] uppercase font-black tracking-widest">
+                            {lostDays}D • FAZER FOLLOW-UP
+                          </span>
+                        </div>
+                      ) : showWarning ? (
                         <div className="flex items-center gap-1.5 text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full mb-3 w-fit border border-rose-500/20 backdrop-blur-sm">
                           <Clock size={12} className="animate-pulse" />
                           <span className="text-[9px] uppercase font-black tracking-widest">
                             {lostDays} DIAS EM HIATO
                           </span>
                         </div>
-                      )}
+                      ) : null}
                       
                       <div className="space-y-1 mb-4">
                         <p className="font-black text-sm tracking-tight text-white group-hover:text-primary transition-colors truncate pr-4 uppercase">
@@ -327,7 +344,15 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
           clientPhone={whatsAppSale.clientPhone}
           projectName={whatsAppSale.product}
           totalValue={whatsAppSale.totalValue}
-          context={whatsAppSale.status === "visita" ? "measurement" : whatsAppSale.status === "projeto" ? "project_3d" : whatsAppSale.status === "fechado" ? "closed" : "general"}
+          context={
+            whatsAppSale.status === "visita" 
+              ? "measurement" 
+              : whatsAppSale.status === "projeto" || whatsAppSale.status === "negociacao" || whatsAppSale.budget_id 
+                ? "follow_up" 
+                : whatsAppSale.status === "fechado" 
+                  ? "closed" 
+                  : "general"
+          }
         />
       )}
     </div>
