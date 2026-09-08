@@ -144,6 +144,29 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
 
     const [paymentTerms, setLocalPaymentTerms] = React.useState<string>(cleanInitialNotes);
 
+    // Estados para campos editáveis do Contrato Formal
+    const [contractData, setContractData] = React.useState({
+        clientNationality: "brasileiro(a)",
+        clientCivilStatus: "",
+        clientProfession: "",
+        clientCpf: "",
+        clientRg: "",
+        clientAddress: "",
+        clientPhone: "",
+        deliveryDays: "60",
+        downPayment: "",
+        finalPayment: "",
+        paymentMethod: "No PIX feito em conta bancária jurídica da empresa (BJL PLANEJADOS).",
+        mdfInterior: "MDF Branco TX",
+        mdfExterior: "MDF Padrões e Madeirados Variados conforme Projeto Executivo",
+        slides: "Corrediças Telescópicas com rolamento",
+        hinges: "Dobradiças Metálicas com Amortecedor (Soft Close)"
+    });
+
+    const handleContractChange = (field: string, value: string) => {
+        setContractData(prev => ({ ...prev, [field]: value }));
+    };
+
     const [isAdjustModalOpen, setIsAdjustModalOpen] = React.useState(false);
     const [adjustmentMode, setAdjustmentMode] = React.useState<'days' | 'commission' | 'service_item'>('days');
 
@@ -296,121 +319,337 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                     )}
 
                     {viewMode === 'contract' ? (
-                        /* VISUALIZAÇÃO DO CONTRATO DE PRESTAÇÃO DE SERVIÇOS */
-                        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 text-slate-800 space-y-6 text-justify text-xs leading-relaxed print:p-0 print:border-none shadow-sm">
+                        /* VISUALIZAÇÃO DO CONTRATO PROFISSIONAL DE PRESTAÇÃO DE SERVIÇOS */
+                        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 text-slate-800 space-y-6 text-justify text-xs leading-relaxed print:p-0 print:border-none shadow-sm font-sans">
+                            {/* CABEÇALHO DO CONTRATO */}
                             <div className="text-center pb-4 border-b border-slate-200">
                                 <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900">
-                                    CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE MARCENARIA E FABRICAÇÃO SOB MEDIDA
+                                    CONTRATO DE PRESTAÇÃO DE SERVIÇOS E FABRICAÇÃO DE MÓVEIS PLANEJADOS
                                 </h2>
                                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                                    Ref. Proposta #{budgetNumber || "000"} • Emissão: {new Date().toLocaleDateString('pt-BR')}
+                                    BJL PLANEJADOS • Instrumento Particular de Prestação de Serviços • Ref. #{budgetNumber || "000"}
                                 </p>
                             </div>
 
-                            {/* 1. DAS PARTES */}
-                            <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">1. QUALIFICAÇÃO DAS PARTES</h4>
-                                <p>
-                                    <strong>CONTRATADA:</strong> <strong>{settings?.name || "BJL PLANEJADOS"}</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº <strong>{settings?.cnpj || "Conforme cadastro da fábrica"}</strong>, com sede em <strong>{settings?.address || "Endereço comercial da fábrica"}</strong>, telefone <strong>{settings?.phone || ""}</strong>, e-mail <strong>{settings?.email || ""}</strong>.
+                            {/* PREÂMBULO / QUALIFICAÇÃO DAS PARTES */}
+                            <div className="space-y-3 bg-slate-50/80 p-5 rounded-2xl border border-slate-200">
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">DAS PARTES</h4>
+                                
+                                <p className="text-[11px] leading-relaxed">
+                                    Por este instrumento particular de prestação de serviços, de um lado:
                                 </p>
-                                <p>
-                                    <strong>CONTRATANTE:</strong> <strong>{budget.client_name || "NOME DO CLIENTE"}</strong>.
+
+                                <div className="space-y-2 pl-3 border-l-2 border-slate-300">
+                                    <p className="text-[11px] leading-relaxed">
+                                        <strong>CONTRATANTE:</strong> <strong className="uppercase">{budget.client_name || "NOME DO CLIENTE"}</strong>, 
+                                        nacionalidade <input 
+                                            value={contractData.clientNationality} 
+                                            onChange={(e) => handleContractChange('clientNationality', e.target.value)} 
+                                            className="bg-transparent border-b border-slate-400 font-bold px-1 text-slate-800 focus:outline-none w-24 no-print text-[11px]" 
+                                            placeholder="brasileiro(a)"
+                                        /><span className="hidden print:inline font-bold"> {contractData.clientNationality || "brasileiro(a)"}</span>, 
+                                        estado civil <input 
+                                            value={contractData.clientCivilStatus} 
+                                            onChange={(e) => handleContractChange('clientCivilStatus', e.target.value)} 
+                                            className="bg-transparent border-b border-slate-400 font-bold px-1 text-slate-800 focus:outline-none w-28 no-print text-[11px]" 
+                                            placeholder="estado civil"
+                                        /><span className="hidden print:inline font-bold"> {contractData.clientCivilStatus || "________________"}</span>, 
+                                        profissão <input 
+                                            value={contractData.clientProfession} 
+                                            onChange={(e) => handleContractChange('clientProfession', e.target.value)} 
+                                            className="bg-transparent border-b border-slate-400 font-bold px-1 text-slate-800 focus:outline-none w-32 no-print text-[11px]" 
+                                            placeholder="profissão"
+                                        /><span className="hidden print:inline font-bold"> {contractData.clientProfession || "________________"}</span>, 
+                                        inscrito(a) no CPF sob o nº <input 
+                                            value={contractData.clientCpf} 
+                                            onChange={(e) => handleContractChange('clientCpf', e.target.value)} 
+                                            className="bg-transparent border-b border-slate-400 font-bold px-1 text-slate-800 focus:outline-none w-36 no-print text-[11px]" 
+                                            placeholder="000.000.000-00"
+                                        /><span className="hidden print:inline font-bold"> {contractData.clientCpf || "________________"}</span>, 
+                                        portador(a) do RG nº <input 
+                                            value={contractData.clientRg} 
+                                            onChange={(e) => handleContractChange('clientRg', e.target.value)} 
+                                            className="bg-transparent border-b border-slate-400 font-bold px-1 text-slate-800 focus:outline-none w-28 no-print text-[11px]" 
+                                            placeholder="RG"
+                                        /><span className="hidden print:inline font-bold"> {contractData.clientRg || "________________"}</span>, 
+                                        residente e domiciliado(a) em <input 
+                                            value={contractData.clientAddress} 
+                                            onChange={(e) => handleContractChange('clientAddress', e.target.value)} 
+                                            className="bg-transparent border-b border-slate-400 font-bold px-1 text-slate-800 focus:outline-none w-64 no-print text-[11px]" 
+                                            placeholder="Endereço completo da residência"
+                                        /><span className="hidden print:inline font-bold"> {contractData.clientAddress || "__________________________________________________"}</span>, 
+                                        telefone/celular <input 
+                                            value={contractData.clientPhone} 
+                                            onChange={(e) => handleContractChange('clientPhone', e.target.value)} 
+                                            className="bg-transparent border-b border-slate-400 font-bold px-1 text-slate-800 focus:outline-none w-36 no-print text-[11px]" 
+                                            placeholder="(00) 00000-0000"
+                                        /><span className="hidden print:inline font-bold"> {contractData.clientPhone || "________________"}</span>.
+                                    </p>
+                                    
+                                    <p className="text-[11px] leading-relaxed pt-1">
+                                        <strong>CONTRATADA:</strong> doravante denominada <strong>{settings?.name || "BJL PLANEJADOS"}</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº <strong>{settings?.cnpj || "Conforme cadastro da empresa"}</strong>, com sede à <strong>{settings?.address || "Endereço comercial da marcenaria"}</strong>, telefone <strong>{settings?.phone || ""}</strong>.
+                                    </p>
+                                </div>
+
+                                <p className="text-[10px] text-slate-600 font-medium italic pt-1">
+                                    Têm entre si justo e acordado o presente contrato de prestação de serviços de marcenaria sob medida, mediante as cláusulas e condições seguintes:
                                 </p>
                             </div>
 
-                            {/* 2. DO OBJETO */}
-                            <div className="space-y-2">
-                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">2. DO OBJETO DO CONTRATO</h4>
+                            {/* CLÁUSULA 1ª - DOS SERVIÇOS E ESPECIFICAÇÕES */}
+                            <div className="space-y-3">
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">
+                                    CLÁUSULA 1ª – DOS SERVIÇOS E ESPECIFICAÇÕES DOS MÓVEIS
+                                </h4>
                                 <p>
-                                    O presente instrumento tem por objeto a fabricação, fornecimento e instalação especializada de mobiliário sob medida pela <strong>CONTRATADA</strong> em favor do <strong>CONTRATANTE</strong>, conforme especificações técnicas, padrões de acabamento e ambientes aprovados a seguir:
+                                    A <strong>CONTRATADA (BJL PLANEJADOS)</strong> obriga-se a realizar os serviços de <strong>confecção sob medida e instalação dos móveis planejados</strong> no imóvel do CONTRATANTE, com fiel observância às especificações dos ambientes abaixo discriminados:
                                 </p>
-                                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Relação de Ambientes Contratados:</span>
-                                    <ul className="list-disc list-inside space-y-1 font-bold text-[11px] text-slate-800">
+
+                                {/* Relação de Ambientes / Especificações */}
+                                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-3">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">
+                                        • ESPECIFICAÇÃO DOS MÓVEIS POR AMBIENTE:
+                                    </span>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 font-bold text-[11px] text-slate-800">
                                         {(ambientes || []).map((amb, idx) => (
-                                            <li key={amb.id || idx}>
-                                                <strong>{amb.description || `Ambiente 0${idx+1}`}:</strong> {formatCurrency(amb.value || 0)}
-                                            </li>
+                                            <div key={amb.id || idx} className="bg-white p-2.5 rounded-xl border border-slate-100 flex items-start gap-2 shadow-2xs">
+                                                <span className="text-amber-500 font-black text-xs">✔</span>
+                                                <div className="flex-1">
+                                                    <span className="uppercase text-[11px] font-black text-slate-900 block">{amb.description || `Ambiente 0${idx+1}`}</span>
+                                                    <span className="text-[9px] text-slate-400 font-bold">Valor de referência: {formatCurrency(amb.value || 0)}</span>
+                                                </div>
+                                            </div>
                                         ))}
-                                    </ul>
+                                    </div>
+                                    <p className="text-[9px] text-slate-500 font-semibold italic">
+                                        * O detalhamento de módulos, nichos, divisórias internas e medidas segue rigorosamente o Projeto Executivo / Desenho Técnico 3D aprovado entre as partes.
+                                    </p>
+                                </div>
+
+                                {/* Materiais Utilizados */}
+                                <div className="bg-amber-50/50 rounded-2xl p-4 border border-amber-200/60 space-y-2">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">
+                                        • PADRÃO DE MATERIAIS UTILIZADOS:
+                                    </span>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] font-bold text-slate-700">
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                            <span><strong>Estrutura Interna:</strong> {contractData.mdfInterior}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                            <span><strong>Frentes / Externo:</strong> {contractData.mdfExterior}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                            <span><strong>Corrediças:</strong> {contractData.slides}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                            <span><strong>Dobradiças:</strong> {contractData.hinges}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* 3. DO VALOR E FORMA DE PAGAMENTO */}
+                            {/* CLÁUSULA 2ª - DO PRAZO E PROJETO */}
                             <div className="space-y-2">
-                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">3. DO VALOR E FORMA DE PAGAMENTO</h4>
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">
+                                    CLÁUSULA 2ª – DO PRAZO DE ENTREGA E STATUS DO PROJETO
+                                </h4>
                                 <p>
-                                    Pelos serviços e materiais contratados, o <strong>CONTRATANTE</strong> pagará à <strong>CONTRATADA</strong> a quantia total ajustada de:
+                                    O prazo de entrega e início da montagem dos móveis é de <strong><input 
+                                        value={contractData.deliveryDays} 
+                                        onChange={(e) => handleContractChange('deliveryDays', e.target.value)} 
+                                        className="bg-transparent border-b border-amber-500 font-black px-1 text-slate-900 focus:outline-none w-12 text-center no-print" 
+                                    /><span className="hidden print:inline font-black">{contractData.deliveryDays || "60"}</span> dias corridos</strong>, contados impreterivelmente a partir da conclusão e assinatura final do projeto executivo com as medidas finas conferidas no local da obra e do pagamento da entrada ajustada.
                                 </p>
+                                <p className="text-[10px] font-bold text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                                    <strong>Status do Projeto:</strong> Projeto em fase de detalhamento e aprovação. Quaisquer modificações estruturais ou acréscimos solicitados pelo CONTRATANTE após a assinatura deste ensejarão revisão de custos e dilação proporcional de prazo.
+                                </p>
+                            </div>
+
+                            {/* CLÁUSULA 3ª - DOS LIMITES DO ESCOPO DA MARCENARIA */}
+                            <div className="space-y-2">
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">
+                                    CLÁUSULA 3ª – DOS LIMITES DO ESCOPO (NÃO INCLUSOS)
+                                </h4>
+                                <p>
+                                    A <strong>CONTRATADA (MARCENARIA)</strong> não se obriga e não realiza os seguintes trabalhos civis complementares, cabendo a sua contratação e execução exclusivamente ao CONTRATANTE com profissionais habilitados:
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2">
+                                    <div className="bg-rose-50/60 p-3 rounded-xl border border-rose-200 text-rose-900 font-bold text-[10px] flex items-center gap-2">
+                                        <span className="text-rose-500 font-black">✕</span>
+                                        <span><strong>Instalações Elétricas:</strong> Fiação, ligação de tomadas/interruptores, pontos de força e disjuntores (exceto fitas de LED embutidas nos móveis).</span>
+                                    </div>
+                                    <div className="bg-rose-50/60 p-3 rounded-xl border border-rose-200 text-rose-900 font-bold text-[10px] flex items-center gap-2">
+                                        <span className="text-rose-500 font-black">✕</span>
+                                        <span><strong>Instalações Hidráulicas:</strong> Ligação de encanamentos, torneiras, registros, sifões e conexões de gás.</span>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-slate-500 font-medium">
+                                    Parágrafo único: A marcenaria executará os cortes técnicos nos móveis para passagem das tubulações existentes, desde que devidamente indicadas previamente pelo CONTRATANTE.
+                                </p>
+                            </div>
+
+                            {/* CLÁUSULA 4ª - DOS VALORES E FORMA DE PAGAMENTO */}
+                            <div className="space-y-3">
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">
+                                    CLÁUSULA 4ª – DO VALOR E DAS CONDIÇÕES DE PAGAMENTO
+                                </h4>
+                                <p>
+                                    Pela execução e montagem dos móveis planejados, o <strong>CONTRATANTE</strong> pagará à <strong>CONTRATADA</strong> o valor global de:
+                                </p>
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-2">
-                                    <div className="bg-slate-900 text-white p-3.5 rounded-xl">
-                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Valor Total à Vista</span>
-                                        <p className="text-lg font-black text-white">{formatCurrency(totalValue)}</p>
+                                    <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-sm">
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Valor Global à Vista</span>
+                                        <p className="text-xl font-black text-white">{formatCurrency(totalValue)}</p>
+                                        <span className="text-[8px] text-slate-400 font-bold uppercase block mt-0.5">Preço com desconto para quitação à vista</span>
                                     </div>
-                                    <div className="bg-slate-100 text-slate-900 p-3.5 rounded-xl border border-slate-200">
-                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Opção Parcelada (Cartão)</span>
-                                        <p className="text-lg font-black text-amber-600">{formatCurrency(installmentValue)}</p>
+                                    <div className="bg-amber-50 text-slate-900 p-4 rounded-2xl border border-amber-200 shadow-sm">
+                                        <span className="text-[9px] font-black text-amber-700 uppercase tracking-widest">Opção Parcelada (Cartão)</span>
+                                        <p className="text-xl font-black text-amber-600">{formatCurrency(installmentValue)}</p>
+                                        <span className="text-[8px] text-slate-500 font-bold uppercase block mt-0.5">Em até 10 parcelas com taxa de cartão</span>
                                     </div>
                                 </div>
-                                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-[10px] font-bold whitespace-pre-wrap leading-relaxed">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">Condições Específicas Acordadas:</span>
-                                    {paymentTerms}
+
+                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-[10px] font-bold">
+                                    <p className="uppercase text-amber-800 font-black">
+                                        • DEVERES DE PAGAMENTO DO CLIENTE:
+                                    </p>
+                                    <p>
+                                        a) <strong>Entrada:</strong> O CONTRATANTE pagará o valor de <input 
+                                            value={contractData.downPayment} 
+                                            onChange={(e) => handleContractChange('downPayment', e.target.value)} 
+                                            className="bg-white border border-slate-300 font-black px-2 py-0.5 rounded text-slate-900 focus:outline-none w-32 no-print text-center" 
+                                            placeholder="Ex: R$ 15.000,00"
+                                        /><span className="hidden print:inline font-black"> {contractData.downPayment || "R$ _______________"}</span> no ato do fechamento/assinatura deste contrato;
+                                    </p>
+                                    <p>
+                                        b) <strong>Saldo Restante:</strong> O valor de <input 
+                                            value={contractData.finalPayment} 
+                                            onChange={(e) => handleContractChange('finalPayment', e.target.value)} 
+                                            className="bg-white border border-slate-300 font-black px-2 py-0.5 rounded text-slate-900 focus:outline-none w-32 no-print text-center" 
+                                            placeholder="Ex: R$ 10.000,00"
+                                        /><span className="hidden print:inline font-black"> {contractData.finalPayment || "R$ _______________"}</span> quitado integralmente <strong>após o término e vistoria do serviço</strong>.
+                                    </p>
+                                    <p>
+                                        c) <strong>Forma de Pagamento:</strong> <input 
+                                            value={contractData.paymentMethod} 
+                                            onChange={(e) => handleContractChange('paymentMethod', e.target.value)} 
+                                            className="bg-white border border-slate-300 font-medium px-2 py-0.5 rounded text-slate-800 focus:outline-none w-full sm:w-96 no-print" 
+                                            placeholder="Ex: No PIX feito em conta bancária jurídica da empresa."
+                                        /><span className="hidden print:inline font-medium"> {contractData.paymentMethod}</span>
+                                    </p>
+                                    {paymentTerms && paymentTerms !== defaultPaymentTerms && (
+                                        <div className="pt-2 border-t border-slate-200 mt-2">
+                                            <span className="text-[9px] uppercase tracking-wider text-slate-400 block mb-0.5 font-black">Observações Adicionais de Pagamento:</span>
+                                            <span className="text-slate-700 whitespace-pre-wrap leading-relaxed">{paymentTerms}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* 4. DO PRAZO DE FABRICAÇÃO E INSTALAÇÃO */}
+                            {/* CLÁUSULA 5ª - DAS MULTAS E DO DESCUMPRIMENTO */}
                             <div className="space-y-2">
-                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">4. DO PRAZO E DA MEDIÇÃO TÉCNICA</h4>
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">
+                                    CLÁUSULA 5ª – DAS PENALIDADES E MULTAS POR DESCUMPRIMENTO
+                                </h4>
                                 <p>
-                                    O prazo estimado para fabricação e montagem é de <strong>30 a 45 dias úteis</strong>, com início de contagem a partir da:
+                                    Em caso de inadimplemento ou atraso injustificado de qualquer uma das obrigações assumidas:
                                 </p>
-                                <p className="pl-4 border-l-2 border-amber-400 text-slate-700 font-medium">
-                                    a) Realização da medição técnica fina in loco no imóvel pelo técnico da CONTRATADA;<br />
-                                    b) Aprovação final do projeto 3D executivo e escolha de cores/padrões;<br />
-                                    c) Quitação da entrada acordada ou compensação das garantias financeiras.
-                                </p>
+                                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2 text-[10px] leading-relaxed">
+                                    <p>
+                                        <strong>a) Atraso no Pagamento:</strong> Ocorrendo atraso no pagamento de qualquer parcela ou do saldo final por parte do CONTRATANTE, o valor em aberto ficará sujeito à <strong>multa moratória de 5% (cinco por cento)</strong> sobre o débito, cumulada com <strong>juros moratórios de 2% (dois por cento) ao mês</strong> pro rata die, correção monetária pelo maior índice oficial em vigor no Brasil (IGP-M/FGV ou IPCA/IBGE), além de custas de cobrança e honorários advocatícios arbitrados em <strong>20% (vinte por cento)</strong> sobre o montante total devido.
+                                    </p>
+                                    <p>
+                                        <strong>b) Atraso Injustificado na Entrega:</strong> Caso a CONTRATADA ultrapasse o prazo estipulado na Cláusula 2ª sem justificativa de caso fortuito ou força maior (ou atrasos decorrentes de obras do CONTRATANTE), incidirá multa de 0,5% por semana de atraso, limitada a 5% do valor do contrato.
+                                    </p>
+                                </div>
                             </div>
 
-                            {/* 5. DAS OBRIGAÇÕES DO CLIENTE */}
+                            {/* CLÁUSULA 6ª - DA RESCISÃO E DESISTÊNCIA */}
                             <div className="space-y-2">
-                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">5. DAS OBRIGAÇÕES DO CONTRATANTE</h4>
-                                <p>
-                                    O <strong>CONTRATANTE</strong> compromete-se a entregar o local da montagem limpo, com pisos e revestimentos assentados, pontos de água, esgoto, gás e tomadas elétricas devidamente posicionados e testados antes do início da instalação.
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">
+                                    CLÁUSULA 6ª – DA RESCISÃO E DA DESISTÊNCIA DO NEGÓCIO
+                                </h4>
+                                <p className="bg-rose-50/40 p-3.5 rounded-xl border border-rose-200 text-slate-800 text-[10px] leading-relaxed">
+                                    Tratando-se de móveis personalizados sob medida para o imóvel, em caso de <strong>desistência ou rescisão imotivada por iniciativa do CONTRATANTE</strong>:
+                                    <br /><br />
+                                    I – O CONTRATANTE deverá indenizar integralmente os prejuízos e custos operacionais causados, retendo-se a totalidade dos valores investidos na aquisição de matérias-primas (MDF, ferragens, insumos cortados ou usinados) e mão de obra despendida; ou
+                                    <br /><br />
+                                    II – A critério exclusivo da <strong>CONTRATADA (MARCENARIA)</strong>, o CONTRATANTE pagará a totalidade do preço pactuado e retirará os móveis contratados no estado em que se encontrarem na fábrica.
                                 </p>
                             </div>
 
-                            {/* 6. DA GARANTIA */}
+                            {/* CLÁUSULA 7ª - DAS OBRIGAÇÕES DO CLIENTE PARA MONTAGEM */}
                             <div className="space-y-2">
-                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">6. DO TERMO DE GARANTIA</h4>
-                                <p>
-                                    A <strong>CONTRATADA</strong> assegura garantia de <strong>05 (cinco) anos</strong> sobre a integridade estrutural e colagem dos móveis de fabricação própria contra vícios ou defeitos de fabricação, e garantia de <strong>01 (um) ano</strong> para dobradiças, corrediças e ferragens conforme especificação dos fabricantes. A garantia não cobre danos decorrentes de umidade externa, infiltrações ou mau uso.
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">
+                                    CLÁUSULA 7ª – DAS OBRIGAÇÕES DO CONTRATANTE NO LOCAL DE INSTALAÇÃO
+                                </h4>
+                                <p className="text-[10px] leading-relaxed">
+                                    O <strong>CONTRATANTE</strong> obriga-se a disponibilizar o local desocupado, limpo e com infraestrutura básica de energia elétrica e água no dia agendado para o início dos trabalhos, garantindo livre acesso aos montadores e informando previamente os horários permitidos pelo condomínio/residência.
                                 </p>
                             </div>
 
-                            {/* 7. DO FORO */}
+                            {/* CLÁUSULA 8ª - DA GARANTIA */}
                             <div className="space-y-2">
-                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">7. DO FORO</h4>
-                                <p>
-                                    Para dirimir quaisquer controvérsias oriundas do presente contrato, as partes elegem o foro da Comarca local, renunciando a qualquer outro por mais privilegiado que seja.
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">
+                                    CLÁUSULA 8ª – DA GARANTIA TÉCNICA
+                                </h4>
+                                <p className="text-[10px] leading-relaxed">
+                                    A <strong>CONTRATADA</strong> assegura garantia de <strong>05 (cinco) anos</strong> contra vícios de fabricação e montagem na estrutura dos móveis, e garantia legal/de fábrica de <strong>01 (um) ano</strong> para corrediças telescópicas e dobradiças com amortecedor. Estão excluídos da garantia danos provocados por infiltrações de água/umidade alheias à montagem, cupins, mofo por falta de ventilação, produtos químicos abrasivos ou sobrecarga de peso.
                                 </p>
                             </div>
 
-                            {/* LOCAL E DATA */}
-                            <div className="pt-4 text-center text-xs font-bold text-slate-600">
-                                {settings?.address ? settings.address.split('-').pop()?.trim() : "Brasil"}, {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.
+                            {/* CLÁUSULA 9ª - DO FORO */}
+                            <div className="space-y-2">
+                                <h4 className="font-black text-[11px] uppercase tracking-wider text-amber-700">
+                                    CLÁUSULA 9ª – DO FORO
+                                </h4>
+                                <p className="text-[10px] leading-relaxed">
+                                    Para dirimir quaisquer questões ou litígios decorrentes da interpretação ou execução deste instrumento, as partes elegem o foro da Comarca de localização da sede da CONTRATADA, com renúncia expressa de qualquer outro, por mais privilegiado que seja.
+                                </p>
                             </div>
 
-                            {/* ASSINATURAS */}
+                            {/* ENCERRAMENTO E DATA */}
+                            <div className="pt-4 text-slate-700 text-[11px] leading-relaxed border-t border-slate-200">
+                                <p>
+                                    E, por estarem assim justas e acordadas em todas as suas cláusulas, assinam o presente contrato em <strong>02 (duas) vias de igual teor e forma</strong> para um só efeito de direito, na presença de 02 (duas) testemunhas.
+                                </p>
+                                <p className="text-center font-bold text-xs pt-4 text-slate-800">
+                                    {settings?.address ? settings.address.split('-').pop()?.trim() : "Brasil"}, {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.
+                                </p>
+                            </div>
+
+                            {/* BLOCOS DE ASSINATURA */}
                             <div className="pt-8 grid grid-cols-2 gap-8 text-center text-[10px] uppercase font-bold">
                                 <div className="space-y-2">
-                                    <div className="border-t border-slate-900 w-4/5 mx-auto pt-2"></div>
-                                    <p className="font-black text-slate-900">{budget.client_name || "CONTRATANTE"}</p>
-                                    <p className="text-slate-400 font-normal">CONTRATANTE</p>
+                                    <div className="border-t-2 border-slate-900 w-4/5 mx-auto pt-2"></div>
+                                    <p className="font-black text-slate-900 text-xs">{budget.client_name || "CONTRATANTE"}</p>
+                                    <p className="text-slate-500 font-medium">CONTRATANTE</p>
+                                    <p className="text-slate-400 text-[9px]">CPF: {contractData.clientCpf || "____________________"} | RG: {contractData.clientRg || "__________"}</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <div className="border-t border-slate-900 w-4/5 mx-auto pt-2"></div>
-                                    <p className="font-black text-slate-900">{settings?.name || "BJL PLANEJADOS"}</p>
-                                    <p className="text-slate-400 font-normal">CONTRATADA (CNPJ: {settings?.cnpj || "BJL"})</p>
+                                    <div className="border-t-2 border-slate-900 w-4/5 mx-auto pt-2"></div>
+                                    <p className="font-black text-slate-900 text-xs">{settings?.name || "BJL PLANEJADOS"}</p>
+                                    <p className="text-slate-500 font-medium">CONTRATADA</p>
+                                    <p className="text-slate-400 text-[9px]">CNPJ: {settings?.cnpj || "____________________"}</p>
+                                </div>
+                            </div>
+
+                            {/* TESTEMUNHAS */}
+                            <div className="pt-8 grid grid-cols-2 gap-8 text-left text-[9px] uppercase font-medium text-slate-500 border-t border-slate-100">
+                                <div className="space-y-1">
+                                    <p className="font-bold text-slate-700">Testemunha 1:</p>
+                                    <p>Nome: _________________________________________</p>
+                                    <p>CPF: ______________________</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="font-bold text-slate-700">Testemunha 2:</p>
+                                    <p>Nome: _________________________________________</p>
+                                    <p>CPF: ______________________</p>
                                 </div>
                             </div>
                         </div>
