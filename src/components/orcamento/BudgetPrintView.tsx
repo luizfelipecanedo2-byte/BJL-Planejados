@@ -366,12 +366,6 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                             className="bg-transparent border-b border-slate-400 font-bold px-1 text-slate-800 focus:outline-none w-36 no-print text-[11px]" 
                                             placeholder="000.000.000-00"
                                         /><span className="hidden print:inline font-bold"> {contractData.clientCpf || "________________"}</span>, 
-                                        portador(a) do RG nº <input 
-                                            value={contractData.clientRg} 
-                                            onChange={(e) => handleContractChange('clientRg', e.target.value)} 
-                                            className="bg-transparent border-b border-slate-400 font-bold px-1 text-slate-800 focus:outline-none w-28 no-print text-[11px]" 
-                                            placeholder="RG"
-                                        /><span className="hidden print:inline font-bold"> {contractData.clientRg || "________________"}</span>, 
                                         residente e domiciliado(a) em <input 
                                             value={contractData.clientAddress} 
                                             onChange={(e) => handleContractChange('clientAddress', e.target.value)} 
@@ -616,7 +610,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                             {/* ENCERRAMENTO E DATA */}
                             <div className="pt-4 text-slate-700 text-[11px] leading-relaxed border-t border-slate-200">
                                 <p>
-                                    E, por estarem assim justas e acordadas em todas as suas cláusulas, assinam o presente contrato em <strong>02 (duas) vias de igual teor e forma</strong> para um só efeito de direito, na presença de 02 (duas) testemunhas.
+                                    E, por estarem assim justas e acordadas em todas as suas cláusulas, assinam o presente contrato em <strong>02 (duas) vias de igual teor e forma</strong> para um só efeito de direito.
                                 </p>
                                 <p className="text-center font-bold text-xs pt-4 text-slate-800">
                                     {settings?.address ? settings.address.split('-').pop()?.trim() : "Brasil"}, {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.
@@ -629,27 +623,13 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                     <div className="border-t-2 border-slate-900 w-4/5 mx-auto pt-2"></div>
                                     <p className="font-black text-slate-900 text-xs">{budget.client_name || "CONTRATANTE"}</p>
                                     <p className="text-slate-500 font-medium">CONTRATANTE</p>
-                                    <p className="text-slate-400 text-[9px]">CPF: {contractData.clientCpf || "____________________"} | RG: {contractData.clientRg || "__________"}</p>
+                                    <p className="text-slate-400 text-[9px]">CPF: {contractData.clientCpf || "____________________"}</p>
                                 </div>
                                 <div className="space-y-2">
                                     <div className="border-t-2 border-slate-900 w-4/5 mx-auto pt-2"></div>
                                     <p className="font-black text-slate-900 text-xs">{settings?.name || "BJL PLANEJADOS"}</p>
                                     <p className="text-slate-500 font-medium">CONTRATADA</p>
                                     <p className="text-slate-400 text-[9px]">CNPJ: {settings?.cnpj || "____________________"}</p>
-                                </div>
-                            </div>
-
-                            {/* TESTEMUNHAS */}
-                            <div className="pt-8 grid grid-cols-2 gap-8 text-left text-[9px] uppercase font-medium text-slate-500 border-t border-slate-100">
-                                <div className="space-y-1">
-                                    <p className="font-bold text-slate-700">Testemunha 1:</p>
-                                    <p>Nome: _________________________________________</p>
-                                    <p>CPF: ______________________</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="font-bold text-slate-700">Testemunha 2:</p>
-                                    <p>Nome: _________________________________________</p>
-                                    <p>CPF: ______________________</p>
                                 </div>
                             </div>
                         </div>
