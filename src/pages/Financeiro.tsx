@@ -600,10 +600,13 @@ const Financeiro = () => {
 
   const reconciliationData = useMemo(() => {
     return transactions.filter(t => {
+      const inst = t.financialInstitution?.toLowerCase() || '';
       if (selectedAccount === 'dinheiro') {
-        return t.financialInstitution === 'Dinheiro';
+        return inst === 'dinheiro';
       } else if (selectedAccount === 'nubank') {
-        return t.financialInstitution === 'Nubank';
+        return inst === 'nubank';
+      } else if (selectedAccount === 'recarga_pay') {
+        return inst.includes('recarga');
       }
       return false;
     });
@@ -683,7 +686,8 @@ const Financeiro = () => {
         (t.service && t.service.toLowerCase().includes(searchTerm.toLowerCase())) ||
         t.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (t.invoiceNumber && t.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (t.orderService && t.orderService.toLowerCase().includes(searchTerm.toLowerCase()));
+        (t.orderService && t.orderService.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (t.financialInstitution && t.financialInstitution.toLowerCase().includes(searchTerm.toLowerCase()));
 
       if (showRecentlyAdded) return matchesSearch;
       if (showRecentlyPaid) return matchesSearch && t.status === 'paid';
@@ -1647,7 +1651,8 @@ const Financeiro = () => {
     <div className={cn(
       "space-y-10 transition-all duration-1000 min-h-screen p-2 animate-in fade-in",
       activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "bg-purple-950/10" : 
-      activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-950/10" : ""
+      activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-950/10" :
+      activeTab === 'conciliacao' && selectedAccount === 'recarga_pay' ? "bg-orange-950/10" : ""
     )}>
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-2">
         <div className="space-y-1.5">
@@ -1668,7 +1673,7 @@ const Financeiro = () => {
              <span className="font-black text-[11px] uppercase tracking-widest text-luxury">Novo Lançamento</span>
           </Button>
           <Button 
-            variant="ghost"
+            variant="ghost" 
             className="h-14 px-8 rounded-2xl glass-card border-white/5 luxury-shadow hover:bg-emerald-500/5 hover:text-emerald-500 transition-all group overflow-hidden relative w-full sm:w-auto"
             onClick={handleNewTransfer}
           >
@@ -1684,6 +1689,7 @@ const Financeiro = () => {
             "h-16 sm:h-20 w-max min-w-full lg:min-w-0 p-2 glass-card rounded-[2rem] luxury-shadow border-white/5 backdrop-blur-3xl transition-all duration-700",
             activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "bg-purple-900/30 border-purple-500/20" :
             activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-900/30 border-emerald-500/20" :
+            activeTab === 'conciliacao' && selectedAccount === 'recarga_pay' ? "bg-orange-900/30 border-orange-500/20" :
             "bg-white/[0.03]"
           )}>
             <TabsTrigger value="dashboard" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
@@ -1706,6 +1712,7 @@ const Financeiro = () => {
               "rounded-[1.5rem] px-5 sm:px-8 h-full transition-all duration-500",
               activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "data-[state=active]:bg-purple-600 data-[state=active]:text-white" :
               activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "data-[state=active]:bg-emerald-600 data-[state=active]:text-white" :
+              activeTab === 'conciliacao' && selectedAccount === 'recarga_pay' ? "data-[state=active]:bg-orange-600 data-[state=active]:text-white" :
               "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             )}>
               <AlertTriangle className="mr-2 sm:mr-3 h-4 w-4" />

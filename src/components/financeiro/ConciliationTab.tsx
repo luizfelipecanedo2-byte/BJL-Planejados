@@ -43,6 +43,7 @@ const ConciliationTab = ({
 }: ConciliationTabProps) => {
     const isNubank = selectedAccount === 'nubank';
     const isDinheiro = selectedAccount === 'dinheiro';
+    const isRecargaPay = selectedAccount === 'recarga_pay';
     const [selectedDayDetails, setSelectedDayDetails] = useState<any | null>(null);
 
     return (
@@ -51,11 +52,12 @@ const ConciliationTab = ({
                 "flex flex-col gap-6 p-6 rounded-2xl border shadow-2xl relative overflow-hidden transition-all duration-700",
                 isNubank ? "bg-gradient-to-br from-purple-900 via-purple-950 to-black border-purple-500/20" : 
                 isDinheiro ? "bg-gradient-to-br from-emerald-900 via-emerald-950 to-black border-emerald-500/20" :
+                isRecargaPay ? "bg-gradient-to-br from-amber-950/80 via-orange-950/60 to-black border-orange-500/30" :
                 "bg-gradient-to-br from-slate-900 via-slate-950 to-black border-slate-800"
             )}>
                 <div className={cn(
                     "absolute top-0 right-0 w-64 h-64 rounded-full -mr-32 -mt-32 blur-3xl opacity-50 transition-colors duration-700",
-                    isNubank ? "bg-purple-500/20" : isDinheiro ? "bg-emerald-500/20" : "bg-primary/5"
+                    isNubank ? "bg-purple-500/20" : isDinheiro ? "bg-emerald-500/20" : isRecargaPay ? "bg-orange-500/20" : "bg-primary/5"
                 )} />
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
@@ -73,6 +75,7 @@ const ConciliationTab = ({
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1 flex items-center gap-2">
                                 {selectedAccount === 'dinheiro' && <span className="text-[10px]">💰</span>}
                                 {selectedAccount === 'nubank' && <img src="https://logodownload.org/wp-content/uploads/2019/08/nubank-logo-3.png" className="h-3 w-3 object-contain" alt="Nubank" />}
+                                {selectedAccount === 'recarga_pay' && <img src="/recargapay-logo.png" className="h-3 w-auto object-contain bg-white/95 px-1 py-0.5 rounded" alt="Recarga Pay" />}
                                 Saldo Disponível
                             </span>
                             <div className="text-3xl font-black text-emerald-400 tracking-tighter flex items-center gap-3">
@@ -80,10 +83,12 @@ const ConciliationTab = ({
                                     "p-2 rounded-xl border transition-all duration-500 flex items-center justify-center overflow-hidden w-12 h-12 shadow-xl",
                                     isDinheiro ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500 shadow-emerald-500/10" :
                                     isNubank ? "bg-purple-600 border-purple-400/30 text-white shadow-purple-500/20" :
+                                    isRecargaPay ? "bg-white border-orange-500/40 text-white shadow-orange-500/20" :
                                     "bg-white border-white/20"
                                 )}>
                                     {selectedAccount === 'dinheiro' && <span className="text-3xl">💰</span>}
                                     {selectedAccount === 'nubank' && <img src="https://logodownload.org/wp-content/uploads/2019/08/nubank-logo-3.png" className="h-8 w-8 object-contain" alt="Nubank" />}
+                                    {selectedAccount === 'recarga_pay' && <img src="/recargapay-logo.png" className="h-6 w-auto object-contain" alt="Recarga Pay" />}
                                 </div>
                                 <AnimatedCounter value={totalAccountBalance} formatter={formatCurrency} />
                             </div>
@@ -96,7 +101,7 @@ const ConciliationTab = ({
                             <Select value={selectedAccount} onValueChange={setSelectedAccount}>
                                 <SelectTrigger className={cn(
                                     "w-[200px] bg-slate-800/50 text-white font-black uppercase tracking-tighter hover:bg-slate-800 transition-all rounded-xl h-11 border",
-                                    isNubank ? "border-purple-500/30" : isDinheiro ? "border-emerald-500/30" : "border-slate-700"
+                                    isNubank ? "border-purple-500/30" : isDinheiro ? "border-emerald-500/30" : isRecargaPay ? "border-orange-500/30" : "border-slate-700"
                                 )}>
                                     <SelectValue placeholder="Selecione a conta" />
                                 </SelectTrigger>
@@ -104,6 +109,7 @@ const ConciliationTab = ({
                                     "text-white rounded-xl border",
                                     isNubank ? "bg-purple-950 border-purple-500/20" : 
                                     isDinheiro ? "bg-emerald-950 border-emerald-500/20" : 
+                                    isRecargaPay ? "bg-orange-950/90 border-orange-500/30" :
                                     "bg-slate-950 border-slate-800"
                                 )}>
                                     <SelectItem value="nubank" className="focus:bg-primary/20 focus:text-white rounded-lg cursor-pointer">
@@ -116,6 +122,14 @@ const ConciliationTab = ({
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm">💰</span>
                                             <span className="font-bold">Dinheiro (Caixa)</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="recarga_pay" className="focus:bg-primary/20 focus:text-white rounded-lg cursor-pointer">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-4 w-4 rounded bg-white flex items-center justify-center p-0.5">
+                                                <img src="/recargapay-logo.png" className="h-2.5 w-auto object-contain" alt="Recarga Pay" />
+                                            </div>
+                                            <span className="font-bold">Recarga Pay</span>
                                         </div>
                                     </SelectItem>
                                 </SelectContent>
@@ -158,6 +172,7 @@ const ConciliationTab = ({
                             "font-black uppercase tracking-widest text-[10px] px-6 py-5 rounded-xl shadow-lg transition-all",
                             isNubank ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20" : 
                             isDinheiro ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20" :
+                            isRecargaPay ? "bg-orange-600 hover:bg-orange-500 text-white shadow-orange-500/20" :
                             "bg-primary hover:bg-primary/80 text-primary-foreground shadow-primary/20"
                         )}>
                             Ajustar Saldo
@@ -270,6 +285,7 @@ const ConciliationTab = ({
                                     "text-slate-400 border-b",
                                     isNubank ? "bg-purple-900/40 border-purple-500/20" :
                                     isDinheiro ? "bg-emerald-900/40 border-emerald-500/20" :
+                                    isRecargaPay ? "bg-orange-900/40 border-orange-500/20" :
                                     "bg-slate-900/80 border-slate-800"
                                 )}>
                                     <th className="h-14 px-6 text-center font-black uppercase tracking-widest w-[140px]">Data</th>
@@ -379,7 +395,7 @@ const ConciliationTab = ({
                 <Dialog open={!!selectedDayDetails} onOpenChange={(open) => !open && setSelectedDayDetails(null)}>
                     <DialogContent className={cn(
                         "max-w-2xl bg-slate-950 text-white border rounded-2xl shadow-2xl z-[100] border-slate-800",
-                        isNubank ? "border-purple-500/30" : isDinheiro ? "border-emerald-500/30" : "border-slate-800"
+                        isNubank ? "border-purple-500/30" : isDinheiro ? "border-emerald-500/30" : isRecargaPay ? "border-orange-500/30" : "border-slate-800"
                     )}>
                         <DialogHeader>
                             <DialogTitle className="text-xl font-black uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400 flex items-center gap-2">

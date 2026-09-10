@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { addMonths } from "date-fns";
 import { Check, ChevronsUpDown, FileImage, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Transaction, CATEGORIES, PAYMENT_METHODS, TransactionType, TransactionStatus, SUBCATEGORIES } from "@/types/finance";
+import { Transaction, CATEGORIES, PAYMENT_METHODS, FINANCIAL_INSTITUTIONS, TransactionType, TransactionStatus, SUBCATEGORIES } from "@/types/finance";
 import { Client } from "@/types/client";
 import { ServiceOrder } from "@/types/serviceOrder";
 import { supabase } from "@/lib/supabase";
@@ -727,9 +727,9 @@ const TransactionFormDialog = ({
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="Nubank">Nubank</SelectItem>
-                                                        <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                                                        <SelectItem value="Mercado Pago">Mercado Pago</SelectItem>
+                                                        {FINANCIAL_INSTITUTIONS.map((inst) => (
+                                                            <SelectItem key={inst} value={inst}>{inst}</SelectItem>
+                                                        ))}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -907,9 +907,9 @@ const TransactionFormDialog = ({
                                     <SelectValue placeholder={isSplitPayment ? "Definido no Split" : "Selecione"} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Nubank">Nubank</SelectItem>
-                                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                                    <SelectItem value="Mercado Pago">Mercado Pago</SelectItem>
+                                    {FINANCIAL_INSTITUTIONS.map((inst) => (
+                                        <SelectItem key={inst} value={inst}>{inst}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -925,9 +925,9 @@ const TransactionFormDialog = ({
                                         <SelectValue placeholder="Selecione" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Nubank">Nubank</SelectItem>
-                                        <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                                        <SelectItem value="Mercado Pago">Mercado Pago</SelectItem>
+                                        {FINANCIAL_INSTITUTIONS.map((inst) => (
+                                            <SelectItem key={inst} value={inst}>{inst}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>

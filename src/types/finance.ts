@@ -111,5 +111,13 @@ export const PAYMENT_METHODS = [
     "Cartão C6",
     "Cartão Nubank",
     "Cartão Inter",
-    "Cartão Mercado Pago"
+    "Cartão Mercado Pago",
+    "Cartão Recarga Pay"
+];
+
+export const FINANCIAL_INSTITUTIONS = [
+    "Nubank",
+    "Dinheiro",
+    "Mercado Pago",
+    "Recarga Pay"
 ];
