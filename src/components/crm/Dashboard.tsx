@@ -540,10 +540,12 @@ const Dashboard = ({ sales }: DashboardProps) => {
           {/* CARD DE COMISSÃO FELIPE (3% EM TEMPO REAL) */}
           <div className="md:col-span-2 lg:col-span-2">
             <FelipeCommissionCard
-              sales={sales}
+              totalRevenue={totalRevenue}
+              revenueSales={revenueSales}
               targetYear={targetYear}
               targetMonth={targetMonth}
-              isDailyView={isDaily}
+              titleSuffix={titleSuffix}
+              allSales={sales}
             />
           </div>
 

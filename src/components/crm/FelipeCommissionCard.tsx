@@ -2,11 +2,9 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Sale } from "@/types/sale";
 import { formatCurrency } from "@/lib/salesUtils";
 import {
-  calculateMonthlyCommission,
   checkExistingCommissionTransaction,
   launchCommissionManually,
   MONTH_NAMES,
-  COMMISSION_PERCENTAGE,
   SELLER_NAME,
 } from "@/services/commissionService";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
@@ -22,8 +20,6 @@ import {
   Receipt,
   FileCheck2,
   ExternalLink,
-  ShieldCheck,
-  AlertCircle,
   RotateCcw,
 } from "lucide-react";
 import {
@@ -34,20 +30,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Link } from "react-router-dom";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface FelipeCommissionCardProps {
-  sales: Sale[];
+  totalRevenue: number;
+  revenueSales: Sale[];
   targetYear: string;
   targetMonth?: number; // 0-11
-  isDailyView?: boolean;
+  titleSuffix?: string;
+  allSales?: Sale[];
 }
 
 export const FelipeCommissionCard: React.FC<FelipeCommissionCardProps> = ({
-  sales,
+  totalRevenue,
+  revenueSales,
   targetYear,
   targetMonth,
+  titleSuffix,
+  allSales = [],
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [existingTransaction, setExistingTransaction] = useState<any>(null);
@@ -58,30 +58,53 @@ export const FelipeCommissionCard: React.FC<FelipeCommissionCardProps> = ({
   const currentYearNum = today.getFullYear();
   const currentMonthNum = today.getMonth();
 
-  // Se targetMonth estiver definido, usa ele; senão usa o mês corrente
+  // Mês e ano ativos na visualização
   const evalMonth = targetMonth !== undefined ? targetMonth : currentMonthNum;
   const evalYear = parseInt(targetYear, 10) || currentYearNum;
+  const activeMonthName = targetMonth !== undefined ? MONTH_NAMES[targetMonth] : titleSuffix || "Geral";
 
   const isCurrentCalendarMonth = evalMonth === currentMonthNum && evalYear === currentYearNum;
 
-  // Calcula os dados da comissão do mês
-  const commissionSummary = useMemo(() => {
-    return calculateMonthlyCommission(sales, evalYear, evalMonth);
-  }, [sales, evalYear, evalMonth]);
+  // A comissão é sempre calculada com base nas vendas do mês que está ativo
+  const commissionAmount = (totalRevenue || 0) * 0.03;
+  const closedCount = revenueSales ? revenueSales.length : 0;
 
-  // Próximo mês para vencimento (dia 10)
+  // Itens de venda que compõem o mês ativo para o extrato
+  const items = useMemo(() => {
+    return (revenueSales || []).map((sale) => {
+      const saleVal = Number(sale.totalValue) || 0;
+      const commVal = saleVal * 0.03;
+      const dateStr = sale.closedDate || sale.contactDate || sale.createdAt;
+      let closedDateFormatted = "-";
+      if (dateStr) {
+        const d = new Date(dateStr.includes("T") ? dateStr : `${dateStr}T12:00:00`);
+        if (!isNaN(d.getTime())) {
+          closedDateFormatted = d.toLocaleDateString("pt-BR");
+        }
+      }
+      return {
+        sale,
+        saleValue: saleVal,
+        commissionValue: commVal,
+        closedDateFormatted,
+      };
+    });
+  }, [revenueSales]);
+
+  // Próximo mês para vencimento (dia 10 do mês seguinte àquele que está sendo apurado)
   const nextMonthIndex = evalMonth === 11 ? 0 : evalMonth + 1;
   const nextMonthYear = evalMonth === 11 ? evalYear + 1 : evalYear;
   const paymentDateFormatted = `10/${String(nextMonthIndex + 1).padStart(2, "0")}/${nextMonthYear}`;
 
   // Verifica status no financeiro quando abre o diálogo
   useEffect(() => {
-    if (isDialogOpen) {
+    if (isDialogOpen && targetMonth !== undefined) {
       checkStatus();
     }
-  }, [isDialogOpen, evalYear, evalMonth]);
+  }, [isDialogOpen, evalYear, evalMonth, targetMonth]);
 
   const checkStatus = async () => {
+    if (targetMonth === undefined) return;
     setCheckingTx(true);
     try {
       const tx = await checkExistingCommissionTransaction(evalYear, evalMonth);
@@ -94,9 +117,10 @@ export const FelipeCommissionCard: React.FC<FelipeCommissionCardProps> = ({
   };
 
   const handleManualLaunch = async () => {
+    if (targetMonth === undefined) return;
     setIsLaunching(true);
     try {
-      const res = await launchCommissionManually(evalYear, evalMonth, sales);
+      const res = await launchCommissionManually(evalYear, evalMonth, allSales.length > 0 ? allSales : revenueSales);
       if (res.success) {
         setExistingTransaction(res.transaction);
       }
@@ -132,21 +156,21 @@ export const FelipeCommissionCard: React.FC<FelipeCommissionCardProps> = ({
                   <span>Vendedor Exclusivo</span>
                   <span>•</span>
                   <span className="text-amber-300/90 font-medium">
-                    {commissionSummary.monthName}/{evalYear}
+                    {activeMonthName}/{evalYear}
                   </span>
                 </p>
               </div>
             </div>
 
-            {/* Badge de Tempo Real ou Referência */}
+            {/* Badge de Tempo Real ou Mês Selecionado */}
             {isCurrentCalendarMonth ? (
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-mono font-bold shrink-0">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Tempo Real</span>
+                <span>Mês Atual</span>
               </div>
             ) : (
-              <div className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-muted-foreground text-[10px] font-mono font-bold shrink-0">
-                <span>{commissionSummary.monthName}</span>
+              <div className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-amber-400 text-[10px] font-mono font-bold shrink-0">
+                <span>{activeMonthName}</span>
               </div>
             )}
           </div>
@@ -156,26 +180,25 @@ export const FelipeCommissionCard: React.FC<FelipeCommissionCardProps> = ({
             <div className="flex items-baseline gap-2">
               <div className="text-3xl sm:text-5xl font-black metric-value tracking-tight text-amber-400 font-mono drop-shadow-[0_2px_10px_rgba(245,158,11,0.3)]">
                 <AnimatedCounter
-                  value={commissionSummary.commissionAmount}
+                  value={commissionAmount}
                   formatter={formatCurrency}
                 />
               </div>
             </div>
 
-            {/* Métricas Auxiliares */}
+            {/* Métricas Auxiliares do Mês Ativo */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground font-mono">
               <span className="flex items-center gap-1 text-slate-300">
-                Base Vendas:{" "}
+                Base Vendas ({activeMonthName}):{" "}
                 <strong className="text-white font-bold">
-                  {formatCurrency(commissionSummary.totalRevenue)}
+                  {formatCurrency(totalRevenue)}
                 </strong>
               </span>
               <span>•</span>
               <span className="flex items-center gap-1 text-slate-300">
                 <FileCheck2 className="h-3.5 w-3.5 text-emerald-400 inline" />
                 <strong className="text-emerald-400 font-bold">
-                  {commissionSummary.closedCount}{" "}
-                  {commissionSummary.closedCount === 1 ? "venda" : "vendas"}
+                  {closedCount} {closedCount === 1 ? "venda" : "vendas"}
                 </strong>
               </span>
             </div>
@@ -227,7 +250,7 @@ export const FelipeCommissionCard: React.FC<FelipeCommissionCardProps> = ({
                   <DialogDescription className="text-xs text-muted-foreground">
                     Vendedor: <strong className="text-white">{SELLER_NAME}</strong> • Referência:{" "}
                     <strong className="text-amber-400">
-                      {commissionSummary.monthName} de {evalYear}
+                      {activeMonthName} de {evalYear}
                     </strong>
                   </DialogDescription>
                 </div>
@@ -235,17 +258,17 @@ export const FelipeCommissionCard: React.FC<FelipeCommissionCardProps> = ({
             </div>
           </DialogHeader>
 
-          {/* Resumo do Período */}
+          {/* Resumo do Período Ativo */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4">
             <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1">
               <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">
-                Faturamento Fechado
+                Faturamento Fechado ({activeMonthName})
               </span>
               <div className="text-lg font-black text-white font-mono">
-                {formatCurrency(commissionSummary.totalRevenue)}
+                {formatCurrency(totalRevenue)}
               </div>
               <span className="text-[9px] text-muted-foreground">
-                {commissionSummary.closedCount} contratos fechados
+                {closedCount} contratos fechados
               </span>
             </div>
 
@@ -254,9 +277,9 @@ export const FelipeCommissionCard: React.FC<FelipeCommissionCardProps> = ({
                 Comissão a Receber (3%)
               </span>
               <div className="text-lg font-black text-amber-400 font-mono">
-                {formatCurrency(commissionSummary.commissionAmount)}
+                {formatCurrency(commissionAmount)}
               </div>
-              <span className="text-[9px] text-amber-300/80">3% fixo sobre cada venda</span>
+              <span className="text-[9px] text-amber-300/80">3% sobre faturamento de {activeMonthName}</span>
             </div>
 
             <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1">
@@ -298,7 +321,7 @@ export const FelipeCommissionCard: React.FC<FelipeCommissionCardProps> = ({
             <p className="text-xs text-muted-foreground leading-relaxed">
               {existingTransaction ? (
                 <span>
-                  O lançamento de comissão já está cadastrado em Contas a Pagar no Financeiro com vencimento em{" "}
+                  O lançamento de comissão referente a <strong>{activeMonthName}/{evalYear}</strong> já está cadastrado em Contas a Pagar no Financeiro com vencimento em{" "}
                   <strong className="text-white">
                     {new Date(existingTransaction.due_date + "T12:00:00").toLocaleDateString("pt-BR")}
                   </strong>
@@ -306,8 +329,8 @@ export const FelipeCommissionCard: React.FC<FelipeCommissionCardProps> = ({
                 </span>
               ) : (
                 <span>
-                  Todo dia primeiro o sistema apura o mês que fechou e cria automaticamente a despesa no contas a pagar
-                  para ser quitada no dia 10. Ao virar o mês, o card do CRM zera automaticamente para o novo ciclo.
+                  Todo dia primeiro o sistema apura o faturamento do mês encerrado e cria automaticamente a despesa no contas a pagar
+                  para ser quitada no dia 10. Ao virar o mês, o card zera automaticamente e passa a computar o novo mês.
                 </span>
               )}
             </p>
@@ -321,7 +344,7 @@ export const FelipeCommissionCard: React.FC<FelipeCommissionCardProps> = ({
                 <ExternalLink className="h-3 w-3" />
               </Link>
 
-              {!existingTransaction && commissionSummary.commissionAmount > 0 && (
+              {!existingTransaction && commissionAmount > 0 && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -330,26 +353,26 @@ export const FelipeCommissionCard: React.FC<FelipeCommissionCardProps> = ({
                   className="h-8 text-xs gap-1.5 border-amber-500/30 hover:bg-amber-500/10 text-amber-400 rounded-xl"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  <span>{isLaunching ? "Lançando..." : "Lançar no Financeiro Agora"}</span>
+                  <span>{isLaunching ? "Lançando..." : `Lançar Comissão de ${activeMonthName} Agora`}</span>
                 </Button>
               )}
             </div>
           </div>
 
-          {/* Relação de Vendas Fechadas no Mês */}
+          {/* Relação de Vendas Fechadas no Mês Ativo */}
           <div className="space-y-3 mt-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <FileCheck2 className="h-4 w-4 text-emerald-400" />
-              <span>Vendas Fechadas que compõem este valor ({commissionSummary.items.length})</span>
+              <span>Vendas Fechadas em {activeMonthName}/{evalYear} ({items.length})</span>
             </h4>
 
-            {commissionSummary.items.length === 0 ? (
+            {items.length === 0 ? (
               <div className="text-center py-8 border border-dashed border-white/10 rounded-2xl text-xs text-muted-foreground">
-                Nenhum contrato fechado registrado para este mês ({commissionSummary.monthName}/{evalYear}).
+                Nenhum contrato fechado registrado para {activeMonthName} de {evalYear}.
               </div>
             ) : (
               <div className="border border-white/10 rounded-2xl overflow-hidden divide-y divide-white/5 bg-white/[0.02]">
-                {commissionSummary.items.map((item, idx) => (
+                {items.map((item, idx) => (
                   <div
                     key={item.sale.id || idx}
                     className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-white/[0.04] transition-colors"
