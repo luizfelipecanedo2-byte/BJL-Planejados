@@ -30,7 +30,26 @@ export interface CommissionSummary {
 }
 
 /**
+ * Converte data string com segurança evitando regressão de fuso horário local/UTC.
+ */
+export const parseDateOnly = (dateStr: string | null | undefined): Date | null => {
+  if (!dateStr) return null;
+  const str = String(dateStr).trim();
+  if (str.includes("T")) {
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (str.length === 10 && str[4] === "-" && str[7] === "-") {
+    const [y, m, d] = str.split("-").map(Number);
+    return new Date(y, m - 1, d, 12, 0, 0);
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+/**
  * Retorna se uma venda foi concluída no ano e mês especificados.
+ * Se a venda foi confirmada (fechada), a data de referência é estritamente a data de confirmação (closedDate).
  */
 export function isSaleClosedInPeriod(sale: Sale, year: number, month: number): boolean {
   const isClosed = sale.status === "fechado" || sale.status === "pos_venda";
@@ -39,8 +58,8 @@ export function isSaleClosedInPeriod(sale: Sale, year: number, month: number): b
   const dateStr = sale.closedDate || sale.contactDate || sale.createdAt;
   if (!dateStr) return false;
 
-  const d = new Date(dateStr.includes("T") ? dateStr : `${dateStr}T12:00:00`);
-  if (isNaN(d.getTime())) return false;
+  const d = parseDateOnly(dateStr);
+  if (!d) return false;
 
   return d.getFullYear() === year && d.getMonth() === month;
 }

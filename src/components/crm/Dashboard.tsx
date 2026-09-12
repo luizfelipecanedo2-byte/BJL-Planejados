@@ -57,6 +57,7 @@ import { Link } from "react-router-dom";
 import { ExecutiveBIAnalytics } from "./ExecutiveBIAnalytics";
 import { ExecutiveMorningBriefing } from "./ExecutiveMorningBriefing";
 import { FelipeCommissionCard } from "./FelipeCommissionCard";
+import { parseDateOnly } from "@/services/commissionService";
 
 interface Task {
   id: string;
@@ -187,15 +188,14 @@ const Dashboard = ({ sales }: DashboardProps) => {
   const years = useMemo(() => {
     const yearsSet = new Set<string>();
     (sales || []).forEach(sale => {
-      const dates = [sale.contactDate, sale.createdAt, sale.closedDate];
-      dates.forEach(dateStr => {
-        if (dateStr) {
-          try {
-            const year = new Date(dateStr).getFullYear();
-            if (!isNaN(year)) yearsSet.add(year.toString());
-          } catch (e) { }
-        }
-      });
+      const isClosed = sale.status === "fechado" || sale.status === "pos_venda";
+      const targetDate = isClosed 
+        ? parseDateOnly(sale.closedDate) || parseDateOnly(sale.contactDate) || parseDateOnly(sale.createdAt)
+        : parseDateOnly(sale.contactDate) || parseDateOnly(sale.createdAt);
+
+      if (targetDate) {
+        yearsSet.add(targetDate.getFullYear().toString());
+      }
     });
     if (yearsSet.size === 0) yearsSet.add(new Date().getFullYear().toString());
     return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
@@ -208,19 +208,19 @@ const Dashboard = ({ sales }: DashboardProps) => {
 
   const getFilteredSales = (year: string, monthIndex?: number) => {
     return sales.filter((sale) => {
-      const budgetDateStr = sale.contactDate || sale.createdAt || "";
-      const closedDateStr = sale.closedDate || "";
+      const isClosed = sale.status === "fechado" || sale.status === "pos_venda";
+      
+      // Se a venda foi confirmada (fechada), ela pertence ao mês em que foi confirmada (closedDate)
+      const targetDate = isClosed 
+        ? parseDateOnly(sale.closedDate) || parseDateOnly(sale.contactDate) || parseDateOnly(sale.createdAt)
+        : parseDateOnly(sale.contactDate) || parseDateOnly(sale.createdAt);
 
-      const budgetDate = budgetDateStr ? new Date(budgetDateStr) : null;
-      const closedDate = (sale.status === "fechado" || sale.status === "pos_venda") && closedDateStr ? new Date(closedDateStr) : null;
+      if (!targetDate) return false;
 
-      const budgetYearMatch = budgetDate?.getFullYear().toString() === year;
-      const budgetMonthMatch = monthIndex !== undefined ? budgetDate?.getMonth() === monthIndex : true;
+      const yearMatch = targetDate.getFullYear().toString() === year;
+      const monthMatch = monthIndex !== undefined ? targetDate.getMonth() === monthIndex : true;
 
-      const closedYearMatch = closedDate?.getFullYear().toString() === year;
-      const closedMonthMatch = monthIndex !== undefined ? closedDate?.getMonth() === monthIndex : true;
-
-      return (budgetYearMatch && budgetMonthMatch) || (closedYearMatch && closedMonthMatch);
+      return yearMatch && monthMatch;
     });
   };
 
@@ -237,44 +237,21 @@ const Dashboard = ({ sales }: DashboardProps) => {
     const yearSales = getFilteredSales(year);
 
     yearSales.forEach((sale) => {
-      const budgetDate = new Date(sale.contactDate || sale.createdAt);
-      const isBudgetInYear = budgetDate.getFullYear().toString() === year;
+      const isClosed = sale.status === "fechado" || sale.status === "pos_venda";
+      const targetDate = isClosed 
+        ? parseDateOnly(sale.closedDate) || parseDateOnly(sale.contactDate) || parseDateOnly(sale.createdAt)
+        : parseDateOnly(sale.contactDate) || parseDateOnly(sale.createdAt);
 
-      const closedDate = (sale.status === "fechado" || sale.status === "pos_venda") && sale.closedDate ? new Date(sale.closedDate) : null;
-      const isClosedInYear = closedDate && closedDate.getFullYear().toString() === year;
-
-      if (isBudgetInYear) {
-        const monthIndex = budgetDate.getMonth();
+      if (!targetDate) return;
+      if (targetDate.getFullYear().toString() === year) {
+        const monthIndex = targetDate.getMonth();
         const item = data[monthIndex];
-
-        if (sale.status === "fechado" || sale.status === "pos_venda") {
-          const budgetMonth = budgetDate.getMonth();
-          const closedMonth = closedDate?.getMonth();
-
-          if (isClosedInYear && budgetMonth === closedMonth) {
-            if (sale.status === "fechado") item.Fechado += sale.totalValue;
-            else if (sale.status === "pos_venda") item["Pós Venda"] += sale.totalValue;
-          } else {
-            // Histórico: no mês do orçamento ainda estava em andamento
-            item["Em Andamento"] += sale.totalValue;
-          }
-        } else {
-          if (sale.status === "nao_fechou") item["Não Fechou"] += sale.totalValue;
-          else if (sale.status === "congelado") item.Congelado += sale.totalValue;
-          else item["Em Andamento"] += sale.totalValue;
-        }
-      }
-
-      // Se fechou em um mês diferente do orçamento (ou foi orçado em outro ano)
-      if (isClosedInYear) {
-        const closedMonth = closedDate!.getMonth();
-        const budgetMonth = budgetDate.getMonth();
-        const budgetY = budgetDate.getFullYear().toString();
-
-        if (budgetY !== year || budgetMonth !== closedMonth) {
-          const item = data[closedMonth];
+        if (item) {
           if (sale.status === "fechado") item.Fechado += sale.totalValue;
           else if (sale.status === "pos_venda") item["Pós Venda"] += sale.totalValue;
+          else if (sale.status === "nao_fechou") item["Não Fechou"] += sale.totalValue;
+          else if (sale.status === "congelado") item.Congelado += sale.totalValue;
+          else item["Em Andamento"] += sale.totalValue;
         }
       }
     });
@@ -297,42 +274,21 @@ const Dashboard = ({ sales }: DashboardProps) => {
     });
 
     monthSales.forEach((sale) => {
-      const budgetDate = new Date(sale.contactDate || sale.createdAt);
-      const isBudgetInPeriod = budgetDate.getFullYear() === year && budgetDate.getMonth() === month;
+      const isClosed = sale.status === "fechado" || sale.status === "pos_venda";
+      const targetDate = isClosed 
+        ? parseDateOnly(sale.closedDate) || parseDateOnly(sale.contactDate) || parseDateOnly(sale.createdAt)
+        : parseDateOnly(sale.contactDate) || parseDateOnly(sale.createdAt);
 
-      const closedDate = (sale.status === "fechado" || sale.status === "pos_venda") && sale.closedDate ? new Date(sale.closedDate) : null;
-      const isClosedInPeriod = closedDate && closedDate.getFullYear() === year && closedDate.getMonth() === month;
-
-      if (isBudgetInPeriod) {
-        const day = budgetDate.getDate();
+      if (!targetDate) return;
+      if (targetDate.getFullYear() === year && targetDate.getMonth() === month) {
+        const day = targetDate.getDate();
         const item = data[day - 1];
-
-        if (sale.status === "fechado" || sale.status === "pos_venda") {
-          const budgetDay = budgetDate.getDate();
-          const closedDay = closedDate?.getDate();
-
-          if (isClosedInPeriod && budgetDay === closedDay) {
-            if (sale.status === "fechado") item.Fechado += sale.totalValue;
-            else if (sale.status === "pos_venda") item["Pós Venda"] += sale.totalValue;
-          } else {
-            item["Em Andamento"] += sale.totalValue;
-          }
-        } else {
-          if (sale.status === "nao_fechou") item["Não Fechou"] += sale.totalValue;
-          else if (sale.status === "congelado") item.Congelado += sale.totalValue;
-          else item["Em Andamento"] += sale.totalValue;
-        }
-      }
-
-      if (isClosedInPeriod) {
-        const closedDay = closedDate!.getDate();
-        const budgetDay = budgetDate.getDate();
-        const isSameDay = isBudgetInPeriod && closedDay === budgetDay;
-
-        if (!isSameDay) {
-          const item = data[closedDay - 1];
+        if (item) {
           if (sale.status === "fechado") item.Fechado += sale.totalValue;
           else if (sale.status === "pos_venda") item["Pós Venda"] += sale.totalValue;
+          else if (sale.status === "nao_fechou") item["Não Fechou"] += sale.totalValue;
+          else if (sale.status === "congelado") item.Congelado += sale.totalValue;
+          else item["Em Andamento"] += sale.totalValue;
         }
       }
     });
@@ -369,15 +325,12 @@ const Dashboard = ({ sales }: DashboardProps) => {
     targetYear: string,
     targetMonth?: number
   ) => {
-    const budgetSales = filteredSales.filter(s => {
-      const d = new Date(s.contactDate || s.createdAt);
-      return d.getFullYear().toString() === targetYear && (targetMonth === undefined || d.getMonth() === targetMonth);
-    });
+    const budgetSales = filteredSales;
 
     const revenueSales = filteredSales.filter(s => {
       if (s.status !== 'fechado' && s.status !== 'pos_venda') return false;
-      if (!s.closedDate) return false;
-      const d = new Date(s.closedDate);
+      const d = parseDateOnly(s.closedDate) || parseDateOnly(s.contactDate) || parseDateOnly(s.createdAt);
+      if (!d) return false;
       return d.getFullYear().toString() === targetYear && (targetMonth === undefined || d.getMonth() === targetMonth);
     });
 
