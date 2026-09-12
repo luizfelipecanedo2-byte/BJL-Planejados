@@ -88,8 +88,16 @@ export const SUBCATEGORIES: Record<string, string[]> = {
     "Despesa com Pessoal": [
         "Alimentação",
         "Salário",
+        "Comissão",
         "INSS",
         "FGTS"
+    ],
+    "Despesas com vendas": [
+        "Comissão",
+        "Marketing",
+        "Tráfego Pago",
+        "Material Promocional",
+        "Outros"
     ],
     "Receita com Serviço": [
         "Entrada",

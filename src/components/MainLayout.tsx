@@ -43,6 +43,7 @@ import { CommandMenu } from "./CommandMenu";
 import { Search } from "lucide-react";
 import { NotificationBell } from "./notifications/NotificationBell";
 import { checkAndNotifyOverdueTasks } from "@/lib/notifications";
+import { checkAndAutoLaunchCommission } from "@/services/commissionService";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { Magnetic } from "./ui/Magnetic";
 import { playClickSound, playHoverSound, playTransitionSound } from "@/lib/audio";
@@ -203,6 +204,7 @@ const MainLayout = () => {
         };
         fetchUserProfile();
         checkAndNotifyOverdueTasks();
+        checkAndAutoLaunchCommission();
     }, []);
 
     useEffect(() => {

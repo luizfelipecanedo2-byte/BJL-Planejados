@@ -56,6 +56,7 @@ import { supabase } from "@/lib/supabase";
 import { Link } from "react-router-dom";
 import { ExecutiveBIAnalytics } from "./ExecutiveBIAnalytics";
 import { ExecutiveMorningBriefing } from "./ExecutiveMorningBriefing";
+import { FelipeCommissionCard } from "./FelipeCommissionCard";
 
 interface Task {
   id: string;
@@ -536,6 +537,16 @@ const Dashboard = ({ sales }: DashboardProps) => {
             </div>
           </div>
 
+          {/* CARD DE COMISSÃO FELIPE (3% EM TEMPO REAL) */}
+          <div className="md:col-span-2 lg:col-span-2">
+            <FelipeCommissionCard
+              sales={sales}
+              targetYear={targetYear}
+              targetMonth={targetMonth}
+              isDailyView={isDaily}
+            />
+          </div>
+
           {/* SATELLITE 1: Valor Total Orçado */}
           <div className="executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col justify-between relative overflow-hidden group">
             <div className="flex items-center justify-between relative z-10">
@@ -622,8 +633,8 @@ const Dashboard = ({ sales }: DashboardProps) => {
             <MiniSparkline color="#f43f5e" trend="down" />
           </div>
 
-          {/* SATELLITE 5: Tarefas Operacionais da Fábrica (Spans 2 cols) */}
-          <div className="md:col-span-2 lg:col-span-2 executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden group">
+          {/* SATELLITE 5: Tarefas Operacionais da Fábrica (Spans full width) */}
+          <div className="md:col-span-3 lg:col-span-4 executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden group">
             <div className="flex items-center gap-3 relative z-10">
               <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                 <CheckSquare className="h-6 w-6" />
