@@ -223,7 +223,7 @@ const MainLayout = () => {
         { icon: Calculator, label: "Orçamento", path: "/admin/orcamento", roles: ['admin'], emoji: "💰" },
         { icon: Users, label: "Cliente e Fornecedores", path: "/admin/clientes", roles: ['admin'], emoji: "👥" },
         { icon: DollarSign, label: "Financeiro", path: "/admin/financeiro", roles: ['admin'], emoji: "🏦" },
-        { icon: ClipboardList, label: "Ordem de Serviço", path: "/admin/ordem-servico", roles: ['admin'], emoji: "📋" },
+        { icon: ClipboardList, label: "Ordem de Serviço", path: "/admin/ordem-servico", roles: ['admin', 'colaborador'], emoji: "📋" },
         { icon: Package, label: "Estoque", path: "/admin/estoque", roles: ['admin', 'colaborador'], emoji: "📦" },
         { icon: Calendar, label: "Pedidos da Semana", path: "/admin/pedidos-semana", roles: ['admin', 'colaborador'], emoji: "🗓️" },
         { icon: CalendarDays, label: "Agenda Geral", path: "/admin/agenda", roles: ['admin'], emoji: "📅" },

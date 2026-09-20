@@ -151,7 +151,7 @@ const App = () => {
               <Route index element={isAdmin ? <Index /> : <Navigate to="estoque" />} />
               <Route path="financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="estoque" />} />
               <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="estoque" />} />
-              <Route path="ordem-servico" element={isAdmin ? <OrdemServico /> : <Navigate to="estoque" />} />
+              <Route path="ordem-servico" element={<OrdemServico />} />
               <Route path="orcamento" element={isAdmin ? <Orcamento /> : <Navigate to="estoque" />} />
               <Route path="estoque" element={<Estoque />} />
               <Route path="pedidos-semana" element={<PedidosSemana />} />

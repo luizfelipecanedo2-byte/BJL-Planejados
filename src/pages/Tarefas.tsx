@@ -541,6 +541,7 @@ const Tarefas = () => {
             "Felipe": [],
             "Lucas": [],
             "Zé Luiz": [],
+            "Adrian": [],
             "Geral": []
         };
 
@@ -554,7 +555,7 @@ const Tarefas = () => {
                 const colabs = collab.split(/\s+e\s+/).map(c => c.trim());
                 let added = false;
                 colabs.forEach(c => {
-                    if (["Samuel", "Felipe", "Lucas", "Zé Luiz"].includes(c)) {
+                    if (["Samuel", "Felipe", "Lucas", "Zé Luiz", "Adrian"].includes(c)) {
                         tasksByCollab[c].push(task);
                         added = true;
                     }
@@ -758,7 +759,7 @@ const Tarefas = () => {
                 </div>
         `;
 
-        const collaborators = ["Samuel", "Felipe", "Lucas", "Zé Luiz", "Geral"];
+        const collaborators = ["Samuel", "Felipe", "Lucas", "Zé Luiz", "Adrian", "Geral"];
         collaborators.forEach(collab => {
             const collabTasks = tasksByCollab[collab];
             const collabName = collab === "Geral" ? "Sem Colaborador / Geral" : `Tarefas do ${collab}`;
@@ -945,7 +946,8 @@ const Tarefas = () => {
             "Samuel": { completed: 0, total: 0 },
             "Felipe": { completed: 0, total: 0 },
             "Lucas": { completed: 0, total: 0 },
-            "Zé Luiz": { completed: 0, total: 0 }
+            "Zé Luiz": { completed: 0, total: 0 },
+            "Adrian": { completed: 0, total: 0 }
         };
         
         filteredTasks.forEach(t => {
@@ -1205,6 +1207,7 @@ const Tarefas = () => {
                                                      <SelectItem value="Felipe">Felipe</SelectItem>
                                                      <SelectItem value="Lucas">Lucas</SelectItem>
                                                      <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
+                                                    <SelectItem value="Adrian">Adrian</SelectItem>
                                                  </SelectContent>
                                              </Select>
                                          </div>
@@ -1220,6 +1223,7 @@ const Tarefas = () => {
                                                      <SelectItem value="Felipe">Felipe</SelectItem>
                                                      <SelectItem value="Lucas">Lucas</SelectItem>
                                                      <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
+                                                     <SelectItem value="Adrian">Adrian</SelectItem>
                                                  </SelectContent>
                                              </Select>
                                          </div>
@@ -1337,6 +1341,7 @@ const Tarefas = () => {
                             <SelectItem value="Felipe">Felipe</SelectItem>
                             <SelectItem value="Lucas">Lucas</SelectItem>
                             <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
+                            <SelectItem value="Adrian">Adrian</SelectItem>
                             <SelectItem value="none">Sem Colaborador / Geral</SelectItem>
                         </SelectContent>
                     </Select>
@@ -1666,6 +1671,7 @@ const Tarefas = () => {
                                                             <SelectItem value="Felipe">Felipe</SelectItem>
                                                             <SelectItem value="Lucas">Lucas</SelectItem>
                                                             <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
+                                                            <SelectItem value="Adrian">Adrian</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
