@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSales } from "@/hooks/useSales";
+import { useCollaborators } from "@/hooks/useCollaborators";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 interface Task {
@@ -102,6 +103,8 @@ const checkTaskVisibility = (dueDate: string, status: string, activeView: string
 };
 
 const Tarefas = () => {
+    const { activeCollaborators } = useCollaborators();
+    const collaboratorNames = useMemo(() => activeCollaborators.map(c => c.name), [activeCollaborators]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [serviceOrders, setServiceOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -536,14 +539,11 @@ const Tarefas = () => {
     };
 
     const handlePrintDailyTasks = () => {
-        const tasksByCollab: { [key: string]: Task[] } = {
-            "Samuel": [],
-            "Felipe": [],
-            "Lucas": [],
-            "Zé Luiz": [],
-            "Adrian": [],
-            "Geral": []
-        };
+        const tasksByCollab: { [key: string]: Task[] } = {};
+        collaboratorNames.forEach(name => {
+            tasksByCollab[name] = [];
+        });
+        tasksByCollab["Geral"] = [];
 
         // Filtra para imprimir apenas tarefas não concluídas
         const nonCompletedTasks = filteredTasks.filter(task => task.status !== 'completed');
@@ -555,7 +555,7 @@ const Tarefas = () => {
                 const colabs = collab.split(/\s+e\s+/).map(c => c.trim());
                 let added = false;
                 colabs.forEach(c => {
-                    if (["Samuel", "Felipe", "Lucas", "Zé Luiz", "Adrian"].includes(c)) {
+                    if (tasksByCollab[c]) {
                         tasksByCollab[c].push(task);
                         added = true;
                     }
@@ -759,7 +759,7 @@ const Tarefas = () => {
                 </div>
         `;
 
-        const collaborators = ["Samuel", "Felipe", "Lucas", "Zé Luiz", "Adrian", "Geral"];
+        const collaborators = [...collaboratorNames, "Geral"];
         collaborators.forEach(collab => {
             const collabTasks = tasksByCollab[collab];
             const collabName = collab === "Geral" ? "Sem Colaborador / Geral" : `Tarefas do ${collab}`;
@@ -942,13 +942,10 @@ const Tarefas = () => {
     
     // Calcula produtividade dos colaboradores para o período atual (sem o filtro do painel ativo)
     const collaboratorStats = useMemo(() => {
-        const stats: { [name: string]: { completed: number; total: number } } = {
-            "Samuel": { completed: 0, total: 0 },
-            "Felipe": { completed: 0, total: 0 },
-            "Lucas": { completed: 0, total: 0 },
-            "Zé Luiz": { completed: 0, total: 0 },
-            "Adrian": { completed: 0, total: 0 }
-        };
+        const stats: { [name: string]: { completed: number; total: number } } = {};
+        collaboratorNames.forEach(name => {
+            stats[name] = { completed: 0, total: 0 };
+        });
         
         filteredTasks.forEach(t => {
             const parsed = parseTaskDescription(t.description);
@@ -971,7 +968,7 @@ const Tarefas = () => {
             total: s.total,
             percentage: s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0
         }));
-    }, [filteredTasks]);
+    }, [filteredTasks, collaboratorNames]);
 
     // Aplica o filtro de colaborador selecionado na tela principal
     const filteredTasksByCollab = filteredTasks.filter(t => {
@@ -1203,12 +1200,10 @@ const Tarefas = () => {
                                                  </SelectTrigger>
                                                  <SelectContent className="bg-slate-900 border-white/10 font-bold">
                                                      <SelectItem value="all">Equipe Inteira</SelectItem>
-                                                     <SelectItem value="Samuel">Samuel</SelectItem>
-                                                     <SelectItem value="Felipe">Felipe</SelectItem>
-                                                     <SelectItem value="Lucas">Lucas</SelectItem>
-                                                     <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
-                                                    <SelectItem value="Adrian">Adrian</SelectItem>
-                                                 </SelectContent>
+                                                    {activeCollaborators.map(c => (
+                                                        <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
                                              </Select>
                                          </div>
                                          <div className="space-y-2">
@@ -1219,11 +1214,9 @@ const Tarefas = () => {
                                                  </SelectTrigger>
                                                  <SelectContent className="bg-slate-900 border-white/10 font-bold">
                                                      <SelectItem value="none">Nenhum</SelectItem>
-                                                     <SelectItem value="Samuel">Samuel</SelectItem>
-                                                     <SelectItem value="Felipe">Felipe</SelectItem>
-                                                     <SelectItem value="Lucas">Lucas</SelectItem>
-                                                     <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
-                                                     <SelectItem value="Adrian">Adrian</SelectItem>
+                                                     {activeCollaborators.map(c => (
+                                                         <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                                     ))}
                                                  </SelectContent>
                                              </Select>
                                          </div>
@@ -1337,11 +1330,9 @@ const Tarefas = () => {
                         </SelectTrigger>
                         <SelectContent className="bg-slate-900 border-white/10 text-xs font-bold text-white">
                             <SelectItem value="all">Todos os Colaboradores</SelectItem>
-                            <SelectItem value="Samuel">Samuel</SelectItem>
-                            <SelectItem value="Felipe">Felipe</SelectItem>
-                            <SelectItem value="Lucas">Lucas</SelectItem>
-                            <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
-                            <SelectItem value="Adrian">Adrian</SelectItem>
+                            {activeCollaborators.map(c => (
+                                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                            ))}
                             <SelectItem value="none">Sem Colaborador / Geral</SelectItem>
                         </SelectContent>
                     </Select>
@@ -1667,11 +1658,9 @@ const Tarefas = () => {
                                                         </SelectTrigger>
                                                         <SelectContent className="bg-slate-900 border-white/10 text-xs font-bold">
                                                             <SelectItem value="all">Equipe Inteira</SelectItem>
-                                                            <SelectItem value="Samuel">Samuel</SelectItem>
-                                                            <SelectItem value="Felipe">Felipe</SelectItem>
-                                                            <SelectItem value="Lucas">Lucas</SelectItem>
-                                                            <SelectItem value="Zé Luiz">Zé Luiz</SelectItem>
-                                                            <SelectItem value="Adrian">Adrian</SelectItem>
+                                                            {activeCollaborators.map(c => (
+                                                                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                                            ))}
                                                         </SelectContent>
                                                     </Select>
                                                 </div>

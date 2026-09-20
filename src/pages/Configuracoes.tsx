@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Building2, MapPin, Phone, Mail, Globe, Instagram, Facebook, User, Save, Loader2, Users, Clock, Percent, Sparkles, Key } from "lucide-react";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { motion } from "framer-motion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EquipeTab } from "@/components/configuracoes/EquipeTab";
 
 const Configuracoes = () => {
     const { settings, loading, updateSettings } = useCompanySettings();
@@ -80,7 +82,26 @@ const Configuracoes = () => {
                 </div>
             </header>
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <Tabs defaultValue="empresa" className="space-y-8">
+                <TabsList className="bg-white/5 border border-white/10 p-1.5 rounded-2xl h-14 w-full sm:w-auto inline-flex gap-2 backdrop-blur-xl">
+                    <TabsTrigger 
+                        value="empresa" 
+                        className="rounded-xl px-6 h-11 font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex items-center gap-2 transition-all"
+                    >
+                        <Building2 className="h-4 w-4" />
+                        Perfil da Empresa
+                    </TabsTrigger>
+                    <TabsTrigger 
+                        value="equipe" 
+                        className="rounded-xl px-6 h-11 font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex items-center gap-2 transition-all"
+                    >
+                        <Users className="h-4 w-4" />
+                        Equipe & Colaboradores
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="empresa" className="m-0 space-y-8">
+                    <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
                     <Card className="glass-card border-white/5 shadow-2xl overflow-hidden">
                         <CardHeader className="bg-primary/5 border-b border-white/5">
@@ -318,6 +339,12 @@ const Configuracoes = () => {
                     </Card>
                 </div>
             </form>
+            </TabsContent>
+
+            <TabsContent value="equipe" className="m-0">
+                <EquipeTab />
+            </TabsContent>
+            </Tabs>
         </div>
     );
 };
