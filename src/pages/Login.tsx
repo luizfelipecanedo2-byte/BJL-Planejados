@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Mail, Lock, Loader2, ShieldCheck } from "lucide-react";
+import { Mail, Lock, Loader2 } from "lucide-react";
 
 export default function Login() {
     const navigate = useNavigate();
@@ -29,14 +29,6 @@ export default function Login() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleBypassLogin = () => {
-        localStorage.setItem("mock_admin_session", "true");
-        toast.success("Acesso Administrador autorizado (Modo Demonstração)!");
-        setTimeout(() => {
-            window.location.href = "/admin/financeiro";
-        }, 800);
     };
 
     return (
@@ -125,17 +117,6 @@ export default function Login() {
                         </Button>
                     </form>
 
-                    <div className="mt-4 pt-2">
-                        <Button
-                            type="button"
-                            onClick={handleBypassLogin}
-                            className="w-full h-14 text-[10px] font-black uppercase tracking-[0.2em] bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl shadow-lg border border-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                        >
-                            <ShieldCheck className="h-4 w-4" />
-                            Acesso Rápido (Administrador)
-                        </Button>
-                    </div>
-                    
                     <div className="mt-8 text-center">
                         <p className="text-[9px] font-bold text-muted-foreground/30 uppercase tracking-[0.3em] text-luxury">
                             BJL Planejados &copy; {new Date().getFullYear()} • Powered by Lovable
