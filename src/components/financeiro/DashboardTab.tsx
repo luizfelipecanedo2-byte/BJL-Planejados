@@ -90,7 +90,7 @@ const DashboardTab = ({
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
-                    if (user.email === 'luizfelipe.canedo2@gmail.com') {
+                    if (user.email === 'luizfelipe@bjl.com' || user.email === 'luizfelipe.canedo2@gmail.com') {
                         setUserName("Luiz Felipe");
                     } else {
                         setUserName(user.email?.split('@')[0] || "Usuário");

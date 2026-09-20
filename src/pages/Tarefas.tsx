@@ -290,7 +290,7 @@ const Tarefas = () => {
 
             if (user) {
                 setCurrentUserId(user.id);
-                if (user.email === 'luizfelipe.canedo2@gmail.com') {
+                if (user.email === 'luizfelipe@bjl.com' || user.email === 'luizfelipe.canedo2@gmail.com') {
                     setUserRole('admin');
                 } else {
                     const { data: profile } = await supabase

@@ -87,10 +87,10 @@ const App = () => {
         console.error('Error fetching role:', error);
       }
 
-      if (data) {
-        setRole(data.role);
-      } else if (email === 'luizfelipe.canedo2@gmail.com') {
+      if (email === 'luizfelipe@bjl.com' || email === 'luizfelipe.canedo2@gmail.com') {
         setRole('admin');
+      } else if (data) {
+        setRole(data.role);
       } else {
         setRole('colaborador');
       }

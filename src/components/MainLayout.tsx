@@ -189,13 +189,17 @@ const MainLayout = () => {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
                     setUserEmail(user.email || null);
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('role')
-                        .eq('id', user.id)
-                        .single();
+                    if (user.email === 'luizfelipe@bjl.com' || user.email === 'luizfelipe.canedo2@gmail.com') {
+                        setRole('admin');
+                    } else {
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('role')
+                            .eq('id', user.id)
+                            .single();
 
-                    if (profile) setRole(profile.role);
+                        if (profile) setRole(profile.role);
+                    }
                 }
             } catch (e) {
                 console.error("Erro ao carregar perfil:", e);
