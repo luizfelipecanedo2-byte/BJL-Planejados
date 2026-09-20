@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { Button } from "@/components/ui/button";
-import { Users, Truck, UserPlus, Plus } from "lucide-react";
+import { Users, Truck, UserPlus, Plus, Hammer } from "lucide-react";
 import { toast } from "sonner";
 import { Client } from "@/types/client";
 import ClientTable from "@/components/crm/ClientTable";
@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { MagicButton } from "@/components/ui/magic-button";
 import ClientTimeline from "@/components/crm/ClientTimeline";
 import ClientFilesDialog from "@/components/crm/ClientFilesDialog";
+import { EquipeTab } from "@/components/configuracoes/EquipeTab";
 
 const Clientes = () => {
     const [clients, setClients] = useState<Client[]>([]);
@@ -192,17 +193,23 @@ const Clientes = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-4xl font-['Cinzel'] font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow uppercase">Clientes e Fornecedores</h2>
-                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Gestão de Base High-End</p>
+                    <h2 className="text-4xl font-['Cinzel'] font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow uppercase">
+                        Clientes, Fornecedores e Colaboradores
+                    </h2>
+                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
+                       Gestão Centralizada de Pessoas • Clientes, Fornecedores & Equipe da Fábrica
+                   </p>
                 </div>
-                <MagicButton onClick={handleNewClient} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
-                    <UserPlus className="h-4 w-4" />
-                    Novo Registro
-                </MagicButton>
+                {activeTab !== "colaborador" && (
+                    <MagicButton onClick={handleNewClient} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
+                        <UserPlus className="h-4 w-4" />
+                        Novo Registro
+                    </MagicButton>
+                )}
             </div>
 
             <Tabs defaultValue="cliente" className="w-full space-y-6" onValueChange={setActiveTab}>
-                <TabsList className="bg-white/50 backdrop-blur-xl border border-white/40 p-1.5 rounded-full h-auto shadow-sm inline-flex">
+                <TabsList className="bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-white/10 p-1.5 rounded-full h-auto shadow-sm inline-flex flex-wrap gap-1">
                     <TabsTrigger value="cliente" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
                         <Users className="h-4 w-4" />
                         Clientes
@@ -210,6 +217,10 @@ const Clientes = () => {
                     <TabsTrigger value="fornecedor" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
                         <Truck className="h-4 w-4" />
                         Fornecedores
+                    </TabsTrigger>
+                    <TabsTrigger value="colaborador" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
+                        <Hammer className="h-4 w-4" />
+                        Colaboradores (Equipe)
                     </TabsTrigger>
                 </TabsList>
 
@@ -245,6 +256,10 @@ const Clientes = () => {
                             />
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                <TabsContent value="colaborador">
+                    <EquipeTab />
                 </TabsContent>
             </Tabs>
 

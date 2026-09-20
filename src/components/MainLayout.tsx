@@ -225,7 +225,7 @@ const MainLayout = () => {
     const allMenuItems = [
         { icon: TrendingUp, label: "CRM", path: "/admin", roles: ['admin'], emoji: "📊" },
         { icon: Calculator, label: "Orçamento", path: "/admin/orcamento", roles: ['admin'], emoji: "💰" },
-        { icon: Users, label: "Cliente e Fornecedores", path: "/admin/clientes", roles: ['admin'], emoji: "👥" },
+        { icon: Users, label: "Clientes e Colaboradores", path: "/admin/clientes", roles: ['admin'], emoji: "👥" },
         { icon: DollarSign, label: "Financeiro", path: "/admin/financeiro", roles: ['admin'], emoji: "🏦" },
         { icon: ClipboardList, label: "Ordem de Serviço", path: "/admin/ordem-servico", roles: ['admin', 'colaborador'], emoji: "📋" },
         { icon: Package, label: "Estoque", path: "/admin/estoque", roles: ['admin', 'colaborador'], emoji: "📦" },
@@ -372,7 +372,7 @@ const MainLayout = () => {
                                         item.label === "Financeiro" && "group-hover:scale-110",
                                         item.label === "Tarefas" && "group-hover:scale-105",
                                         item.label === "Orçamento" && "group-hover:rotate-12",
-                                        item.label === "Cliente e Fornecedores" && "group-hover:scale-105"
+                                        item.label === "Clientes e Colaboradores" && "group-hover:scale-105"
                                     )} />
                                 </div>
                                 {!isSidebarCollapsed && (
