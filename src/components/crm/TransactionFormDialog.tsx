@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { addMonths } from "date-fns";
-import { Check, ChevronsUpDown, FileImage, Upload, X } from "lucide-react";
+import { Check, ChevronsUpDown, FileImage, Upload, X, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Transaction, CATEGORIES, PAYMENT_METHODS, FINANCIAL_INSTITUTIONS, TransactionType, TransactionStatus, SUBCATEGORIES } from "@/types/finance";
 import { Client } from "@/types/client";
@@ -43,7 +43,7 @@ interface TransactionFormDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSubmit: (transaction: Omit<Transaction, "id"> | Omit<Transaction, "id">[]) => void;
-    onUpdate?: (id: string, updates: Partial<Transaction>) => void;
+    onUpdate?: (id: string, updates: Partial<Transaction>, applyToAllInstallments?: boolean) => void;
     editingTransaction?: Transaction | null;
     initialType?: TransactionType | "transfer";
 }
@@ -97,6 +97,22 @@ const TransactionFormDialog = ({
     const [costSplits, setCostSplits] = useState<Array<{ client: string; amount: string; description: string; color?: string }>>([
         { client: "", amount: "", description: "" }
     ]);
+    const [applyToAllInstallments, setApplyToAllInstallments] = useState(true);
+
+    const installmentInfo = useMemo(() => {
+        if (!editingTransaction) return null;
+        const match = editingTransaction.description.match(/^(.*?)\s*\((\d+)\/(\d+)\)\s*$/) ||
+                      editingTransaction.description.match(/(?:parcela\s+(\d+)\/(\d+));?\s*(.*)/i);
+        if (match) {
+            const current = parseInt(match[2] || match[1], 10);
+            const total = parseInt(match[3] || match[2], 10);
+            const baseTitle = (match[1] || match[3] || '').trim();
+            if (total > 1) {
+                return { current, total, baseTitle };
+            }
+        }
+        return null;
+    }, [editingTransaction]);
 
     const [clients, setClients] = useState<Client[]>([]);
     const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
@@ -341,7 +357,7 @@ const TransactionFormDialog = ({
             onUpdate(editingTransaction.id, {
                 ...baseSubmitData,
                 costSplits: isCostSplit ? formattedSplits : []
-            });
+            }, applyToAllInstallments);
         } else if (type === 'transfer') {
             const transferOut = {
                 ...baseSubmitData,
@@ -361,14 +377,17 @@ const TransactionFormDialog = ({
             const finalCostSplits = isCostSplit ? formattedSplits : [];
             if (isInstallment && Number(installmentsCount) > 1) {
                 const count = Number(installmentsCount);
-                const installmentValue = amount / count;
+                const installmentValue = Number((amount / count).toFixed(2));
                 const transactions = [];
 
                 for (let i = 0; i < count; i++) {
                     const dueDate = new Date(form.dueDate);
                     // Add i months to the due date
                     const newDueDate = addMonths(dueDate, i);
-                    const instSplits = finalCostSplits ? finalCostSplits.map(s => ({ ...s, amount: s.amount / count })) : undefined;
+                    const instSplits = finalCostSplits ? finalCostSplits.map(s => ({
+                        ...s,
+                        amount: Number((s.amount / count).toFixed(2))
+                    })) : undefined;
 
                     transactions.push({
                         ...baseSubmitData,
@@ -599,8 +618,8 @@ const TransactionFormDialog = ({
                             <div className={`p-4 border rounded-lg space-y-4 ${isInstallment ? 'bg-primary/5 border-primary/30' : 'bg-muted/20'} ${isRecurring && 'opacity-50 pointer-events-none'}`}>
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-0.5">
-                                        <Label className="text-sm font-bold">Parcelar (Cartão)</Label>
-                                        <p className="text-[10px] text-muted-foreground mr-2">Dividir valor</p>
+                                        <Label className="text-sm font-bold">Parcelar (Boleto / Cartão)</Label>
+                                        <p className="text-[10px] text-muted-foreground mr-2">Dividir valor em parcelas</p>
                                     </div>
                                     <Switch
                                         checked={isInstallment}
@@ -807,7 +826,25 @@ const TransactionFormDialog = ({
                             </div>
 
                             {isCostSplit && (
-                                <div className="mt-4 pt-3 border-t border-border/50">
+                                <div className="mt-4 pt-3 border-t border-border/50 space-y-3">
+                                    {installmentInfo && (
+                                        <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                                            <div className="space-y-0.5 pr-2">
+                                                <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                                                    <Layers className="h-3.5 w-3.5 text-emerald-600" />
+                                                    Aplicar divisão a todas as {installmentInfo.total} parcelas no boleto
+                                                </div>
+                                                <p className="text-[11px] text-muted-foreground">
+                                                    Esta é a parcela {installmentInfo.current}/{installmentInfo.total}. Com esta opção ativa, o rateio deste material entrará em todas as {installmentInfo.total} parcelas nos Gastos por Serviço.
+                                                </p>
+                                            </div>
+                                            <Switch
+                                                checked={applyToAllInstallments}
+                                                onCheckedChange={setApplyToAllInstallments}
+                                                className="data-[state=checked]:bg-emerald-600"
+                                            />
+                                        </div>
+                                    )}
                                     <NextGenCostSplitter
                                         totalInvoiceAmount={Number(form.amount) || 0}
                                         serviceOrders={serviceOrders}

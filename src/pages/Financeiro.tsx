@@ -1467,7 +1467,8 @@ const Financeiro = () => {
         // Handle cost splits
         for (let i = 0; i < dataArray.length; i++) {
           const item = dataArray[i];
-          const insertedRow = insertedData[i];
+          const insertedRow = insertedData.find(r => r.description === item.description) || insertedData[i];
+          if (!insertedRow) continue;
           const validSplits = (item.costSplits || []).filter(s => s.client && s.client.trim() !== "" && Number(s.amount) > 0);
           if (validSplits.length > 0) {
             const splitsToInsert = validSplits.map(split => ({
@@ -1497,7 +1498,7 @@ const Financeiro = () => {
     } catch (error) { toast.error("Erro ao registrar lançamento."); }
   };
 
-  const handleUpdate = async (id: string, updates: Partial<Transaction>) => {
+  const handleUpdate = async (id: string, updates: Partial<Transaction>, applyToAllInstallments = true) => {
     try {
       const updateData: any = {};
       if (updates.description !== undefined) updateData.description = updates.description;
@@ -1541,20 +1542,63 @@ const Financeiro = () => {
       const { error } = await supabase.from('transactions').update(updateData).eq('id', id);
       if (error) throw error;
 
+      // Detect sibling installments if this transaction is part of an installment series
+      const targetTx = transactions.find(t => t.id === id);
+      let siblings: Transaction[] = [];
+      if (targetTx && applyToAllInstallments) {
+        const instMatch = targetTx.description.match(/^(.*?)\s*\((\d+)\/(\d+)\)\s*$/) ||
+                          targetTx.description.match(/(?:parcela\s+(\d+)\/(\d+));?\s*(.*)/i);
+        const baseTitle = (instMatch ? (instMatch[1] || instMatch[3] || '') : '').trim();
+
+        siblings = transactions.filter(t => {
+          if (t.id === id) return false;
+          if (t.type !== targetTx.type) return false;
+
+          // 1. If invoiceNumber matches and is not empty
+          if (targetTx.invoiceNumber && t.invoiceNumber && t.invoiceNumber.trim() !== '' && t.invoiceNumber === targetTx.invoiceNumber) {
+            return true;
+          }
+
+          // 2. Base title match with installment pattern
+          if (baseTitle) {
+            const tMatch = t.description.match(/^(.*?)\s*\((\d+)\/(\d+)\)\s*$/) ||
+                           t.description.match(/(?:parcela\s+(\d+)\/(\d+));?\s*(.*)/i);
+            const tBaseTitle = (tMatch ? (tMatch[1] || tMatch[3] || '') : '').trim();
+            if (tBaseTitle && tBaseTitle.toLowerCase() === baseTitle.toLowerCase()) {
+              return true;
+            }
+          }
+
+          return false;
+        });
+      }
+
       if (updates.costSplits !== undefined) {
         try {
-          const { error: deleteError } = await supabase.from('transaction_allocations').delete().eq('transaction_id', id);
+          const targetIds = [id, ...(applyToAllInstallments ? siblings.map(s => s.id) : [])];
+
+          // Delete existing allocations for all targeted transactions
+          const { error: deleteError } = await supabase
+            .from('transaction_allocations')
+            .delete()
+            .in('transaction_id', targetIds);
           if (deleteError) {
             console.error("Erro ao deletar rateios:", deleteError);
           }
+
           const validSplits = (updates.costSplits || []).filter(s => s.client && s.client.trim() !== "" && Number(s.amount) > 0);
           if (validSplits.length > 0) {
-            const splitsToInsert = validSplits.map(split => ({
-              transaction_id: id,
-              client_name: split.client.trim(),
-              amount: Number(split.amount),
-              description: (split.description || "").trim()
-            }));
+            const splitsToInsert: any[] = [];
+            for (const targetId of targetIds) {
+              for (const split of validSplits) {
+                splitsToInsert.push({
+                  transaction_id: targetId,
+                  client_name: split.client.trim(),
+                  amount: Number(split.amount),
+                  description: (split.description || "").trim()
+                });
+              }
+            }
             const { error: splitError } = await supabase.from('transaction_allocations').insert(splitsToInsert);
             if (splitError) console.error("Erro ao inserir rateios:", splitError);
           }
@@ -1563,9 +1607,20 @@ const Financeiro = () => {
         }
       }
 
-      setTransactions(transactions.map(t => t.id === id ? { ...t, ...updates } : t));
+      const siblingIds = new Set(siblings.map(s => s.id));
+      setTransactions(transactions.map(t => {
+        if (t.id === id) return { ...t, ...updates };
+        if (applyToAllInstallments && siblingIds.has(t.id)) {
+          return { ...t, costSplits: updates.costSplits };
+        }
+        return t;
+      }));
       fetchTransactionAllocations();
-      toast.success("Lançamento atualizado!");
+      if (siblings.length > 0 && applyToAllInstallments) {
+        toast.success(`Lançamento e todas as ${siblings.length + 1} parcelas no boleto atualizados com sucesso!`);
+      } else {
+        toast.success("Lançamento atualizado!");
+      }
     } catch (error) {
       console.error("Erro ao atualizar lançamento:", error);
       toast.error("Erro ao atualizar lançamento.");
