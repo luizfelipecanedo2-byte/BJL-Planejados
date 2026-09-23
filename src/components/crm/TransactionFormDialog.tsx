@@ -91,7 +91,7 @@ const TransactionFormDialog = ({
     const [isSplitPayment, setIsSplitPayment] = useState(false);
     const [splits, setSplits] = useState([
         { method: "Dinheiro", amount: "", institution: "Dinheiro" },
-        { method: "Pix", amount: "", institution: "Nubank" }
+        { method: "Pix", amount: "", institution: "Banco Itaú" }
     ]);
     const [isCostSplit, setIsCostSplit] = useState(false);
     const [costSplits, setCostSplits] = useState<Array<{ client: string; amount: string; description: string; color?: string }>>([
@@ -255,7 +255,7 @@ const TransactionFormDialog = ({
             setIsSplitPayment(false);
             setSplits([
                 { method: "Dinheiro", amount: "", institution: "Dinheiro" },
-                { method: "Pix", amount: "", institution: "Nubank" }
+                { method: "Pix", amount: "", institution: "Banco Itaú" }
             ]);
             setIsCostSplit(false);
             setCostSplits([{ client: "", amount: "", description: "" }]);
@@ -699,7 +699,7 @@ const TransactionFormDialog = ({
                                             // Pre-fill first split with total amount
                                             setSplits([
                                                 { method: form.paymentMethod || "Dinheiro", amount: form.amount, institution: form.financialInstitution || "Dinheiro" },
-                                                { method: "Pix", amount: "", institution: "Nubank" }
+                                                { method: "Pix", amount: "", institution: "Banco Itaú" }
                                             ]);
                                         }
                                     }}
@@ -787,7 +787,7 @@ const TransactionFormDialog = ({
                                             variant="outline"
                                             size="sm"
                                             className="h-7 text-[10px] border-indigo-200 text-indigo-600"
-                                            onClick={() => setSplits([...splits, { method: "Pix", amount: "", institution: "Nubank" }])}
+                                            onClick={() => setSplits([...splits, { method: "Pix", amount: "", institution: "Banco Itaú" }])}
                                         >
                                             + Adicionar Forma
                                         </Button>

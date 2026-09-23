@@ -183,7 +183,7 @@ export async function launchCommissionTransaction(
       subcategory: "Comissão",
       service: `Comissão 3% sobre vendas fechadas (${monthName}/${year})`,
       contact: SELLER_NAME,
-      financial_institution: "Nubank",
+      financial_institution: "Banco Itaú",
       payment_method: "Pix",
       competence_date: competenceDateStr,
       due_date: dueDateStr,

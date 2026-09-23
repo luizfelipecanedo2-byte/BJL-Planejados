@@ -503,7 +503,7 @@ const Financeiro = () => {
   const [selectedDashMonth, setSelectedDashMonth] = useState<number | 'anual'>(new Date().getMonth());
 
   // Conciliation State
-  const [selectedAccount, setSelectedAccount] = useState<string>("nubank");
+  const [selectedAccount, setSelectedAccount] = useState<string>("itau");
   const [currentDateReconciliation, setCurrentDateReconciliation] = useState<Date>(new Date());
 
   const toggleSelect = (id: string) => {
@@ -603,6 +603,8 @@ const Financeiro = () => {
       const inst = t.financialInstitution?.toLowerCase() || '';
       if (selectedAccount === 'dinheiro') {
         return inst === 'dinheiro';
+      } else if (selectedAccount === 'itau' || selectedAccount === 'banco_itau') {
+        return inst.includes('itau') || inst.includes('itaú');
       } else if (selectedAccount === 'nubank') {
         return inst === 'nubank';
       } else if (selectedAccount === 'recarga_pay') {
@@ -1705,6 +1707,7 @@ const Financeiro = () => {
   return (
     <div className={cn(
       "space-y-10 transition-all duration-1000 min-h-screen p-2 animate-in fade-in",
+      activeTab === 'conciliacao' && (selectedAccount === 'itau' || selectedAccount === 'banco_itau') ? "bg-blue-950/15" : 
       activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "bg-purple-950/10" : 
       activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-950/10" :
       activeTab === 'conciliacao' && selectedAccount === 'recarga_pay' ? "bg-orange-950/10" : ""
@@ -1742,6 +1745,7 @@ const Financeiro = () => {
         <div className="px-2 overflow-x-auto webkit-overflow-scrolling-touch hide-scrollbar pb-1 max-w-full">
           <TabsList className={cn(
             "h-16 sm:h-20 w-max min-w-full lg:min-w-0 p-2 glass-card rounded-[2rem] luxury-shadow border-white/5 backdrop-blur-3xl transition-all duration-700",
+            activeTab === 'conciliacao' && (selectedAccount === 'itau' || selectedAccount === 'banco_itau') ? "bg-blue-900/30 border-blue-500/20" :
             activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "bg-purple-900/30 border-purple-500/20" :
             activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-900/30 border-emerald-500/20" :
             activeTab === 'conciliacao' && selectedAccount === 'recarga_pay' ? "bg-orange-900/30 border-orange-500/20" :
@@ -1765,6 +1769,7 @@ const Financeiro = () => {
             </TabsTrigger>
             <TabsTrigger value="conciliacao" className={cn(
               "rounded-[1.5rem] px-5 sm:px-8 h-full transition-all duration-500",
+              activeTab === 'conciliacao' && (selectedAccount === 'itau' || selectedAccount === 'banco_itau') ? "data-[state=active]:bg-[#00246B] data-[state=active]:text-white shadow-blue-500/30" :
               activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "data-[state=active]:bg-purple-600 data-[state=active]:text-white" :
               activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "data-[state=active]:bg-emerald-600 data-[state=active]:text-white" :
               activeTab === 'conciliacao' && selectedAccount === 'recarga_pay' ? "data-[state=active]:bg-orange-600 data-[state=active]:text-white" :

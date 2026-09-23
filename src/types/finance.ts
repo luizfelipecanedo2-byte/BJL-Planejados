@@ -116,6 +116,7 @@ export const PAYMENT_METHODS = [
     "Dinheiro",
     "Pix",
     "Boleto",
+    "Cartão Itaú",
     "Cartão C6",
     "Cartão Nubank",
     "Cartão Inter",
@@ -124,8 +125,10 @@ export const PAYMENT_METHODS = [
 ];
 
 export const FINANCIAL_INSTITUTIONS = [
-    "Nubank",
+    "Banco Itaú",
     "Dinheiro",
     "Mercado Pago",
-    "Recarga Pay"
+    "Recarga Pay",
+    "Nubank"
 ];
+
