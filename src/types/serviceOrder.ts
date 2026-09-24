@@ -35,3 +35,32 @@ export interface ServiceOrder {
     marginStatus?: 'healthy' | 'warning' | 'danger';
     materialsDetails?: Array<{ description: string; amount: number; date?: string; invoice?: string }>;
 }
+
+export interface OSAttachmentItem {
+    id?: string;
+    url: string;
+    title?: string;
+    measurements?: string; // Ex: "Parede L: 3.20m x 2.60m, tomada a 1.10m"
+    tag?: 'Foto do Local' | 'Medições / Croqui' | 'Projeto 3D' | 'Instalação' | 'Geral';
+    createdAt?: string;
+}
+
+export function parseOSAttachment(raw: string): OSAttachmentItem {
+    if (!raw) return { url: "" };
+    if (raw.startsWith('{') && raw.endsWith('}')) {
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return { url: raw, title: "Foto do Projeto" };
+        }
+    }
+    return {
+        url: raw,
+        title: "Foto do Projeto",
+        tag: 'Foto do Local'
+    };
+}
+
+export function serializeOSAttachment(item: OSAttachmentItem): string {
+    return JSON.stringify(item);
+}

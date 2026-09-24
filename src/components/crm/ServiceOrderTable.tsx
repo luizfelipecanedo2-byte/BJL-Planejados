@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, TrendingUp, AlertTriangle } from "lucide-react";
+import { Pencil, Trash2, TrendingUp, AlertTriangle, Camera, Ruler } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -22,9 +22,10 @@ interface ServiceOrderTableProps {
     onEdit: (order: ServiceOrder) => void;
     onDelete: (id: string) => void;
     isAdmin?: boolean;
+    onOpenGallery?: (order: ServiceOrder) => void;
 }
 
-const ServiceOrderTable = ({ orders, onEdit, onDelete, isAdmin = false }: ServiceOrderTableProps) => {
+const ServiceOrderTable = ({ orders, onEdit, onDelete, isAdmin = false, onOpenGallery }: ServiceOrderTableProps) => {
     const getStatusDisplay = (order: ServiceOrder) => {
         if (order.status === "Entregue e Finalizado") {
             return <Badge variant="secondary" className="bg-emerald-500 text-white hover:bg-emerald-600">Entregue e Finalizado</Badge>;
@@ -124,6 +125,23 @@ const ServiceOrderTable = ({ orders, onEdit, onDelete, isAdmin = false }: Servic
                                 </div>
                             </div>
                         )}
+
+                        {/* Botão de Galeria de Fotos & Medidas Mobile */}
+                        <div className="pt-2 border-t border-border/40 flex items-center justify-between">
+                            <button
+                                type="button"
+                                onClick={() => onOpenGallery && onOpenGallery(order)}
+                                className={cn(
+                                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black transition-all border",
+                                    (order.attachments?.length || 0) > 0
+                                        ? "bg-amber-500/15 text-amber-300 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                                        : "bg-muted/30 text-muted-foreground border-border/50"
+                                )}
+                            >
+                                <Camera className="h-3.5 w-3.5 text-amber-400" />
+                                <span>{(order.attachments?.length || 0) > 0 ? `${order.attachments?.length} fotos/medidas salvas` : '+ Fotos do Local & Medidas'}</span>
+                            </button>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -240,11 +258,31 @@ const ServiceOrderTable = ({ orders, onEdit, onDelete, isAdmin = false }: Servic
                                     </HoverCard>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    {isAdmin && (
-                                        <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors" onClick={() => onDelete(order.id)}>
-                                            <Trash2 className="h-4 w-4" />
+                                    <div className="flex items-center justify-end gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => onOpenGallery && onOpenGallery(order)}
+                                            className={cn(
+                                                "h-8 px-2 rounded-xl text-xs font-bold gap-1.5 transition-all",
+                                                (order.attachments?.length || 0) > 0
+                                                    ? "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                                                    : "text-muted-foreground hover:text-white"
+                                            )}
+                                            title="Abrir Galeria Visual e Medidas do Local"
+                                        >
+                                            <Camera className="h-3.5 w-3.5 text-amber-400" />
+                                            <span className="hidden xl:inline">
+                                                {(order.attachments?.length || 0) > 0 ? `${order.attachments?.length} fotos` : 'Medidas'}
+                                            </span>
                                         </Button>
-                                    )}
+
+                                        {isAdmin && (
+                                            <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors h-8 w-8" onClick={() => onDelete(order.id)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}

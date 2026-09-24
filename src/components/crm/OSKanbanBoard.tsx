@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ServiceOrder, ServiceStatus } from "@/types/serviceOrder";
 import { Card, CardContent } from "@/components/ui/card";
-import { Phone, Calendar, ClipboardList, MessageSquare } from "lucide-react";
+import { Phone, Calendar, ClipboardList, MessageSquare, Camera, Ruler } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WhatsAppQuickDialog } from "./WhatsAppQuickDialog";
 
@@ -9,6 +9,7 @@ interface OSKanbanBoardProps {
   orders: ServiceOrder[];
   onStatusChange: (id: string, status: ServiceStatus) => void;
   onEdit: (order: ServiceOrder) => void;
+  onOpenGallery?: (order: ServiceOrder) => void;
 }
 
 const statusOrder: ServiceStatus[] = [
@@ -56,7 +57,7 @@ const dotColors: Record<ServiceStatus, string> = {
   "Entregue e Finalizado": "bg-emerald-600",
 };
 
-const OSKanbanBoard = ({ orders, onStatusChange, onEdit }: OSKanbanBoardProps) => {
+const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onOpenGallery }: OSKanbanBoardProps) => {
   const [whatsAppOrder, setWhatsAppOrder] = useState<ServiceOrder | null>(null);
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
 
@@ -191,12 +192,26 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit }: OSKanbanBoardProps) =
                         </div>
                       )}
 
-                      {order.clientPhone && (
-                        <div className="flex items-center justify-between gap-1.5 pt-1">
-                          <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity w-fit text-[9px] font-black text-white/60">
-                            <Phone className="h-3 w-3 text-white/40" />
-                            <span>{order.clientPhone}</span>
-                          </div>
+                      <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-white/5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onOpenGallery) onOpenGallery(order);
+                          }}
+                          className={cn(
+                            "p-1.5 rounded-lg border transition-all flex items-center gap-1.5 text-[9px] font-black",
+                            (order.attachments?.length || 0) > 0
+                              ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.25)]"
+                              : "bg-white/5 hover:bg-white/10 text-white/50 border-white/5"
+                          )}
+                          title="Abrir Galeria Visual e Medidas do Local"
+                        >
+                          <Camera className="h-3 w-3 text-amber-400" />
+                          <span>{(order.attachments?.length || 0) > 0 ? `${order.attachments?.length} fotos/medidas` : '+ Medidas'}</span>
+                        </button>
+
+                        {order.clientPhone && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -210,8 +225,8 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit }: OSKanbanBoardProps) =
                             <MessageSquare className="h-3 w-3" />
                             <span>Avisar</span>
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 );

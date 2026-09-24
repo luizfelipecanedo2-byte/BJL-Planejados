@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Check, ChevronsUpDown, File, Upload, X, ExternalLink, Loader2, Clipboard, MessageSquare, Clock, Trash2, Plus, CheckSquare } from "lucide-react";
+import { Check, ChevronsUpDown, File, Upload, X, ExternalLink, Loader2, Clipboard, MessageSquare, Clock, Trash2, Plus, CheckSquare, Camera, Ruler, Maximize2, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { Client } from "@/types/client";
-import { ServiceOrder, ServiceType, ServiceStatus } from "@/types/serviceOrder";
+import { ServiceOrder, ServiceType, ServiceStatus, parseOSAttachment, serializeOSAttachment, OSAttachmentItem } from "@/types/serviceOrder";
 import { toast } from "sonner";
 import {
     Dialog,
@@ -304,14 +304,18 @@ const ServiceOrderFormDialog = ({
         update("laborLogs", newLogs);
     };
 
+    const [attTitle, setAttTitle] = useState("");
+    const [attMeasurements, setAttMeasurements] = useState("");
+    const [attTag, setAttTag] = useState("Medições / Croqui");
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         try {
             setIsUploading(true);
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+            const fileExt = file.name.split('.').pop() || 'jpg';
+            const fileName = `${form.ticketNumber || 'os'}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
             const filePath = `service_orders/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
@@ -324,17 +328,30 @@ const ServiceOrderFormDialog = ({
                 .from('attachments')
                 .getPublicUrl(filePath);
 
-            update("attachments", [...form.attachments, publicUrl]);
+            const newItem: OSAttachmentItem = {
+                id: `att-${Date.now()}`,
+                url: publicUrl,
+                title: attTitle.trim() || file.name.replace(/\.[^/.]+$/, ""),
+                measurements: attMeasurements.trim() || undefined,
+                tag: (attTag as any) || 'Medições / Croqui',
+                createdAt: new Date().toISOString()
+            };
+
+            update("attachments", [...form.attachments, serializeOSAttachment(newItem)]);
+            setAttTitle("");
+            setAttMeasurements("");
+            toast.success("Foto e medidas adicionadas!");
         } catch (error) {
             console.error('Error uploading file:', error);
-            alert("Erro ao fazer upload do arquivo.");
+            toast.error("Erro ao fazer upload da foto.");
         } finally {
             setIsUploading(false);
         }
     };
 
-    const removeAttachment = (url: string) => {
-        update("attachments", form.attachments.filter(a => a !== url));
+    const removeAttachment = (indexToRemove: number) => {
+        update("attachments", form.attachments.filter((_, idx) => idx !== indexToRemove));
+        toast.info("Foto removida.");
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -573,6 +590,125 @@ const ServiceOrderFormDialog = ({
                                 placeholder="Instruções para a produção..."
                                 className="min-h-[200px]"
                             />
+                        </TabsContent>
+
+                        <TabsContent value="arquivos" className="space-y-4">
+                            <div className="p-4 bg-muted/20 border border-white/10 rounded-2xl space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Camera className="h-5 w-5 text-amber-400" />
+                                        <h4 className="text-sm font-black uppercase text-white">Adicionar Foto do Local / Medições</h4>
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground uppercase font-bold">
+                                        {form.attachments.length} foto(s) anexada(s)
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div>
+                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Local / Título</Label>
+                                        <Input
+                                            value={attTitle}
+                                            onChange={(e) => setAttTitle(e.target.value)}
+                                            placeholder="Ex: Parede Principal Cozinha"
+                                            className="h-8 text-xs mt-1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Tipo</Label>
+                                        <Select value={attTag} onValueChange={setAttTag}>
+                                            <SelectTrigger className="h-8 text-xs mt-1">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-slate-900 border-white/10 text-xs">
+                                                <SelectItem value="Medições / Croqui">📐 Medições / Croqui</SelectItem>
+                                                <SelectItem value="Foto do Local">📸 Foto do Local</SelectItem>
+                                                <SelectItem value="Projeto 3D">💻 Projeto 3D</SelectItem>
+                                                <SelectItem value="Instalação">🔨 Instalação</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
+                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Medidas / Anotação</Label>
+                                        <Input
+                                            value={attMeasurements}
+                                            onChange={(e) => setAttMeasurements(e.target.value)}
+                                            placeholder="Ex: 3,45m x 2,60m • tomada 1,10m"
+                                            className="h-8 text-xs mt-1 font-mono"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                                    <p className="text-[10px] text-muted-foreground">
+                                        Anexe fotos tiradas com o celular ou esboços de medidas com trena.
+                                    </p>
+                                    <div>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            id="os-form-file-upload"
+                                            className="hidden"
+                                            onChange={handleFileUpload}
+                                        />
+                                        <Button
+                                            type="button"
+                                            disabled={isUploading}
+                                            onClick={() => document.getElementById('os-form-file-upload')?.click()}
+                                            className="bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider rounded-xl gap-2 h-9 shadow-lg shadow-amber-500/10"
+                                        >
+                                            {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                            Selecionar & Salvar Foto
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Grade de Fotos Anexadas */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Fotos e Medidas Registradas ({form.attachments.length})</Label>
+                                {form.attachments.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground italic text-center py-8 border border-dashed rounded-xl bg-white/[0.01]">
+                                        Nenhuma foto anexada a esta OS ainda.
+                                    </p>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[260px] overflow-y-auto pr-1">
+                                        {form.attachments.map((rawAtt, idx) => {
+                                            const item = parseOSAttachment(rawAtt);
+                                            return (
+                                                <div key={idx} className="bg-card/60 border border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col justify-between group">
+                                                    <div className="relative aspect-video bg-black/40 overflow-hidden">
+                                                        <img src={item.url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                                        <div className="absolute top-1.5 left-1.5">
+                                                            <span className="text-[9px] font-black uppercase tracking-wider bg-black/80 px-2 py-0.5 rounded text-amber-400 border border-amber-400/30">
+                                                                {item.tag || 'Foto'}
+                                                            </span>
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => removeAttachment(idx)}
+                                                            className="absolute top-1.5 right-1.5 text-rose-400 bg-black/80 hover:bg-rose-500 hover:text-white h-6 w-6 p-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                    <div className="p-2 space-y-1">
+                                                        <p className="text-xs font-bold text-white truncate">{item.title || "Foto"}</p>
+                                                        {item.measurements && (
+                                                            <p className="text-[10px] font-mono text-amber-300 truncate bg-amber-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                                                <Ruler className="h-2.5 w-2.5 shrink-0" />
+                                                                {item.measurements}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                         </TabsContent>
 
                         <TabsContent value="horas" className="space-y-4">

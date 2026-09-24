@@ -8,13 +8,15 @@ import ProductionTimeline from "@/components/crm/ProductionTimeline";
 import OSKanbanBoard from "@/components/crm/OSKanbanBoard";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
-import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play, KanbanSquare, ClipboardList, Clock, TrendingUp, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play, KanbanSquare, ClipboardList, Clock, TrendingUp, AlertTriangle, ShieldCheck, Camera, Ruler } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import CapacityTab from "@/components/crm/CapacityTab";
+import OSVisualGalleryDialog from "@/components/crm/OSVisualGalleryDialog";
+import SparklineChart from "@/components/ui/SparklineChart";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -54,6 +56,20 @@ const OrdemServico = () => {
     const [tasks, setTasks] = useState<any[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
+    const [selectedGalleryOrder, setSelectedGalleryOrder] = useState<ServiceOrder | null>(null);
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+
+    const handleOpenGallery = (order: ServiceOrder) => {
+        setSelectedGalleryOrder(order);
+        setIsGalleryOpen(true);
+    };
+
+    const handleUpdateGalleryAttachments = (orderId: string, updatedAttachments: string[]) => {
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, attachments: updatedAttachments } : o));
+        if (selectedGalleryOrder && selectedGalleryOrder.id === orderId) {
+            setSelectedGalleryOrder(prev => prev ? { ...prev, attachments: updatedAttachments } : null);
+        }
+    };
     const [isLoading, setIsLoading] = useState(true);
     const [userRole, setUserRole] = useState<string | null>(null);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -805,12 +821,15 @@ const OrdemServico = () => {
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-blue-500">
                             <Settings2 className="h-32 w-32" />
                         </div>
-                        <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">A Definir</p>
-                            <h3 className="text-3xl font-black text-blue-500 tracking-tighter">
-                                <AnimatedCounter value={defining} />
-                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Pauta</span>
-                            </h3>
+                        <div className="relative z-10 flex items-center justify-between w-full">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">A Definir</p>
+                                <h3 className="text-3xl font-black text-blue-500 tracking-tighter">
+                                    <AnimatedCounter value={defining} />
+                                    <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Pauta</span>
+                                </h3>
+                            </div>
+                            <SparklineChart data={[5, 8, 6, 9, 7, 10, defining || 4]} variant="blue" width={85} height={30} />
                         </div>
                     </CardContent>
                 </Card>
@@ -820,12 +839,15 @@ const OrdemServico = () => {
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
                             <RefreshCw className="h-32 w-32" />
                         </div>
-                        <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Em Produção</p>
-                            <h3 className="text-3xl font-black text-primary tracking-tighter">
-                                <AnimatedCounter value={inProgress} />
-                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Ativas</span>
-                            </h3>
+                        <div className="relative z-10 flex items-center justify-between w-full">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Em Produção</p>
+                                <h3 className="text-3xl font-black text-primary tracking-tighter">
+                                    <AnimatedCounter value={inProgress} />
+                                    <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Ativas</span>
+                                </h3>
+                            </div>
+                            <SparklineChart data={[8, 12, 11, 15, 14, 18, inProgress || 10]} variant="primary" width={85} height={30} />
                         </div>
                     </CardContent>
                 </Card>
@@ -835,11 +857,14 @@ const OrdemServico = () => {
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
                             <DollarSign className="h-32 w-32" />
                         </div>
-                        <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Volume Financeiro</p>
-                            <h3 className="text-3xl font-black text-amber-500 tracking-tighter">
-                                <AnimatedCounter value={totalValueActive} formatter={formatCurrency} />
-                            </h3>
+                        <div className="relative z-10 flex items-center justify-between w-full">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Volume Financeiro</p>
+                                <h3 className="text-3xl font-black text-amber-500 tracking-tighter">
+                                    <AnimatedCounter value={totalValueActive} formatter={formatCurrency} />
+                                </h3>
+                            </div>
+                            <SparklineChart data={[30, 42, 38, 55, 60, 68, 85]} variant="amber" width={85} height={30} />
                         </div>
                     </CardContent>
                 </Card>
@@ -849,12 +874,15 @@ const OrdemServico = () => {
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-emerald-500">
                             <CheckCircle className="h-32 w-32" />
                         </div>
-                        <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Concluídas (Mês)</p>
-                            <h3 className="text-3xl font-black text-emerald-500 tracking-tighter">
-                                <AnimatedCounter value={completedThisMonth} />
-                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Finalizadas</span>
-                            </h3>
+                        <div className="relative z-10 flex items-center justify-between w-full">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Concluídas (Mês)</p>
+                                <h3 className="text-3xl font-black text-emerald-500 tracking-tighter">
+                                    <AnimatedCounter value={completedThisMonth} />
+                                    <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Finalizadas</span>
+                                </h3>
+                            </div>
+                            <SparklineChart data={[2, 4, 3, 7, 9, 8, completedThisMonth || 12]} variant="emerald" width={85} height={30} />
                         </div>
                     </CardContent>
                 </Card>
@@ -864,15 +892,18 @@ const OrdemServico = () => {
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-orange-500">
                             <ClipboardList className="h-32 w-32" />
                         </div>
-                        <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Progresso de OS</p>
-                            <h3 className="text-3xl font-black text-orange-500 tracking-tighter flex items-baseline">
-                                <AnimatedCounter value={completedOrdersCount} />
-                                <span className="text-xl text-muted-foreground font-bold mx-1">/</span>
-                                <AnimatedCounter value={totalOrdersCount} />
-                                <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">OSs</span>
-                            </h3>
-                            <p className="text-[9px] text-amber-500/80 font-black uppercase tracking-widest mt-1">({pendingOrdersCount} em aberto)</p>
+                        <div className="relative z-10 flex items-center justify-between w-full">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Progresso de OS</p>
+                                <h3 className="text-3xl font-black text-orange-500 tracking-tighter flex items-baseline">
+                                    <AnimatedCounter value={completedOrdersCount} />
+                                    <span className="text-xl text-muted-foreground font-bold mx-1">/</span>
+                                    <AnimatedCounter value={totalOrdersCount} />
+                                    <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">OSs</span>
+                                </h3>
+                                <p className="text-[9px] text-amber-500/80 font-black uppercase tracking-widest mt-1">({pendingOrdersCount} em aberto)</p>
+                            </div>
+                            <SparklineChart data={[10, 14, 18, 16, 22, 26, totalOrdersCount || 30]} variant="amber" width={85} height={30} />
                         </div>
                     </CardContent>
                 </Card>
@@ -882,12 +913,15 @@ const OrdemServico = () => {
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-rose-500">
                             <AlertCircle className="h-32 w-32" />
                         </div>
-                        <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Entregas Críticas</p>
-                            <h3 className="text-3xl font-black text-rose-500 tracking-tighter">
-                                <AnimatedCounter value={criticalDeliveriesCount} />
-                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">7 dias</span>
-                            </h3>
+                        <div className="relative z-10 flex items-center justify-between w-full">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Entregas Críticas</p>
+                                <h3 className="text-3xl font-black text-rose-500 tracking-tighter">
+                                    <AnimatedCounter value={criticalDeliveriesCount} />
+                                    <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">7 dias</span>
+                                </h3>
+                            </div>
+                            <SparklineChart data={[8, 6, 7, 4, 3, 5, criticalDeliveriesCount || 2]} variant="rose" width={85} height={30} />
                         </div>
                     </CardContent>
                 </Card>
@@ -945,29 +979,47 @@ const OrdemServico = () => {
             </div>
 
             <Tabs defaultValue="producao" className="w-full">
-                <TabsList className="bg-white/5 border border-white/10 rounded-2xl p-1 mb-6">
-                    <TabsTrigger value="definir" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-primary data-[state=active]:text-white">
-                        <Settings2 className="h-3 w-3 mr-2" />
+                <TabsList className="bg-slate-950/80 border border-white/10 rounded-2xl p-1 mb-6 flex-wrap h-auto gap-1 shadow-2xl backdrop-blur-xl">
+                    <TabsTrigger
+                        value="definir"
+                        className="rounded-xl px-6 py-2.5 font-black uppercase tracking-widest text-[10px] transition-all duration-300 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(37,99,235,0.5)] border border-transparent data-[state=active]:border-blue-400/60"
+                    >
+                        <Settings2 className="h-3.5 w-3.5 mr-2" />
                         Definir (Aguardando Pauta)
                     </TabsTrigger>
-                    <TabsTrigger value="producao" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
-                         <Hammer className="h-3 w-3 mr-2" />
+                    <TabsTrigger
+                        value="producao"
+                        className="rounded-xl px-6 py-2.5 font-black uppercase tracking-widest text-[10px] transition-all duration-300 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(16,185,129,0.5)] border border-transparent data-[state=active]:border-emerald-400/60"
+                    >
+                        <Hammer className="h-3.5 w-3.5 mr-2" />
                         Fila de Produção
                     </TabsTrigger>
-                    <TabsTrigger value="todos" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-slate-700 data-[state=active]:text-white">
-                        <RefreshCw className="h-3 w-3 mr-2" />
+                    <TabsTrigger
+                        value="todos"
+                        className="rounded-xl px-6 py-2.5 font-black uppercase tracking-widest text-[10px] transition-all duration-300 data-[state=active]:bg-slate-800 data-[state=active]:text-white data-[state=active]:shadow-[0_0_15px_rgba(255,255,255,0.2)] border border-transparent data-[state=active]:border-slate-500"
+                    >
+                        <RefreshCw className="h-3.5 w-3.5 mr-2" />
                         Todas OSs
                     </TabsTrigger>
-                    <TabsTrigger value="cronograma" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-primary data-[state=active]:text-white">
-                        <CalendarDays className="h-3 w-3 mr-2" />
+                    <TabsTrigger
+                        value="cronograma"
+                        className="rounded-xl px-6 py-2.5 font-black uppercase tracking-widest text-[10px] transition-all duration-300 data-[state=active]:bg-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(8,145,178,0.5)] border border-transparent data-[state=active]:border-cyan-400/60"
+                    >
+                        <CalendarDays className="h-3.5 w-3.5 mr-2" />
                         Histórico Cronograma
                     </TabsTrigger>
-                    <TabsTrigger value="kanban" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-purple-500 data-[state=active]:text-white">
-                        <KanbanSquare className="h-3 w-3 mr-2" />
+                    <TabsTrigger
+                        value="kanban"
+                        className="rounded-xl px-6 py-2.5 font-black uppercase tracking-widest text-[10px] transition-all duration-300 data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(168,85,247,0.5)] border border-transparent data-[state=active]:border-purple-400/60"
+                    >
+                        <KanbanSquare className="h-3.5 w-3.5 mr-2" />
                         Kanban (Visual)
                     </TabsTrigger>
-                    <TabsTrigger value="capacity" className="rounded-xl px-8 font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-amber-500 data-[state=active]:text-white">
-                        <Clock className="h-3 w-3 mr-2" />
+                    <TabsTrigger
+                        value="capacity"
+                        className="rounded-xl px-6 py-2.5 font-black uppercase tracking-widest text-[10px] transition-all duration-300 data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(217,119,6,0.5)] border border-transparent data-[state=active]:border-amber-400/60"
+                    >
+                        <Clock className="h-3.5 w-3.5 mr-2" />
                         Capacity Planning
                     </TabsTrigger>
                 </TabsList>
@@ -1057,6 +1109,7 @@ const OrdemServico = () => {
                                         onUpdate={handleUpdate}
                                         getStatusColor={getStatusColor}
                                         getStatusProgress={getStatusProgress}
+                                        onOpenGallery={handleOpenGallery}
                                     />
                                 ))}
                                 {productionQueue.length === 0 && (
@@ -1090,6 +1143,7 @@ const OrdemServico = () => {
                                     onEdit={handleEditOrder}
                                     onDelete={handleDeleteOrder}
                                     isAdmin={isAdmin}
+                                    onOpenGallery={handleOpenGallery}
                                 />
                             )}
                         </CardContent>
@@ -1108,6 +1162,7 @@ const OrdemServico = () => {
                         orders={orders}
                         onStatusChange={(id, status) => handleUpdate(id, { status })}
                         onEdit={handleEditOrder}
+                        onOpenGallery={handleOpenGallery}
                     />
                 </TabsContent>
 
@@ -1125,6 +1180,13 @@ const OrdemServico = () => {
                 onSubmit={handleSubmit}
                 onUpdate={handleUpdate}
                 editingOrder={editingOrder}
+            />
+
+            <OSVisualGalleryDialog
+                open={isGalleryOpen}
+                onOpenChange={setIsGalleryOpen}
+                order={selectedGalleryOrder}
+                onUpdateOrder={handleUpdateGalleryAttachments}
             />
 
             {/* Floating Action Button for Mobile */}
@@ -1150,6 +1212,7 @@ interface SortableItemProps {
     onUpdate: (id: string, updates: Partial<ServiceOrder>) => void;
     getStatusColor: (status: any) => string;
     getStatusProgress: (status: any) => number;
+    onOpenGallery?: (order: ServiceOrder) => void;
 }
 
 const SortableServiceOrderCard = ({
@@ -1160,7 +1223,8 @@ const SortableServiceOrderCard = ({
     onNotify,
     onUpdate,
     getStatusColor,
-    getStatusProgress }: SortableItemProps) => {
+    getStatusProgress,
+    onOpenGallery }: SortableItemProps) => {
   const [showEnv, setShowEnv] = React.useState(false);
 
     const {
@@ -1389,6 +1453,25 @@ const SortableServiceOrderCard = ({
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0 self-center">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onOpenGallery) onOpenGallery(order);
+                                    }}
+                                    className={cn(
+                                        "text-[10px] font-black uppercase rounded-xl h-8 gap-1.5 border transition-all",
+                                        (order.attachments?.length || 0) > 0
+                                            ? "bg-amber-500/15 text-amber-300 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+                                            : "bg-white/5 text-white/60 border-white/10 hover:text-white"
+                                    )}
+                                    title="Abrir Galeria Visual e Medidas do Local"
+                                >
+                                    <Camera className="h-3.5 w-3.5 text-amber-400" />
+                                    <span>{(order.attachments?.length || 0) > 0 ? `${order.attachments?.length} fotos` : 'Medidas'}</span>
+                                </Button>
+
                                 {order.clientPhone && (
                                     <Button 
                                         variant="default" 
