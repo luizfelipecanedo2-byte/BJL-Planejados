@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Building2, Banknote, CreditCard, Coins } from "lucide-react";
+import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Building2, Banknote, CreditCard, Coins, FileSpreadsheet, Upload, Sparkles } from "lucide-react";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import ItauConciliationModal from "./ItauConciliationModal";
 
 interface ConciliationTabProps {
     selectedAccount: string;
@@ -29,6 +30,9 @@ interface ConciliationTabProps {
         }[];
     };
     formatCurrency: (value: number) => string;
+    transactions?: any[];
+    serviceOrders?: any[];
+    onRefresh?: () => void;
 }
 
 const ConciliationTab = ({
@@ -40,12 +44,16 @@ const ConciliationTab = ({
     totalAccountBalance,
     reconciliationDailyData,
     formatCurrency,
+    transactions = [],
+    serviceOrders = [],
+    onRefresh,
 }: ConciliationTabProps) => {
     const isItau = selectedAccount === 'itau' || selectedAccount === 'banco_itau';
     const isNubank = selectedAccount === 'nubank';
     const isDinheiro = selectedAccount === 'dinheiro';
     const isRecargaPay = selectedAccount === 'recarga_pay';
     const [selectedDayDetails, setSelectedDayDetails] = useState<any | null>(null);
+    const [isItauModalOpen, setIsItauModalOpen] = useState(false);
 
     return (
         <div className="space-y-6 text-foreground">
@@ -173,13 +181,25 @@ const ConciliationTab = ({
                         </Button>
                     </div>
 
-                    <div className="flex flex-wrap justify-center sm:justify-end items-center gap-6">
-                        <div className="flex flex-col items-center sm:items-end">
+                    <div className="flex flex-wrap justify-center sm:justify-end items-center gap-4">
+                        <div className="flex flex-col items-center sm:items-end mr-2">
                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Saldo Inicial</span>
                             <span className="font-bold text-white text-lg tracking-tighter">
                                 <AnimatedCounter value={reconciliationDailyData.initialBalance} formatter={formatCurrency} />
                             </span>
                         </div>
+
+                        {isItau && (
+                            <Button
+                                onClick={() => setIsItauModalOpen(true)}
+                                className="font-black uppercase tracking-widest text-[10px] px-5 py-5 rounded-xl shadow-lg transition-all bg-gradient-to-r from-[#00246B] via-[#08183A] to-[#00246B] hover:brightness-125 text-white border border-blue-400/40 shadow-blue-500/25 flex items-center gap-2 group"
+                            >
+                                <img src="/itau-logo.png" className="h-4 w-4 object-contain rounded-sm group-hover:scale-110 transition-transform" alt="Itaú" />
+                                <Upload className="h-3.5 w-3.5 text-[#EC7000]" />
+                                Importar Extrato Itaú (OFX / CSV)
+                            </Button>
+                        )}
+
                         <Button className={cn(
                             "font-black uppercase tracking-widest text-[10px] px-6 py-5 rounded-xl shadow-lg transition-all",
                             isItau ? "bg-[#EC7000] hover:bg-[#d66500] text-white shadow-orange-500/25" :
@@ -507,6 +527,14 @@ const ConciliationTab = ({
                     </DialogContent>
                 </Dialog>
             )}
+
+            <ItauConciliationModal
+                isOpen={isItauModalOpen}
+                onClose={() => setIsItauModalOpen(false)}
+                transactions={transactions}
+                serviceOrders={serviceOrders}
+                onRefresh={onRefresh}
+            />
         </div>
     );
 };

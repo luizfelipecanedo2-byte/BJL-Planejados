@@ -175,6 +175,22 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit }: OSKanbanBoardProps) =
                         )}
                       </div>
 
+                      {/* Radar de Margem no Card do Kanban */}
+                      {(order.spentCost !== undefined && order.spentCost > 0) && (
+                        <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[9px]">
+                          <span className="text-white/40 font-bold uppercase tracking-wider">Custo Materiais:</span>
+                          <span className={cn(
+                            "px-1.5 py-0.5 rounded font-black tracking-tight flex items-center gap-1",
+                            order.marginStatus === 'danger' ? "bg-rose-500/30 text-rose-300 border border-rose-500/40 animate-pulse" :
+                            order.marginStatus === 'warning' ? "bg-amber-500/20 text-amber-300 border border-amber-500/30" :
+                            "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          )}>
+                            {order.marginStatus === 'danger' && '⚠️ '}
+                            {formatCurrency(order.spentCost)} ({order.costRatio || 0}%)
+                          </span>
+                        </div>
+                      )}
+
                       {order.clientPhone && (
                         <div className="flex items-center justify-between gap-1.5 pt-1">
                           <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity w-fit text-[9px] font-black text-white/60">

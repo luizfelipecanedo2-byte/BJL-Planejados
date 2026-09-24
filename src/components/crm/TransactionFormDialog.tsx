@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { addMonths } from "date-fns";
-import { Check, ChevronsUpDown, FileImage, Upload, X, Layers } from "lucide-react";
+import { Check, ChevronsUpDown, FileImage, Upload, X, Layers, Barcode, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Transaction, CATEGORIES, PAYMENT_METHODS, FINANCIAL_INSTITUTIONS, TransactionType, TransactionStatus, SUBCATEGORIES } from "@/types/finance";
 import { Client } from "@/types/client";
 import { ServiceOrder } from "@/types/serviceOrder";
 import { supabase } from "@/lib/supabase";
+import { decodeBoleto } from "@/lib/boletoUtils";
+import { toast } from "sonner";
 import {
     Dialog,
     DialogContent,
@@ -98,6 +100,38 @@ const TransactionFormDialog = ({
         { client: "", amount: "", description: "" }
     ]);
     const [applyToAllInstallments, setApplyToAllInstallments] = useState(true);
+    const [boletoInput, setBoletoInput] = useState("");
+
+    const handleBoletoInput = (code: string) => {
+        setBoletoInput(code);
+        const decoded = decodeBoleto(code);
+        if (decoded.isValid) {
+            setForm(prev => {
+                const updates: any = {
+                    ...prev,
+                    paymentMethod: "Boleto",
+                };
+                if (decoded.amount && decoded.amount > 0) {
+                    updates.amount = decoded.amount.toString();
+                }
+                if (decoded.dueDate) {
+                    updates.dueDate = decoded.dueDate;
+                }
+                if (!prev.financialInstitution || prev.financialInstitution === '') {
+                    updates.financialInstitution = "Banco Itaú";
+                }
+                return updates;
+            });
+            const dueDisplay = decoded.dueDate ? new Date(decoded.dueDate + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+            toast.success(`Boleto ${decoded.bankName || ''} decodificado com sucesso!`, {
+                description: `Valor: R$ ${decoded.amount ? decoded.amount.toFixed(2) : '0,00'}${dueDisplay ? ` • Vencimento: ${dueDisplay}` : ''}`
+            });
+        } else if (code.trim().length >= 44) {
+            toast.error("Código de boleto inválido", {
+                description: decoded.errorMessage
+            });
+        }
+    };
 
     const installmentInfo = useMemo(() => {
         if (!editingTransaction) return null;
@@ -259,6 +293,7 @@ const TransactionFormDialog = ({
             ]);
             setIsCostSplit(false);
             setCostSplits([{ client: "", amount: "", description: "" }]);
+            setBoletoInput("");
         }
     }, [editingTransaction, open, initialType]);
 
@@ -572,7 +607,48 @@ const TransactionFormDialog = ({
 
                     {/* Seção 2: Valores e Datas */}
                     <div className="p-4 border rounded-lg bg-card space-y-4">
-                        <h4 className="text-sm font-medium text-muted-foreground mb-2">Financeiro</h4>
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium text-muted-foreground">Financeiro</h4>
+                            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Valores & Prazos</span>
+                        </div>
+
+                        {/* Leitor Inteligente de Linha Digitável */}
+                        <div className="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 via-primary/5 to-transparent border border-amber-500/30 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                    <Barcode className="h-4 w-4 text-amber-500 animate-pulse" />
+                                    <Label className="text-xs font-bold text-amber-600 dark:text-amber-400 cursor-pointer">
+                                        Leitor Inteligente de Boletos (Linha Digitável)
+                                    </Label>
+                                </div>
+                                <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                                    Preenchimento automático Febraban
+                                </span>
+                            </div>
+                            <div className="flex gap-2">
+                                <Input
+                                    placeholder="Cole aqui a linha digitável do boleto (ex: 34191.79001...)"
+                                    value={boletoInput}
+                                    onChange={(e) => handleBoletoInput(e.target.value)}
+                                    className="h-9 text-xs font-mono bg-background/80 border-amber-500/30 focus-visible:ring-amber-500/50"
+                                />
+                                {boletoInput && (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                        onClick={() => setBoletoInput("")}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                                Cole o código de barras ou linha digitável para preencher automaticamente o <strong>Valor</strong>, <strong>Data de Vencimento</strong> e definir como <strong>Boleto</strong>.
+                            </p>
+                        </div>
+
                         <div className="grid grid-cols-3 gap-4">
                             <div>
                                 <Label htmlFor="amount">Valor (R$)</Label>

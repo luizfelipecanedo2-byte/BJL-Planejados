@@ -2053,7 +2053,25 @@ const Financeiro = () => {
 
         <TabsContent value="dre"><DRETab selectedDREYear={selectedDREYear} setSelectedDREYear={setSelectedDREYear} dreData={dreData} detailedExpenses={detailedExpenses} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="gastos_servicos"><ServiceExpensesTab serviceExpenses={combinedServiceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
-        <TabsContent value="conciliacao"><ConciliationTab selectedAccount={selectedAccount} setSelectedAccount={setSelectedAccount} currentDateReconciliation={currentDateReconciliation} handlePrevMonth={handlePrevMonth} handleNextMonth={handleNextMonth} totalAccountBalance={totalAccountBalance} reconciliationDailyData={reconciliationDailyData} formatCurrency={formatCurrency} /></TabsContent>
+        <TabsContent value="conciliacao">
+          <ConciliationTab
+            selectedAccount={selectedAccount}
+            setSelectedAccount={setSelectedAccount}
+            currentDateReconciliation={currentDateReconciliation}
+            handlePrevMonth={handlePrevMonth}
+            handleNextMonth={handleNextMonth}
+            totalAccountBalance={totalAccountBalance}
+            reconciliationDailyData={reconciliationDailyData}
+            formatCurrency={formatCurrency}
+            transactions={transactions}
+            serviceOrders={serviceOrders}
+            onRefresh={() => {
+              fetchTransactions();
+              fetchTransactionAllocations();
+              fetchServiceExpenses();
+            }}
+          />
+        </TabsContent>
         <TabsContent value="notas_fiscais"><NotaFiscalTab /></TabsContent>
         <TabsContent value="profitability"><ProfitabilityTab /></TabsContent>
         <TabsContent value="patrimonio"><AssetsTab assets={assets} handleNewAsset={handleNewAsset} formatCurrency={formatCurrency} /></TabsContent>

@@ -8,7 +8,7 @@ import ProductionTimeline from "@/components/crm/ProductionTimeline";
 import OSKanbanBoard from "@/components/crm/OSKanbanBoard";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
-import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play, KanbanSquare, ClipboardList, Clock } from "lucide-react";
+import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play, KanbanSquare, ClipboardList, Clock, TrendingUp, AlertTriangle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -149,28 +149,99 @@ const OrdemServico = () => {
                 console.warn("Erro ao buscar tarefas na OS:", err);
             }
 
-            // Passo 2: Tenta buscar as horas separadamente
+            // Passo 2: Buscar horas, alocações e custos reais de materiais
             try {
-                const { data: logsData, error: logsError } = await supabase
-                    .from('service_order_labor_logs')
-                    .select('*');
+                const [{ data: logsData }, { data: allocData }, { data: transData }] = await Promise.all([
+                    supabase.from('service_order_labor_logs').select('*'),
+                    supabase.from('transaction_allocations').select('*'),
+                    supabase.from('transactions').select('id, description, amount, type, order_service, contact, category, competence_date, invoice_number')
+                ]);
 
-                if (!logsError && logsData) {
-                    const ordersWithLogs = mappedOrders.map(order => ({
+                const allocations = allocData || [];
+                const expenses = (transData || []).filter(t => t.type === 'expense');
+                const norm = (s?: string) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+                const enrichedOrders = mappedOrders.map(order => {
+                    const ticketClean = norm(order.ticketNumber);
+                    const clientClean = norm(order.client);
+                    const actionClean = norm(order.action);
+                    const osFullString = norm(`${order.ticketNumber} - ${order.client}${order.action ? ` (${order.action})` : ''}`);
+
+                    const matchedAllocations = allocations.filter(a => {
+                        if (!a.client_name) return false;
+                        const aName = norm(a.client_name);
+                        if (aName === osFullString || aName === clientClean) return true;
+                        if (ticketClean && ticketClean !== 's/n' && aName.includes(ticketClean)) return true;
+                        if (clientClean && aName.includes(clientClean) && actionClean && aName.includes(actionClean)) return true;
+                        return false;
+                    });
+
+                    const allocCost = matchedAllocations.reduce((sum, a) => sum + Number(a.amount || 0), 0);
+
+                    const matchedDirectTx = expenses.filter(t => {
+                        if (allocations.some(a => a.transaction_id === t.id)) return false;
+                        if (!ticketClean || ticketClean === 's/n') return false;
+                        const matchesOS = t.order_service && norm(t.order_service).includes(ticketClean);
+                        const matchesDesc = t.description && norm(t.description).includes(ticketClean);
+                        const matchesContact = t.contact && clientClean && norm(t.contact) === clientClean;
+                        return matchesOS || matchesDesc || (matchesContact && t.category === "Despesa com Serviço");
+                    });
+
+                    const directCost = matchedDirectTx.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+                    const spentCost = allocCost + directCost;
+
+                    const amount = order.amount || 0;
+                    const costRatio = amount > 0 ? (spentCost / amount) * 100 : (spentCost > 0 ? 100 : 0);
+
+                    let marginStatus: 'healthy' | 'warning' | 'danger' = 'healthy';
+                    if (amount > 0) {
+                        if (costRatio > 55) {
+                            marginStatus = 'danger';
+                        } else if (costRatio > 40) {
+                            marginStatus = 'warning';
+                        } else {
+                            marginStatus = 'healthy';
+                        }
+                    } else if (spentCost > 0) {
+                        marginStatus = 'warning';
+                    }
+
+                    const materialsDetails = [
+                        ...matchedAllocations.map(a => ({
+                            description: a.description ? `${a.description} (${a.client_name})` : a.client_name,
+                            amount: Number(a.amount),
+                            invoice: ''
+                        })),
+                        ...matchedDirectTx.map(t => ({
+                            description: t.description,
+                            amount: Number(t.amount),
+                            date: t.competence_date,
+                            invoice: t.invoice_number || ''
+                        }))
+                    ];
+
+                    const logs = (logsData || [])
+                        .filter((l: any) => l.service_order_id === order.id)
+                        .map((l: any) => ({
+                            id: l.id,
+                            date: parseDate(l.date),
+                            hours: Number(l.hours),
+                            description: l.description
+                        }));
+
+                    return {
                         ...order,
-                        laborLogs: logsData
-                            .filter((l: any) => l.service_order_id === order.id)
-                            .map((l: any) => ({
-                                id: l.id,
-                                date: parseDate(l.date),
-                                hours: Number(l.hours),
-                                description: l.description
-                            }))
-                    }));
-                    setOrders(ordersWithLogs);
-                }
-            } catch (logsErr) {
-                console.warn("Erro ao buscar logs de horas:", logsErr);
+                        laborLogs: logs,
+                        spentCost,
+                        costRatio: Math.round(costRatio * 10) / 10,
+                        marginStatus,
+                        materialsDetails
+                    };
+                });
+
+                setOrders(enrichedOrders);
+            } catch (enrichErr) {
+                console.warn("Erro ao enriquecer OS com horas e custos:", enrichErr);
             }
         } catch (error) {
             console.error('Error fetching orders:', error);
@@ -655,6 +726,11 @@ const OrdemServico = () => {
         });
 
     const defineList = orders.filter(o => o.status === "A Definir");
+    const activeOrders = orders.filter(o => inProgressStatuses.includes(o.status));
+    const totalMaterialsCost = orders.reduce((sum, o) => sum + (o.spentCost || 0), 0);
+    const dangerOrdersCount = orders.filter(o => o.marginStatus === 'danger').length;
+    const warningOrdersCount = orders.filter(o => o.marginStatus === 'warning').length;
+    const healthyOrdersCount = orders.filter(o => o.marginStatus === 'healthy' && (o.spentCost || 0) > 0).length;
 
     const getStatusProgress = (status: ServiceStatus) => {
         switch (status) {
@@ -815,6 +891,57 @@ const OrdemServico = () => {
                         </div>
                     </CardContent>
                 </Card>
+            </div>
+
+            {/* Radar de Prejuízo & Margem */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-950 to-black border border-white/10 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className={cn(
+                        "p-3 rounded-xl border flex items-center justify-center shrink-0",
+                        dangerOrdersCount > 0 ? "bg-rose-500/10 border-rose-500/30 text-rose-500 animate-pulse" :
+                        warningOrdersCount > 0 ? "bg-amber-500/10 border-amber-500/30 text-amber-500" :
+                        "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
+                    )}>
+                        <TrendingUp className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-sm font-black uppercase tracking-wider text-white">Radar Inteligente de Margem da Produção</h4>
+                            {dangerOrdersCount > 0 && (
+                                <span className="text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full animate-pulse">
+                                    ⚠️ {dangerOrdersCount} OS com Risco de Prejuízo
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Monitoramento em tempo real do custo de chapas, ferragens e insumos (CED, Bruta e avulsos) rateados por projeto.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-6 self-end md:self-center">
+                    <div className="text-right">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Materiais Consumidos</span>
+                        <span className="text-lg font-black text-amber-400 tracking-tight">
+                            {formatCurrency(totalMaterialsCost)}
+                        </span>
+                    </div>
+                    <div className="h-8 w-px bg-white/10 hidden sm:block" />
+                    <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-center bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1 min-w-[70px]">
+                            <span className="text-[9px] font-bold text-emerald-400 uppercase">Saudáveis</span>
+                            <span className="text-xs font-black text-emerald-300">{healthyOrdersCount}</span>
+                        </div>
+                        <div className="flex flex-col items-center bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1 min-w-[70px]">
+                            <span className="text-[9px] font-bold text-amber-400 uppercase">Atenção</span>
+                            <span className="text-xs font-black text-amber-300">{warningOrdersCount}</span>
+                        </div>
+                        <div className="flex flex-col items-center bg-rose-500/10 border border-rose-500/20 rounded-lg px-2.5 py-1 min-w-[70px]">
+                            <span className="text-[9px] font-bold text-rose-400 uppercase">Estouro</span>
+                            <span className="text-xs font-black text-rose-300">{dangerOrdersCount}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <Tabs defaultValue="producao" className="w-full">

@@ -30,4 +30,8 @@ export interface ServiceOrder {
     productionNotes?: string;
     daysEstimated?: number;
     tasks?: any[];
+    spentCost?: number;
+    costRatio?: number;
+    marginStatus?: 'healthy' | 'warning' | 'danger';
+    materialsDetails?: Array<{ description: string; amount: number; date?: string; invoice?: string }>;
 }
