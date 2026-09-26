@@ -31,3 +31,12 @@ CREATE INDEX IF NOT EXISTS idx_weekly_orders_order_date ON public.weekly_orders 
 
 -- Clients table indexes
 CREATE INDEX IF NOT EXISTS idx_clients_name ON public.clients (name ASC);
+
+-- Inventory table indexes
+CREATE INDEX IF NOT EXISTS idx_inventory_name ON public.inventory (name ASC);
+CREATE INDEX IF NOT EXISTS idx_inventory_id_estoque ON public.inventory (id_estoque ASC);
+
+-- Service orders table indexes
+CREATE INDEX IF NOT EXISTS idx_service_orders_created_at ON public.service_orders (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_service_orders_status ON public.service_orders (status);
+

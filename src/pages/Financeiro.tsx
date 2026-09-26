@@ -14,7 +14,7 @@ import { useState, useMemo, useEffect, Fragment } from "react";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Transaction, CATEGORIES, SUBCATEGORIES, PAYMENT_METHODS } from "@/types/finance";
+import { Transaction, CATEGORIES, SUBCATEGORIES, PAYMENT_METHODS, classifyTransactionForDRE, DREGroupKey } from "@/types/finance";
 import TransactionTable from "@/components/crm/TransactionTable";
 import TransactionFormDialog from "@/components/crm/TransactionFormDialog";
 import AssetFormDialog from "@/components/crm/AssetFormDialog";
@@ -45,13 +45,15 @@ const Financeiro = () => {
   const [sales, setSales] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchTransactions();
-    fetchAssets();
-    fetchServiceOrders();
-    fetchServiceExpenses();
-    fetchTransactionAllocations();
-    fetchSales();
+    Promise.allSettled([
+      fetchTransactions(),
+      fetchAssets(),
+      fetchServiceOrders(),
+      fetchServiceExpenses(),
+      fetchSales()
+    ]);
   }, []);
+
 
   useEffect(() => {
     if (searchParams.get('today') === 'true') {
@@ -500,6 +502,7 @@ const Financeiro = () => {
   // Dashboard State
   const [selectedYear, setSelectedYear] = useState<string>("2026");
   const [selectedDREYear, setSelectedDREYear] = useState<string>("2026");
+  const [dreRegime, setDreRegime] = useState<'competence' | 'cash'>('competence');
   const [selectedDashMonth, setSelectedDashMonth] = useState<number | 'anual'>(new Date().getMonth());
 
   // Conciliation State
@@ -847,118 +850,173 @@ const Financeiro = () => {
   }, [transactions, selectedYear]);
 
   const dreData = useMemo(() => {
+    const year = parseInt(selectedDREYear);
+
+    // Filtra transações pelo regime selecionado (Competência vs Caixa)
     const yearTransactions = transactions.filter(t => {
-      const date = new Date(t.dueDate);
-      return !isNaN(date.getTime()) && (date.getUTCFullYear() === parseInt(selectedDREYear) || date.getFullYear() === parseInt(selectedDREYear));
+      const dateToCheck = dreRegime === 'competence'
+        ? (t.competenceDate ? new Date(t.competenceDate) : new Date(t.dueDate))
+        : (t.paymentDate ? new Date(t.paymentDate) : new Date(t.dueDate));
+
+      return !isNaN(dateToCheck.getTime()) && (dateToCheck.getUTCFullYear() === year || dateToCheck.getFullYear() === year);
     });
 
-    const grossRevenue = yearTransactions
-      .filter(t => t.type === 'income' && t.category !== 'Transferência')
-      .reduce((acc, t) => acc + t.amount, 0);
+    let grossRevenue = 0;
+    let taxes = 0;
+    let cpv = 0;
+    let salesExpenses = 0;
+    let operationalExpenses = 0;
+    let personnelExpenses = 0;
+    let machineryExpenses = 0;
+    let financialExpenses = 0;
+    let financialIncome = 0;
 
-    const taxes = yearTransactions.filter(t =>
-      t.type === 'expense' && (
-        t.category.toLowerCase().includes('imposto') ||
-        t.category.toLowerCase().includes('dedução') ||
-        t.subcategory?.toLowerCase().includes('simples nacional') ||
-        t.subcategory?.toLowerCase().includes('iss') ||
-        t.subcategory?.toLowerCase().includes('pis') ||
-        t.subcategory?.toLowerCase().includes('cofins')
-      )
-    ).reduce((acc, t) => acc + t.amount, 0);
+    yearTransactions.forEach(t => {
+      const group = classifyTransactionForDRE(t);
+      const amount = Number(t.amount) || 0;
+
+      switch (group) {
+        case 'receita_bruta':
+          grossRevenue += amount;
+          break;
+        case 'receitas_financeiras':
+          financialIncome += amount;
+          break;
+        case 'deducoes_impostos':
+          taxes += amount;
+          break;
+        case 'custos_producao':
+          cpv += amount;
+          break;
+        case 'despesas_vendas':
+          salesExpenses += amount;
+          break;
+        case 'despesas_pessoal':
+          personnelExpenses += amount;
+          break;
+        case 'despesas_maquinario':
+          machineryExpenses += amount;
+          break;
+        case 'despesas_financeiras':
+          financialExpenses += amount;
+          break;
+        case 'despesas_operacionais':
+          operationalExpenses += amount;
+          break;
+        case 'transferencias':
+        default:
+          break;
+      }
+    });
+
+    // Depreciação de Ativos/Patrimônio do ano analisado
+    let totalDepreciation = 0;
+    const monthlyDepreciation = Array(12).fill(0);
+
+    assets.forEach(a => {
+      const acqDate = new Date(a.acquisitionDate);
+      const annualDepr = a.depreciationRate && a.depreciationRate > 0
+        ? a.value * (a.depreciationRate / 100)
+        : (a.usefulLife > 0 ? a.value / a.usefulLife : 0);
+      const monthDepr = annualDepr / 12;
+
+      for (let m = 0; m < 12; m++) {
+        const endOfMonth = new Date(year, m + 1, 0);
+        if (acqDate <= endOfMonth) {
+          monthlyDepreciation[m] += monthDepr;
+          totalDepreciation += monthDepr;
+        }
+      }
+    });
 
     const netRevenue = grossRevenue - taxes;
+    const grossProfit = netRevenue - cpv;
+    const grossMargin = netRevenue > 0 ? (grossProfit / netRevenue) * 100 : 0;
 
-    // Custos Variáveis: Tudo que é custo de serviço/venda/material
-    const variableCosts = yearTransactions.filter(t =>
-      t.type === 'expense' &&
-      [
-        "Despesa com Serviço",
-        "Custo dos serviços",
-        "Serviços de terceiros",
-        "Despesas com vendas",
-        "Material",
-        "Compra de Material",
-        "Insumos",
-        "Mão de Obra"
-      ].some(cat => t.category.toLowerCase().includes(cat.toLowerCase()))
-    ).reduce((acc, t) => acc + t.amount, 0);
+    const totalOperatingExpenses = salesExpenses + operationalExpenses + personnelExpenses + machineryExpenses + totalDepreciation;
+    const ebitda = grossProfit - (totalOperatingExpenses - totalDepreciation);
+    const operatingProfit = grossProfit - totalOperatingExpenses;
 
-    const contributionMargin = netRevenue - variableCosts;
+    const netFinancialResult = financialIncome - financialExpenses;
+    const netResult = operatingProfit + netFinancialResult;
+    const netMargin = netRevenue > 0 ? (netResult / netRevenue) * 100 : 0;
 
-    // Despesas Fixas: Tudo que é operacional/administrativo/manutenção
-    const fixedExpenses = yearTransactions.filter(t =>
-      t.type === 'expense' &&
-      [
-        "Despesa Operacional",
-        "Despesa com Maquinário",
-        "Despesa com Pessoal",
-        "Despesas com pessoal",
-        "Despesas administrativas",
-        "Maquinario",
-        "Aluguel",
-        "Luz",
-        "Água",
-        "Internet",
-        "Salários",
-        "Retirada"
-      ].some(cat => t.category.toLowerCase().includes(cat.toLowerCase()))
-    ).reduce((acc, t) => acc + t.amount, 0);
-
-    // Capturar gastos que não caíram em nenhuma categoria acima para garantir que o resultado bata com o total real
-    const accountedExpenses = taxes + variableCosts + fixedExpenses;
-    const totalExpenses = yearTransactions.filter(t => t.type === 'expense' && t.category !== 'Transferência').reduce((acc, t) => acc + t.amount, 0);
-    const otherExpenses = totalExpenses - accountedExpenses;
-
-    // Se houver despesas não categorizadas, jogamos em despesas fixas para fins de cálculo do DRE gerencial simplificado, 
-    // ou subtraímos do resultado final.
-    const netResult = netRevenue - variableCosts - fixedExpenses - otherExpenses;
+    // Ponto de Equilíbrio Operacional (R$)
+    const contributionMarginRatio = netRevenue > 0 ? grossProfit / netRevenue : 0;
+    const breakEvenPoint = contributionMarginRatio > 0 ? (totalOperatingExpenses / contributionMarginRatio) : 0;
 
     return {
       grossRevenue,
       taxes,
       netRevenue,
-      variableCosts,
-      contributionMargin,
-      fixedExpenses: fixedExpenses + otherExpenses,
-      netResult
+      cpv,
+      grossProfit,
+      grossMargin,
+      salesExpenses,
+      operationalExpenses,
+      personnelExpenses,
+      machineryExpenses,
+      depreciation: totalDepreciation,
+      monthlyDepreciation,
+      totalOperatingExpenses,
+      ebitda,
+      operatingProfit,
+      financialExpenses,
+      financialIncome,
+      netFinancialResult,
+      netResult,
+      netMargin,
+      breakEvenPoint,
+      // Compatibilidade legada
+      variableCosts: cpv,
+      contributionMargin: grossProfit,
+      fixedExpenses: totalOperatingExpenses + financialExpenses,
+      dreRegime
     };
-  }, [transactions, selectedDREYear]);
+  }, [transactions, selectedDREYear, dreRegime, assets]);
 
   const detailedExpenses = useMemo(() => {
     const year = parseInt(selectedDREYear);
     const months = Array.from({ length: 12 }, (_, i) => i);
 
-    // Pegar todas as categorias únicas do ano, mais as padrão
     const yearTransactions = transactions.filter(t => {
-      const d = new Date(t.dueDate);
-      return d.getUTCFullYear() === year || d.getFullYear() === year;
+      const dateToCheck = dreRegime === 'competence'
+        ? (t.competenceDate ? new Date(t.competenceDate) : new Date(t.dueDate))
+        : (t.paymentDate ? new Date(t.paymentDate) : new Date(t.dueDate));
+
+      return !isNaN(dateToCheck.getTime()) && (dateToCheck.getUTCFullYear() === year || dateToCheck.getFullYear() === year);
     });
 
     const dataCategories = Array.from(new Set(yearTransactions.map(t => t.category || "Sem Categoria")));
     const baseCategories = [...CATEGORIES.income, ...CATEGORIES.expense];
     const allCategories = Array.from(new Set([...baseCategories, ...dataCategories]));
 
-    return allCategories.map(category => {
+    const netRevenueForAV = dreData.netRevenue || 1;
+
+    const mapped = allCategories.map(category => {
       if (category === 'Transferência') return null;
       const subcategories = SUBCATEGORIES[category] || [];
-      const isIncome = CATEGORIES.income.includes(category) ||
-        yearTransactions.some(t => t.category === category && t.type === 'income') ||
-        (category === "Sem Categoria" && yearTransactions.some(t => !t.category && t.type === 'income'));
+      const sampleTx = yearTransactions.find(t => (t.category || "Sem Categoria") === category);
+      const isIncome = CATEGORIES.income.includes(category) || (sampleTx && sampleTx.type === 'income');
+
+      const sampleGroupKey = sampleTx ? classifyTransactionForDRE(sampleTx) : (isIncome ? 'receita_bruta' : 'despesas_operacionais');
 
       const categoryMonthlyTotals = months.map(month => {
         return yearTransactions
           .filter(t => {
             const cat = t.category || "Sem Categoria";
-            const date = new Date(t.dueDate);
-            return cat === category && (date.getUTCMonth() === month || date.getMonth() === month);
+            const dateToCheck = dreRegime === 'competence'
+              ? (t.competenceDate ? new Date(t.competenceDate) : new Date(t.dueDate))
+              : (t.paymentDate ? new Date(t.paymentDate) : new Date(t.dueDate));
+
+            return cat === category && (dateToCheck.getUTCMonth() === month || dateToCheck.getMonth() === month);
           })
-          .reduce((acc, t) => acc + t.amount, 0);
+          .reduce((acc, t) => acc + Number(t.amount || 0), 0);
       });
 
       const categoryTotal = categoryMonthlyTotals.reduce((a, b) => a + b, 0);
 
-      // Se a categoria não tem transações no ano e não é das padrão vazias, podemos pular
+      // Se a categoria não tem transações no ano e não é das padrão, ignora
       if (categoryTotal === 0 && !baseCategories.includes(category)) return null;
 
       const subcategoryBreakdown = subcategories.map(sub => {
@@ -966,24 +1024,60 @@ const Financeiro = () => {
           return yearTransactions
             .filter(t => {
               const cat = t.category || "Sem Categoria";
-              const date = new Date(t.dueDate);
-              return cat === category && t.subcategory === sub && (date.getUTCMonth() === month || date.getMonth() === month);
+              const dateToCheck = dreRegime === 'competence'
+                ? (t.competenceDate ? new Date(t.competenceDate) : new Date(t.dueDate))
+                : (t.paymentDate ? new Date(t.paymentDate) : new Date(t.dueDate));
+
+              return cat === category && t.subcategory === sub && (dateToCheck.getUTCMonth() === month || dateToCheck.getMonth() === month);
             })
-            .reduce((acc, t) => acc + t.amount, 0);
+            .reduce((acc, t) => acc + Number(t.amount || 0), 0);
         });
         const subTotal = subMonthlyTotals.reduce((a, b) => a + b, 0);
-        return { name: sub, monthly: subMonthlyTotals, total: subTotal };
+        const subAV = netRevenueForAV > 0 ? (subTotal / netRevenueForAV) * 100 : 0;
+        return { name: sub, monthly: subMonthlyTotals, total: subTotal, verticalAnalysis: subAV };
       });
+
+      const verticalAnalysis = netRevenueForAV > 0 ? (categoryTotal / netRevenueForAV) * 100 : 0;
 
       return {
         category,
+        groupKey: sampleGroupKey,
         monthly: categoryMonthlyTotals,
         total: categoryTotal,
+        verticalAnalysis,
         subcategories: subcategoryBreakdown,
         type: isIncome ? 'income' : 'expense'
       };
     }).filter(Boolean);
-  }, [transactions, selectedDREYear]);
+
+    // Adicionar linha de Depreciação de Ativos se houver
+    if (dreData.depreciation > 0) {
+      const depAV = netRevenueForAV > 0 ? (dreData.depreciation / netRevenueForAV) * 100 : 0;
+      mapped.push({
+        category: "Depreciação de Maquinário e Ativos",
+        groupKey: 'despesas_maquinario',
+        monthly: dreData.monthlyDepreciation,
+        total: dreData.depreciation,
+        verticalAnalysis: depAV,
+        subcategories: assets.map(a => {
+          const annualDepr = a.depreciationRate && a.depreciationRate > 0
+            ? a.value * (a.depreciationRate / 100)
+            : (a.usefulLife > 0 ? a.value / a.usefulLife : 0);
+          const mDepr = annualDepr / 12;
+          const monthly = Array(12).fill(mDepr);
+          return {
+            name: a.name,
+            monthly,
+            total: annualDepr,
+            verticalAnalysis: netRevenueForAV > 0 ? (annualDepr / netRevenueForAV) * 100 : 0
+          };
+        }),
+        type: 'expense'
+      });
+    }
+
+    return mapped;
+  }, [transactions, selectedDREYear, dreRegime, dreData.netRevenue, dreData.depreciation, dreData.monthlyDepreciation, assets]);
 
   const currentSummary = useMemo(() => {
     const isAnual = selectedDashMonth === 'anual';
@@ -2051,7 +2145,17 @@ const Financeiro = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="dre"><DRETab selectedDREYear={selectedDREYear} setSelectedDREYear={setSelectedDREYear} dreData={dreData} detailedExpenses={detailedExpenses} formatCurrency={formatCurrency} /></TabsContent>
+        <TabsContent value="dre">
+          <DRETab
+            selectedDREYear={selectedDREYear}
+            setSelectedDREYear={setSelectedDREYear}
+            dreRegime={dreRegime}
+            setDreRegime={setDreRegime}
+            dreData={dreData}
+            detailedExpenses={detailedExpenses}
+            formatCurrency={formatCurrency}
+          />
+        </TabsContent>
         <TabsContent value="gastos_servicos"><ServiceExpensesTab serviceExpenses={combinedServiceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
         <TabsContent value="conciliacao">
           <ConciliationTab
