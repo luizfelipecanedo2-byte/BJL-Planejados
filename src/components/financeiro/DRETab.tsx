@@ -466,8 +466,8 @@ const DRETab = ({
 
     return (
         <div className="space-y-6">
-            {/* Header com Controles de Regime e Ano */}
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-muted/20 p-5 rounded-2xl border border-border/50 backdrop-blur-md">
+            {/* Header com Título e Ações */}
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-muted/20 p-5 rounded-2xl border border-border/50 backdrop-blur-md">
                 <div className="space-y-1">
                     <div className="flex items-center gap-2">
                         <h3 className="text-2xl font-['Cinzel'] font-bold tracking-wider text-primary uppercase">DRE Completa</h3>
@@ -478,58 +478,7 @@ const DRETab = ({
                     <p className="text-xs text-muted-foreground font-medium">Demonstração do Resultado do Exercício com separação de CPV, Margem Bruta, EBITDA e Ponto de Equilíbrio</p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-start lg:justify-end">
-                    {/* Seletor de Regime: Competência vs Caixa */}
-                    {setDreRegime && (
-                        <div className="flex items-center bg-background/80 p-1 rounded-xl border border-border/60 shadow-sm">
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <button
-                                            type="button"
-                                            onClick={() => setDreRegime('competence')}
-                                            className={cn(
-                                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                                                dreRegime === 'competence'
-                                                    ? "bg-primary text-primary-foreground shadow-md"
-                                                    : "text-muted-foreground hover:text-foreground"
-                                            )}
-                                        >
-                                            <Building2 className="h-3.5 w-3.5" />
-                                            <span>Competência</span>
-                                        </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="max-w-xs text-xs">
-                                        <strong>Regime de Competência (DRE Oficial):</strong> Registra receitas e custos no mês em que o contrato/compra foi realizado, independente de quando é pago.
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <button
-                                            type="button"
-                                            onClick={() => setDreRegime('cash')}
-                                            className={cn(
-                                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                                                dreRegime === 'cash'
-                                                    ? "bg-primary text-primary-foreground shadow-md"
-                                                    : "text-muted-foreground hover:text-foreground"
-                                            )}
-                                        >
-                                            <WalletCards className="h-3.5 w-3.5" />
-                                            <span>Caixa</span>
-                                        </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="max-w-xs text-xs">
-                                        <strong>Regime de Caixa:</strong> Registra as entradas e saídas no mês em que cada parcela foi efetivamente paga ou venceu.
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </div>
-                    )}
-
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-start md:justify-end">
                     <Button
                         variant="outline"
                         size="sm"
@@ -568,6 +517,64 @@ const DRETab = ({
                     </Select>
                 </div>
             </div>
+
+            {/* SELETOR DE REGIME ULTRA DESTACADO */}
+            {setDreRegime && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-primary/5 to-muted/30 border-2 border-primary/30 shadow-lg">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+                        <span className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-1.5 whitespace-nowrap">
+                            Regime de Visualização:
+                        </span>
+                        <div className="grid grid-cols-2 gap-1.5 bg-background p-1.5 rounded-xl border border-primary/40 shadow-inner w-full sm:w-auto">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setDreRegime('competence');
+                                    toast.success("DRE alternada para Regime de Competência (Fato Gerador)");
+                                }}
+                                className={cn(
+                                    "flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all",
+                                    dreRegime === 'competence'
+                                        ? "bg-primary text-primary-foreground shadow-md scale-[1.02]"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                                )}
+                            >
+                                <Building2 className="h-4 w-4" />
+                                <span>🏢 Competência (DRE Oficial)</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setDreRegime('cash');
+                                    toast.success("DRE alternada para Regime de Caixa (Pagamentos e Vencimentos)");
+                                }}
+                                className={cn(
+                                    "flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all",
+                                    dreRegime === 'cash'
+                                        ? "bg-primary text-primary-foreground shadow-md scale-[1.02]"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                                )}
+                            >
+                                <WalletCards className="h-4 w-4" />
+                                <span>💵 Caixa (Realizado)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="text-right text-xs font-medium text-muted-foreground">
+                        {dreRegime === 'competence' ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-[11px] font-bold">
+                                • Somando vendas e compras na data em que foram fechadas
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 text-[11px] font-bold">
+                                • Somando as parcelas pelo mês do pagamento/vencimento
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Grid Principal: Resumo Executivo e Detalhamento */}
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-12">
