@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -143,42 +143,34 @@ const MainLayout = () => {
         });
     };
 
-    const lastAlertFetchRef = useRef<number>(0);
-
     const fetchFinancialAlerts = async () => {
         try {
             const todayStr = new Date().toISOString().split('T')[0];
             
-            // Busca unificada: pendentes de despesa até hoje em uma única requisição
-            const { data, error } = await supabase
+            // 1. Contas VENCIDAS (due_date < hoje)
+            const { data: overdueData, error: overdueErr } = await supabase
                 .from('transactions')
-                .select('amount, type, due_date')
+                .select('amount, type')
                 .eq('status', 'pending')
-                .eq('type', 'expense')
-                .lte('due_date', todayStr);
+                .lt('due_date', todayStr);
 
-            if (!error && data) {
-                let overdueC = 0;
-                let overdueS = 0;
-                let todayC = 0;
-                let todayS = 0;
+            if (!overdueErr && overdueData) {
+                const unpaidOverdueExpenses = overdueData.filter(t => t.type === 'expense');
+                setOverdueCount(unpaidOverdueExpenses.length);
+                setOverdueSum(unpaidOverdueExpenses.reduce((acc, t) => acc + Number(t.amount), 0));
+            }
 
-                for (let i = 0; i < data.length; i++) {
-                    const t = data[i];
-                    const amt = Number(t.amount) || 0;
-                    if (t.due_date < todayStr) {
-                        overdueC++;
-                        overdueS += amt;
-                    } else if (t.due_date === todayStr) {
-                        todayC++;
-                        todayS += amt;
-                    }
-                }
+            // 2. Contas que VENCEM HOJE (due_date = hoje)
+            const { data: todayData, error: todayErr } = await supabase
+                .from('transactions')
+                .select('amount, type')
+                .eq('status', 'pending')
+                .eq('due_date', todayStr);
 
-                setOverdueCount(overdueC);
-                setOverdueSum(overdueS);
-                setTodayDueCount(todayC);
-                setTodayDueSum(todayS);
+            if (!todayErr && todayData) {
+                const unpaidTodayExpenses = todayData.filter(t => t.type === 'expense');
+                setTodayDueCount(unpaidTodayExpenses.length);
+                setTodayDueSum(unpaidTodayExpenses.reduce((acc, t) => acc + Number(t.amount), 0));
             }
         } catch (err) {
             console.error("Erro ao buscar alertas financeiros:", err);
@@ -220,12 +212,7 @@ const MainLayout = () => {
     }, []);
 
     useEffect(() => {
-        const now = Date.now();
-        // Não refaz requisição repetida se navegou a menos de 60 segundos
-        if (now - lastAlertFetchRef.current > 60000) {
-            lastAlertFetchRef.current = now;
-            fetchFinancialAlerts();
-        }
+        fetchFinancialAlerts();
     }, [location.pathname]);
 
     const handleLogout = async () => {

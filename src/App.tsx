@@ -1,46 +1,28 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster"; // BJL CRM v1.1 - Tasks System Integration
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
 import MainLayout from "./components/MainLayout";
+import Financeiro from "./pages/Financeiro";
+import OrdemServico from "./pages/OrdemServico";
+import Estoque from "./pages/Estoque";
+import PedidosSemana from "./pages/PedidosSemana";
+import Clientes from "./pages/Clientes";
+import Orcamento from "./pages/Orcamento";
+import Login from "./pages/Login";
+import Tarefas from "./pages/Tarefas";
+import LandingPage from "./pages/LandingPage";
 import { Session } from "@supabase/supabase-js";
+import Configuracoes from "./pages/Configuracoes";
+import Agenda from "./pages/Agenda";
 
-// Code-splitting via React.lazy for fast initial page load
-const Index = lazy(() => import("./pages/Index"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const Financeiro = lazy(() => import("./pages/Financeiro"));
-const OrdemServico = lazy(() => import("./pages/OrdemServico"));
-const Estoque = lazy(() => import("./pages/Estoque"));
-const PedidosSemana = lazy(() => import("./pages/PedidosSemana"));
-const Clientes = lazy(() => import("./pages/Clientes"));
-const Orcamento = lazy(() => import("./pages/Orcamento"));
-const Login = lazy(() => import("./pages/Login"));
-const Tarefas = lazy(() => import("./pages/Tarefas"));
-const LandingPage = lazy(() => import("./pages/LandingPage"));
-const Configuracoes = lazy(() => import("./pages/Configuracoes"));
-const Agenda = lazy(() => import("./pages/Agenda"));
 
-// High-performance QueryClient with memory caching & no redundant refetching
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes cache
-      gcTime: 1000 * 60 * 30, // 30 minutes in memory
-      refetchOnWindowFocus: false, // Prevent background refetch on tab switch
-      retry: 1,
-    },
-  },
-});
-
-const PageFallback = () => (
-  <div className="flex-1 w-full min-h-[50vh] flex flex-col items-center justify-center gap-3">
-    <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-    <span className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">Carregando...</span>
-  </div>
-);
+const queryClient = new QueryClient();
 
 const App = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -157,32 +139,31 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Suspense fallback={<PageFallback />}>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={!session ? <Login /> : <Navigate to="/admin" />} />
-              <Route path="/orcamento" element={<Navigate to="/admin/orcamento" replace />} />
-              <Route path="/crm" element={<Navigate to="/admin" replace />} />
-              <Route path="/clientes" element={<Navigate to="/admin/clientes" replace />} />
-              <Route path="/financeiro" element={<Navigate to="/admin/financeiro" replace />} />
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={!session ? <Login /> : <Navigate to="/admin" />} />
+            <Route path="/orcamento" element={<Navigate to="/admin/orcamento" replace />} />
+            <Route path="/crm" element={<Navigate to="/admin" replace />} />
+            <Route path="/clientes" element={<Navigate to="/admin/clientes" replace />} />
+            <Route path="/financeiro" element={<Navigate to="/admin/financeiro" replace />} />
 
-              <Route path="/admin" element={session ? <MainLayout /> : <Navigate to="/login" />}>
-                <Route index element={isAdmin ? <Index /> : <Navigate to="estoque" />} />
-                <Route path="financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="estoque" />} />
-                <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="estoque" />} />
-                <Route path="ordem-servico" element={<OrdemServico />} />
-                <Route path="orcamento" element={isAdmin ? <Orcamento /> : <Navigate to="estoque" />} />
-                <Route path="estoque" element={<Estoque />} />
-                <Route path="pedidos-semana" element={<PedidosSemana />} />
-                <Route path="tarefas" element={<Tarefas />} />
-                <Route path="agenda" element={isAdmin ? <Agenda /> : <Navigate to="estoque" />} />
-                <Route path="configuracoes" element={session ? <Configuracoes /> : <Navigate to="/estoque" />} />
+            <Route path="/admin" element={session ? <MainLayout /> : <Navigate to="/login" />}>
+              <Route index element={isAdmin ? <Index /> : <Navigate to="estoque" />} />
+              <Route path="financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="estoque" />} />
+              <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="estoque" />} />
+              <Route path="ordem-servico" element={<OrdemServico />} />
+              <Route path="orcamento" element={isAdmin ? <Orcamento /> : <Navigate to="estoque" />} />
+              <Route path="estoque" element={<Estoque />} />
+              <Route path="pedidos-semana" element={<PedidosSemana />} />
+              <Route path="tarefas" element={<Tarefas />} />
+              <Route path="agenda" element={isAdmin ? <Agenda /> : <Navigate to="estoque" />} />
+              <Route path="configuracoes" element={session ? <Configuracoes /> : <Navigate to="/estoque" />} />
 
-                <Route path="*" element={<NotFound />} />
-              </Route>
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
