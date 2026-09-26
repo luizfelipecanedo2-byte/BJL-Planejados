@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { Printer, Sparkles, Loader2, Award, TrendingUp, TrendingDown, ShieldCheck, Target, Building2, WalletCards, HelpCircle } from "lucide-react";
+import { Printer, Sparkles, Loader2, Award, TrendingUp, TrendingDown, Target, Building2, WalletCards } from "lucide-react";
 import { analyzeFinancialMetrics, GeminiFinanceAnalysis } from "@/services/geminiService";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -17,34 +17,33 @@ interface DRETabProps {
     setSelectedDREYear: (year: string) => void;
     dreRegime?: 'competence' | 'cash';
     setDreRegime?: (regime: 'competence' | 'cash') => void;
-    dreData: {
-        grossRevenue: number;
-        taxes: number;
-        netRevenue: number;
-        cpv: number;
-        grossProfit: number;
-        grossMargin: number;
-        salesExpenses: number;
-        operationalExpenses: number;
-        personnelExpenses: number;
-        machineryExpenses: number;
-        depreciation: number;
+    dreData?: {
+        grossRevenue?: number;
+        taxes?: number;
+        netRevenue?: number;
+        cpv?: number;
+        grossProfit?: number;
+        grossMargin?: number;
+        salesExpenses?: number;
+        operationalExpenses?: number;
+        personnelExpenses?: number;
+        machineryExpenses?: number;
+        depreciation?: number;
         monthlyDepreciation?: number[];
-        totalOperatingExpenses: number;
-        ebitda: number;
-        operatingProfit: number;
-        financialExpenses: number;
-        financialIncome: number;
-        netFinancialResult: number;
-        netResult: number;
-        netMargin: number;
-        breakEvenPoint: number;
-        // Compatibilidade legada
+        totalOperatingExpenses?: number;
+        ebitda?: number;
+        operatingProfit?: number;
+        financialExpenses?: number;
+        financialIncome?: number;
+        netFinancialResult?: number;
+        netResult?: number;
+        netMargin?: number;
+        breakEvenPoint?: number;
         variableCosts?: number;
         contributionMargin?: number;
         fixedExpenses?: number;
     };
-    detailedExpenses: any[];
+    detailedExpenses?: any[];
     formatCurrency: (value: number) => string;
 }
 
@@ -53,14 +52,53 @@ const DRETab = ({
     setSelectedDREYear,
     dreRegime = 'competence',
     setDreRegime,
-    dreData,
-    detailedExpenses,
+    dreData = {},
+    detailedExpenses = [],
     formatCurrency,
 }: DRETabProps) => {
     const { settings } = useCompanySettings();
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<GeminiFinanceAnalysis | null>(null);
     const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
+
+    // Dados 100% seguros contra null/undefined
+    const safeDreData = useMemo(() => ({
+        grossRevenue: Number(dreData?.grossRevenue || 0),
+        taxes: Number(dreData?.taxes || 0),
+        netRevenue: Number(dreData?.netRevenue || 0),
+        cpv: Number(dreData?.cpv || 0),
+        grossProfit: Number(dreData?.grossProfit || 0),
+        grossMargin: Number(dreData?.grossMargin || 0),
+        salesExpenses: Number(dreData?.salesExpenses || 0),
+        operationalExpenses: Number(dreData?.operationalExpenses || 0),
+        personnelExpenses: Number(dreData?.personnelExpenses || 0),
+        machineryExpenses: Number(dreData?.machineryExpenses || 0),
+        depreciation: Number(dreData?.depreciation || 0),
+        ebitda: Number(dreData?.ebitda || 0),
+        operatingProfit: Number(dreData?.operatingProfit || 0),
+        financialExpenses: Number(dreData?.financialExpenses || 0),
+        financialIncome: Number(dreData?.financialIncome || 0),
+        netFinancialResult: Number(dreData?.netFinancialResult || 0),
+        netResult: Number(dreData?.netResult || 0),
+        netMargin: Number(dreData?.netMargin || 0),
+        breakEvenPoint: Number(dreData?.breakEvenPoint || 0),
+    }), [dreData]);
+
+    const safeDetailedExpenses = useMemo(() => {
+        if (!Array.isArray(detailedExpenses)) return [];
+        return detailedExpenses.map(cat => ({
+            ...cat,
+            monthly: Array.isArray(cat?.monthly) ? cat.monthly : Array(12).fill(0),
+            total: Number(cat?.total || 0),
+            verticalAnalysis: Number(cat?.verticalAnalysis || 0),
+            subcategories: Array.isArray(cat?.subcategories) ? cat.subcategories.map((sub: any) => ({
+                ...sub,
+                monthly: Array.isArray(sub?.monthly) ? sub.monthly : Array(12).fill(0),
+                total: Number(sub?.total || 0),
+                verticalAnalysis: Number(sub?.verticalAnalysis || 0)
+            })) : []
+        }));
+    }, [detailedExpenses]);
 
     // Ordenar categorias pelo fluxo canônico da DRE contábil
     const sortedDetailedExpenses = useMemo(() => {
@@ -77,69 +115,26 @@ const DRETab = ({
             'transferencias': 10
         };
 
-        return [...detailedExpenses].sort((a, b) => {
+        return [...safeDetailedExpenses].sort((a, b) => {
             const priorityA = groupPriority[a.groupKey] || 99;
             const priorityB = groupPriority[b.groupKey] || 99;
             if (priorityA !== priorityB) return priorityA - priorityB;
             return b.total - a.total;
         });
-    }, [detailedExpenses]);
-
-    // Métricas dinâmicas para análise com IA até o mês atual
-    const getDREMetricsUpToCurrentMonth = () => {
-        const currentDate = new Date();
-        const currentYear = currentDate.getFullYear();
-        const isCurrentYear = parseInt(selectedDREYear) === currentYear;
-        const maxMonthIndex = isCurrentYear ? currentDate.getMonth() : 11;
-
-        const sumCategoryUpToMonth = (cat: any) => {
-            return cat.monthly.slice(0, maxMonthIndex + 1).reduce((acc: number, val: number) => acc + val, 0);
-        };
-
-        let grossRevenue = 0;
-        let taxes = 0;
-        let cpv = 0;
-        let fixedExpenses = 0;
-
-        detailedExpenses.forEach(cat => {
-            const amount = sumCategoryUpToMonth(cat);
-            if (cat.type === 'income') {
-                grossRevenue += amount;
-            } else if (cat.groupKey === 'deducoes_impostos') {
-                taxes += amount;
-            } else if (cat.groupKey === 'custos_producao') {
-                cpv += amount;
-            } else {
-                fixedExpenses += amount;
-            }
-        });
-
-        const netRevenue = grossRevenue - taxes;
-        const contributionMargin = netRevenue - cpv;
-        const netResult = netRevenue - cpv - fixedExpenses;
-
-        return {
-            grossRevenue,
-            taxes,
-            netRevenue,
-            variableCosts: cpv,
-            contributionMargin,
-            fixedExpenses,
-            netResult,
-            maxMonthIndex,
-            isCurrentYear
-        };
-    };
+    }, [safeDetailedExpenses]);
 
     const handleAnalyzeFinance = async () => {
         const apiKey = localStorage.getItem("bjl_gemini_api_key") || undefined;
 
         try {
             setIsAnalyzing(true);
-            const metrics = getDREMetricsUpToCurrentMonth();
+            const currentDate = new Date();
+            const currentYear = currentDate.getFullYear();
+            const isCurrentYear = parseInt(selectedDREYear) === currentYear;
+            const maxMonthIndex = isCurrentYear ? currentDate.getMonth() : 11;
 
-            const filteredExpensesForAI = detailedExpenses.map(cat => {
-                const totalUpToMonth = cat.monthly.slice(0, metrics.maxMonthIndex + 1).reduce((acc: number, val: number) => acc + val, 0);
+            const filteredExpensesForAI = safeDetailedExpenses.map(cat => {
+                const totalUpToMonth = cat.monthly.slice(0, maxMonthIndex + 1).reduce((acc: number, val: number) => acc + val, 0);
                 return {
                     category: cat.category,
                     type: cat.type,
@@ -151,13 +146,13 @@ const DRETab = ({
                 apiKey,
                 selectedDREYear,
                 {
-                    grossRevenue: metrics.grossRevenue,
-                    taxes: metrics.taxes,
-                    netRevenue: metrics.netRevenue,
-                    variableCosts: metrics.variableCosts,
-                    contributionMargin: metrics.contributionMargin,
-                    fixedExpenses: metrics.fixedExpenses,
-                    netResult: metrics.netResult
+                    grossRevenue: safeDreData.grossRevenue,
+                    taxes: safeDreData.taxes,
+                    netRevenue: safeDreData.netRevenue,
+                    variableCosts: safeDreData.cpv,
+                    contributionMargin: safeDreData.grossProfit,
+                    fixedExpenses: safeDreData.operationalExpenses + safeDreData.personnelExpenses + safeDreData.machineryExpenses,
+                    netResult: safeDreData.netResult
                 },
                 filteredExpensesForAI
             );
@@ -380,65 +375,65 @@ const DRETab = ({
                     </div>
                 </div>
 
-                <div class="result-box ${dreData.netResult >= 0 ? 'lucro' : 'prejuizo'}">
-                    <h2>${formatCurrency(dreData.netResult)}</h2>
-                    <p>${dreData.netResult >= 0 ? 'Lucro Líquido do Exercício' : 'Prejuízo Líquido do Exercício'} (${dreData.netMargin.toFixed(1)}% da Receita Líquida)</p>
+                <div class="result-box ${safeDreData.netResult >= 0 ? 'lucro' : 'prejuizo'}">
+                    <h2>${formatCurrency(safeDreData.netResult)}</h2>
+                    <p>${safeDreData.netResult >= 0 ? 'Lucro Líquido do Exercício' : 'Prejuízo Líquido do Exercício'} (${safeDreData.netMargin.toFixed(1)}% da Receita Líquida)</p>
                 </div>
 
                 <table class="summary-grid">
                     <tr>
                         <td><strong>(+) RECEITA OPERACIONAL BRUTA</strong></td>
-                        <td class="text-right"><strong>${formatCurrency(dreData.grossRevenue)}</strong></td>
+                        <td class="text-right"><strong>${formatCurrency(safeDreData.grossRevenue)}</strong></td>
                     </tr>
                     <tr>
                         <td style="color: #64748b; font-style: italic; padding-left: 25px;">(-) Deduções e Impostos sobre Vendas</td>
-                        <td class="text-right" style="color: #64748b;">${formatCurrency(dreData.taxes)}</td>
+                        <td class="text-right" style="color: #64748b;">${formatCurrency(safeDreData.taxes)}</td>
                     </tr>
                     <tr style="background: #f8fafc;">
                         <td><strong>(=) RECEITA OPERACIONAL LÍQUIDA</strong></td>
-                        <td class="text-right"><strong>${formatCurrency(dreData.netRevenue)}</strong></td>
+                        <td class="text-right"><strong>${formatCurrency(safeDreData.netRevenue)}</strong></td>
                     </tr>
                     <tr>
                         <td style="color: #64748b; font-style: italic; padding-left: 25px;">(-) Custo das Obras e Produção (CPV: MDF, Ferragens, Mão de Obra)</td>
-                        <td class="text-right" style="color: #64748b;">${formatCurrency(dreData.cpv)}</td>
+                        <td class="text-right" style="color: #64748b;">${formatCurrency(safeDreData.cpv)}</td>
                     </tr>
                     <tr style="background: #f0fdf4;">
-                        <td><strong style="color: #166534;">(=) LUCRO BRUTO (Margem Bruta: ${dreData.grossMargin.toFixed(1)}%)</strong></td>
-                        <td class="text-right"><strong style="color: #166534;">${formatCurrency(dreData.grossProfit)}</strong></td>
+                        <td><strong style="color: #166534;">(=) LUCRO BRUTO (Margem Bruta: ${safeDreData.grossMargin.toFixed(1)}%)</strong></td>
+                        <td class="text-right"><strong style="color: #166534;">${formatCurrency(safeDreData.grossProfit)}</strong></td>
                     </tr>
                     <tr>
                         <td style="color: #64748b; font-style: italic; padding-left: 25px;">(-) Despesas Comerciais e Vendas (Comissões, RT, Marketing)</td>
-                        <td class="text-right" style="color: #64748b;">${formatCurrency(dreData.salesExpenses)}</td>
+                        <td class="text-right" style="color: #64748b;">${formatCurrency(safeDreData.salesExpenses)}</td>
                     </tr>
                     <tr>
                         <td style="color: #64748b; font-style: italic; padding-left: 25px;">(-) Despesas Operacionais Fixas (Aluguel, Luz, Contador, Sistemas)</td>
-                        <td class="text-right" style="color: #64748b;">${formatCurrency(dreData.operationalExpenses)}</td>
+                        <td class="text-right" style="color: #64748b;">${formatCurrency(safeDreData.operationalExpenses)}</td>
                     </tr>
                     <tr>
                         <td style="color: #64748b; font-style: italic; padding-left: 25px;">(-) Despesas com Pessoal Fixo e Pró-Labore</td>
-                        <td class="text-right" style="color: #64748b;">${formatCurrency(dreData.personnelExpenses)}</td>
+                        <td class="text-right" style="color: #64748b;">${formatCurrency(safeDreData.personnelExpenses)}</td>
                     </tr>
                     <tr>
                         <td style="color: #64748b; font-style: italic; padding-left: 25px;">(-) Despesas com Maquinário e Veículos</td>
-                        <td class="text-right" style="color: #64748b;">${formatCurrency(dreData.machineryExpenses)}</td>
+                        <td class="text-right" style="color: #64748b;">${formatCurrency(safeDreData.machineryExpenses)}</td>
                     </tr>
-                    ${dreData.depreciation > 0 ? `
+                    ${safeDreData.depreciation > 0 ? `
                     <tr>
                         <td style="color: #64748b; font-style: italic; padding-left: 25px;">(-) Depreciação de Maquinário e Ativos</td>
-                        <td class="text-right" style="color: #64748b;">${formatCurrency(dreData.depreciation)}</td>
+                        <td class="text-right" style="color: #64748b;">${formatCurrency(safeDreData.depreciation)}</td>
                     </tr>
                     ` : ''}
                     <tr style="background: #eff6ff;">
                         <td><strong style="color: #1e40af;">(=) EBITDA / LAJIDA (Resultado Operacional)</strong></td>
-                        <td class="text-right"><strong style="color: #1e40af;">${formatCurrency(dreData.ebitda)}</strong></td>
+                        <td class="text-right"><strong style="color: #1e40af;">${formatCurrency(safeDreData.ebitda)}</strong></td>
                     </tr>
                     <tr>
                         <td style="color: #64748b; font-style: italic; padding-left: 25px;">(+/-) Resultado Financeiro Líquido (Taxas Cartão / Tarifas / Rendimentos)</td>
-                        <td class="text-right" style="color: ${dreData.netFinancialResult >= 0 ? '#16a34a' : '#dc2626'};">${formatCurrency(dreData.netFinancialResult)}</td>
+                        <td class="text-right" style="color: ${safeDreData.netFinancialResult >= 0 ? '#16a34a' : '#dc2626'};">${formatCurrency(safeDreData.netFinancialResult)}</td>
                     </tr>
                     <tr style="background: #f1f5f9; font-size: 13px;">
                         <td><strong>(=) RESULTADO LÍQUIDO DO EXERCÍCIO</strong></td>
-                        <td class="text-right" style="color: ${dreData.netResult >= 0 ? '#16a34a' : '#dc2626'};"><strong>${formatCurrency(dreData.netResult)}</strong></td>
+                        <td class="text-right" style="color: ${safeDreData.netResult >= 0 ? '#16a34a' : '#dc2626'};"><strong>${formatCurrency(safeDreData.netResult)}</strong></td>
                     </tr>
                 </table>
 
@@ -593,7 +588,7 @@ const DRETab = ({
                         <div className="flex justify-between items-center group cursor-default">
                             <span className="font-bold text-xs text-emerald-500 uppercase tracking-tight">(+) Receita Bruta</span>
                             <span className="font-black text-base text-foreground transition-transform group-hover:scale-105">
-                                <AnimatedCounter value={dreData.grossRevenue} formatter={formatCurrency} />
+                                <AnimatedCounter value={safeDreData.grossRevenue} formatter={formatCurrency} />
                             </span>
                         </div>
 
@@ -601,7 +596,7 @@ const DRETab = ({
                         <div className="flex justify-between items-center pl-3 text-xs text-muted-foreground italic border-l border-emerald-500/20 py-0.5">
                             <span>(-) Impostos sobre Vendas</span>
                             <span className="font-bold">
-                                <AnimatedCounter value={dreData.taxes} formatter={formatCurrency} />
+                                <AnimatedCounter value={safeDreData.taxes} formatter={formatCurrency} />
                             </span>
                         </div>
 
@@ -609,7 +604,7 @@ const DRETab = ({
                         <div className="flex justify-between items-center py-2.5 border-t border-b border-border/40 bg-primary/5 px-2.5 rounded-lg">
                             <span className="font-black text-xs uppercase tracking-widest text-primary">(=) Receita Líquida</span>
                             <span className="font-black text-primary text-sm">
-                                <AnimatedCounter value={dreData.netRevenue} formatter={formatCurrency} />
+                                <AnimatedCounter value={safeDreData.netRevenue} formatter={formatCurrency} />
                             </span>
                         </div>
 
@@ -617,7 +612,7 @@ const DRETab = ({
                         <div className="flex justify-between items-center pl-3 text-xs text-rose-500/70 italic border-l border-rose-500/20 py-0.5">
                             <span className="truncate pr-2">(-) Custos de Produção / CPV</span>
                             <span className="font-bold whitespace-nowrap">
-                                <AnimatedCounter value={dreData.cpv} formatter={formatCurrency} />
+                                <AnimatedCounter value={safeDreData.cpv} formatter={formatCurrency} />
                             </span>
                         </div>
 
@@ -626,11 +621,11 @@ const DRETab = ({
                             <div className="flex items-center gap-1.5">
                                 <span className="font-black text-xs uppercase tracking-widest text-emerald-600">(=) Lucro Bruto</span>
                                 <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-600 border border-emerald-500/30">
-                                    {dreData.grossMargin.toFixed(1)}%
+                                    {safeDreData.grossMargin.toFixed(1)}%
                                 </span>
                             </div>
-                            <span className={cn("font-black text-sm", dreData.grossProfit >= 0 ? "text-emerald-600" : "text-rose-500")}>
-                                <AnimatedCounter value={dreData.grossProfit} formatter={formatCurrency} />
+                            <span className={cn("font-black text-sm", safeDreData.grossProfit >= 0 ? "text-emerald-600" : "text-rose-500")}>
+                                <AnimatedCounter value={safeDreData.grossProfit} formatter={formatCurrency} />
                             </span>
                         </div>
 
@@ -638,24 +633,24 @@ const DRETab = ({
                         <div className="space-y-1.5 pl-3 border-l border-rose-500/20 text-[11px] text-muted-foreground/80">
                             <div className="flex justify-between items-center py-0.5">
                                 <span className="truncate pr-1">(-) Despesas com Vendas (Comissão/RT/Mkt)</span>
-                                <span className="font-bold text-foreground/80">{formatCurrency(dreData.salesExpenses)}</span>
+                                <span className="font-bold text-foreground/80">{formatCurrency(safeDreData.salesExpenses)}</span>
                             </div>
                             <div className="flex justify-between items-center py-0.5">
                                 <span className="truncate pr-1">(-) Despesas Operacionais / Fixas</span>
-                                <span className="font-bold text-foreground/80">{formatCurrency(dreData.operationalExpenses)}</span>
+                                <span className="font-bold text-foreground/80">{formatCurrency(safeDreData.operationalExpenses)}</span>
                             </div>
                             <div className="flex justify-between items-center py-0.5">
                                 <span className="truncate pr-1">(-) Despesas com Pessoal</span>
-                                <span className="font-bold text-foreground/80">{formatCurrency(dreData.personnelExpenses)}</span>
+                                <span className="font-bold text-foreground/80">{formatCurrency(safeDreData.personnelExpenses)}</span>
                             </div>
                             <div className="flex justify-between items-center py-0.5">
                                 <span className="truncate pr-1">(-) Maquinário e Veículos</span>
-                                <span className="font-bold text-foreground/80">{formatCurrency(dreData.machineryExpenses)}</span>
+                                <span className="font-bold text-foreground/80">{formatCurrency(safeDreData.machineryExpenses)}</span>
                             </div>
-                            {dreData.depreciation > 0 && (
+                            {safeDreData.depreciation > 0 && (
                                 <div className="flex justify-between items-center py-0.5 text-amber-500/90 font-medium">
                                     <span className="truncate pr-1">(-) Depreciação de Ativos</span>
-                                    <span className="font-bold">{formatCurrency(dreData.depreciation)}</span>
+                                    <span className="font-bold">{formatCurrency(safeDreData.depreciation)}</span>
                                 </div>
                             )}
                         </div>
@@ -665,38 +660,38 @@ const DRETab = ({
                             <div className="flex items-center gap-1.5">
                                 <span className="font-black text-xs uppercase tracking-widest text-blue-500">(=) EBITDA</span>
                                 <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-500 border border-blue-500/30">
-                                    {dreData.netRevenue > 0 ? ((dreData.ebitda / dreData.netRevenue) * 100).toFixed(1) + '%' : '0%'}
+                                    {safeDreData.netRevenue > 0 ? ((safeDreData.ebitda / safeDreData.netRevenue) * 100).toFixed(1) + '%' : '0%'}
                                 </span>
                             </div>
-                            <span className={cn("font-black text-sm", dreData.ebitda >= 0 ? "text-blue-500" : "text-rose-500")}>
-                                <AnimatedCounter value={dreData.ebitda} formatter={formatCurrency} />
+                            <span className={cn("font-black text-sm", safeDreData.ebitda >= 0 ? "text-blue-500" : "text-rose-500")}>
+                                <AnimatedCounter value={safeDreData.ebitda} formatter={formatCurrency} />
                             </span>
                         </div>
 
                         {/* 8. Resultado Financeiro Líquido */}
                         <div className="flex justify-between items-center pl-3 text-xs text-muted-foreground italic border-l border-blue-500/20 py-0.5">
                             <span>(+/-) Resultado Financeiro Líquido</span>
-                            <span className={cn("font-bold", dreData.netFinancialResult >= 0 ? "text-emerald-500" : "text-rose-500")}>
-                                <AnimatedCounter value={dreData.netFinancialResult} formatter={formatCurrency} />
+                            <span className={cn("font-bold", safeDreData.netFinancialResult >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                                <AnimatedCounter value={safeDreData.netFinancialResult} formatter={formatCurrency} />
                             </span>
                         </div>
 
                         {/* 9. Lucro Líquido Final */}
                         <div className={cn(
                             "flex flex-col gap-1.5 items-center justify-center py-6 rounded-2xl shadow-xl mt-3 transition-all hover:scale-105",
-                            dreData.netResult >= 0 ? 'bg-emerald-600 shadow-emerald-500/20' : 'bg-rose-600 shadow-rose-500/20'
+                            safeDreData.netResult >= 0 ? 'bg-emerald-600 shadow-emerald-500/20' : 'bg-rose-600 shadow-rose-500/20'
                         )}>
                             <span className="font-black text-[10px] text-white/80 uppercase tracking-[0.3em]">Resultado Líquido</span>
                             <span className="font-black text-2xl text-white tracking-tighter">
-                                <AnimatedCounter value={dreData.netResult} formatter={formatCurrency} />
+                                <AnimatedCounter value={safeDreData.netResult} formatter={formatCurrency} />
                             </span>
                             <div className="px-3 py-0.5 bg-white/20 rounded-full text-[9px] font-black text-white uppercase tracking-widest border border-white/10 mt-1">
-                                {dreData.netResult >= 0 ? 'Lucro do Exercício' : 'Prejuízo do Exercício'} ({dreData.netMargin.toFixed(1)}% Líquido)
+                                {safeDreData.netResult >= 0 ? 'Lucro do Exercício' : 'Prejuízo do Exercício'} ({safeDreData.netMargin.toFixed(1)}% Líquido)
                             </div>
                         </div>
 
                         {/* 10. Card de Ponto de Equilíbrio */}
-                        {dreData.breakEvenPoint > 0 && (
+                        {safeDreData.breakEvenPoint > 0 && (
                             <div className="p-3 bg-muted/40 rounded-xl border border-border/40 space-y-1">
                                 <div className="flex items-center justify-between text-muted-foreground text-[10px] font-black uppercase tracking-widest">
                                     <span className="flex items-center gap-1.5 text-primary">
@@ -706,7 +701,7 @@ const DRETab = ({
                                 </div>
                                 <div className="flex items-center justify-between pt-1">
                                     <span className="text-xs text-muted-foreground">Necessário p/ zerar custos:</span>
-                                    <span className="font-black text-xs text-foreground">{formatCurrency(dreData.breakEvenPoint)}</span>
+                                    <span className="font-black text-xs text-foreground">{formatCurrency(safeDreData.breakEvenPoint)}</span>
                                 </div>
                             </div>
                         )}
@@ -865,20 +860,20 @@ const DRETab = ({
                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Indicadores Oficiais Analisados</span>
                                 <div className="grid grid-cols-2 gap-y-2 text-xs text-slate-300">
                                     <span className="opacity-70">Receita Bruta:</span>
-                                    <span className="text-right font-bold text-emerald-400">{formatCurrency(dreData.grossRevenue)}</span>
+                                    <span className="text-right font-bold text-emerald-400">{formatCurrency(safeDreData.grossRevenue)}</span>
                                     <span className="opacity-70">Custos CPV (Materiais/Obras):</span>
-                                    <span className="text-right font-bold text-rose-400">{formatCurrency(dreData.cpv)}</span>
-                                    <span className="opacity-70">Lucro Bruto (Margem {dreData.grossMargin.toFixed(1)}%):</span>
-                                    <span className="text-right font-bold text-emerald-400">{formatCurrency(dreData.grossProfit)}</span>
+                                    <span className="text-right font-bold text-rose-400">{formatCurrency(safeDreData.cpv)}</span>
+                                    <span className="opacity-70">Lucro Bruto (Margem {safeDreData.grossMargin.toFixed(1)}%):</span>
+                                    <span className="text-right font-bold text-emerald-400">{formatCurrency(safeDreData.grossProfit)}</span>
                                     <span className="opacity-70">EBITDA:</span>
-                                    <span className="text-right font-bold text-blue-400">{formatCurrency(dreData.ebitda)}</span>
+                                    <span className="text-right font-bold text-blue-400">{formatCurrency(safeDreData.ebitda)}</span>
                                     <div className="col-span-2 border-t border-white/10 my-1"></div>
                                     <span className="font-bold">Resultado Líquido Final:</span>
                                     <span className={cn(
                                         "text-right font-black",
-                                        dreData.netResult >= 0 ? "text-emerald-400" : "text-rose-400"
+                                        safeDreData.netResult >= 0 ? "text-emerald-400" : "text-rose-400"
                                     )}>
-                                        {formatCurrency(dreData.netResult)} ({dreData.netMargin.toFixed(1)}%)
+                                        {formatCurrency(safeDreData.netResult)} ({safeDreData.netMargin.toFixed(1)}%)
                                     </span>
                                 </div>
                             </div>
