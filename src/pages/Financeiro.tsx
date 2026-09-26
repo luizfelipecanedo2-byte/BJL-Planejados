@@ -14,7 +14,7 @@ import { useState, useMemo, useEffect, Fragment } from "react";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Transaction, CATEGORIES, SUBCATEGORIES, PAYMENT_METHODS, classifyTransactionForDRE, DREGroupKey } from "@/types/finance";
+import { Transaction, CATEGORIES, SUBCATEGORIES, PAYMENT_METHODS, classifyTransactionForDRE, DREGroupKey, DRE_CANONICAL_GROUPS, standardizeDRESubcategory } from "@/types/finance";
 import TransactionTable from "@/components/crm/TransactionTable";
 import TransactionFormDialog from "@/components/crm/TransactionFormDialog";
 import AssetFormDialog from "@/components/crm/AssetFormDialog";
@@ -977,7 +977,6 @@ const Financeiro = () => {
 
   const detailedExpenses = useMemo(() => {
     const year = parseInt(selectedDREYear);
-    const months = Array.from({ length: 12 }, (_, i) => i);
 
     const yearTransactions = transactions.filter(t => {
       const dateToCheck = dreRegime === 'competence'
@@ -987,75 +986,98 @@ const Financeiro = () => {
       return !isNaN(dateToCheck.getTime()) && (dateToCheck.getUTCFullYear() === year || dateToCheck.getFullYear() === year);
     });
 
-    const dataCategories = Array.from(new Set(yearTransactions.map(t => t.category || "Sem Categoria")));
-    const baseCategories = [...CATEGORIES.income, ...CATEGORIES.expense];
-    const allCategories = Array.from(new Set([...baseCategories, ...dataCategories]));
-
     const netRevenueForAV = dreData.netRevenue || 1;
 
-    const mapped = allCategories.map(category => {
-      if (category === 'Transferência') return null;
-      const subcategories = SUBCATEGORIES[category] || [];
-      const sampleTx = yearTransactions.find(t => (t.category || "Sem Categoria") === category);
-      const isIncome = CATEGORIES.income.includes(category) || (sampleTx && sampleTx.type === 'income');
+    // Agrupamento canônico oficial para eliminar duplicações e linhas vazias
+    const groupsMap: Record<string, {
+      category: string;
+      groupKey: DREGroupKey;
+      monthly: number[];
+      total: number;
+      type: 'income' | 'expense';
+      order: number;
+      subcategoriesMap: Record<string, {
+        name: string;
+        monthly: number[];
+        total: number;
+      }>;
+    }> = {};
 
-      const sampleGroupKey = sampleTx ? classifyTransactionForDRE(sampleTx) : (isIncome ? 'receita_bruta' : 'despesas_operacionais');
+    yearTransactions.forEach(t => {
+      const groupKey = classifyTransactionForDRE(t);
+      if (groupKey === 'transferencias') return;
 
-      const categoryMonthlyTotals = months.map(month => {
-        return yearTransactions
-          .filter(t => {
-            const cat = t.category || "Sem Categoria";
-            const dateToCheck = dreRegime === 'competence'
-              ? (t.competenceDate ? new Date(t.competenceDate) : new Date(t.dueDate))
-              : (t.paymentDate ? new Date(t.paymentDate) : new Date(t.dueDate));
+      const groupConfig = DRE_CANONICAL_GROUPS[groupKey];
+      if (!groupConfig) return;
 
-            return cat === category && (dateToCheck.getUTCMonth() === month || dateToCheck.getMonth() === month);
-          })
-          .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+      if (!groupsMap[groupKey]) {
+        groupsMap[groupKey] = {
+          category: groupConfig.name,
+          groupKey,
+          monthly: Array(12).fill(0),
+          total: 0,
+          type: groupConfig.type,
+          order: groupConfig.order,
+          subcategoriesMap: {}
+        };
+      }
+
+      const dateToCheck = dreRegime === 'competence'
+        ? (t.competenceDate ? new Date(t.competenceDate) : new Date(t.dueDate))
+        : (t.paymentDate ? new Date(t.paymentDate) : new Date(t.dueDate));
+      
+      const m = !isNaN(dateToCheck.getTime()) ? dateToCheck.getMonth() : 0;
+      const amt = Number(t.amount || 0);
+
+      const grp = groupsMap[groupKey];
+      grp.monthly[m] += amt;
+      grp.total += amt;
+
+      const subName = standardizeDRESubcategory(groupConfig.name, t.subcategory);
+      if (!grp.subcategoriesMap[subName]) {
+        grp.subcategoriesMap[subName] = {
+          name: subName,
+          monthly: Array(12).fill(0),
+          total: 0
+        };
+      }
+      grp.subcategoriesMap[subName].monthly[m] += amt;
+      grp.subcategoriesMap[subName].total += amt;
+    });
+
+    // Converter para lista ordenada, filtrando categorias e subcategorias sem movimentação (total === 0)
+    const result = Object.values(groupsMap)
+      .filter(g => g.total > 0)
+      .sort((a, b) => a.order - b.order)
+      .map(g => {
+        const verticalAnalysis = netRevenueForAV > 0 ? (g.total / netRevenueForAV) * 100 : 0;
+        const subcategories = Object.values(g.subcategoriesMap)
+          .filter(s => s.total > 0)
+          .sort((a, b) => b.total - a.total)
+          .map(s => ({
+            name: s.name,
+            monthly: s.monthly,
+            total: s.total,
+            verticalAnalysis: netRevenueForAV > 0 ? (s.total / netRevenueForAV) * 100 : 0
+          }));
+
+        return {
+          category: g.category,
+          groupKey: g.groupKey,
+          monthly: g.monthly,
+          total: g.total,
+          verticalAnalysis,
+          subcategories,
+          type: g.type
+        };
       });
-
-      const categoryTotal = categoryMonthlyTotals.reduce((a, b) => a + b, 0);
-
-      // Se a categoria não tem transações no ano e não é das padrão, ignora
-      if (categoryTotal === 0 && !baseCategories.includes(category)) return null;
-
-      const subcategoryBreakdown = subcategories.map(sub => {
-        const subMonthlyTotals = months.map(month => {
-          return yearTransactions
-            .filter(t => {
-              const cat = t.category || "Sem Categoria";
-              const dateToCheck = dreRegime === 'competence'
-                ? (t.competenceDate ? new Date(t.competenceDate) : new Date(t.dueDate))
-                : (t.paymentDate ? new Date(t.paymentDate) : new Date(t.dueDate));
-
-              return cat === category && t.subcategory === sub && (dateToCheck.getUTCMonth() === month || dateToCheck.getMonth() === month);
-            })
-            .reduce((acc, t) => acc + Number(t.amount || 0), 0);
-        });
-        const subTotal = subMonthlyTotals.reduce((a, b) => a + b, 0);
-        const subAV = netRevenueForAV > 0 ? (subTotal / netRevenueForAV) * 100 : 0;
-        return { name: sub, monthly: subMonthlyTotals, total: subTotal, verticalAnalysis: subAV };
-      });
-
-      const verticalAnalysis = netRevenueForAV > 0 ? (categoryTotal / netRevenueForAV) * 100 : 0;
-
-      return {
-        category,
-        groupKey: sampleGroupKey,
-        monthly: categoryMonthlyTotals,
-        total: categoryTotal,
-        verticalAnalysis,
-        subcategories: subcategoryBreakdown,
-        type: isIncome ? 'income' : 'expense'
-      };
-    }).filter(Boolean);
 
     // Adicionar linha de Depreciação de Ativos se houver
     if (dreData.depreciation > 0) {
       const depAV = netRevenueForAV > 0 ? (dreData.depreciation / netRevenueForAV) * 100 : 0;
-      mapped.push({
+      result.push({
         category: "Depreciação de Maquinário e Ativos",
-        groupKey: 'despesas_maquinario',
+        groupKey: 'despesas_maquinario' as DREGroupKey,
         monthly: dreData.monthlyDepreciation,
         total: dreData.depreciation,
         verticalAnalysis: depAV,
@@ -1071,12 +1093,12 @@ const Financeiro = () => {
             total: annualDepr,
             verticalAnalysis: netRevenueForAV > 0 ? (annualDepr / netRevenueForAV) * 100 : 0
           };
-        }),
+        }).filter(a => a.total > 0),
         type: 'expense'
       });
     }
 
-    return mapped;
+    return result;
   }, [transactions, selectedDREYear, dreRegime, dreData.netRevenue, dreData.depreciation, dreData.monthlyDepreciation, assets]);
 
   const currentSummary = useMemo(() => {

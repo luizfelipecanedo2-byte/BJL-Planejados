@@ -86,18 +86,20 @@ const DRETab = ({
 
     const safeDetailedExpenses = useMemo(() => {
         if (!Array.isArray(detailedExpenses)) return [];
-        return detailedExpenses.map(cat => ({
-            ...cat,
-            monthly: Array.isArray(cat?.monthly) ? cat.monthly : Array(12).fill(0),
-            total: Number(cat?.total || 0),
-            verticalAnalysis: Number(cat?.verticalAnalysis || 0),
-            subcategories: Array.isArray(cat?.subcategories) ? cat.subcategories.map((sub: any) => ({
-                ...sub,
-                monthly: Array.isArray(sub?.monthly) ? sub.monthly : Array(12).fill(0),
-                total: Number(sub?.total || 0),
-                verticalAnalysis: Number(sub?.verticalAnalysis || 0)
-            })) : []
-        }));
+        return detailedExpenses
+            .map(cat => ({
+                ...cat,
+                monthly: Array.isArray(cat?.monthly) ? cat.monthly : Array(12).fill(0),
+                total: Number(cat?.total || 0),
+                verticalAnalysis: Number(cat?.verticalAnalysis || 0),
+                subcategories: Array.isArray(cat?.subcategories) ? cat.subcategories.map((sub: any) => ({
+                    ...sub,
+                    monthly: Array.isArray(sub?.monthly) ? sub.monthly : Array(12).fill(0),
+                    total: Number(sub?.total || 0),
+                    verticalAnalysis: Number(sub?.verticalAnalysis || 0)
+                })).filter((sub: any) => sub.total > 0) : []
+            }))
+            .filter(cat => cat.total > 0);
     }, [detailedExpenses]);
 
     // Ordenar categorias pelo fluxo canônico da DRE contábil
