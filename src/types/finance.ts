@@ -30,11 +30,11 @@ export interface TransactionCostSplit {
     description: string;
 }
 
-export const CATEGORIES = {
+// Categorias Ativas e Oficiais (exibidas para NOVOS lançamentos)
+export const ACTIVE_CATEGORIES = {
     income: [
         "Receita com Serviço",
         "Receitas Financeiras",
-        "Receita Investimento",
         "Transferência"
     ],
     expense: [
@@ -45,13 +45,39 @@ export const CATEGORIES = {
         "Despesas com Maquinário e Veículos",
         "Impostos sobre Vendas",
         "Despesas Financeiras",
-        "Transferência",
-        // Categorias legadas para retrocompatibilidade
+        "Transferência"
+    ]
+};
+
+// Categorias Legadas (reconhecidas para manter 100% de compatibilidade com os dados anteriores)
+export const LEGACY_CATEGORIES = {
+    income: [
+        "Receita com prestação de serviços",
+        "Receita Investimento"
+    ],
+    expense: [
         "Despesa com Serviço",
+        "Custo dos serviços",
         "Despesa Operacional",
-        "Despesa com Maquinário",
         "Despesas administrativas",
+        "Despesa com Pessoal",
+        "Despesas com pessoal",
+        "Despesa com Maquinário",
+        "Maquinario",
+        "Impostos",
         "Outras deduções"
+    ]
+};
+
+// Todas as categorias unificadas (para relatórios, filtros e tabelas)
+export const CATEGORIES = {
+    income: [
+        ...ACTIVE_CATEGORIES.income,
+        ...LEGACY_CATEGORIES.income
+    ],
+    expense: [
+        ...ACTIVE_CATEGORIES.expense,
+        ...LEGACY_CATEGORIES.expense
     ]
 };
 

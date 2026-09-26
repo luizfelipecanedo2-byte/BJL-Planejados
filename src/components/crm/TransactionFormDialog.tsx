@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { addMonths } from "date-fns";
 import { Check, ChevronsUpDown, FileImage, Upload, X, Layers, Barcode, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Transaction, CATEGORIES, PAYMENT_METHODS, FINANCIAL_INSTITUTIONS, TransactionType, TransactionStatus, SUBCATEGORIES } from "@/types/finance";
+import { Transaction, CATEGORIES, ACTIVE_CATEGORIES, LEGACY_CATEGORIES, PAYMENT_METHODS, FINANCIAL_INSTITUTIONS, TransactionType, TransactionStatus, SUBCATEGORIES } from "@/types/finance";
 import { Client } from "@/types/client";
 import { ServiceOrder } from "@/types/serviceOrder";
 import { supabase } from "@/lib/supabase";
@@ -975,36 +975,56 @@ const TransactionFormDialog = ({
                                             <SelectValue placeholder="Selecione" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {CATEGORIES[type as keyof typeof CATEGORIES].map((cat) => (
-                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                            ))}
+                                            {(() => {
+                                                const activeList = ACTIVE_CATEGORIES[type as keyof typeof ACTIVE_CATEGORIES] || [];
+                                                // Se estiver editando e a categoria antiga for legada, adiciona para não perder visualização
+                                                const listToRender = (category && !activeList.includes(category))
+                                                    ? [...activeList, category]
+                                                    : activeList;
+
+                                                return listToRender.map((cat) => {
+                                                    const isLegacy = LEGACY_CATEGORIES.expense.includes(cat) || LEGACY_CATEGORIES.income.includes(cat);
+                                                    return (
+                                                        <SelectItem key={cat} value={cat}>
+                                                            {cat} {isLegacy ? "(Histórico)" : ""}
+                                                        </SelectItem>
+                                                    );
+                                                });
+                                            })()}
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div>
                                     <Label htmlFor="subcategory">Subcategoria</Label>
-                                    {SUBCATEGORIES[category] ? (
-                                        <Select
-                                            value={form.subcategory}
-                                            onValueChange={(v) => handleUpdateField("subcategory", v)}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Selecione" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {SUBCATEGORIES[category].map((sub) => (
-                                                    <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    ) : (
-                                        <Input
-                                            id="subcategory"
-                                            value={form.subcategory}
-                                            onChange={(e) => handleUpdateField("subcategory", e.target.value)}
-                                            placeholder="Especifique melhor"
-                                        />
-                                    )}
+                                    {(() => {
+                                        const baseSubcategories = SUBCATEGORIES[category] || [];
+                                        const subcategoriesList = (form.subcategory && !baseSubcategories.includes(form.subcategory))
+                                            ? [...baseSubcategories, form.subcategory]
+                                            : baseSubcategories;
+
+                                        return subcategoriesList.length > 0 ? (
+                                            <Select
+                                                value={form.subcategory}
+                                                onValueChange={(v) => handleUpdateField("subcategory", v)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Selecione" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {subcategoriesList.map((sub) => (
+                                                        <SelectItem key={sub} value={sub}>{sub}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        ) : (
+                                            <Input
+                                                id="subcategory"
+                                                value={form.subcategory}
+                                                onChange={(e) => handleUpdateField("subcategory", e.target.value)}
+                                                placeholder="Especifique melhor"
+                                            />
+                                        );
+                                    })()}
                                 </div>
                             </>
                         )}
