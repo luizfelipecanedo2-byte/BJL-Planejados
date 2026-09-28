@@ -44,7 +44,7 @@ export const WhatsAppQuickDialog: React.FC<WhatsAppQuickDialogProps> = ({
     },
     budget_sent: {
       title: "📋 Envio de Proposta Comercial",
-      text: `Olá ${firstName}, tudo bem? Aqui é da BJL Planejados! ✨\n\nFinalizamos o estudo do seu projeto (${projectName})! Segue o resumo dos valores:\n\n💰 Valor Especial À Vista: ${formattedValue}\n💳 Ou Parcelado no Cartão em até 10x\n\nPodemos marcar para alinhar os detalhes e já reservar a sua data no cronograma de fabricação da marcenaria?`,
+      text: `Olá ${firstName}, tudo bem? Aqui é da BJL Planejados! ✨\n\nFinalizamos o estudo do seu projeto (${projectName})! Segue o resumo das condições de pagamento:\n\n💰 01. À Vista com Desconto Especial: ${formattedValue}\n💳 02. No Cartão em até 10x: 10x de ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(((totalValue || 0) * 1.11) / 10)} (Total no cartão: ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((totalValue || 0) * 1.11)})\n💳 03. No Cartão em até 21x: 21x de ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(((totalValue || 0) * 1.18) / 21)} (Total no cartão: ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((totalValue || 0) * 1.18)})\n\n*Atenção: Os parcelamentos em 10x e 21x são exclusivos no cartão de crédito (não trabalhamos com crediário / boleto).\n\nPodemos marcar para alinhar os detalhes e já reservar a sua data no cronograma de fabricação da marcenaria?`,
     },
     closed: {
       title: "🎉 Boas-Vindas & Contrato Fechado",

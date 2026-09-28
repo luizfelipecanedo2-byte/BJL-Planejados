@@ -46,8 +46,11 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     const [budget, setLocalBudget] = React.useState(initialBudget || {});
     const [viewMode, setViewMode] = React.useState<'commercial' | 'technical' | 'contract'>(initialTab || 'commercial');
 
-    const cardFeePercent = Number(initialBudget?.card_fee_percent) || 11;
-    const cardFactor = 1 + (cardFeePercent / 100);
+    const cardFee10Percent = Number(initialBudget?.card_fee_percent_10) || (Number(initialBudget?.card_fee_percent) === 18 ? 11 : (Number(initialBudget?.card_fee_percent) || 11));
+    const cardFactor10 = 1 + (cardFee10Percent / 100);
+
+    const cardFee21Percent = Number(initialBudget?.card_fee_percent_21) || 18;
+    const cardFactor21 = 1 + (cardFee21Percent / 100);
 
     // Calcula o valor à vista base do orçamento (corrigindo orçamentos legados se necessário)
     const initialBaseValue = React.useMemo(() => {
@@ -57,7 +60,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
 
         if (totalCost > 0 && markupFactor > 0) {
             const calculatedBase = totalCost * markupFactor;
-            const calculatedCard = calculatedBase * cardFactor;
+            const calculatedCard = calculatedBase * cardFactor10;
             // Se o total_value salvo coincidir com o valor parcelado com cartão, usa a base calculada
             if (Math.abs(rawTotal - calculatedCard) < 1) {
                 return calculatedBase;
@@ -65,7 +68,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
             return calculatedBase;
         }
         return rawTotal;
-    }, [initialBudget, cardFactor]);
+    }, [initialBudget, cardFactor10]);
 
     // Analisa se o orçamento contém materiais técnicos específicos do catálogo
     const isTechnicalBudget = React.useMemo(() => {
@@ -131,14 +134,18 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
         ? (ambientes || []).reduce((acc, curr) => acc + (Number(curr?.value) || 0), 0)
         : initialBaseValue;
 
-    // O valor parcelado aplica a taxa de acréscimo sobre o valor à vista
-    const installmentValue = totalValue * cardFactor;
+    // Valores parcelados no cartão de crédito
+    const installment10Value = totalValue * cardFactor10;
+    const installment21Value = totalValue * cardFactor21;
 
-    const defaultPaymentTerms = "01. ENTRADA DE 60% NO FECHAMENTO DO CONTRATO.\n02. SALDO RESTANTE DE 40% NA DATA DA ENTREGA TÉCNICA.\n03. PRAZO DE ENTREGA: A DEFINIR CONFORME CRONOGRAMA.";
+    const defaultPaymentTerms = "01. OPÇÃO À VISTA: ENTRADA DE 60% NO FECHAMENTO DO CONTRATO E SALDO DE 40% NA DATA DA ENTREGA TÉCNICA.\n02. OPÇÃO EM ATÉ 10X NO CARTÃO: 10X COM TAXA DA OPERADORA (+11% - NÃO É CREDIÁRIO).\n03. OPÇÃO EM ATÉ 21X NO CARTÃO: EM ATÉ 21X NO CARTÃO (+18% DE JUROS DA OPERADORA - NÃO É CREDIÁRIO).\n04. PRAZO DE ENTREGA: A DEFINIR CONFORME CRONOGRAMA.";
     
     const cleanInitialNotes = React.useMemo(() => {
         if (!initialBudget?.notes) return defaultPaymentTerms;
-        const cleaned = initialBudget.notes.replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '').trim();
+        const cleaned = initialBudget.notes
+            .replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '')
+            .replace(/<!--BJL_CARD_FEES:[\s\S]*?-->/g, '')
+            .trim();
         return cleaned || defaultPaymentTerms;
     }, [initialBudget?.notes]);
 
@@ -495,16 +502,31 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                     Pela execução e montagem dos móveis planejados, o <strong>CONTRATANTE</strong> pagará à <strong>CONTRATADA</strong> o valor global de:
                                 </p>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-2">
-                                    <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-sm">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Valor Global à Vista</span>
-                                        <p className="text-xl font-black text-white">{formatCurrency(totalValue)}</p>
-                                        <span className="text-[8px] text-slate-400 font-bold uppercase block mt-0.5">Preço com desconto para quitação à vista</span>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-2">
+                                    <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-sm flex flex-col justify-between">
+                                        <div>
+                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">01. Opção À Vista</span>
+                                            <p className="text-lg font-black text-white mt-1">{formatCurrency(totalValue)}</p>
+                                        </div>
+                                        <span className="text-[8px] text-slate-400 font-bold uppercase block mt-2">Quitação à vista (PIX)</span>
                                     </div>
-                                    <div className="bg-amber-50 text-slate-900 p-4 rounded-2xl border border-amber-200 shadow-sm">
-                                        <span className="text-[9px] font-black text-amber-700 uppercase tracking-widest">Opção Parcelada (Cartão)</span>
-                                        <p className="text-xl font-black text-amber-600">{formatCurrency(installmentValue)}</p>
-                                        <span className="text-[8px] text-slate-500 font-bold uppercase block mt-0.5">Em até 10 parcelas com taxa de cartão</span>
+                                    <div className="bg-amber-50 text-slate-900 p-4 rounded-2xl border border-amber-200 shadow-sm flex flex-col justify-between">
+                                        <div>
+                                            <span className="text-[9px] font-black text-amber-800 uppercase tracking-widest">02. No Cartão (Até 10x)</span>
+                                            <p className="text-lg font-black text-amber-700 mt-1">{formatCurrency(installment10Value)}</p>
+                                        </div>
+                                        <span className="text-[8px] text-slate-600 font-bold block mt-2">
+                                            10x de {formatCurrency(installment10Value / 10)} no cartão
+                                        </span>
+                                    </div>
+                                    <div className="bg-amber-100/60 text-slate-900 p-4 rounded-2xl border border-amber-300 shadow-sm flex flex-col justify-between">
+                                        <div>
+                                            <span className="text-[9px] font-black text-amber-900 uppercase tracking-widest">03. No Cartão (Até 21x)</span>
+                                            <p className="text-lg font-black text-amber-800 mt-1">{formatCurrency(installment21Value)}</p>
+                                        </div>
+                                        <span className="text-[8px] text-slate-700 font-bold block mt-2">
+                                            21x de {formatCurrency(installment21Value / 21)} no cartão (+18% juros)
+                                        </span>
                                     </div>
                                 </div>
 
@@ -742,16 +764,51 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                             </div>
                         </div>
 
-                        <div className="w-[280px]">
-                            <div className="bg-[#0f172a] text-white p-8 rounded-3xl shadow-xl flex flex-col gap-4">
+                        <div className="w-[320px]">
+                            <div className="bg-[#0f172a] text-white p-6 sm:p-7 rounded-3xl shadow-xl flex flex-col gap-3.5 border border-slate-800">
+                                {/* OPÇÃO 1: À VISTA */}
                                 <div>
-                                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">TOTAL À VISTA</p>
-                                    <h4 className="text-2xl font-black">{formatCurrency(totalValue)}</h4>
+                                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">01. TOTAL À VISTA</p>
+                                    <h4 className="text-2xl font-black text-white">{formatCurrency(totalValue)}</h4>
+                                    <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-wider block mt-0.5">Preço com desconto à vista (PIX)</span>
                                 </div>
+
                                 <div className="h-[1px] bg-white/10"></div>
+
+                                {/* OPÇÃO 2: 10X NO CARTÃO */}
                                 <div>
-                                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">PARCELADO (10X)</p>
-                                    <h5 className="text-xl font-black text-[#f59e0b]">{formatCurrency(installmentValue)}</h5>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">02. NO CARTÃO (ATÉ 10X)</p>
+                                        <span className="text-[7.5px] font-black bg-amber-500/20 text-[#f59e0b] border border-amber-500/30 px-2 py-0.5 rounded-full uppercase">Cartão 10x</span>
+                                    </div>
+                                    <h5 className="text-lg font-black text-[#f59e0b]">
+                                        10x de {formatCurrency(installment10Value / 10)}
+                                    </h5>
+                                    <p className="text-[9px] font-bold text-slate-300">
+                                        Total no cartão: <span className="font-bold text-white">{formatCurrency(installment10Value)}</span> (+{cardFee10Percent}%)
+                                    </p>
+                                </div>
+
+                                <div className="h-[1px] bg-white/10"></div>
+
+                                {/* OPÇÃO 3: 21X NO CARTÃO */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">03. NO CARTÃO (ATÉ 21X)</p>
+                                        <span className="text-[7.5px] font-black bg-amber-500/20 text-[#f59e0b] border border-amber-500/30 px-2 py-0.5 rounded-full uppercase">Cartão 21x</span>
+                                    </div>
+                                    <h5 className="text-lg font-black text-[#f59e0b]">
+                                        21x de {formatCurrency(installment21Value / 21)}
+                                    </h5>
+                                    <p className="text-[9px] font-bold text-slate-300">
+                                        Total no cartão: <span className="font-bold text-white">{formatCurrency(installment21Value)}</span> (+{cardFee21Percent}% juros)
+                                    </p>
+                                </div>
+
+                                <div className="pt-1 border-t border-white/5">
+                                    <span className="text-[7.5px] font-semibold text-slate-400 block leading-tight">
+                                        *Parcelamentos exclusivos no cartão de crédito em até 10x ou 21x. Não trabalhamos com crediário / boleto.
+                                    </span>
                                 </div>
                             </div>
                         </div>

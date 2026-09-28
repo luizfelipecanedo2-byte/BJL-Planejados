@@ -153,6 +153,7 @@ const Orcamento = () => {
         commission: 3,
         tax: 4,
         installment_fee: 11,
+        installment_fee_21: 18,
         notes: ""
     });
 
@@ -640,10 +641,11 @@ const Orcamento = () => {
         
         const totalAddonsPercent = formData.profit_margin + formData.commission + formData.tax;
         const baseValue = totalCostPower * (1 + (totalAddonsPercent / 100));
-        const cardValue = baseValue * (1 + (formData.installment_fee / 100));
+        const card10Value = baseValue * (1 + (formData.installment_fee / 100));
+        const card21Value = baseValue * (1 + ((formData.installment_fee_21 || 18) / 100));
 
-        return { materialCost, fixedCost, totalCostPower, baseValue, cardValue, categoryTotals };
-    }, [selectedMaterialIds, quantities, allMaterials, customPrices, formData.days_estimated, formData.daily_fixed_cost, formData.profit_margin, formData.commission, formData.tax, formData.installment_fee]);
+        return { materialCost, fixedCost, totalCostPower, baseValue, cardValue: card10Value, card10Value, card21Value, categoryTotals };
+    }, [selectedMaterialIds, quantities, allMaterials, customPrices, formData.days_estimated, formData.daily_fixed_cost, formData.profit_margin, formData.commission, formData.tax, formData.installment_fee, formData.installment_fee_21]);
 
     const handleSaveBudget = async () => {
         if (!formData.client_name) {
@@ -681,12 +683,17 @@ const Orcamento = () => {
             }
         }
 
+        const cardFeesTag = `<!--BJL_CARD_FEES:${JSON.stringify({ fee10: formData.installment_fee, fee21: formData.installment_fee_21 || 18 })}-->`;
+        savedNotes = `${savedNotes.replace(/<!--BJL_CARD_FEES:[\s\S]*?-->/g, '').trim()}\n\n${cardFeesTag}`;
+
         const budgetData: any = {
             client_name: formData.client_name,
             project_name: formData.project_name,
             days_estimated: formData.days_estimated,
             markup_factor: (formData.profit_margin + formData.commission + formData.tax) / 100 + 1,
             card_fee_percent: formData.installment_fee,
+            card_fee_percent_10: formData.installment_fee,
+            card_fee_percent_21: formData.installment_fee_21 || 18,
             total_cost: calculateTotals.totalCostPower,
             total_value: calculateTotals.baseValue,
             notes: savedNotes,
@@ -704,7 +711,7 @@ const Orcamento = () => {
             setIsDialogOpen(false);
             setEditingBudgetId(null);
             setSelectedSaleId(null);
-            setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 470, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, notes: "" });
+            setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 470, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, installment_fee_21: 18, notes: "" });
             setQuantities({});
             setRawQuantities({});
             setCustomPrices({});
@@ -717,6 +724,9 @@ const Orcamento = () => {
     const handleEditBudget = (budget: any) => {
         setEditingBudgetId(budget.id);
         const cleanNotes = (budget.notes || "").replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '').trim();
+        const rawFee10 = budget.card_fee_percent_10 || (budget.card_fee_percent === 18 ? 11 : budget.card_fee_percent);
+        const resolvedFee10 = (rawFee10 !== undefined && rawFee10 !== null) ? Number(rawFee10) : 11;
+        const resolvedFee21 = Number(budget.card_fee_percent_21) || 18;
         setFormData({
             client_name: budget.client_name,
             project_name: budget.project_name,
@@ -725,7 +735,8 @@ const Orcamento = () => {
             profit_margin: (budget.markup_factor - 1) * 100 - 7,
             commission: 3,
             tax: 4,
-            installment_fee: budget.card_fee_percent,
+            installment_fee: resolvedFee10,
+            installment_fee_21: resolvedFee21,
             notes: cleanNotes
         });
 
@@ -794,7 +805,7 @@ const Orcamento = () => {
 
     const handleDiscardDraft = () => {
         localStorage.removeItem('orcamento_new_draft');
-        setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 470, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, notes: "" });
+        setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 470, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, installment_fee_21: 18, notes: "" });
         setQuantities({});
         setRawQuantities({});
         setCustomPrices({});
@@ -843,11 +854,23 @@ const Orcamento = () => {
             const ambientes = extraData?.ambientes || [];
             const paymentTerms = extraData?.paymentTerms || updatedBudget.notes || "";
             
+            // Preserva BJL_CARD_FEES se existir no orçamento
+            let cardFeesTag = "";
+            if (updatedBudget.notes && typeof updatedBudget.notes === 'string' && updatedBudget.notes.includes('<!--BJL_CARD_FEES:')) {
+                const match = updatedBudget.notes.match(/<!--BJL_CARD_FEES:[\s\S]*?-->/);
+                if (match) cardFeesTag = match[0];
+            }
             // Limpa notas de comentários de metadados antigos e anexa ambientes atualizados
-            const cleanNotes = paymentTerms.replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '').trim();
-            const notesWithAmbientes = ambientes.length > 0 
+            const cleanNotes = paymentTerms
+                .replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '')
+                .replace(/<!--BJL_CARD_FEES:[\s\S]*?-->/g, '')
+                .trim();
+            let notesWithAmbientes = ambientes.length > 0 
                 ? `${cleanNotes}\n\n<!--BJL_AMBIENTES:${JSON.stringify(ambientes)}-->` 
                 : cleanNotes;
+            if (cardFeesTag) {
+                notesWithAmbientes = `${notesWithAmbientes}\n\n${cardFeesTag}`;
+            }
 
             // 1. PRESERVAÇÃO TOTAL DOS MATERIAIS ORIGINAIS (MDF, ferragens, fitas, parafusos, etc.)
             let finalItems = (itemsToSave || []).map((item: any) => ({
@@ -981,7 +1004,7 @@ const Orcamento = () => {
                         setIsDialogOpen(open);
                         if (!open) {
                             setEditingBudgetId(null);
-                            setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 470, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, notes: "" });
+                            setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 470, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, installment_fee_21: 18, notes: "" });
                             setQuantities({});
                             setCustomPrices({});
                         }
@@ -1142,14 +1165,18 @@ const Orcamento = () => {
                                                 <Input type="number" value={formData.commission} onChange={e => setFormData({ ...formData, commission: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white/5 border-white/10 font-bold text-amber-400 focus:bg-white/10 transition-all" />
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-3 gap-2">
                                             <div className="space-y-2">
                                                 <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Imposto (%)</Label>
                                                 <Input type="number" value={formData.tax} onChange={e => setFormData({ ...formData, tax: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white/5 border-white/10 font-bold text-white focus:bg-white/10 transition-all" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Acrésc. Prazo (%)</Label>
-                                                <Input type="number" value={formData.installment_fee} onChange={e => setFormData({ ...formData, installment_fee: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white/5 border-white/10 font-bold text-primary focus:bg-white/10 transition-all" />
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Cartão 10x (%)</Label>
+                                                <Input type="number" value={formData.installment_fee} onChange={e => setFormData({ ...formData, installment_fee: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white/5 border-white/10 font-bold text-amber-400 focus:bg-white/10 transition-all" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Cartão 21x (%)</Label>
+                                                <Input type="number" value={formData.installment_fee_21} onChange={e => setFormData({ ...formData, installment_fee_21: parseFloat(e.target.value) || 0 })} className="h-10 rounded-xl bg-white/5 border-white/10 font-bold text-primary focus:bg-white/10 transition-all" />
                                             </div>
                                         </div>
                                     </div>
@@ -1550,17 +1577,32 @@ const Orcamento = () => {
 
                                                             <div className="flex justify-between items-end pt-2">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400">Valor Sugerido À Vista</span>
+                                                                    <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400">01. Valor À Vista (PIX)</span>
                                                                     <span className="text-xs font-black text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">Preço de Tabela</span>
                                                                 </div>
                                                                 <span className="text-sm font-black text-slate-900 dark:text-white underline decoration-primary/30 underline-offset-4">{formatCurrency(calculateTotals.baseValue)}</span>
                                                             </div>
-                                                            <div className="pt-4 border-t border-primary/20 flex justify-between items-end">
+                                                            <div className="pt-3 border-t border-amber-500/20 flex justify-between items-end">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-[9px] font-black uppercase text-primary">Preço com Acréscimo (+{formData.installment_fee}%)</span>
-                                                                    <span className="text-base font-black text-primary uppercase tracking-tighter">Total Parcelado</span>
+                                                                    <span className="text-[9px] font-black uppercase text-amber-500">02. No Cartão (+{formData.installment_fee}%)</span>
+                                                                    <span className="text-sm font-black text-amber-500 uppercase tracking-tighter">Até 10x no Cartão</span>
+                                                                    <span className="text-[10px] font-bold text-slate-400 mt-0.5">10x de {formatCurrency(calculateTotals.card10Value / 10)}</span>
                                                                 </div>
-                                                                <span className="text-2xl font-black text-primary tracking-tighter">{formatCurrency(calculateTotals.cardValue)}</span>
+                                                                <div className="text-right">
+                                                                    <span className="text-lg font-black text-amber-500 tracking-tighter block">{formatCurrency(calculateTotals.card10Value)}</span>
+                                                                    <span className="text-[8px] font-bold text-muted-foreground uppercase">(Cartão 10x)</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="pt-3 border-t border-primary/20 flex justify-between items-end">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[9px] font-black uppercase text-primary">03. No Cartão (+{formData.installment_fee_21}%)</span>
+                                                                    <span className="text-base font-black text-primary uppercase tracking-tighter">Até 21x no Cartão</span>
+                                                                    <span className="text-[10px] font-bold text-slate-400 mt-0.5">21x de {formatCurrency(calculateTotals.card21Value / 21)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-xl font-black text-primary tracking-tighter block">{formatCurrency(calculateTotals.card21Value)}</span>
+                                                                    <span className="text-[8px] font-bold text-muted-foreground uppercase">(Cartão 21x - Não é crediário)</span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>

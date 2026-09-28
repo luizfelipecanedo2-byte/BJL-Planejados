@@ -291,7 +291,7 @@ export function useBudgets() {
                 project_name: budget.project_name,
                 days_estimated: budget.days_estimated || 1,
                 markup_factor: budget.markup_factor || 1,
-                card_fee_percent: budget.card_fee_percent || 0,
+                card_fee_percent: budget.card_fee_percent !== undefined ? budget.card_fee_percent : 18,
                 total_cost: budget.total_cost || 0,
                 total_value: budget.total_value || 0,
                 notes: budget.notes || "",
