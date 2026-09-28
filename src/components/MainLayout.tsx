@@ -47,6 +47,7 @@ import { checkAndAutoLaunchCommission } from "@/services/commissionService";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { Magnetic } from "./ui/Magnetic";
 import { playClickSound, playHoverSound, playTransitionSound } from "@/lib/audio";
+import { PWAInstallButton } from "./shared/PWAInstallButton";
 
 
 const MainLayout = () => {
@@ -489,6 +490,7 @@ const MainLayout = () => {
                         </div>
                         
                         <div className="flex items-center gap-1 sm:gap-2">
+                             <PWAInstallButton variant="minimal" className="mr-1" />
                              {/* Botão do Customizador de Temas Premium */}
                              <Magnetic range={25} strength={0.25}>
                                  <Button
