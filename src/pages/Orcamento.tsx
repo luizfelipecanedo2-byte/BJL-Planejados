@@ -1584,7 +1584,7 @@ const Orcamento = () => {
                                                             </div>
                                                             <div className="pt-3 border-t border-amber-500/20 flex justify-between items-end">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-[9px] font-black uppercase text-amber-500">02. No Cartão (+{formData.installment_fee}%)</span>
+                                                                    <span className="text-[9px] font-black uppercase text-amber-500">02. No Cartão de Crédito</span>
                                                                     <span className="text-sm font-black text-amber-500 uppercase tracking-tighter">Até 10x no Cartão</span>
                                                                     <span className="text-[10px] font-bold text-slate-400 mt-0.5">10x de {formatCurrency(calculateTotals.card10Value / 10)}</span>
                                                                 </div>
@@ -1595,7 +1595,7 @@ const Orcamento = () => {
                                                             </div>
                                                             <div className="pt-3 border-t border-primary/20 flex justify-between items-end">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-[9px] font-black uppercase text-primary">03. No Cartão (+{formData.installment_fee_21}%)</span>
+                                                                    <span className="text-[9px] font-black uppercase text-primary">03. No Cartão de Crédito</span>
                                                                     <span className="text-base font-black text-primary uppercase tracking-tighter">Até 21x no Cartão</span>
                                                                     <span className="text-[10px] font-bold text-slate-400 mt-0.5">21x de {formatCurrency(calculateTotals.card21Value / 21)}</span>
                                                                 </div>

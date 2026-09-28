@@ -138,7 +138,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
     const installment10Value = totalValue * cardFactor10;
     const installment21Value = totalValue * cardFactor21;
 
-    const defaultPaymentTerms = "01. OPÇÃO À VISTA: ENTRADA DE 60% NO FECHAMENTO DO CONTRATO E SALDO DE 40% NA DATA DA ENTREGA TÉCNICA.\n02. OPÇÃO EM ATÉ 10X NO CARTÃO: 10X COM TAXA DA OPERADORA (+11% - NÃO É CREDIÁRIO).\n03. OPÇÃO EM ATÉ 21X NO CARTÃO: EM ATÉ 21X NO CARTÃO (+18% DE JUROS DA OPERADORA - NÃO É CREDIÁRIO).\n04. PRAZO DE ENTREGA: A DEFINIR CONFORME CRONOGRAMA.";
+    const defaultPaymentTerms = "01. OPÇÃO À VISTA: ENTRADA DE 60% NO FECHAMENTO DO CONTRATO E SALDO DE 40% NA DATA DA ENTREGA TÉCNICA.\n02. OPÇÃO EM ATÉ 10X NO CARTÃO: 10X NO CARTÃO DE CRÉDITO (NÃO É CREDIÁRIO).\n03. OPÇÃO EM ATÉ 21X NO CARTÃO: EM ATÉ 21X NO CARTÃO DE CRÉDITO (NÃO É CREDIÁRIO).\n04. PRAZO DE ENTREGA: A DEFINIR CONFORME CRONOGRAMA.";
     
     const cleanInitialNotes = React.useMemo(() => {
         if (!initialBudget?.notes) return defaultPaymentTerms;
@@ -525,7 +525,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                             <p className="text-lg font-black text-amber-800 mt-1">{formatCurrency(installment21Value)}</p>
                                         </div>
                                         <span className="text-[8px] text-slate-700 font-bold block mt-2">
-                                            21x de {formatCurrency(installment21Value / 21)} no cartão (+18% juros)
+                                            21x de {formatCurrency(installment21Value / 21)} no cartão
                                         </span>
                                     </div>
                                 </div>
@@ -785,7 +785,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                         10x de {formatCurrency(installment10Value / 10)}
                                     </h5>
                                     <p className="text-[9px] font-bold text-slate-300">
-                                        Total no cartão: <span className="font-bold text-white">{formatCurrency(installment10Value)}</span> (+{cardFee10Percent}%)
+                                        Total no cartão: <span className="font-bold text-white">{formatCurrency(installment10Value)}</span>
                                     </p>
                                 </div>
 
@@ -801,7 +801,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                         21x de {formatCurrency(installment21Value / 21)}
                                     </h5>
                                     <p className="text-[9px] font-bold text-slate-300">
-                                        Total no cartão: <span className="font-bold text-white">{formatCurrency(installment21Value)}</span> (+{cardFee21Percent}% juros)
+                                        Total no cartão: <span className="font-bold text-white">{formatCurrency(installment21Value)}</span>
                                     </p>
                                 </div>
 
