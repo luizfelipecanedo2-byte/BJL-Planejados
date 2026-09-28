@@ -16,6 +16,8 @@ export interface ServiceOrder {
     clientId?: string;
     client: string;
     clientPhone?: string;
+    clientAddress?: string;
+    clientCity?: string;
     type: ServiceType;
     action: string;
     status: ServiceStatus;

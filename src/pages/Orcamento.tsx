@@ -144,18 +144,29 @@ const Orcamento = () => {
     const [crmClientsList, setCrmClientsList] = useState<Array<{ id: string; name: string; phone?: string; type: 'lead' | 'client'; status?: string; product?: string }>>([]);
     const [isClientSuggestionsOpen, setIsClientSuggestionsOpen] = useState(false);
 
-    const [formData, setFormData] = useState({
-        client_name: "",
-        project_name: "",
-        days_estimated: 1,
-        daily_fixed_cost: 470,
-        profit_margin: 15,
-        commission: 3,
-        tax: 4,
-        installment_fee: 11,
-        installment_fee_21: 18,
-        notes: ""
-    });
+    const getDefaultBudgetFormData = () => {
+        const fee10 = typeof window !== 'undefined' ? parseFloat(localStorage.getItem("bjl_card_fee_10") || "11") : 11;
+        const fee21 = typeof window !== 'undefined' ? parseFloat(localStorage.getItem("bjl_card_fee_21") || "18") : 18;
+        const dailyCost = typeof window !== 'undefined' ? parseFloat(localStorage.getItem("bjl_daily_fixed_cost") || "470") : 470;
+        const margin = typeof window !== 'undefined' ? parseFloat(localStorage.getItem("bjl_default_profit_margin") || "15") : 15;
+        const comm = typeof window !== 'undefined' ? parseFloat(localStorage.getItem("bjl_commission") || "3") : 3;
+        const tx = typeof window !== 'undefined' ? parseFloat(localStorage.getItem("bjl_tax") || "4") : 4;
+
+        return {
+            client_name: "",
+            project_name: "",
+            days_estimated: 1,
+            daily_fixed_cost: isNaN(dailyCost) ? 470 : dailyCost,
+            profit_margin: isNaN(margin) ? 15 : margin,
+            commission: isNaN(comm) ? 3 : comm,
+            tax: isNaN(tx) ? 4 : tx,
+            installment_fee: isNaN(fee10) ? 11 : fee10,
+            installment_fee_21: isNaN(fee21) ? 18 : fee21,
+            notes: ""
+        };
+    };
+
+    const [formData, setFormData] = useState(getDefaultBudgetFormData());
 
     const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
 
@@ -207,12 +218,23 @@ const Orcamento = () => {
         loadCrmAndClients();
     }, []);
 
-    // Escutar parâmetros de URL vindos do CRM (ex: clique no botão 'Orçar')
+    // Escutar parâmetros de URL vindos do CRM (ex: clique no botão 'Orçar' ou 'Orçamento Ativo')
     useEffect(() => {
         const clientParam = searchParams.get("client");
         const saleIdParam = searchParams.get("saleId");
+        const budgetIdParam = searchParams.get("budgetId");
         const projectParam = searchParams.get("project");
         const openNewParam = searchParams.get("new");
+
+        if (budgetIdParam && budgets.length > 0) {
+            const foundBudget = budgets.find(b => b.id === budgetIdParam);
+            if (foundBudget) {
+                handleEditBudget(foundBudget);
+                toast.info(`Orçamento de ${foundBudget.client_name} aberto!`);
+                setSearchParams({}, { replace: true });
+                return;
+            }
+        }
 
         if (clientParam && (openNewParam === "true" || saleIdParam)) {
             setFormData(prev => ({
@@ -228,7 +250,7 @@ const Orcamento = () => {
             // Limpar query params para evitar reabertura involuntária em refresh
             setSearchParams({}, { replace: true });
         }
-    }, [searchParams, setSearchParams]);
+    }, [searchParams, setSearchParams, budgets]);
 
     // Filtrar sugestões de clientes do CRM conforme digitação
     const filteredCrmClients = useMemo(() => {
@@ -711,7 +733,7 @@ const Orcamento = () => {
             setIsDialogOpen(false);
             setEditingBudgetId(null);
             setSelectedSaleId(null);
-            setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 470, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, installment_fee_21: 18, notes: "" });
+            setFormData(getDefaultBudgetFormData());
             setQuantities({});
             setRawQuantities({});
             setCustomPrices({});
@@ -805,7 +827,7 @@ const Orcamento = () => {
 
     const handleDiscardDraft = () => {
         localStorage.removeItem('orcamento_new_draft');
-        setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 470, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, installment_fee_21: 18, notes: "" });
+        setFormData(getDefaultBudgetFormData());
         setQuantities({});
         setRawQuantities({});
         setCustomPrices({});
@@ -1004,7 +1026,7 @@ const Orcamento = () => {
                         setIsDialogOpen(open);
                         if (!open) {
                             setEditingBudgetId(null);
-                            setFormData({ client_name: "", project_name: "", days_estimated: 1, daily_fixed_cost: 470, profit_margin: 15, commission: 3, tax: 4, installment_fee: 11, installment_fee_21: 18, notes: "" });
+                            setFormData(getDefaultBudgetFormData());
                             setQuantities({});
                             setCustomPrices({});
                         }

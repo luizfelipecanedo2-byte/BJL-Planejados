@@ -238,9 +238,18 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
                         </p>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {sale.budget_id && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/admin/orcamento?client=${encodeURIComponent(sale.clientName)}&budgetId=${sale.budget_id}`);
+                              }}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                              title="Abrir Orçamento Ativo deste Lead"
+                            >
+                              <Calculator className="h-2.5 w-2.5" />
                               Orçamento Ativo
-                            </span>
+                            </button>
                           )}
                           {sale.temperature && (
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border ${temperatureBadgeStyles[sale.temperature]}`}>

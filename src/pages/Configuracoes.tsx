@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, MapPin, Phone, Mail, Globe, Instagram, Facebook, User, Save, Loader2, Users, Clock, Percent, Sparkles, Key } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, Globe, Instagram, Facebook, User, Save, Loader2, Users, Clock, Percent, Sparkles, Key, Calculator, CreditCard } from "lucide-react";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EquipeTab } from "@/components/configuracoes/EquipeTab";
+import { TaxasTab } from "@/components/configuracoes/TaxasTab";
 
 const Configuracoes = () => {
     const { settings, loading, updateSettings } = useCompanySettings();
@@ -97,6 +98,13 @@ const Configuracoes = () => {
                     >
                         <Users className="h-4 w-4" />
                         Equipe & Colaboradores
+                    </TabsTrigger>
+                    <TabsTrigger 
+                        value="taxas" 
+                        className="rounded-xl px-6 h-11 font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex items-center gap-2 transition-all"
+                    >
+                        <CreditCard className="h-4 w-4" />
+                        Taxas & Maquininha
                     </TabsTrigger>
                 </TabsList>
 
@@ -343,6 +351,10 @@ const Configuracoes = () => {
 
             <TabsContent value="equipe" className="m-0">
                 <EquipeTab />
+            </TabsContent>
+
+            <TabsContent value="taxas" className="m-0">
+                <TaxasTab />
             </TabsContent>
             </Tabs>
         </div>

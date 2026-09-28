@@ -142,12 +142,18 @@ export function useBudgets() {
                 saleStatus = 'nao_fechou';
             } else if (savedBudget.status === 'em_elaboracao') {
                 if (existingSale?.status === 'fechado' || existingSale?.status === 'pos_venda') {
-                    saleStatus = 'negociacao';
+                    saleStatus = existingSale.status; // Preserva status ganho, nunca regride
                 } else if (existingSale?.status === 'prospecto' || existingSale?.status === 'contato' || existingSale?.status === 'visita') {
                     // Avança o lead para 'projeto' pois já há um orçamento elaborado
                     saleStatus = 'projeto';
                 } else {
                     saleStatus = existingSale?.status || 'negociacao';
+                }
+            } else if (savedBudget.status === 'enviado') {
+                if (existingSale?.status === 'fechado' || existingSale?.status === 'pos_venda') {
+                    saleStatus = existingSale.status;
+                } else {
+                    saleStatus = 'negociacao';
                 }
             }
 
@@ -495,6 +501,7 @@ export function useBudgets() {
         cancelBudgetApproval,
         updateProductionStatus,
         updateProductionPriority,
+        syncBudgetToSale,
         refreshMaterials: fetchMaterials,
         refreshBudgets: fetchBudgets
     };

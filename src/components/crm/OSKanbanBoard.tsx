@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ServiceOrder, ServiceStatus } from "@/types/serviceOrder";
 import { Card, CardContent } from "@/components/ui/card";
-import { Phone, Calendar, ClipboardList, MessageSquare, Camera, Ruler } from "lucide-react";
+import { Phone, Calendar, ClipboardList, MessageSquare, Camera, Ruler, MapPin, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WhatsAppQuickDialog } from "./WhatsAppQuickDialog";
 
@@ -161,6 +161,39 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onOpenGallery }: OSKanb
                           {order.action}
                         </p>
                       </div>
+
+                      {order.clientAddress && (
+                        <div className="flex items-center justify-between gap-1 text-[9px] bg-white/5 p-1.5 rounded-lg border border-white/5">
+                          <div className="flex items-center gap-1 text-white/60 truncate min-w-0" title={`${order.clientAddress}${order.clientCity ? ` - ${order.clientCity}` : ''}`}>
+                            <MapPin size={10} className="text-primary flex-shrink-0" />
+                            <span className="truncate">{order.clientAddress}{order.clientCity ? ` - ${order.clientCity}` : ''}</span>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <a
+                              href={`https://waze.com/ul?q=${encodeURIComponent(order.clientAddress + (order.clientCity ? `, ${order.clientCity}` : ''))}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="px-1.5 py-0.5 rounded bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 border border-sky-500/30 text-[8px] font-black uppercase tracking-wider flex items-center gap-0.5 hover:scale-105 active:scale-95 transition-all"
+                              title="Traçar rota no Waze"
+                            >
+                              <Navigation size={8} />
+                              Waze
+                            </a>
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.clientAddress + (order.clientCity ? `, ${order.clientCity}` : ''))}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="px-1.5 py-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-[8px] font-black uppercase tracking-wider flex items-center gap-0.5 hover:scale-105 active:scale-95 transition-all"
+                              title="Traçar rota no Google Maps"
+                            >
+                              <MapPin size={8} />
+                              Maps
+                            </a>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="flex justify-between items-center text-[10px] text-white/60">
                         <div className="flex items-center gap-1">

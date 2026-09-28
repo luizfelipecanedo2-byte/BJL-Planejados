@@ -122,7 +122,7 @@ const OrdemServico = () => {
             setIsLoading(true);
             const { data, error } = await supabase
                 .from('service_orders')
-                .select('*, clients(phone)')
+                .select('*, clients(phone, address, city, state)')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -134,6 +134,8 @@ const OrdemServico = () => {
                 clientId: o.client_id,
                 client: o.client || "Não informado",
                 clientPhone: (o.clients as any)?.phone || "",
+                clientAddress: (o.clients as any)?.address || "",
+                clientCity: (o.clients as any)?.city || "",
                 type: o.type as any || "Fabricação",
                 action: o.action || "",
                 status: o.status as any || "Plano de corte",
