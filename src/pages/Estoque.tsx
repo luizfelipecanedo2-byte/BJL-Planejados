@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Truck, AlertTriangle, Package } from "lucide-react";
+import { Plus, Truck, AlertTriangle, Package, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { Product } from "@/types/product";
 import ProductTable from "@/components/crm/ProductTable";
@@ -10,8 +10,11 @@ import { supabase } from "@/lib/supabase";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { MagicButton } from "@/components/ui/magic-button";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MdfOffcutsManager } from "@/components/estoque/MdfOffcutsManager";
 
 const Estoque = () => {
+    const [activeTab, setActiveTab] = useState<string>("insumos");
     const [products, setProducts] = useState<Product[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -195,107 +198,143 @@ const Estoque = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                   <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Controle de Estoque</h2>
-                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Gestão de Patrimônio e Insumos High-End</p>
-                </div>
-                <MagicButton onClick={handleNewProduct} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
-                    <Plus className="h-4 w-4" />
-                    Novo Produto
-                </MagicButton>
-            </div>
-
-            {/* STOCK HUD */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
-                    <CardContent className="p-6 flex items-center justify-between relative">
-                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
-                            <Truck className="h-32 w-32" />
-                        </div>
-                        <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Valor Total em Estoque</p>
-                            <h3 className="text-3xl font-black text-primary tracking-tighter">
-                                <AnimatedCounter value={totalInventoryValue} formatter={formatCurrency} />
-                            </h3>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
-                    <CardContent className="p-6 flex items-center justify-between relative">
-                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-rose-500">
-                            <AlertTriangle className="h-32 w-32" />
-                        </div>
-                        <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Alertas de Reposição</p>
-                            <h3 className={cn("text-3xl font-black tracking-tighter", lowStockCount > 0 ? "text-rose-500" : "text-emerald-500")}>
-                                <AnimatedCounter value={lowStockCount} /> 
-                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Itens Baixos</span>
-                            </h3>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
-                    <CardContent className="p-6 flex items-center justify-between relative">
-                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-blue-500">
-                            <Package className="h-32 w-32" />
-                        </div>
-                        <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Total de Itens Cadastrados</p>
-                            <h3 className="text-3xl font-black text-white tracking-tighter">
-                                <AnimatedCounter value={totalItems} />
-                                <span className="text-sm font-bold uppercase ml-2 text-muted-foreground text-glow text-primary/50">Produtos</span>
-                            </h3>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl rounded-3xl overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-muted/20">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <CardTitle className="text-xl font-black tracking-tighter uppercase">Itens em Catálogo</CardTitle>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Base de Dados de Insumos</p>
+                       <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">
+                           Controle de Estoque
+                       </h2>
+                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
+                           Gestão de Patrimônio, Insumos & Sobras de MDF
+                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant={showOnlyLowStock ? "destructive" : "outline"}
-                            size="sm"
-                            onClick={() => setShowOnlyLowStock(!showOnlyLowStock)}
-                            className="text-[10px] font-black uppercase tracking-widest h-8 rounded-full"
-                        >
-                            {showOnlyLowStock ? "Filtro Ativo: Reposição" : "Filtrar Reposição"}
-                        </Button>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                        <TabsList className="bg-card/60 border border-white/10 p-1 rounded-2xl h-11 backdrop-blur-xl">
+                            <TabsTrigger 
+                                value="insumos" 
+                                className="rounded-xl px-4 font-bold text-xs gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                            >
+                                <Package className="h-4 w-4" />
+                                Insumos & Ferragens
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="retalhos" 
+                                className="rounded-xl px-4 font-bold text-xs gap-2 data-[state=active]:bg-amber-500 data-[state=active]:text-black transition-all"
+                            >
+                                <Layers className="h-4 w-4" />
+                                Sobras & Retalhos MDF
+                            </TabsTrigger>
+                        </TabsList>
+
+                        {activeTab === "insumos" && (
+                            <MagicButton onClick={handleNewProduct} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
+                                <Plus className="h-4 w-4" />
+                                Novo Insumo
+                            </MagicButton>
+                        )}
                     </div>
-                </CardHeader>
-                <CardContent>
-                    <ProductTable
-                        products={filteredProducts}
-                        onEdit={handleEditProduct}
-                        onDelete={handleDeleteProduct}
-                        onOrder={handleOrderProduct}
+                </div>
+
+                {/* ABA 1: INSUMOS & FERRAGENS */}
+                <TabsContent value="insumos" className="space-y-6 mt-0">
+                    {/* STOCK HUD */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                            <CardContent className="p-6 flex items-center justify-between relative">
+                                <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
+                                    <Truck className="h-32 w-32" />
+                                </div>
+                                <div className="relative z-10">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Valor Total em Estoque</p>
+                                    <h3 className="text-3xl font-black text-primary tracking-tighter">
+                                        <AnimatedCounter value={totalInventoryValue} formatter={formatCurrency} />
+                                    </h3>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                            <CardContent className="p-6 flex items-center justify-between relative">
+                                <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-rose-500">
+                                    <AlertTriangle className="h-32 w-32" />
+                                </div>
+                                <div className="relative z-10">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Alertas de Reposição</p>
+                                    <h3 className={cn("text-3xl font-black tracking-tighter", lowStockCount > 0 ? "text-rose-500" : "text-emerald-500")}>
+                                        <AnimatedCounter value={lowStockCount} /> 
+                                        <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Itens Baixos</span>
+                                    </h3>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                            <CardContent className="p-6 flex items-center justify-between relative">
+                                <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-blue-500">
+                                    <Package className="h-32 w-32" />
+                                </div>
+                                <div className="relative z-10">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Total de Itens Cadastrados</p>
+                                    <h3 className="text-3xl font-black text-white tracking-tighter">
+                                        <AnimatedCounter value={totalItems} />
+                                        <span className="text-sm font-bold uppercase ml-2 text-muted-foreground text-glow text-primary/50">Produtos</span>
+                                    </h3>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl rounded-3xl overflow-hidden">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-muted/20">
+                            <div>
+                                <CardTitle className="text-xl font-black tracking-tighter uppercase">Itens em Catálogo</CardTitle>
+                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Base de Dados de Insumos</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant={showOnlyLowStock ? "destructive" : "outline"}
+                                    size="sm"
+                                    onClick={() => setShowOnlyLowStock(!showOnlyLowStock)}
+                                    className="text-[10px] font-black uppercase tracking-widest h-8 rounded-full"
+                                >
+                                    {showOnlyLowStock ? "Filtro Ativo: Reposição" : "Filtrar Reposição"}
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <ProductTable
+                                products={filteredProducts}
+                                onEdit={handleEditProduct}
+                                onDelete={handleDeleteProduct}
+                                onOrder={handleOrderProduct}
+                            />
+                        </CardContent>
+                    </Card>
+
+                    <ProductFormDialog
+                        open={isDialogOpen}
+                        onOpenChange={setIsDialogOpen}
+                        onSubmit={handleSubmit}
+                        onUpdate={handleUpdate}
+                        editingProduct={editingProduct}
                     />
-                </CardContent>
-            </Card>
 
-            <ProductFormDialog
-                open={isDialogOpen}
-                onOpenChange={setIsDialogOpen}
-                onSubmit={handleSubmit}
-                onUpdate={handleUpdate}
-                editingProduct={editingProduct}
-            />
+                    {/* Floating Action Button for Mobile */}
+                    <Button
+                        onClick={handleNewProduct}
+                        className="lg:hidden fixed bottom-24 right-6 h-14 w-14 rounded-full shadow-2xl z-40 gap-0 p-0 flex items-center justify-center animate-in fade-in zoom-in duration-300"
+                        size="icon"
+                    >
+                        <Plus className="h-7 w-7" />
+                    </Button>
+                </TabsContent>
 
-            {/* Floating Action Button for Mobile */}
-            <Button
-                onClick={handleNewProduct}
-                className="lg:hidden fixed bottom-24 right-6 h-14 w-14 rounded-full shadow-2xl z-40 gap-0 p-0 flex items-center justify-center animate-in fade-in zoom-in duration-300"
-                size="icon"
-            >
-                <Plus className="h-7 w-7" />
-            </Button>
+                {/* ABA 2: SOBRAS & RETALHOS DE MDF */}
+                <TabsContent value="retalhos" className="mt-0">
+                    <MdfOffcutsManager />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 };
