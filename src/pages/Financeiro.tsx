@@ -114,12 +114,29 @@ const Financeiro = () => {
 
   const fetchTransactions = async () => {
     try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let allTransactions: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data: batch, error: batchError } = await supabase
+          .from('transactions')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (batchError) throw batchError;
+        if (batch && batch.length > 0) {
+          allTransactions = allTransactions.concat(batch);
+          from += pageSize;
+          if (batch.length < pageSize) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
 
       const { data: allocations, error: allocError } = await supabase
         .from('transaction_allocations')
@@ -129,7 +146,7 @@ const Financeiro = () => {
         setTransactionAllocations(allocations);
       }
 
-      const mappedTransactions: Transaction[] = (data || []).map(t => {
+      const mappedTransactions: Transaction[] = allTransactions.map(t => {
         const parseDate = (dateStr: string | null) => {
           if (!dateStr) return undefined;
           const d = new Date(dateStr + 'T12:00:00');

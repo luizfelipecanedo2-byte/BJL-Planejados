@@ -169,14 +169,33 @@ const OrdemServico = () => {
 
             // Passo 2: Buscar horas, alocações e custos reais de materiais
             try {
-                const [{ data: logsData }, { data: allocData }, { data: transData }] = await Promise.all([
+                let allTransData: any[] = [];
+                let from = 0;
+                const pageSize = 1000;
+                let hasMore = true;
+
+                while (hasMore) {
+                    const { data: batch, error: batchError } = await supabase
+                        .from('transactions')
+                        .select('id, description, amount, type, order_service, contact, category, competence_date, invoice_number')
+                        .range(from, from + pageSize - 1);
+                    if (batchError) break;
+                    if (batch && batch.length > 0) {
+                        allTransData = allTransData.concat(batch);
+                        from += pageSize;
+                        if (batch.length < pageSize) hasMore = false;
+                    } else {
+                        hasMore = false;
+                    }
+                }
+
+                const [{ data: logsData }, { data: allocData }] = await Promise.all([
                     supabase.from('service_order_labor_logs').select('*'),
-                    supabase.from('transaction_allocations').select('*'),
-                    supabase.from('transactions').select('id, description, amount, type, order_service, contact, category, competence_date, invoice_number')
+                    supabase.from('transaction_allocations').select('*')
                 ]);
 
                 const allocations = allocData || [];
-                const expenses = (transData || []).filter(t => t.type === 'expense');
+                const expenses = allTransData.filter(t => t.type === 'expense');
                 const norm = (s?: string) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
                 const enrichedOrders = mappedOrders.map(order => {
