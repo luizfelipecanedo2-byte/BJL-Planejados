@@ -63,6 +63,52 @@ const INITIAL_OFFCUTS: MdfOffcut[] = [
     }
 ];
 
+export let isCloudConnected = true;
+
+export const syncLocalOffcutsToSupabase = async (): Promise<number> => {
+    try {
+        const cached = localStorage.getItem(STORAGE_KEY);
+        if (!cached) return 0;
+
+        const list: MdfOffcut[] = JSON.parse(cached);
+        const pending = list.filter(item => item.id.startsWith("local-"));
+        if (pending.length === 0) return 0;
+
+        let syncedCount = 0;
+        for (const item of pending) {
+            const payload = {
+                code: item.code,
+                material_name: item.materialName,
+                thickness_mm: item.thicknessMm,
+                length_mm: item.lengthMm,
+                width_mm: item.widthMm,
+                quantity: item.quantity,
+                grain_direction: item.grainDirection,
+                location: item.location,
+                status: item.status,
+                reserved_project: item.reservedProject || null,
+                notes: item.notes || null
+            };
+
+            const { error } = await supabase.from("mdf_offcuts").insert([payload]);
+            if (!error) {
+                syncedCount++;
+            }
+        }
+
+        if (syncedCount > 0) {
+            // Remove os itens que foram enviados do cache local
+            const remaining = list.filter(item => !item.id.startsWith("local-"));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
+        }
+
+        return syncedCount;
+    } catch (err) {
+        console.error("Erro na sincronização manual com o Supabase:", err);
+        return 0;
+    }
+};
+
 export const getOffcuts = async (): Promise<MdfOffcut[]> => {
     try {
         const { data, error } = await supabase
@@ -71,6 +117,7 @@ export const getOffcuts = async (): Promise<MdfOffcut[]> => {
             .order("created_at", { ascending: false });
 
         if (error) {
+            isCloudConnected = false;
             console.warn("mdf_offcuts table not ready in Supabase, using local cache fallback:", error.message);
             const cached = localStorage.getItem(STORAGE_KEY);
             if (cached) {
@@ -80,7 +127,18 @@ export const getOffcuts = async (): Promise<MdfOffcut[]> => {
             return INITIAL_OFFCUTS;
         }
 
-        const mapped: MdfOffcut[] = (data || []).map((row: any) => ({
+        isCloudConnected = true;
+
+        // Se a tabela existe, verificar se existem retalhos criados em modo offline/fallback para subir agora:
+        await syncLocalOffcutsToSupabase();
+
+        // Recarrega lista final do Supabase caso tenha havido sincronização
+        const { data: latestData } = await supabase
+            .from("mdf_offcuts")
+            .select("*")
+            .order("created_at", { ascending: false });
+
+        const mapped: MdfOffcut[] = ((latestData || data || []) as any[]).map((row: any) => ({
             id: row.id,
             code: row.code,
             materialName: row.material_name,
@@ -100,6 +158,7 @@ export const getOffcuts = async (): Promise<MdfOffcut[]> => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
         return mapped;
     } catch (err) {
+        isCloudConnected = false;
         console.error("Error fetching MDF offcuts:", err);
         const cached = localStorage.getItem(STORAGE_KEY);
         if (cached) return JSON.parse(cached);

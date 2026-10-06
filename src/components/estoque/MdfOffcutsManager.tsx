@@ -26,7 +26,9 @@ import {
     getOffcuts, 
     createOffcut, 
     updateOffcut, 
-    deleteOffcut 
+    deleteOffcut,
+    isCloudConnected,
+    syncLocalOffcutsToSupabase
 } from "@/services/mdfOffcutService";
 import { MdfOffcutFormDialog } from "./MdfOffcutFormDialog";
 import { MdfPrintLabelDialog } from "./MdfPrintLabelDialog";
@@ -38,6 +40,8 @@ export const MdfOffcutsManager = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedThickness, setSelectedThickness] = useState<number | "all">("all");
     const [selectedStatus, setSelectedStatus] = useState<OffcutStatus | "all">("disponivel");
+    const [cloudConnected, setCloudConnected] = useState(isCloudConnected);
+    const [pendingLocalCount, setPendingLocalCount] = useState(0);
 
     // Calculadora de Encaixe / Peça Desejada
     const [targetLength, setTargetLength] = useState<string>("");
@@ -59,6 +63,15 @@ export const MdfOffcutsManager = () => {
         try {
             const data = await getOffcuts();
             setOffcuts(data);
+            setCloudConnected(isCloudConnected);
+            const cached = localStorage.getItem("bjl_mdf_offcuts_cache");
+            if (cached) {
+                try {
+                    const list = JSON.parse(cached);
+                    const count = list.filter((i: any) => i.id?.startsWith("local-")).length;
+                    setPendingLocalCount(count);
+                } catch (e) {}
+            }
         } catch (err) {
             console.error(err);
             toast.error("Erro ao carregar retalhos de MDF.");
@@ -202,6 +215,43 @@ export const MdfOffcutsManager = () => {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
+            {/* AVISO DE CONEXÃO COM O SUPABASE */}
+            {!cloudConnected && (
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-lg">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xl">⚠️</span>
+                            <p className="font-bold text-sm text-amber-200">
+                                Modo Local Ativo (Tabela do Supabase não criada)
+                            </p>
+                        </div>
+                        <p className="text-xs text-amber-300/80">
+                            Os retalhos estão salvos temporariamente apenas na memória deste aparelho. Para que todos os celulares e computadores sincronizem na nuvem, rode o script <strong>CREATE_MDF_OFFCUTS_TABLE.sql</strong> no SQL Editor do Supabase.
+                            {pendingLocalCount > 0 && ` Há ${pendingLocalCount} retalho(s) pendente(s) de envio neste aparelho.`}
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {cloudConnected && pendingLocalCount > 0 && (
+                <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+                    <p className="text-xs">
+                        🔄 Há <strong>{pendingLocalCount} retalho(s)</strong> salvo(s) localmente neste aparelho aguardando envio para o Supabase.
+                    </p>
+                    <Button
+                        size="sm"
+                        onClick={async () => {
+                            const count = await syncLocalOffcutsToSupabase();
+                            toast.success(`${count} retalho(s) sincronizado(s) com a nuvem!`);
+                            await loadData();
+                        }}
+                        className="h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                    >
+                        Sincronizar Agora com a Nuvem
+                    </Button>
+                </div>
+            )}
+
             {/* HUD METRICS CARDS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
