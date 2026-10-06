@@ -34,6 +34,7 @@ export interface TransactionCostSplit {
 export const ACTIVE_CATEGORIES = {
     income: [
         "Receita com Serviço",
+        "Empréstimos e Financiamentos",
         "Receitas Financeiras",
         "Transferência"
     ],
@@ -45,6 +46,7 @@ export const ACTIVE_CATEGORIES = {
         "Despesas com Maquinário e Veículos",
         "Impostos sobre Vendas",
         "Despesas Financeiras",
+        "Empréstimos e Financiamentos",
         "Transferência"
     ]
 };
@@ -82,6 +84,16 @@ export const CATEGORIES = {
 };
 
 export const SUBCATEGORIES: Record<string, string[]> = {
+    "Empréstimos e Financiamentos": [
+        "Entrada de Empréstimo (Pronampe)",
+        "Parcela Empréstimo Pronampe",
+        "Entrada de Empréstimo Bancário",
+        "Parcela Empréstimo Bancário",
+        "Financiamento de Veículos / Máquinas",
+        "Juros e Encargos de Empréstimo",
+        "Amortização de Dívida",
+        "Quitação Antecipada"
+    ],
     "Receita com Serviço": [
         "Entrada",
         "Parcela",
@@ -92,7 +104,8 @@ export const SUBCATEGORIES: Record<string, string[]> = {
     "Receitas Financeiras": [
         "Rendimento de Aplicação",
         "Juros Recebidos",
-        "Descontos Obtidos"
+        "Descontos Obtidos",
+        "Entrada de Empréstimo (Pronampe)"
     ],
     "Impostos sobre Vendas": [
         "Simples Nacional (DAS)",
@@ -149,6 +162,7 @@ export const SUBCATEGORIES: Record<string, string[]> = {
         "Taxas de Maquininha de Cartão",
         "Tarifas Bancárias e Boletos",
         "Juros de Antecipação de Recebíveis",
+        "Parcela Empréstimo Pronampe",
         "Juros de Empréstimos e Financiamentos",
         "Multas e Encargos Financeiros"
     ],
@@ -325,6 +339,7 @@ export const standardizeDRESubcategory = (canonicalCategory: string, rawSub?: st
 
     // Despesas Financeiras
     if (canonicalCategory === 'Despesas Financeiras') {
+        if (s.includes('pronampe') || s.includes('empréstimo') || s.includes('emprestimo') || s.includes('financiamento')) return 'Empréstimos e Financiamentos';
         if (s.includes('maquininha') || s.includes('cartão') || s.includes('cartao')) return 'Taxas de Cartão e Maquininha';
         if (s.includes('tarifa') || s.includes('desconto do banco') || s.includes('banco') || s.includes('juros')) return 'Tarifas Bancárias e Juros';
     }
@@ -368,6 +383,10 @@ export const classifyTransactionForDRE = (t: {
     }
 
     if (t.type === 'income') {
+        // Entrada de Empréstimo (Pronampe / Bancos) não é faturamento de venda nem serviço
+        if (cat.includes('empréstimo') || cat.includes('emprestimo') || cat.includes('financiamento') || sub.includes('empréstimo') || sub.includes('emprestimo') || sub.includes('pronampe') || desc.includes('pronampe') || desc.includes('empréstimo') || desc.includes('emprestimo')) {
+            return 'transferencias';
+        }
         if (cat.includes('financeira') || cat.includes('investimento') || sub.includes('rendimento') || desc.includes('rendimento')) {
             return 'receitas_financeiras';
         }
@@ -395,9 +414,16 @@ export const classifyTransactionForDRE = (t: {
         return 'deducoes_impostos';
     }
 
-    // 2. Despesas Financeiras (Taxas de cartão, tarifas bancárias, juros)
+    // 2. Despesas Financeiras (Taxas de cartão, tarifas bancárias, juros, parcelas de empréstimos)
     if (
         cat.includes('financeira') ||
+        cat.includes('empréstimo') ||
+        cat.includes('emprestimo') ||
+        cat.includes('financiamento') ||
+        sub.includes('empréstimo') ||
+        sub.includes('emprestimo') ||
+        sub.includes('pronampe') ||
+        sub.includes('financiamento') ||
         sub.includes('maquininha') ||
         sub.includes('tarifa') ||
         sub.includes('banco') ||
@@ -406,6 +432,10 @@ export const classifyTransactionForDRE = (t: {
         sub.includes('antecipacao') ||
         sub.includes('cartão') ||
         sub.includes('cartao') ||
+        desc.includes('pronampe') ||
+        desc.includes('empréstimo') ||
+        desc.includes('emprestimo') ||
+        desc.includes('financiamento') ||
         desc.includes('maquininha') ||
         desc.includes('tarifa de banco') ||
         desc.includes('taxa cartão') ||

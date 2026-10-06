@@ -85,6 +85,7 @@ const TransactionFormDialog = ({
     const [status, setStatus] = useState<TransactionStatus>("pending");
     const [isInstallment, setIsInstallment] = useState(false);
     const [installmentsCount, setInstallmentsCount] = useState("2");
+    const [installmentMode, setInstallmentMode] = useState<'total' | 'per_installment'>('total');
     const [isRecurring, setIsRecurring] = useState(false);
     const [recurringCount, setRecurringCount] = useState("12");
     const [isUploading, setIsUploading] = useState(false);
@@ -250,6 +251,7 @@ const TransactionFormDialog = ({
                 boletoUrl: "",
             });
             setInstallmentsCount("2");
+            setInstallmentMode('total');
             setIsRecurring(false);
             setRecurringCount("12");
             setDestinationInstitution("");
@@ -378,7 +380,9 @@ const TransactionFormDialog = ({
             const finalCostSplits = isCostSplit ? formattedSplits : [];
             if (isInstallment && Number(installmentsCount) > 1) {
                 const count = Number(installmentsCount);
-                const installmentValue = Number((amount / count).toFixed(2));
+                const installmentValue = installmentMode === 'per_installment'
+                    ? amount
+                    : Number((amount / count).toFixed(2));
                 const transactions = [];
 
                 for (let i = 0; i < count; i++) {
@@ -387,7 +391,7 @@ const TransactionFormDialog = ({
                     const newDueDate = addMonths(dueDate, i);
                     const instSplits = finalCostSplits ? finalCostSplits.map(s => ({
                         ...s,
-                        amount: Number((s.amount / count).toFixed(2))
+                        amount: installmentMode === 'per_installment' ? s.amount : Number((s.amount / count).toFixed(2))
                     })) : undefined;
 
                     transactions.push({
@@ -623,8 +627,8 @@ const TransactionFormDialog = ({
                             <div className={`p-4 border rounded-lg space-y-4 ${isInstallment ? 'bg-primary/5 border-primary/30' : 'bg-muted/20'} ${isRecurring && 'opacity-50 pointer-events-none'}`}>
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-0.5">
-                                        <Label className="text-sm font-bold">Parcelar (Boleto / Cartão)</Label>
-                                        <p className="text-[10px] text-muted-foreground mr-2">Dividir valor em parcelas</p>
+                                        <Label className="text-sm font-bold">Parcelar (Boleto / Empréstimo)</Label>
+                                        <p className="text-[10px] text-muted-foreground mr-2">Dividir valor ou fixar parcelas</p>
                                     </div>
                                     <Switch
                                         checked={isInstallment}
@@ -633,21 +637,58 @@ const TransactionFormDialog = ({
                                     />
                                 </div>
                                 {isInstallment && (
-                                    <div className="space-y-2 pt-2 border-t">
-                                        <Label htmlFor="installments">Parcelas</Label>
-                                        <Input
-                                            id="installments"
-                                            type="number"
-                                            min="2"
-                                            max="60"
-                                            value={installmentsCount}
-                                            onChange={(e) => setInstallmentsCount(e.target.value)}
-                                            className="font-semibold"
-                                        />
-                                        <div className="text-[11px] font-bold text-primary mt-1">
-                                            {form.amount && Number(installmentsCount) > 0
-                                                ? `${installmentsCount}x de ${(Number(form.amount) / Number(installmentsCount)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
-                                                : 'R$ 0,00'}
+                                    <div className="space-y-3 pt-2 border-t">
+                                        <div className="flex gap-1 p-1 bg-muted/80 rounded-lg text-xs">
+                                            <button
+                                                type="button"
+                                                onClick={() => setInstallmentMode('total')}
+                                                className={`flex-1 py-1 px-2 rounded font-semibold transition-all ${installmentMode === 'total' ? 'bg-background shadow text-primary font-bold' : 'text-muted-foreground hover:text-foreground'}`}
+                                            >
+                                                Dividir Total
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setInstallmentMode('per_installment')}
+                                                className={`flex-1 py-1 px-2 rounded font-semibold transition-all ${installmentMode === 'per_installment' ? 'bg-background shadow text-primary font-bold' : 'text-muted-foreground hover:text-foreground'}`}
+                                            >
+                                                Valor por Parcela
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <Label htmlFor="installments">Quantidade de Parcelas</Label>
+                                            <Input
+                                                id="installments"
+                                                type="number"
+                                                min="2"
+                                                max="120"
+                                                value={installmentsCount}
+                                                onChange={(e) => setInstallmentsCount(e.target.value)}
+                                                className="font-semibold"
+                                                placeholder="Ex: 36"
+                                            />
+                                        </div>
+
+                                        <div className="text-[11px] font-bold text-primary p-2 bg-primary/10 rounded-md border border-primary/20">
+                                            {installmentMode === 'per_installment' ? (
+                                                <span>
+                                                    Serão geradas <strong>{installmentsCount} parcelas</strong> de <strong>{form.amount ? Number(form.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}</strong> cada.
+                                                    <br />
+                                                    <span className="text-muted-foreground font-normal">
+                                                        Total Contratado: {(Number(form.amount || 0) * Number(installmentsCount || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                    </span>
+                                                </span>
+                                            ) : (
+                                                <span>
+                                                    {form.amount && Number(installmentsCount) > 0
+                                                        ? `${installmentsCount}x de ${(Number(form.amount) / Number(installmentsCount)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+                                                        : 'R$ 0,00'}
+                                                    <br />
+                                                    <span className="text-muted-foreground font-normal">
+                                                        Total a ser dividido: {form.amount ? Number(form.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
+                                                    </span>
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -956,6 +997,23 @@ const TransactionFormDialog = ({
                                     })()}
                                 </div>
                             </>
+                        )}
+
+                        {category === 'Empréstimos e Financiamentos' && (
+                            <div className="col-span-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-xs flex items-start gap-2.5">
+                                <span className="text-base leading-none">💡</span>
+                                <div className="space-y-1">
+                                    {type === 'income' ? (
+                                        <p>
+                                            <strong>Entrada do Empréstimo (Pronampe):</strong> O valor recebido entrará no saldo do seu banco (ex: Itaú) e no fluxo de caixa real, sem ser somado como faturamento de vendas ou serviços na DRE.
+                                        </p>
+                                    ) : (
+                                        <p>
+                                            <strong>Parcelas do Empréstimo:</strong> Classificado como despesa financeira. Use a opção <strong>"Parcelar"</strong> acima para gerar todas as parcelas mensais (ex: 36x) automaticamente!
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
                         )}
                         <div>
                             <Label htmlFor="financialInstitution">{type === 'transfer' ? 'Instituição de Origem' : 'Instituição Financeira'}</Label>
