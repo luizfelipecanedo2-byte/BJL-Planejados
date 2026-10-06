@@ -10,6 +10,7 @@ interface OSKanbanBoardProps {
   onStatusChange: (id: string, status: ServiceStatus) => void;
   onEdit: (order: ServiceOrder) => void;
   onOpenGallery?: (order: ServiceOrder) => void;
+  isAdmin?: boolean;
 }
 
 const statusOrder: ServiceStatus[] = [
@@ -57,7 +58,7 @@ const dotColors: Record<ServiceStatus, string> = {
   "Entregue e Finalizado": "bg-emerald-600",
 };
 
-const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onOpenGallery }: OSKanbanBoardProps) => {
+const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onOpenGallery, isAdmin = true }: OSKanbanBoardProps) => {
   const [whatsAppOrder, setWhatsAppOrder] = useState<ServiceOrder | null>(null);
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
 
@@ -112,12 +113,14 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onOpenGallery }: OSKanb
                   {columnOrders.length}
                 </span>
               </div>
-              <div className="flex justify-between items-end">
-                <p className="text-sm font-black text-white tracking-tighter shimmer-gold">
-                  {formatCurrency(totalValue)}
-                </p>
-                <p className="text-[8px] font-bold text-white/30 uppercase tracking-tighter">Total OS</p>
-              </div>
+              {isAdmin && (
+                <div className="flex justify-between items-end">
+                  <p className="text-sm font-black text-white tracking-tighter shimmer-gold">
+                    {formatCurrency(totalValue)}
+                  </p>
+                  <p className="text-[8px] font-bold text-white/30 uppercase tracking-tighter">Total OS</p>
+                </div>
+              )}
             </div>
 
             <div className="p-3 space-y-3 overflow-y-auto custom-scrollbar flex-1 relative z-10">
@@ -202,7 +205,7 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onOpenGallery }: OSKanb
                             {new Date(order.forecastDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                           </span>
                         </div>
-                        {order.amount && (
+                        {isAdmin && order.amount && (
                           <span className="font-black text-primary">
                             {formatCurrency(order.amount)}
                           </span>
@@ -210,7 +213,7 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onOpenGallery }: OSKanb
                       </div>
 
                       {/* Radar de Margem no Card do Kanban */}
-                      {(order.spentCost !== undefined && order.spentCost > 0) && (
+                      {isAdmin && (order.spentCost !== undefined && order.spentCost > 0) && (
                         <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[9px]">
                           <span className="text-white/40 font-bold uppercase tracking-wider">Custo Materiais:</span>
                           <span className={cn(

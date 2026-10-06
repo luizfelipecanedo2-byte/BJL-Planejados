@@ -873,22 +873,24 @@ const OrdemServico = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
-                    <CardContent className="p-6 flex items-center justify-between relative">
-                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
-                            <DollarSign className="h-32 w-32" />
-                        </div>
-                        <div className="relative z-10 flex items-center justify-between w-full">
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Volume Financeiro</p>
-                                <h3 className="text-3xl font-black text-amber-500 tracking-tighter">
-                                    <AnimatedCounter value={totalValueActive} formatter={formatCurrency} />
-                                </h3>
+                {isAdmin && (
+                    <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                        <CardContent className="p-6 flex items-center justify-between relative">
+                            <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
+                                <DollarSign className="h-32 w-32" />
                             </div>
-                            <SparklineChart data={[30, 42, 38, 55, 60, 68, 85]} variant="amber" width={85} height={30} />
-                        </div>
-                    </CardContent>
-                </Card>
+                            <div className="relative z-10 flex items-center justify-between w-full">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Volume Financeiro</p>
+                                    <h3 className="text-3xl font-black text-amber-500 tracking-tighter">
+                                        <AnimatedCounter value={totalValueActive} formatter={formatCurrency} />
+                                    </h3>
+                                </div>
+                                <SparklineChart data={[30, 42, 38, 55, 60, 68, 85]} variant="amber" width={85} height={30} />
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
@@ -949,55 +951,57 @@ const OrdemServico = () => {
             </div>
 
             {/* Radar de Prejuízo & Margem */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-950 to-black border border-white/10 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className={cn(
-                        "p-3 rounded-xl border flex items-center justify-center shrink-0",
-                        dangerOrdersCount > 0 ? "bg-rose-500/10 border-rose-500/30 text-rose-500 animate-pulse" :
-                        warningOrdersCount > 0 ? "bg-amber-500/10 border-amber-500/30 text-amber-500" :
-                        "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
-                    )}>
-                        <TrendingUp className="h-6 w-6" />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="text-sm font-black uppercase tracking-wider text-white">Radar Inteligente de Margem da Produção</h4>
-                            {dangerOrdersCount > 0 && (
-                                <span className="text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full animate-pulse">
-                                    ⚠️ {dangerOrdersCount} OS com Risco de Prejuízo
-                                </span>
-                            )}
+            {isAdmin && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-950 to-black border border-white/10 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className={cn(
+                            "p-3 rounded-xl border flex items-center justify-center shrink-0",
+                            dangerOrdersCount > 0 ? "bg-rose-500/10 border-rose-500/30 text-rose-500 animate-pulse" :
+                            warningOrdersCount > 0 ? "bg-amber-500/10 border-amber-500/30 text-amber-500" :
+                            "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
+                        )}>
+                            <TrendingUp className="h-6 w-6" />
                         </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                            Monitoramento em tempo real do custo de chapas, ferragens e insumos (CED, Bruta e avulsos) rateados por projeto.
-                        </p>
+                        <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="text-sm font-black uppercase tracking-wider text-white">Radar Inteligente de Margem da Produção</h4>
+                                {dangerOrdersCount > 0 && (
+                                    <span className="text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full animate-pulse">
+                                        ⚠️ {dangerOrdersCount} OS com Risco de Prejuízo
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                                Monitoramento em tempo real do custo de chapas, ferragens e insumos (CED, Bruta e avulsos) rateados por projeto.
+                            </p>
+                        </div>
                     </div>
-                </div>
 
-                <div className="flex items-center gap-6 self-end md:self-center">
-                    <div className="text-right">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Materiais Consumidos</span>
-                        <span className="text-lg font-black text-amber-400 tracking-tight">
-                            {formatCurrency(totalMaterialsCost)}
-                        </span>
-                    </div>
-                    <div className="h-8 w-px bg-white/10 hidden sm:block" />
-                    <div className="flex items-center gap-2">
-                        <div className="flex flex-col items-center bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1 min-w-[70px]">
-                            <span className="text-[9px] font-bold text-emerald-400 uppercase">Saudáveis</span>
-                            <span className="text-xs font-black text-emerald-300">{healthyOrdersCount}</span>
+                    <div className="flex items-center gap-6 self-end md:self-center">
+                        <div className="text-right">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Materiais Consumidos</span>
+                            <span className="text-lg font-black text-amber-400 tracking-tight">
+                                {formatCurrency(totalMaterialsCost)}
+                            </span>
                         </div>
-                        <div className="flex flex-col items-center bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1 min-w-[70px]">
-                            <span className="text-[9px] font-bold text-amber-400 uppercase">Atenção</span>
-                            <span className="text-xs font-black text-amber-300">{warningOrdersCount}</span>
-                        </div>
-                        <div className="flex flex-col items-center bg-rose-500/10 border border-rose-500/20 rounded-lg px-2.5 py-1 min-w-[70px]">
-                            <span className="text-[9px] font-bold text-rose-400 uppercase">Estouro</span>
-                            <span className="text-xs font-black text-rose-300">{dangerOrdersCount}</span>
+                        <div className="h-8 w-px bg-white/10 hidden sm:block" />
+                        <div className="flex items-center gap-2">
+                            <div className="flex flex-col items-center bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1 min-w-[70px]">
+                                <span className="text-[9px] font-bold text-emerald-400 uppercase">Saudáveis</span>
+                                <span className="text-xs font-black text-emerald-300">{healthyOrdersCount}</span>
+                            </div>
+                            <div className="flex flex-col items-center bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1 min-w-[70px]">
+                                <span className="text-[9px] font-bold text-amber-400 uppercase">Atenção</span>
+                                <span className="text-xs font-black text-amber-300">{warningOrdersCount}</span>
+                            </div>
+                            <div className="flex flex-col items-center bg-rose-500/10 border border-rose-500/20 rounded-lg px-2.5 py-1 min-w-[70px]">
+                                <span className="text-[9px] font-bold text-rose-400 uppercase">Estouro</span>
+                                <span className="text-xs font-black text-rose-300">{dangerOrdersCount}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             <Tabs defaultValue="producao" className="w-full">
                 <TabsList className="bg-slate-950/80 border border-white/10 rounded-2xl p-1 mb-6 flex-wrap h-auto gap-1 shadow-2xl backdrop-blur-xl">
@@ -1184,6 +1188,7 @@ const OrdemServico = () => {
                         onStatusChange={(id, status) => handleUpdate(id, { status })}
                         onEdit={handleEditOrder}
                         onOpenGallery={handleOpenGallery}
+                        isAdmin={isAdmin}
                     />
                 </TabsContent>
 
@@ -1201,6 +1206,7 @@ const OrdemServico = () => {
                 onSubmit={handleSubmit}
                 onUpdate={handleUpdate}
                 editingOrder={editingOrder}
+                isAdmin={isAdmin}
             />
 
             <OSVisualGalleryDialog

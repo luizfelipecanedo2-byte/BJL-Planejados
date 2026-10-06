@@ -16,6 +16,7 @@ interface ProductFormDialogProps {
     onSubmit: (product: Omit<Product, "id">) => void;
     onUpdate?: (id: string, updates: Partial<Product>) => void;
     editingProduct?: Product | null;
+    isAdmin?: boolean;
 }
 
 const ProductFormDialog = ({
@@ -24,6 +25,7 @@ const ProductFormDialog = ({
     onSubmit,
     onUpdate,
     editingProduct,
+    isAdmin = true,
 }: ProductFormDialogProps) => {
     const [form, setForm] = useState({
         idEstoque: "",
@@ -104,19 +106,21 @@ const ProductFormDialog = ({
                             />
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="unitPrice">Preço Unitário (R$)</Label>
-                            <Input
-                                id="unitPrice"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={form.unitPrice}
-                                onChange={(e) => update("unitPrice", e.target.value)}
-                                required
-                            />
-                        </div>
+                    <div className={isAdmin ? "grid grid-cols-2 gap-4" : "space-y-4"}>
+                        {isAdmin && (
+                            <div>
+                                <Label htmlFor="unitPrice">Preço Unitário (R$)</Label>
+                                <Input
+                                    id="unitPrice"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={form.unitPrice}
+                                    onChange={(e) => update("unitPrice", e.target.value)}
+                                    required
+                                />
+                            </div>
+                        )}
                         <div>
                             <Label htmlFor="quantity">Quantidade Atual</Label>
                             <Input

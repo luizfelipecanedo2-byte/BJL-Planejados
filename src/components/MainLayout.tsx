@@ -146,6 +146,15 @@ const MainLayout = () => {
 
     const fetchFinancialAlerts = async () => {
         try {
+            // Apenas administradores devem ver alertas de contas a pagar
+            if (role !== 'admin') {
+                setOverdueCount(0);
+                setOverdueSum(0);
+                setTodayDueCount(0);
+                setTodayDueSum(0);
+                return;
+            }
+
             const todayStr = new Date().toISOString().split('T')[0];
             
             // 1. Contas VENCIDAS (due_date < hoje)
@@ -565,7 +574,7 @@ const MainLayout = () => {
                         </div>
                     </div>
 
-                    {todayDueCount > 0 && (
+                    {role === 'admin' && todayDueCount > 0 && (
                         <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.2)] flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 relative z-20">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-amber-500/20 rounded-xl text-amber-400">
@@ -589,7 +598,7 @@ const MainLayout = () => {
                         </div>
                     )}
 
-                    {overdueCount > 0 && (
+                    {role === 'admin' && overdueCount > 0 && (
                         <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border-2 border-rose-500/20 shadow-[0_0_30px_rgba(244,63,94,0.15)] flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 relative z-20">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-rose-500/20 rounded-xl text-rose-500">

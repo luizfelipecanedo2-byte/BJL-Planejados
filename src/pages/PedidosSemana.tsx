@@ -19,8 +19,10 @@ import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { MagicButton } from "@/components/ui/magic-button";
 import { cn } from "@/lib/utils";
 import WeeklyOrderPrintView from "@/components/crm/WeeklyOrderPrintView";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const PedidosSemana = () => {
+    const { isAdmin } = useUserRole();
     const [orders, setOrders] = useState<Order[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -329,11 +331,11 @@ const PedidosSemana = () => {
                         <div className="grid grid-cols-12 gap-4 px-6 py-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50">
                             <div className="col-span-1">Ação</div>
                             <div className="col-span-1">Data</div>
-                            <div className="col-span-3">Produto</div>
-                            <div className="col-span-2">Fornecedor</div>
-                            <div className="col-span-2">Cliente</div>
+                            <div className={isAdmin ? "col-span-3" : "col-span-4"}>Produto</div>
+                            <div className={isAdmin ? "col-span-2" : "col-span-3"}>Fornecedor</div>
+                            <div className={isAdmin ? "col-span-2" : "col-span-2"}>Cliente</div>
                             <div className="col-span-1 text-center">Qtd</div>
-                            <div className="col-span-2 text-right">Total</div>
+                            {isAdmin && <div className="col-span-2 text-right">Total</div>}
                         </div>
 
                         {filtered.map((order) => {
@@ -363,26 +365,52 @@ const PedidosSemana = () => {
                                     <div className="col-span-1 text-[10px] font-bold text-muted-foreground/80">
                                         {format(new Date(order.date), "dd/MM")}
                                     </div>
-                                    <div className="col-span-3 text-[11px] font-black uppercase tracking-tight text-white group-hover:text-primary transition-colors">
+                                    <div className={cn(isAdmin ? "col-span-3" : "col-span-4", "text-[11px] font-black uppercase tracking-tight text-white group-hover:text-primary transition-colors")}>
                                         {order.product}
                                     </div>
-                                    <div className={cn("col-span-2 text-[10px] font-black uppercase tracking-widest", supText)}>
+                                    <div className={cn(isAdmin ? "col-span-2" : "col-span-3", "text-[10px] font-black uppercase tracking-widest", supText)}>
                                         {order.supplier}
                                     </div>
-                                    <div className="col-span-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter truncate">
+                                    <div className={cn(isAdmin ? "col-span-2" : "col-span-2", "text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter truncate")}>
                                         {order.client}
                                     </div>
                                     <div className="col-span-1 text-center font-black text-[11px]">
                                         {order.quantity}
                                     </div>
-                                    <div className={cn("col-span-2 text-right font-black text-xs tabular-nums items-center flex justify-end gap-2", supText)}>
-                                        {type === 'DEFINIR' && (
-                                            <div className="flex gap-1 mr-2 opacity-100 animate-in fade-in zoom-in duration-300">
+                                    {isAdmin ? (
+                                        <div className={cn("col-span-2 text-right font-black text-xs tabular-nums items-center flex justify-end gap-2", supText)}>
+                                            {type === 'DEFINIR' && (
+                                                <div className="flex gap-1 mr-2 opacity-100 animate-in fade-in zoom-in duration-300">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        title="Mover para CHM"
+                                                        className="h-8 px-2 text-[8px] border-emerald-500/50 hover:bg-emerald-500 hover:text-white"
+                                                        onClick={() => handleUpdateOrder(order.id, { supplier: "CHM Morais" })}
+                                                    >
+                                                        CHM
+                                                    </Button>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        title="Mover para BRUTA"
+                                                        className="h-8 px-2 text-[8px] border-orange-500/50 hover:bg-orange-500 hover:text-white"
+                                                        onClick={() => handleUpdateOrder(order.id, { supplier: "BRUTA" })}
+                                                    >
+                                                        BRUTA
+                                                    </Button>
+                                                </div>
+                                            )}
+                                            {formatCurrency(order.totalValue)}
+                                        </div>
+                                    ) : (
+                                        type === 'DEFINIR' && (
+                                            <div className="col-span-1 flex gap-1 justify-end opacity-100 animate-in fade-in zoom-in duration-300">
                                                 <Button 
                                                     variant="outline" 
                                                     size="sm" 
                                                     title="Mover para CHM"
-                                                    className="h-8 px-2 text-[8px] border-emerald-500/50 hover:bg-emerald-500 hover:text-white"
+                                                    className="h-7 px-1.5 text-[8px] border-emerald-500/50 hover:bg-emerald-500 hover:text-white"
                                                     onClick={() => handleUpdateOrder(order.id, { supplier: "CHM Morais" })}
                                                 >
                                                     CHM
@@ -391,15 +419,14 @@ const PedidosSemana = () => {
                                                     variant="outline" 
                                                     size="sm" 
                                                     title="Mover para BRUTA"
-                                                    className="h-8 px-2 text-[8px] border-orange-500/50 hover:bg-orange-500 hover:text-white"
+                                                    className="h-7 px-1.5 text-[8px] border-orange-500/50 hover:bg-orange-500 hover:text-white"
                                                     onClick={() => handleUpdateOrder(order.id, { supplier: "BRUTA" })}
                                                 >
                                                     BRUTA
                                                 </Button>
                                             </div>
-                                        )}
-                                        {formatCurrency(order.totalValue)}
-                                    </div>
+                                        )
+                                    )}
 
                                     {/* Action buttons overlay */}
                                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -473,7 +500,7 @@ const PedidosSemana = () => {
             </div>
 
             {/* WEEKLY ORDERS HUD */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className={cn("grid gap-4", isAdmin ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1")}>
                 <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
@@ -489,33 +516,37 @@ const PedidosSemana = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
-                    <CardContent className="p-6 flex items-center justify-between relative">
-                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
-                             <TrendingUp className="h-32 w-32" />
-                        </div>
-                        <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Investimento Total</p>
-                            <h3 className="text-3xl font-black text-amber-500 tracking-tighter">
-                                <AnimatedCounter value={totalValue} formatter={formatCurrency} />
-                            </h3>
-                        </div>
-                    </CardContent>
-                </Card>
+                {isAdmin && (
+                    <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                        <CardContent className="p-6 flex items-center justify-between relative">
+                            <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
+                                 <TrendingUp className="h-32 w-32" />
+                            </div>
+                            <div className="relative z-10">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Investimento Total</p>
+                                <h3 className="text-3xl font-black text-amber-500 tracking-tighter">
+                                    <AnimatedCounter value={totalValue} formatter={formatCurrency} />
+                                </h3>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
-                    <CardContent className="p-6 flex items-center justify-between relative">
-                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-blue-500">
-                             <TrendingUp className="h-32 w-32" />
-                        </div>
-                        <div className="relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Ticket Médio p/ Pedido</p>
-                            <h3 className="text-3xl font-black text-white tracking-tighter">
-                                <AnimatedCounter value={avgOrderValue} formatter={formatCurrency} />
-                            </h3>
-                        </div>
-                    </CardContent>
-                </Card>
+                {isAdmin && (
+                    <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                        <CardContent className="p-6 flex items-center justify-between relative">
+                            <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-blue-500">
+                                 <TrendingUp className="h-32 w-32" />
+                            </div>
+                            <div className="relative z-10">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Ticket Médio p/ Pedido</p>
+                                <h3 className="text-3xl font-black text-white tracking-tighter">
+                                    <AnimatedCounter value={avgOrderValue} formatter={formatCurrency} />
+                                </h3>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

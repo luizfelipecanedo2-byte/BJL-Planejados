@@ -48,6 +48,7 @@ interface ServiceOrderFormDialogProps {
     onSubmit: (order: Omit<ServiceOrder, "id">) => void;
     onUpdate?: (id: string, updates: Partial<ServiceOrder>) => void;
     editingOrder?: ServiceOrder | null;
+    isAdmin?: boolean;
 }
 
 const ServiceOrderFormDialog = ({
@@ -56,6 +57,7 @@ const ServiceOrderFormDialog = ({
     onSubmit,
     onUpdate,
     editingOrder,
+    isAdmin = true,
 }: ServiceOrderFormDialogProps) => {
     const [form, setForm] = useState({
         ticketNumber: "",
@@ -566,18 +568,20 @@ const ServiceOrderFormDialog = ({
                                         required
                                     />
                                 </div>
-                                <div>
-                                    <Label htmlFor="amount">Valor do Serviço (R$)</Label>
-                                    <Input
-                                        id="amount"
-                                        type="number"
-                                        step="0.01"
-                                        value={form.amount}
-                                        onChange={(e) => update("amount", parseFloat(e.target.value) || 0)}
-                                        placeholder="0,00"
-                                        className="font-bold text-green-700"
-                                    />
-                                </div>
+                                {isAdmin && (
+                                    <div>
+                                        <Label htmlFor="amount">Valor do Serviço (R$)</Label>
+                                        <Input
+                                            id="amount"
+                                            type="number"
+                                            step="0.01"
+                                            value={form.amount}
+                                            onChange={(e) => update("amount", parseFloat(e.target.value) || 0)}
+                                            placeholder="0,00"
+                                            className="font-bold text-green-700"
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </TabsContent>
 

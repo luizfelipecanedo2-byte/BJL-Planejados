@@ -12,8 +12,10 @@ import { MagicButton } from "@/components/ui/magic-button";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MdfOffcutsManager } from "@/components/estoque/MdfOffcutsManager";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const Estoque = () => {
+    const { isAdmin } = useUserRole();
     const [activeTab, setActiveTab] = useState<string>("insumos");
     const [products, setProducts] = useState<Product[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -239,20 +241,22 @@ const Estoque = () => {
                 {/* ABA 1: INSUMOS & FERRAGENS */}
                 <TabsContent value="insumos" className="space-y-6 mt-0">
                     {/* STOCK HUD */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
-                            <CardContent className="p-6 flex items-center justify-between relative">
-                                <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
-                                    <Truck className="h-32 w-32" />
-                                </div>
-                                <div className="relative z-10">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Valor Total em Estoque</p>
-                                    <h3 className="text-3xl font-black text-primary tracking-tighter">
-                                        <AnimatedCounter value={totalInventoryValue} formatter={formatCurrency} />
-                                    </h3>
-                                </div>
-                            </CardContent>
-                        </Card>
+                    <div className={cn("grid gap-4", isAdmin ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2")}>
+                        {isAdmin && (
+                            <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                                <CardContent className="p-6 flex items-center justify-between relative">
+                                    <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
+                                        <Truck className="h-32 w-32" />
+                                    </div>
+                                    <div className="relative z-10">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Valor Total em Estoque</p>
+                                        <h3 className="text-3xl font-black text-primary tracking-tighter">
+                                            <AnimatedCounter value={totalInventoryValue} formatter={formatCurrency} />
+                                        </h3>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
 
                         <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
                             <CardContent className="p-6 flex items-center justify-between relative">
@@ -308,6 +312,7 @@ const Estoque = () => {
                                 onEdit={handleEditProduct}
                                 onDelete={handleDeleteProduct}
                                 onOrder={handleOrderProduct}
+                                isAdmin={isAdmin}
                             />
                         </CardContent>
                     </Card>
@@ -318,6 +323,7 @@ const Estoque = () => {
                         onSubmit={handleSubmit}
                         onUpdate={handleUpdate}
                         editingProduct={editingProduct}
+                        isAdmin={isAdmin}
                     />
 
                     {/* Floating Action Button for Mobile */}

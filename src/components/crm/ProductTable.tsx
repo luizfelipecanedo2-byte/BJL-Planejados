@@ -10,15 +10,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ProductTableProps {
     products: Product[];
     onEdit: (product: Product) => void;
     onDelete: (id: string) => void;
     onOrder?: (product: Product) => void;
+    isAdmin?: boolean;
 }
 
-const ProductTable = ({ products, onEdit, onDelete, onOrder }: ProductTableProps) => {
+const ProductTable = ({ products, onEdit, onDelete, onOrder, isAdmin = true }: ProductTableProps) => {
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
             style: "currency",
@@ -45,9 +47,11 @@ const ProductTable = ({ products, onEdit, onDelete, onOrder }: ProductTableProps
                                         </span>
                                         <h3 className="font-bold text-lg leading-tight">{product.name}</h3>
                                     </div>
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                        {formatCurrency(product.unitPrice)} / un
-                                    </p>
+                                    {isAdmin && (
+                                        <p className="text-sm text-muted-foreground mt-1">
+                                            {formatCurrency(product.unitPrice)} / un
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="flex gap-1">
                                     <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => onEdit(product)}>
@@ -70,15 +74,17 @@ const ProductTable = ({ products, onEdit, onDelete, onOrder }: ProductTableProps
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 py-2 border-y border-border/50">
+                            <div className={cn("grid gap-4 py-2 border-y border-border/50", isAdmin ? "grid-cols-2" : "grid-cols-1")}>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Estoque</span>
                                     <span className="font-mono text-lg">{product.quantity}</span>
                                 </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Total</span>
-                                    <span className="font-mono text-lg">{formatCurrency(totalValue)}</span>
-                                </div>
+                                {isAdmin && (
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Total</span>
+                                        <span className="font-mono text-lg">{formatCurrency(totalValue)}</span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex items-center justify-between pt-1">
@@ -111,9 +117,9 @@ const ProductTable = ({ products, onEdit, onDelete, onOrder }: ProductTableProps
                             <TableHead className="w-[80px]">Editar</TableHead>
                             <TableHead>Cod.</TableHead>
                             <TableHead>Nome</TableHead>
-                            <TableHead>Preço</TableHead>
+                            {isAdmin && <TableHead>Preço</TableHead>}
                             <TableHead>Qtd.</TableHead>
-                            <TableHead>Valor Total</TableHead>
+                            {isAdmin && <TableHead>Valor Total</TableHead>}
                             <TableHead>Status</TableHead>
                             <TableHead>Pedir</TableHead>
                             <TableHead className="w-[50px] text-right">Excluir</TableHead>
@@ -134,9 +140,9 @@ const ProductTable = ({ products, onEdit, onDelete, onOrder }: ProductTableProps
                                     </TableCell>
                                     <TableCell className="font-medium font-mono text-xs">{product.idEstoque || "-"}</TableCell>
                                     <TableCell className="font-semibold">{product.name}</TableCell>
-                                    <TableCell>{formatCurrency(product.unitPrice)}</TableCell>
+                                    {isAdmin && <TableCell>{formatCurrency(product.unitPrice)}</TableCell>}
                                     <TableCell className="font-mono">{product.quantity}</TableCell>
-                                    <TableCell className="font-mono">{formatCurrency(totalValue)}</TableCell>
+                                    {isAdmin && <TableCell className="font-mono">{formatCurrency(totalValue)}</TableCell>}
                                     <TableCell>
                                         <Badge variant={isLowStock ? "destructive" : "default"} className={!isLowStock ? "bg-green-600 hover:bg-green-700" : ""}>
                                             {isLowStock ? "Baixo" : "OK"}
@@ -172,7 +178,7 @@ const ProductTable = ({ products, onEdit, onDelete, onOrder }: ProductTableProps
                         })}
                         {products.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={isAdmin ? 9 : 7} className="text-center py-8 text-muted-foreground">
                                     Nenhum produto encontrado no estoque.
                                 </TableCell>
                             </TableRow>
