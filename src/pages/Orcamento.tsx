@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
-import { Plus, Calculator, FileText, Search, TrendingUp, DollarSign, Package, Trash2, Pencil, CheckCircle2, History as HistoryIcon, Settings2, Save, X, Layers, ChevronDown, ChevronRight, AlertCircle, XCircle, Printer, Filter, LayoutGrid, List, RotateCcw } from "lucide-react";
+import { Plus, Calculator, FileText, Search, TrendingUp, DollarSign, Package, Trash2, Pencil, CheckCircle2, History as HistoryIcon, Settings2, Save, X, Layers, ChevronDown, ChevronRight, AlertCircle, XCircle, Printer, Filter, LayoutGrid, List, RotateCcw, Folder, FolderPlus, FolderOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -66,6 +66,193 @@ const Orcamento = () => {
     const [whatsAppBudget, setWhatsAppBudget] = useState<any>(null);
     const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
     const [followUpFilter, setFollowUpFilter] = useState<'all' | 'followup_due' | 'pending' | 'aprovado'>('all');
+    const [listViewMode, setListViewMode] = useState<'list' | 'folders'>('list');
+    const [selectedBudgetIds, setSelectedBudgetIds] = useState<string[]>([]);
+    const [expandedFolders, setExpandedFolders] = useState<string[]>([]);
+    const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
+    const [budgetsToMerge, setBudgetsToMerge] = useState<any[]>([]);
+    const [mergeClientName, setMergeClientName] = useState("");
+    const [mergeProjectName, setMergeProjectName] = useState("");
+    const [deleteOriginalsAfterMerge, setDeleteOriginalsAfterMerge] = useState(false);
+    const [isMerging, setIsMerging] = useState(false);
+
+    const getBudgetNumber = (orc: any) => {
+        if (!orc) return "000";
+        if (orc.budgetNumber) return orc.budgetNumber;
+        const index = [...budgets].reverse().findIndex(b => b.id === orc.id);
+        return index >= 0 ? 600 + index : "600";
+    };
+
+    const selectedBudgetsList = useMemo(() => {
+        return budgets.filter(b => selectedBudgetIds.includes(b.id));
+    }, [budgets, selectedBudgetIds]);
+
+    const selectedBudgetsTotal = useMemo(() => {
+        return selectedBudgetsList.reduce((acc, b) => acc + (Number(b.total_value) || 0), 0);
+    }, [selectedBudgetsList]);
+
+    const createUnifiedBudgetData = (selectedList: any[]) => {
+        if (!selectedList || selectedList.length === 0) return null;
+
+        const sorted = [...selectedList].sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+        const baseBudget = sorted[0];
+
+        const totalValue = selectedList.reduce((acc, b) => acc + (Number(b.total_value) || 0), 0);
+        const totalCost = selectedList.reduce((acc, b) => acc + (Number(b.total_cost) || 0), 0);
+        const daysEstimated = selectedList.reduce((acc, b) => acc + (Number(b.days_estimated) || 0), 0);
+
+        const allItems: any[] = [];
+        selectedList.forEach(b => {
+            const items = b.budget_items || b.items || [];
+            items.forEach((item: any) => {
+                allItems.push({
+                    material_id: item.material_id,
+                    quantity: Number(item.quantity) || 0,
+                    unit_price_at_time: Number(item.unit_price_at_time) || 0,
+                    total_price: Number(item.total_price) || 0,
+                    custom_description: item.custom_description || item.budget_materials?.name || "Item",
+                    budget_materials: item.budget_materials || item.material
+                });
+            });
+        });
+
+        const ambientes: any[] = [];
+        selectedList.forEach(b => {
+            let extractedAmbientes: any[] = [];
+            if (b.notes && typeof b.notes === 'string' && b.notes.includes('<!--BJL_AMBIENTES:')) {
+                try {
+                    const match = b.notes.match(/<!--BJL_AMBIENTES:([\s\S]*?)-->/);
+                    if (match && match[1]) {
+                        const parsed = JSON.parse(match[1]);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            extractedAmbientes = parsed;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Erro ao extrair ambientes:", e);
+                }
+            }
+
+            if (extractedAmbientes.length > 0) {
+                extractedAmbientes.forEach(amb => {
+                    ambientes.push({
+                        id: Math.random().toString(36).substring(2, 9),
+                        description: (amb.description || b.project_name || "Ambiente").toUpperCase(),
+                        observation: amb.observation || '',
+                        value: Number(amb.value) || 0
+                    });
+                });
+            } else {
+                ambientes.push({
+                    id: Math.random().toString(36).substring(2, 9),
+                    description: (b.project_name || "Ambiente").toUpperCase(),
+                    observation: '',
+                    value: Number(b.total_value) || 0
+                });
+            }
+        });
+
+        const cleanNotes = (baseBudget.notes || "")
+            .replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '')
+            .replace(/<!--BJL_CARD_FEES:[\s\S]*?-->/g, '')
+            .trim();
+
+        const cleanClientName = baseBudget.client_name.split('+')[0].trim();
+
+        const unifiedBudget: any = {
+            ...baseBudget,
+            id: baseBudget.id,
+            budgetNumber: getBudgetNumber(baseBudget),
+            isUnified: true,
+            client_name: cleanClientName || baseBudget.client_name,
+            project_name: selectedList.map(b => b.project_name).filter(Boolean).join(' + '),
+            total_value: totalValue,
+            total_cost: totalCost,
+            days_estimated: daysEstimated,
+            budget_items: allItems,
+            notes: `${cleanNotes}\n\n<!--BJL_AMBIENTES:${JSON.stringify(ambientes)}-->`
+        };
+
+        return { unifiedBudget, ambientes, refNumber: getBudgetNumber(baseBudget) };
+    };
+
+    const handleOpenUnifiedPrint = (budgetsList: any[]) => {
+        const data = createUnifiedBudgetData(budgetsList);
+        if (!data) return;
+        setPrintingBudget(data.unifiedBudget);
+        setPrintingTab('commercial');
+    };
+
+    const handleOpenMergeModalWithBudgets = (budgetsList: any[]) => {
+        if (budgetsList.length < 2) {
+            toast.error("É necessário selecionar pelo menos 2 orçamentos para unificar.");
+            return;
+        }
+        setBudgetsToMerge(budgetsList);
+        const base = budgetsList[0];
+        const cleanClient = base.client_name.split('+')[0].trim();
+        setMergeClientName(cleanClient || base.client_name);
+        const projectNames = budgetsList.map(b => b.project_name).filter(Boolean).join(' + ');
+        setMergeProjectName(`PROJETO COMPLETO: ${projectNames}`);
+        setDeleteOriginalsAfterMerge(false);
+        setIsMergeDialogOpen(true);
+    };
+
+    const handleConfirmMerge = async () => {
+        if (budgetsToMerge.length < 2) {
+            toast.error("Selecione pelo menos 2 orçamentos para unificar");
+            return;
+        }
+        setIsMerging(true);
+        try {
+            const data = createUnifiedBudgetData(budgetsToMerge);
+            if (!data) return;
+
+            const itemsToSave = data.unifiedBudget.budget_items.map((i: any) => ({
+                material_id: i.material_id,
+                quantity: Number(i.quantity) || 1,
+                unit_price_at_time: Number(i.unit_price_at_time) || 0,
+                total_price: Number(i.total_price) || 0,
+                custom_description: i.custom_description || null
+            }));
+
+            const budgetDataToSave = {
+                client_name: mergeClientName.trim() || data.unifiedBudget.client_name,
+                project_name: mergeProjectName.trim() || data.unifiedBudget.project_name,
+                days_estimated: data.unifiedBudget.days_estimated || 1,
+                markup_factor: data.unifiedBudget.markup_factor || 1.22,
+                card_fee_percent: data.unifiedBudget.card_fee_percent || 18,
+                total_cost: data.unifiedBudget.total_cost || 0,
+                total_value: data.unifiedBudget.total_value || 0,
+                notes: data.unifiedBudget.notes,
+                status: 'em_elaboracao'
+            };
+
+            const success = await saveBudget(budgetDataToSave, itemsToSave);
+            if (success) {
+                if (deleteOriginalsAfterMerge) {
+                    for (const oldB of budgetsToMerge) {
+                        await deleteBudget(oldB.id);
+                    }
+                }
+                setSelectedBudgetIds([]);
+                setIsMergeDialogOpen(false);
+                toast.success("Orçamentos unificados com sucesso!");
+            }
+        } catch (e: any) {
+            toast.error("Erro ao unificar orçamentos: " + (e.message || "Erro desconhecido"));
+        } finally {
+            setIsMerging(false);
+        }
+    };
+
+    const toggleFolder = (clientKey: string) => {
+        setExpandedFolders(prev => 
+            prev.includes(clientKey) 
+                ? prev.filter(k => k !== clientKey) 
+                : [...prev, clientKey]
+        );
+    };
 
     // Spotlight effect tracker with cached rect to avoid layout thrashing
     const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -137,6 +324,27 @@ const Orcamento = () => {
             return true;
         });
     }, [filteredBudgetsByYear, searchTerm, followUpFilter]);
+
+    const groupedBudgetsByClient = useMemo(() => {
+        const groups: { [key: string]: { client_name: string; budgets: any[]; totalValue: number } } = {};
+
+        filteredBudgets.forEach(b => {
+            const baseName = b.client_name.split('+')[0].trim().toUpperCase();
+            const key = baseName || b.client_name.trim().toUpperCase();
+
+            if (!groups[key]) {
+                groups[key] = {
+                    client_name: baseName || b.client_name,
+                    budgets: [],
+                    totalValue: 0
+                };
+            }
+            groups[key].budgets.push(b);
+            groups[key].totalValue += (Number(b.total_value) || 0);
+        });
+
+        return Object.values(groups);
+    }, [filteredBudgets]);
 
     // Form State & CRM Integration
     const [searchParams, setSearchParams] = useSearchParams();
@@ -1817,6 +2025,38 @@ const Orcamento = () => {
                                     </TabsList>
                                 </Tabs>
 
+                                {/* Seletor de Modo: Lista ou Pastas por Cliente */}
+                                <div className="flex items-center gap-1 bg-white/50 border border-border/50 p-1 rounded-2xl h-11 shadow-sm">
+                                    <button
+                                        type="button"
+                                        onClick={() => setListViewMode('list')}
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-3 h-full rounded-xl font-black uppercase text-[10px] tracking-wider transition-all",
+                                            listViewMode === 'list'
+                                                ? "bg-slate-900 text-white shadow-sm"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                        title="Visualização em Lista Individual"
+                                    >
+                                        <List size={14} />
+                                        <span>Lista</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setListViewMode('folders')}
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-3 h-full rounded-xl font-black uppercase text-[10px] tracking-wider transition-all",
+                                            listViewMode === 'folders'
+                                                ? "bg-amber-500 text-white shadow-sm"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                        title="Visualizar Agrupado em Pastas de Obra por Cliente"
+                                    >
+                                        <Folder size={14} />
+                                        <span>Pastas por Cliente</span>
+                                    </button>
+                                </div>
+
                                 <div className="relative w-full sm:w-72">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                                     <Input
@@ -1829,30 +2069,204 @@ const Orcamento = () => {
                             </div>
                         </CardHeader>
                          <CardContent className="p-0">
-                            {/* Table view for md and up */}
-                            <div className="overflow-x-auto webkit-overflow-scrolling-touch">
+                            {listViewMode === 'folders' ? (
+                                /* Visualização Agrupada em Pastas por Cliente */
+                                <div className="p-6 space-y-4">
+                                    {groupedBudgetsByClient.map(group => {
+                                        const isExpanded = expandedFolders.includes(group.client_name);
+
+                                        return (
+                                            <div key={group.client_name} className="bg-white rounded-2xl border border-border/60 shadow-sm overflow-hidden transition-all hover:border-amber-500/30">
+                                                {/* Cabeçalho da Pasta */}
+                                                <div 
+                                                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-pointer select-none"
+                                                    onClick={() => toggleFolder(group.client_name)}
+                                                >
+                                                    <div className="flex items-center gap-4 flex-1">
+                                                        <div className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-black text-lg border border-amber-500/20 shrink-0 shadow-inner">
+                                                            <Folder size={24} />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-3">
+                                                                <h3 className="text-base font-black uppercase text-foreground leading-none">{group.client_name}</h3>
+                                                                <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-700 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                                                                    {group.budgets.length} {group.budgets.length === 1 ? 'Ambiente' : 'Ambientes na Obra'}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-tight">
+                                                                {group.budgets.map(b => b.project_name).filter(Boolean).join(' • ')}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between md:justify-end gap-4 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-border/10" onClick={e => e.stopPropagation()}>
+                                                        <div className="text-right">
+                                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 block">Total da Obra</span>
+                                                            <span className="text-base font-black text-foreground tabular-nums">{formatCurrency(group.totalValue)}</span>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                onClick={() => handleOpenUnifiedPrint(group.budgets)}
+                                                                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl px-3.5 h-9 shadow-sm flex items-center gap-1.5"
+                                                                title="Gerar Proposta Comercial Única em PDF com todos os ambientes juntos"
+                                                            >
+                                                                <FileText size={14} />
+                                                                <span>PDF Unificado</span>
+                                                            </Button>
+
+                                                            {group.budgets.length > 1 && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleOpenMergeModalWithBudgets(group.budgets)}
+                                                                    className="border-amber-500/40 text-amber-800 hover:bg-amber-50 font-black text-xs uppercase tracking-wider rounded-xl px-3 h-9 flex items-center gap-1.5"
+                                                                    title="Unificar permanentemente em 1 único orçamento no sistema"
+                                                                >
+                                                                    <FolderPlus size={14} />
+                                                                    <span>Mesclar</span>
+                                                                </Button>
+                                                            )}
+
+                                                            <button
+                                                                onClick={() => toggleFolder(group.client_name)}
+                                                                className="p-2 text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted/30 transition-colors"
+                                                                title={isExpanded ? "Recolher ambientes" : "Ver ambientes detalhados"}
+                                                            >
+                                                                {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Ambientes expandidos da pasta */}
+                                                {isExpanded && (
+                                                    <div className="p-4 bg-white border-t border-border/20 space-y-2">
+                                                        <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60 px-3 py-1">
+                                                            Ambientes desta obra (clique no lápis para editar materiais ou no PDF para imprimir individual):
+                                                        </div>
+                                                        <div className="divide-y divide-border/10">
+                                                            {group.budgets.map(orc => (
+                                                                <div key={orc.id} className="py-3 px-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 rounded-xl transition-colors">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className="text-[10px] font-black text-muted-foreground uppercase opacity-60">
+                                                                            #{getBudgetNumber(orc)}
+                                                                        </span>
+                                                                        <div>
+                                                                            <span className="font-black text-xs uppercase text-slate-800 block">{orc.project_name}</span>
+                                                                            <span className="text-[10px] text-muted-foreground font-medium">
+                                                                                {new Date(orc.created_at).toLocaleDateString('pt-BR')} • {getStatusBadge(orc.status, orc)}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="flex items-center justify-between sm:justify-end gap-4">
+                                                                        <span className="font-black text-sm text-foreground tabular-nums">{formatCurrency(orc.total_value)}</span>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-primary"
+                                                                                onClick={() => handleEditBudget(orc)}
+                                                                                title="Editar materiais deste ambiente"
+                                                                            >
+                                                                                <Pencil size={14} />
+                                                                            </Button>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8 rounded-lg text-amber-500 hover:text-amber-600"
+                                                                                onClick={() => setStockSyncBudget(orc)}
+                                                                                title="Estoque / Compras"
+                                                                            >
+                                                                                <Package size={14} />
+                                                                            </Button>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-emerald-500"
+                                                                                onClick={() => {
+                                                                                    setPrintingBudget(orc);
+                                                                                    setPrintingTab('commercial');
+                                                                                }}
+                                                                                title="Imprimir individual deste ambiente"
+                                                                            >
+                                                                                <FileText size={14} />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+
+                                    {groupedBudgetsByClient.length === 0 && (
+                                        <div className="py-20 text-center text-muted-foreground italic uppercase text-[10px] font-black tracking-widest opacity-40">
+                                            Nenhum orçamento encontrado
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Table view for md and up */}
+                                    <div className="overflow-x-auto webkit-overflow-scrolling-touch">
                                 <table className="w-full text-xs min-w-[650px]">
                                     <thead>
                                         <tr className="bg-slate-50 text-muted-foreground/50 h-16 border-b border-border/10">
-                                            <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Identificação</th>
-                                            <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Projeto</th>
-                                            <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Data</th>
-                                            <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Status</th>
-                                            <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Valor Total</th>
-                                            <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Ações</th>
+                                            <th className="pl-6 pr-2 text-left w-10">
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={filteredBudgets.length > 0 && selectedBudgetIds.length === filteredBudgets.length}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedBudgetIds(filteredBudgets.map(b => b.id));
+                                                        } else {
+                                                            setSelectedBudgetIds([]);
+                                                        }
+                                                    }}
+                                                    className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                                    title="Selecionar todos"
+                                                />
+                                            </th>
+                                            <th className="px-6 text-left font-black uppercase tracking-[0.1em] text-[10px]">Identificação</th>
+                                            <th className="px-6 text-left font-black uppercase tracking-[0.1em] text-[10px]">Projeto</th>
+                                            <th className="px-6 text-left font-black uppercase tracking-[0.1em] text-[10px]">Data</th>
+                                            <th className="px-6 text-right font-black uppercase tracking-[0.1em] text-[10px]">Status</th>
+                                            <th className="px-6 text-right font-black uppercase tracking-[0.1em] text-[10px]">Valor Total</th>
+                                            <th className="px-6 text-right font-black uppercase tracking-[0.1em] text-[10px]">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/5">
                                         {filteredBudgets.map((orc) => (
-                                            <tr key={orc.id} className="hover:bg-slate-50/80 transition-all group">
-                                                <td className="px-8 py-6">
+                                            <tr key={orc.id} className={cn("hover:bg-slate-50/80 transition-all group", selectedBudgetIds.includes(orc.id) && "bg-amber-50/40")}>
+                                                <td className="pl-6 pr-2 py-6">
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={selectedBudgetIds.includes(orc.id)}
+                                                        onChange={(e) => {
+                                                            e.stopPropagation();
+                                                            if (e.target.checked) {
+                                                                setSelectedBudgetIds(prev => [...prev, orc.id]);
+                                                            } else {
+                                                                setSelectedBudgetIds(prev => prev.filter(id => id !== orc.id));
+                                                            }
+                                                        }}
+                                                        className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-6">
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-10 w-10 rounded-xl bg-muted/30 flex items-center justify-center font-black text-xs text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                                             {orc.client_name.charAt(0)}
                                                         </div>
                                                         <div className="flex flex-col">
                                                             <span className="font-black text-[13px] uppercase text-foreground group-hover:text-primary transition-colors leading-tight">{orc.client_name}</span>
-                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{600 + [...budgets].reverse().findIndex(b => b.id === orc.id)}</span>
+                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{getBudgetNumber(orc)}</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1967,15 +2381,27 @@ const Orcamento = () => {
                             {/* Card view for mobile */}
                             <div className="md:hidden divide-y divide-border/5">
                                 {filteredBudgets.map((orc) => (
-                                    <div key={orc.id} className="p-6 space-y-4">
+                                    <div key={orc.id} className={cn("p-6 space-y-4", selectedBudgetIds.includes(orc.id) && "bg-amber-50/40")}>
                                         <div className="flex justify-between items-start">
                                             <div className="flex items-center gap-3">
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={selectedBudgetIds.includes(orc.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedBudgetIds(prev => [...prev, orc.id]);
+                                                        } else {
+                                                            setSelectedBudgetIds(prev => prev.filter(id => id !== orc.id));
+                                                        }
+                                                    }}
+                                                    className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                                />
                                                 <div className="h-10 w-10 rounded-xl bg-muted/30 flex items-center justify-center font-black text-xs text-muted-foreground">
                                                     {orc.client_name.charAt(0)}
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="font-black text-[13px] uppercase text-foreground leading-tight">{orc.client_name}</span>
-                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{600 + [...budgets].reverse().findIndex(b => b.id === orc.id)}</span>
+                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{getBudgetNumber(orc)}</span>
                                                 </div>
                                             </div>
                                             {getStatusBadge(orc.status, orc)}
@@ -2080,8 +2506,56 @@ const Orcamento = () => {
                                     Nenhum orçamento encontrado
                                 </div>
                             )}
+                                </>
+                            )}
                         </CardContent>
                     </Card>
+
+                    {/* Barra de Ações Flutuante para Orçamentos Selecionados */}
+                    {selectedBudgetIds.length > 0 && (
+                        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] bg-slate-950/95 text-white border border-amber-500/40 rounded-full px-6 py-3.5 shadow-2xl backdrop-blur-md flex flex-wrap items-center justify-center gap-3 animate-in slide-in-from-bottom-6 duration-300">
+                            <div className="flex items-center gap-2 pr-2 border-r border-white/10">
+                                <span className="flex h-6 w-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs items-center justify-center">
+                                    {selectedBudgetIds.length}
+                                </span>
+                                <span className="text-xs font-bold text-slate-200">
+                                    {selectedBudgetIds.length === 1 ? '1 selecionado' : `${selectedBudgetIds.length} selecionados`}
+                                </span>
+                                <span className="text-xs font-black text-amber-400 ml-1">
+                                    ({formatCurrency(selectedBudgetsTotal)})
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    onClick={() => handleOpenUnifiedPrint(selectedBudgetsList)}
+                                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-full px-4 h-9 shadow-md flex items-center gap-1.5"
+                                >
+                                    <FileText size={14} />
+                                    Gerar PDF Unificado ({selectedBudgetIds.length})
+                                </Button>
+
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleOpenMergeModalWithBudgets(selectedBudgetsList)}
+                                    className="border-white/20 hover:bg-white/10 text-white font-black text-xs uppercase tracking-wider rounded-full px-4 h-9 flex items-center gap-1.5"
+                                >
+                                    <FolderPlus size={14} />
+                                    Unificar em 1 Orçamento
+                                </Button>
+
+                                <button
+                                    onClick={() => setSelectedBudgetIds([])}
+                                    className="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-white/10 transition-colors ml-1"
+                                    title="Limpar seleção"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </>
             ) : (
                 <Card className="border-none shadow-2xl bg-card overflow-hidden rounded-[2.5rem]">
@@ -2325,9 +2799,106 @@ const Orcamento = () => {
                     initialTab={printingTab}
                     onClose={() => setPrintingBudget(null)} 
                     onSave={handleSaveFromPrintView}
-                    budgetNumber={600 + [...budgets].reverse().findIndex(b => b.id === printingBudget.id)}
+                    budgetNumber={getBudgetNumber(printingBudget)}
                 />
             )}
+
+            {/* Modal de Unificação / Mesclagem de Orçamentos */}
+            <Dialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
+                <DialogContent className="max-w-lg bg-slate-900 border border-amber-500/30 text-white rounded-3xl p-6 shadow-2xl">
+                    <DialogHeader>
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black">
+                                <FolderPlus size={20} />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-lg font-black uppercase text-white">
+                                    Unificar Orçamentos em 1 Projeto
+                                </DialogTitle>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                                    {budgetsToMerge.length} ambientes selecionados para mesclar
+                                </p>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-slate-300 uppercase">Nome do Cliente</Label>
+                            <Input
+                                value={mergeClientName}
+                                onChange={(e) => setMergeClientName(e.target.value)}
+                                className="bg-white/5 border-white/10 text-white rounded-xl text-sm"
+                                placeholder="Nome do cliente..."
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-slate-300 uppercase">Nome do Projeto / Pasta</Label>
+                            <Input
+                                value={mergeProjectName}
+                                onChange={(e) => setMergeProjectName(e.target.value)}
+                                className="bg-white/5 border-white/10 text-white rounded-xl text-sm"
+                                placeholder="Ex: Obra Completa (Quarto, Cozinha...)"
+                            />
+                        </div>
+
+                        {/* Relação dos Ambientes que serão mesclados */}
+                        <div className="bg-white/5 rounded-2xl p-4 border border-white/10 space-y-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
+                                Ambientes que farão parte do orçamento unificado:
+                            </span>
+                            <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                                {budgetsToMerge.map((b, idx) => (
+                                    <div key={b.id || idx} className="flex justify-between items-center text-xs py-1 px-2 rounded-lg bg-white/5">
+                                        <span className="font-bold text-slate-200 uppercase truncate flex-1">{b.project_name || "Ambiente"}</span>
+                                        <span className="font-black text-amber-400 ml-2">{formatCurrency(b.total_value)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="pt-2 border-t border-white/10 flex justify-between items-center text-xs font-black">
+                                <span className="text-slate-300 uppercase">Valor Total Somado:</span>
+                                <span className="text-sm text-emerald-400 font-black">
+                                    {formatCurrency(budgetsToMerge.reduce((acc, b) => acc + (Number(b.total_value) || 0), 0))}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Opção de excluir os originais */}
+                        <div className="flex items-center gap-2 pt-1">
+                            <input
+                                type="checkbox"
+                                id="deleteOriginals"
+                                checked={deleteOriginalsAfterMerge}
+                                onChange={(e) => setDeleteOriginalsAfterMerge(e.target.checked)}
+                                className="rounded border-slate-700 bg-white/5 text-amber-500 focus:ring-amber-500 h-4 w-4"
+                            />
+                            <Label htmlFor="deleteOriginals" className="text-xs text-slate-300 font-medium cursor-pointer">
+                                Excluir os orçamentos individuais anteriores após unificar
+                            </Label>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setIsMergeDialogOpen(false)}
+                            className="rounded-xl text-slate-400 hover:text-white hover:bg-white/5"
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            type="button"
+                            disabled={isMerging}
+                            onClick={handleConfirmMerge}
+                            className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black uppercase text-xs tracking-wider rounded-xl shadow-lg shadow-amber-500/20"
+                        >
+                            {isMerging ? "Unificando..." : "Confirmar e Unificar"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Modal de Conciliação de Estoque & Lista de Compras */}
             {stockSyncBudget && (

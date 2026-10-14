@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 interface Ambiente {
     id: string;
     description: string;
+    observation?: string;
     value: number;
 }
 
@@ -102,6 +103,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
         return [{
             id: 'default',
             description: (initialBudget?.project_name || "MARCENARIA SOB MEDIDA").toUpperCase(),
+            observation: '',
             value: initialBaseValue || 0
         }];
     });
@@ -124,6 +126,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
         const newAmbiente = {
             id: Math.random().toString(36).substring(2, 9),
             description: '',
+            observation: '',
             value: 0
         };
         setLocalAmbientes(prev => [...prev, newAmbiente]);
@@ -417,6 +420,11 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                                 <span className="text-amber-500 font-black text-xs">✔</span>
                                                 <div className="flex-1">
                                                     <span className="uppercase text-[11px] font-black text-slate-900 block">{amb.description || `Ambiente 0${idx+1}`}</span>
+                                                    {amb.observation && amb.observation.trim() && (
+                                                        <span className="text-[10px] text-slate-600 font-medium block mt-0.5 whitespace-pre-wrap">
+                                                            <strong className="text-amber-800">Obs:</strong> {amb.observation.trim()}
+                                                        </span>
+                                                    )}
                                                     <span className="text-[9px] text-slate-400 font-bold">Valor de referência: {formatCurrency(amb.value || 0)}</span>
                                                 </div>
                                             </div>
@@ -658,21 +666,51 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                     ) : viewMode === 'commercial' ? (
                         <div className="space-y-4">
                             {(ambientes || []).map((amb, index) => (
-                                <div key={amb.id} className="group transition-all bg-slate-50 rounded-2xl p-6 border border-slate-100 flex justify-between items-start relative">
-                                    <div className="flex gap-4 flex-1">
-                                        <span className="text-[10px] font-black text-[#f59e0b] opacity-40">0{index+1}.</span>
-                                        <textarea 
-                                            value={amb.description || ''}
-                                            onChange={(e) => handleLocalAmbienteChange(amb.id, 'description', e.target.value)}
-                                            rows={1}
-                                            className="w-full bg-transparent border-none p-0 text-[15px] font-black text-slate-800 uppercase focus:ring-0 resize-y no-print"
-                                            placeholder="DESCREVA O AMBIENTE..."
-                                        />
-                                        <span className="hidden print:block text-[15px] font-black text-slate-800 uppercase whitespace-pre-wrap">
-                                            {amb.description || "AMBIENTE NÃO DESCRITO"}
+                                <div key={amb.id} className="group transition-all bg-slate-50 rounded-2xl p-6 border border-slate-100 flex justify-between items-start relative print:bg-slate-50/60 print:p-4 print:rounded-xl">
+                                    <div className="flex gap-4 flex-1 min-w-0">
+                                        <span className="text-[11px] font-black text-[#f59e0b] opacity-60 shrink-0 pt-0.5">
+                                            {index < 9 ? `0${index + 1}.` : `${index + 1}.`}
                                         </span>
+                                        <div className="flex-1 min-w-0 space-y-2">
+                                            <div>
+                                                <textarea 
+                                                    value={amb.description || ''}
+                                                    onChange={(e) => handleLocalAmbienteChange(amb.id, 'description', e.target.value)}
+                                                    rows={1}
+                                                    className="w-full bg-transparent border-none p-0 text-[15px] font-black text-slate-800 uppercase focus:ring-0 resize-y no-print placeholder:text-slate-400"
+                                                    placeholder="DESCREVA O AMBIENTE (EX: QUARTO)..."
+                                                />
+                                                <span className="hidden print:block text-[15px] font-black text-slate-800 uppercase whitespace-pre-wrap leading-snug">
+                                                    {amb.description || "AMBIENTE NÃO DESCRITO"}
+                                                </span>
+                                            </div>
+
+                                            {/* Campo de Observação / Detalhamento (modo edição) */}
+                                            <div className="no-print pt-1">
+                                                <div className="flex items-start gap-2 bg-white/70 hover:bg-white focus-within:bg-white focus-within:border-amber-400 focus-within:ring-1 focus-within:ring-amber-400 rounded-xl border border-slate-200/80 px-3 py-2 transition-all shadow-2xs">
+                                                    <span className="text-[10px] font-black text-amber-600 uppercase tracking-wider pt-0.5 select-none shrink-0">
+                                                        Obs:
+                                                    </span>
+                                                    <textarea 
+                                                        value={amb.observation || ''}
+                                                        onChange={(e) => handleLocalAmbienteChange(amb.id, 'observation', e.target.value)}
+                                                        rows={2}
+                                                        className="w-full bg-transparent border-none p-0 text-xs font-semibold text-slate-700 placeholder:text-slate-400 focus:ring-0 resize-y focus:outline-none"
+                                                        placeholder="Ex: Vai ser feito o painel ripado + Painel da TV + criados"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Observação / Detalhamento no PDF impresso */}
+                                            {amb.observation && amb.observation.trim() && (
+                                                <div className="hidden print:flex items-start gap-1.5 mt-1.5 text-xs text-slate-600 leading-relaxed font-normal">
+                                                    <span className="font-bold text-amber-700 uppercase text-[10px] tracking-wider shrink-0 pt-0.5">Obs:</span>
+                                                    <span className="whitespace-pre-wrap font-medium text-slate-700">{amb.observation.trim()}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2 min-w-[150px] justify-end">
+                                    <div className="flex items-center gap-2 min-w-[150px] justify-end ml-4 shrink-0 pt-0.5">
                                         <span className="text-[10px] font-black text-slate-300 no-print">R$</span>
                                         <input 
                                             type="number"
@@ -686,7 +724,8 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                     </div>
                                     <button 
                                         onClick={() => handleLocalRemoveAmbiente(amb.id)} 
-                                        className="no-print absolute -right-2 -top-2 bg-white shadow-md text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-2 rounded-full border border-slate-100"
+                                        className="no-print absolute -right-2 -top-2 bg-white shadow-md text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-2 rounded-full border border-slate-100 hover:bg-rose-50"
+                                        title="Remover ambiente"
                                     >
                                         <Trash2 size={14} />
                                     </button>
