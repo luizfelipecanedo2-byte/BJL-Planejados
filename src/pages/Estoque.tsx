@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Truck, AlertTriangle, Package, Layers } from "lucide-react";
+import { Plus, Truck, AlertTriangle, Package, Layers, Search, ShieldCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Product } from "@/types/product";
 import ProductTable from "@/components/crm/ProductTable";
@@ -21,6 +22,7 @@ const Estoque = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         fetchProducts();
@@ -183,13 +185,21 @@ const Estoque = () => {
         }
     };
 
-    const filteredProducts = showOnlyLowStock
-        ? products.filter(p => p.quantity < p.minStockLevel)
-        : products;
+    const filteredProducts = products.filter(p => {
+        const matchesLowStock = showOnlyLowStock ? p.quantity < p.minStockLevel : true;
+        if (!matchesLowStock) return false;
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+            p.name.toLowerCase().includes(q) ||
+            (p.idEstoque || "").toLowerCase().includes(q)
+        );
+    });
 
     const totalInventoryValue = products.reduce((acc, p) => acc + (p.quantity * p.unitPrice), 0);
     const lowStockCount = products.filter(p => p.quantity < p.minStockLevel).length;
     const totalItems = products.length;
+    const stockHealthPercent = totalItems > 0 ? Math.round(((totalItems - lowStockCount) / totalItems) * 100) : 100;
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
@@ -202,17 +212,23 @@ const Estoque = () => {
         <div className="space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                       <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">
-                           Controle de Estoque
+                    <div className="space-y-1">
+                       <div className="flex items-center gap-2">
+                           <span className="tech-hud-pill text-primary border-primary/25 bg-primary/10">
+                               <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                               STOCK.ENGINE // v2.6
+                           </span>
+                           <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground/70">
+                               Almoxarifado & Insumos
+                           </span>
+                       </div>
+                       <h2 className="text-3xl md:text-4xl font-display font-extrabold tracking-tight text-foreground">
+                           Controle de <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-400 to-amber-600 text-glow">Estoque</span>
                        </h2>
-                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
-                           Gestão de Patrimônio, Insumos & Sobras de MDF
-                       </p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                        <TabsList className="bg-card/60 border border-white/10 p-1 rounded-2xl h-11 backdrop-blur-xl">
+                        <TabsList className="bg-white/[0.03] border border-white/10 p-1 rounded-2xl h-11 backdrop-blur-xl">
                             <TabsTrigger 
                                 value="insumos" 
                                 className="rounded-xl px-4 font-bold text-xs gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
@@ -240,73 +256,106 @@ const Estoque = () => {
 
                 {/* ABA 1: INSUMOS & FERRAGENS */}
                 <TabsContent value="insumos" className="space-y-6 mt-0">
-                    {/* STOCK HUD */}
-                    <div className={cn("grid gap-4", isAdmin ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2")}>
+                    {/* STOCK HUD BENTO */}
+                    <div className={cn("grid gap-4", isAdmin ? "grid-cols-1 md:grid-cols-4" : "grid-cols-1 md:grid-cols-3")}>
                         {isAdmin && (
-                            <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
-                                <CardContent className="p-6 flex items-center justify-between relative">
-                                    <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
-                                        <Truck className="h-32 w-32" />
+                            <div className="executive-card border-metallic p-5 rounded-2xl relative overflow-hidden group">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Patrimônio Imobilizado</span>
+                                    <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
+                                        <Truck className="h-4 w-4" />
                                     </div>
-                                    <div className="relative z-10">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Valor Total em Estoque</p>
-                                        <h3 className="text-3xl font-black text-primary tracking-tighter">
-                                            <AnimatedCounter value={totalInventoryValue} formatter={formatCurrency} />
-                                        </h3>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                </div>
+                                <h3 className="text-2xl font-display font-black text-primary tracking-tight font-tech tabular-nums">
+                                    <AnimatedCounter value={totalInventoryValue} formatter={formatCurrency} />
+                                </h3>
+                                <p className="text-[10px] text-muted-foreground/70 mt-1">Valor total dos insumos estocados</p>
+                            </div>
                         )}
 
-                        <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
-                            <CardContent className="p-6 flex items-center justify-between relative">
-                                <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-rose-500">
-                                    <AlertTriangle className="h-32 w-32" />
+                        <div className="executive-card border-metallic p-5 rounded-2xl relative overflow-hidden group">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Alertas de Reposição</span>
+                                <div className={cn("p-2 rounded-xl border", lowStockCount > 0 ? "bg-rose-500/10 text-rose-400 border-rose-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20")}>
+                                    <AlertTriangle className="h-4 w-4" />
                                 </div>
-                                <div className="relative z-10">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Alertas de Reposição</p>
-                                    <h3 className={cn("text-3xl font-black tracking-tighter", lowStockCount > 0 ? "text-rose-500" : "text-emerald-500")}>
-                                        <AnimatedCounter value={lowStockCount} /> 
-                                        <span className="text-sm font-bold uppercase ml-2 text-muted-foreground">Itens Baixos</span>
-                                    </h3>
-                                </div>
-                            </CardContent>
-                        </Card>
+                            </div>
+                            <h3 className={cn("text-2xl font-display font-black tracking-tight font-tech tabular-nums", lowStockCount > 0 ? "text-rose-400" : "text-emerald-400")}>
+                                <AnimatedCounter value={lowStockCount} />
+                                <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">SKUs críticos</span>
+                            </h3>
+                            <p className="text-[10px] text-muted-foreground/70 mt-1">Abaixo do estoque mínimo</p>
+                        </div>
 
-                        <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
-                            <CardContent className="p-6 flex items-center justify-between relative">
-                                <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-blue-500">
-                                    <Package className="h-32 w-32" />
+                        <div className="executive-card border-metallic p-5 rounded-2xl relative overflow-hidden group">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Catálogo Ativo</span>
+                                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                    <Package className="h-4 w-4" />
                                 </div>
-                                <div className="relative z-10">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Total de Itens Cadastrados</p>
-                                    <h3 className="text-3xl font-black text-white tracking-tighter">
-                                        <AnimatedCounter value={totalItems} />
-                                        <span className="text-sm font-bold uppercase ml-2 text-muted-foreground text-glow text-primary/50">Produtos</span>
-                                    </h3>
+                            </div>
+                            <h3 className="text-2xl font-display font-black text-foreground tracking-tight font-tech tabular-nums">
+                                <AnimatedCounter value={totalItems} />
+                                <span className="text-xs font-bold uppercase ml-2 text-muted-foreground">Produtos</span>
+                            </h3>
+                            <p className="text-[10px] text-muted-foreground/70 mt-1">Ferragens, chapas e acessórios</p>
+                        </div>
+
+                        <div className="executive-card border-metallic p-5 rounded-2xl relative overflow-hidden group">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Saúde Operacional</span>
+                                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    <ShieldCheck className="h-4 w-4" />
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-2xl font-display font-black text-emerald-400 tracking-tight font-tech tabular-nums">
+                                    {stockHealthPercent}%
+                                </h3>
+                                <span className="text-[10px] font-bold uppercase text-muted-foreground">Abastecido</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-white/[0.05] rounded-full overflow-hidden mt-2">
+                                <div
+                                    className={cn("h-full rounded-full transition-all duration-700", stockHealthPercent >= 80 ? "bg-emerald-500" : stockHealthPercent >= 50 ? "bg-amber-500" : "bg-rose-500")}
+                                    style={{ width: `${stockHealthPercent}%` }}
+                                />
+                            </div>
+                        </div>
                     </div>
 
-                    <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl rounded-3xl overflow-hidden">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-muted/20">
+                    <div className="executive-card border-metallic rounded-3xl overflow-hidden">
+                        <div className="p-5 border-b border-white/[0.06] bg-white/[0.01] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
-                                <CardTitle className="text-xl font-black tracking-tighter uppercase">Itens em Catálogo</CardTitle>
-                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Base de Dados de Insumos</p>
+                                <h3 className="text-base font-display font-bold tracking-tight uppercase text-foreground">Itens em Catálogo</h3>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                    Exibindo <span className="font-tech text-primary">{filteredProducts.length}</span> de <span className="font-tech">{totalItems}</span> insumos
+                                </p>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2.5">
+                                <div className="relative w-full sm:w-64">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                    <Input
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Buscar por nome ou #código..."
+                                        className="pl-9 h-9 rounded-xl bg-white/[0.03] border-white/10 text-xs focus-visible:ring-primary/30"
+                                    />
+                                </div>
                                 <Button
                                     variant={showOnlyLowStock ? "destructive" : "outline"}
                                     size="sm"
                                     onClick={() => setShowOnlyLowStock(!showOnlyLowStock)}
-                                    className="text-[10px] font-black uppercase tracking-widest h-8 rounded-full"
+                                    className={cn(
+                                        "text-[10px] font-black uppercase tracking-widest h-9 rounded-xl px-3.5 transition-all",
+                                        !showOnlyLowStock && "border-white/10 bg-white/[0.02] hover:bg-white/[0.06]"
+                                    )}
                                 >
-                                    {showOnlyLowStock ? "Filtro Ativo: Reposição" : "Filtrar Reposição"}
+                                    <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
+                                    {showOnlyLowStock ? `Reposição (${lowStockCount})` : "Filtrar Críticos"}
                                 </Button>
                             </div>
-                        </CardHeader>
-                        <CardContent>
+                        </div>
+                        <div className="p-5">
                             <ProductTable
                                 products={filteredProducts}
                                 onEdit={handleEditProduct}
@@ -314,8 +363,8 @@ const Estoque = () => {
                                 onOrder={handleOrderProduct}
                                 isAdmin={isAdmin}
                             />
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
 
                     <ProductFormDialog
                         open={isDialogOpen}

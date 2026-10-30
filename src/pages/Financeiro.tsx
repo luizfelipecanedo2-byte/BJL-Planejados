@@ -1847,29 +1847,37 @@ const Financeiro = () => {
     )}>
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-2">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-3 mb-1">
-             <div className="h-8 w-1 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
-             <h1 className="text-4xl font-['Cinzel'] font-bold text-luxury tracking-wider shimmer-gold uppercase">Financeiro</h1>
+          <div className="flex items-center gap-2">
+            <span className="tech-hud-pill text-primary border-primary/25 bg-primary/10">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
+              FIN.ENGINE // v2.6
+            </span>
+            <span className="text-[10px] font-mono font-semibold text-emerald-400 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+              {transactions.length} Lançamentos Sincronizados
+            </span>
           </div>
-          <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-[10px] opacity-60">Gestão de Fluxo de Caixa & Patrimônio Premium</p>
+          <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight text-white flex items-center gap-3">
+            Cockpit <span className="shimmer-gold">Financeiro & DRE</span>
+          </h1>
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <Button 
             variant="ghost" 
-            className="h-14 px-8 rounded-2xl glass-card border-white/5 luxury-shadow hover:bg-primary/5 hover:text-primary transition-all group overflow-hidden relative w-full sm:w-auto"
+            className="h-11 px-6 rounded-2xl executive-card border-metallic hover:bg-primary/10 hover:text-primary transition-all group overflow-hidden relative w-full sm:w-auto"
             onClick={handleNewTransaction}
           >
-            <Plus className="mr-3 h-5 w-5 group-hover:scale-125 transition-transform" />
-             <span className="font-black text-[11px] uppercase tracking-widest text-luxury">Novo Lançamento</span>
+            <Plus className="mr-2.5 h-4 w-4 text-primary group-hover:scale-125 transition-transform" />
+             <span className="font-display font-bold text-xs uppercase tracking-wider">Novo Lançamento</span>
           </Button>
           <Button 
             variant="ghost" 
-            className="h-14 px-8 rounded-2xl glass-card border-white/5 luxury-shadow hover:bg-emerald-500/5 hover:text-emerald-500 transition-all group overflow-hidden relative w-full sm:w-auto"
+            className="h-11 px-6 rounded-2xl executive-card border-metallic hover:bg-emerald-500/10 hover:text-emerald-400 transition-all group overflow-hidden relative w-full sm:w-auto"
             onClick={handleNewTransfer}
           >
-            <TrendingUp className="mr-3 h-5 w-5 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" />
-            <span className="font-black text-[11px] uppercase tracking-widest text-luxury">Transferência</span>
+            <TrendingUp className="mr-2.5 h-4 w-4 text-emerald-400 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
+            <span className="font-display font-bold text-xs uppercase tracking-wider">Transferência</span>
           </Button>
         </div>
       </header>

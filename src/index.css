@@ -223,30 +223,23 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
+  /* Interactive High-Tech Grid + Ambient Radial Glow */
   body::before {
     content: "";
-    @apply fixed inset-0 z-[-1] pointer-events-none;
-    background: 
-      radial-gradient(circle at 15% 50%, hsl(var(--primary) / 0.08) 0%, transparent 40%),
-      radial-gradient(circle at 85% 30%, hsl(var(--primary) / 0.05) 0%, transparent 40%);
-    animation: ambientShift 20s ease-in-out infinite alternate;
+    @apply fixed inset-0 z-[-2] pointer-events-none;
+    background-image: 
+      radial-gradient(circle at 15% 50%, hsl(var(--primary) / 0.08) 0%, transparent 45%),
+      radial-gradient(circle at 85% 25%, hsl(var(--primary) / 0.05) 0%, transparent 45%),
+      linear-gradient(to right, hsl(var(--primary) / 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--primary) / 0.03) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 56px 56px, 56px 56px;
+    mask-image: radial-gradient(circle at 50% 45%, black 40%, rgba(0, 0, 0, 0.45) 85%, transparent 100%);
   }
 
   @keyframes ambientShift {
     0% { transform: scale(1) translate(0, 0); }
     50% { transform: scale(1.05) translate(1%, -1%); }
     100% { transform: scale(1.02) translate(-1%, 1%); }
-  }
-
-  /* Interactive High-Tech Grid Background */
-  body::before {
-    content: "";
-    @apply fixed inset-0 z-[-2] pointer-events-none;
-    background-image: 
-      linear-gradient(to right, hsl(var(--primary) / 0.03) 1px, transparent 1px),
-      linear-gradient(to bottom, hsl(var(--primary) / 0.03) 1px, transparent 1px);
-    background-size: 60px 60px;
-    mask-image: radial-gradient(circle at 50% 50%, black, transparent 90%);
   }
 
   /* Grainy detail for that premium high-end feel */
@@ -730,5 +723,33 @@
 
   .tabular-nums {
     font-variant-numeric: tabular-nums;
+  }
+
+  .font-tech {
+    font-family: 'Space Grotesk', 'Outfit', sans-serif;
+    letter-spacing: -0.03em;
+  }
+
+  .tech-hud-pill {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest border border-white/10 bg-white/[0.03] backdrop-blur-xl;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  @keyframes orbitSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes orbitSpinReverse {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
+  }
+
+  .animate-orbit {
+    animation: orbitSpin 12s linear infinite;
+  }
+
+  .animate-orbit-reverse {
+    animation: orbitSpinReverse 8s linear infinite;
   }
 }

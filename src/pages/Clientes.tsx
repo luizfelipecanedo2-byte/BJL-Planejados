@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { Button } from "@/components/ui/button";
-import { Users, Truck, UserPlus, Plus, Hammer } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Users, Truck, UserPlus, Plus, Hammer, Search, MapPin, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Client } from "@/types/client";
 import ClientTable from "@/components/crm/ClientTable";
@@ -24,6 +25,7 @@ const Clientes = () => {
     const [selectedTimelineClient, setSelectedTimelineClient] = useState<Client | null>(null);
     const [isFilesOpen, setIsFilesOpen] = useState(false);
     const [selectedFilesClient, setSelectedFilesClient] = useState<Client | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         fetchClients();
@@ -189,73 +191,176 @@ const Clientes = () => {
         }
     };
 
+    const totalClientsCount = clients.filter(c => c.type === 'cliente').length;
+    const totalSuppliersCount = clients.filter(c => c.type === 'fornecedor').length;
+    const mappedAddressesCount = clients.filter(c => Boolean(c.address || c.city)).length;
+    const activePhonesCount = clients.filter(c => Boolean(c.phone)).length;
+
+    const filterList = (list: Client[]) => {
+        if (!searchQuery.trim()) return list;
+        const q = searchQuery.toLowerCase();
+        return list.filter(c =>
+            c.name?.toLowerCase().includes(q) ||
+            c.document?.toLowerCase().includes(q) ||
+            c.phone?.toLowerCase().includes(q) ||
+            c.city?.toLowerCase().includes(q) ||
+            c.address?.toLowerCase().includes(q)
+        );
+    };
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-4xl font-['Cinzel'] font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow uppercase">
-                        Clientes, Fornecedores e Colaboradores
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                        <span className="tech-hud-pill text-primary border-primary/25 bg-primary/10">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
+                            PEOPLE.HUB // v2.6
+                        </span>
+                        <span className="text-[10px] font-mono font-semibold text-emerald-400 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                            {clients.length} Registros Ativos
+                        </span>
+                    </div>
+                    <h2 className="text-3xl md:text-4xl font-display font-black tracking-tight text-white">
+                        Clientes, Fornecedores & <span className="shimmer-gold">Equipe</span>
                     </h2>
-                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
-                       Gestão Centralizada de Pessoas • Clientes, Fornecedores & Equipe da Fábrica
-                   </p>
+                    <p className="text-xs text-muted-foreground">
+                        Base unificada de relacionamento, obras mapeadas por GPS, parceiros homologados e colaboradores da fábrica.
+                    </p>
                 </div>
                 {activeTab !== "colaborador" && (
-                    <MagicButton onClick={handleNewClient} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
+                    <MagicButton onClick={handleNewClient} className="gap-2 h-11 px-6 rounded-2xl shadow-xl shadow-primary/20 font-display font-bold text-xs">
                         <UserPlus className="h-4 w-4" />
                         Novo Registro
                     </MagicButton>
                 )}
             </div>
 
+            {/* Bento KPI Strip */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+                <div className="executive-card border-metallic p-5 rounded-3xl flex items-center justify-between">
+                    <div>
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                            Carteira de Clientes
+                        </span>
+                        <span className="text-2xl sm:text-3xl font-mono font-black text-white tabular-nums">
+                            {totalClientsCount}
+                        </span>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 text-primary">
+                        <Users className="h-5 w-5" />
+                    </div>
+                </div>
+
+                <div className="executive-card border-metallic p-5 rounded-3xl flex items-center justify-between">
+                    <div>
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                            Fornecedores
+                        </span>
+                        <span className="text-2xl sm:text-3xl font-mono font-black text-cyan-400 tabular-nums">
+                            {totalSuppliersCount}
+                        </span>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                        <Truck className="h-5 w-5" />
+                    </div>
+                </div>
+
+                <div className="executive-card border-metallic p-5 rounded-3xl flex items-center justify-between">
+                    <div>
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                            Obras c/ Rota GPS
+                        </span>
+                        <span className="text-2xl sm:text-3xl font-mono font-black text-emerald-400 tabular-nums">
+                            {mappedAddressesCount}
+                        </span>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                        <MapPin className="h-5 w-5" />
+                    </div>
+                </div>
+
+                <div className="executive-card border-metallic p-5 rounded-3xl flex items-center justify-between">
+                    <div>
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                            Canais WhatsApp
+                        </span>
+                        <span className="text-2xl sm:text-3xl font-mono font-black text-amber-400 tabular-nums">
+                            {activePhonesCount}
+                        </span>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                        <MessageSquare className="h-5 w-5" />
+                    </div>
+                </div>
+            </div>
+
             <Tabs defaultValue="cliente" className="w-full space-y-6" onValueChange={setActiveTab}>
-                <TabsList className="bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-white/10 p-1.5 rounded-full h-auto shadow-sm inline-flex flex-wrap gap-1">
-                    <TabsTrigger value="cliente" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
-                        <Users className="h-4 w-4" />
-                        Clientes
-                    </TabsTrigger>
-                    <TabsTrigger value="fornecedor" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
-                        <Truck className="h-4 w-4" />
-                        Fornecedores
-                    </TabsTrigger>
-                    <TabsTrigger value="colaborador" className="gap-2 rounded-full px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-bold">
-                        <Hammer className="h-4 w-4" />
-                        Colaboradores (Equipe)
-                    </TabsTrigger>
-                </TabsList>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <TabsList className="glass-panel-pro p-1.5 rounded-2xl h-auto shadow-xl inline-flex flex-wrap gap-1 w-fit">
+                        <TabsTrigger value="cliente" className="gap-2 rounded-xl px-5 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-display font-bold text-xs">
+                            <Users className="h-4 w-4" />
+                            <span>Clientes</span>
+                            <span className="px-1.5 py-0.2 rounded-full bg-black/20 font-mono text-[10px]">{totalClientsCount}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="fornecedor" className="gap-2 rounded-xl px-5 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-display font-bold text-xs">
+                            <Truck className="h-4 w-4" />
+                            <span>Fornecedores</span>
+                            <span className="px-1.5 py-0.2 rounded-full bg-black/20 font-mono text-[10px]">{totalSuppliersCount}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="colaborador" className="gap-2 rounded-xl px-5 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all font-display font-bold text-xs">
+                            <Hammer className="h-4 w-4" />
+                            <span>Colaboradores (Equipe)</span>
+                        </TabsTrigger>
+                    </TabsList>
+
+                    {activeTab !== "colaborador" && (
+                        <div className="relative w-full md:w-80">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Buscar por nome, CPF/CNPJ, telefone ou cidade..."
+                                className="pl-10 h-10 rounded-xl bg-white/[0.03] border-white/10 text-xs focus-visible:ring-primary/40"
+                            />
+                        </div>
+                    )}
+                </div>
 
                 <TabsContent value="cliente">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Base de Clientes</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ClientTable
-                                clients={clients.filter(c => c.type === 'cliente')}
-                                onEdit={handleEditClient}
-                                onDelete={handleDeleteClient}
-                                onViewTimeline={handleViewTimeline}
-                                onViewFiles={handleViewFiles}
-                            />
-                        </CardContent>
-                    </Card>
+                    <div className="executive-card border-metallic rounded-[2rem] p-5 sm:p-6 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-sm font-display font-bold uppercase tracking-wider text-white">Base de Clientes</h3>
+                                <p className="text-[10px] font-mono text-muted-foreground">Acesso rápido a Central 360º, arquivos da obra e rotas GPS</p>
+                            </div>
+                        </div>
+                        <ClientTable
+                            clients={filterList(clients.filter(c => c.type === 'cliente'))}
+                            onEdit={handleEditClient}
+                            onDelete={handleDeleteClient}
+                            onViewTimeline={handleViewTimeline}
+                            onViewFiles={handleViewFiles}
+                        />
+                    </div>
                 </TabsContent>
 
                 <TabsContent value="fornecedor">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Base de Fornecedores</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ClientTable
-                                clients={clients.filter(c => c.type === 'fornecedor')}
-                                onEdit={handleEditClient}
-                                onDelete={handleDeleteClient}
-                                onViewTimeline={handleViewTimeline}
-                                onViewFiles={handleViewFiles}
-                            />
-                        </CardContent>
-                    </Card>
+                    <div className="executive-card border-metallic rounded-[2rem] p-5 sm:p-6 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-sm font-display font-bold uppercase tracking-wider text-white">Base de Fornecedores Homologados</h3>
+                                <p className="text-[10px] font-mono text-muted-foreground">Parceiros de chapas MDF, ferragens, insumos e serviços terceirizados</p>
+                            </div>
+                        </div>
+                        <ClientTable
+                            clients={filterList(clients.filter(c => c.type === 'fornecedor'))}
+                            onEdit={handleEditClient}
+                            onDelete={handleDeleteClient}
+                            onViewTimeline={handleViewTimeline}
+                            onViewFiles={handleViewFiles}
+                        />
+                    </div>
                 </TabsContent>
 
                 <TabsContent value="colaborador">

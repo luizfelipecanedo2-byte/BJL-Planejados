@@ -786,16 +786,20 @@ const Index = () => {
 
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary/70">CRM Comercial</span>
-            <span className="text-muted-foreground">•</span>
-            <span className="text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
+            <span className="tech-hud-pill text-primary border-primary/25 bg-primary/10">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
+              CRM.ENGINE // v2.6
+            </span>
+            <span className="text-[10px] font-mono font-semibold text-emerald-400 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
-              Ativo
+              {sales.length} Negócios Mapeados
             </span>
           </div>
-          <h2 className="text-4xl md:text-5xl font-['Cinzel'] font-bold text-luxury tracking-wider shimmer-gold text-glow uppercase">Vendas</h2>
+          <h2 className="text-3xl md:text-4xl font-display font-black tracking-tight text-white flex items-center gap-3">
+            Central Comercial & <span className="shimmer-gold">Pipeline</span>
+          </h2>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <DropdownMenu>

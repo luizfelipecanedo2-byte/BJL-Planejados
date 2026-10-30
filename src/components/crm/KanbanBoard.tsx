@@ -139,6 +139,8 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
     }
   };
 
+  const overallTotalValue = sales.reduce((acc, s) => acc + (s.totalValue || 0), 0) || 1;
+
   return (
     <div className="flex gap-4 overflow-x-auto webkit-overflow-scrolling-touch max-w-full pb-4 animate-fade-in">
       {statusOrder.map((status) => {
@@ -147,14 +149,15 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
           (sum, s) => sum + s.totalValue,
           0
         );
+        const columnSharePercent = Math.min(100, Math.round((totalValue / overallTotalValue) * 100));
 
         return (
           <div
             key={status}
             className={cn(
-              "flex-shrink-0 w-72 bg-white/5 backdrop-blur-xl rounded-[2rem] border border-white/10 flex flex-col h-[calc(100vh-280px)] shadow-2xl relative overflow-hidden group/column transition-all duration-300",
+              "flex-shrink-0 w-76 sm:w-80 executive-card border-metallic rounded-3xl border-t-2 flex flex-col h-[calc(100vh-270px)] shadow-2xl relative overflow-hidden group/column transition-all duration-300",
               columnColors[status],
-              draggedOverColumn === status ? "border-primary/60 bg-primary/[0.03] scale-[1.01]" : ""
+              draggedOverColumn === status ? "border-primary/70 bg-primary/[0.04] scale-[1.01]" : ""
             )}
             onDrop={(e) => handleDrop(e, status)}
             onDragOver={(e) => handleDragOver(e, status)}
@@ -162,21 +165,32 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
           >
             <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
             
-            <div className="p-4 border-b border-white/5 relative z-10">
-              <div className="flex items-center gap-2 mb-2">
-                <div className={cn("w-2 h-2 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]", dotColors[status])} />
-                <h3 className="text-[11px] font-black uppercase tracking-widest text-white/90">
+            {/* Sticky Glass Column Header with Pipeline Share Meter */}
+            <div className="p-4 border-b border-white/[0.06] bg-black/30 backdrop-blur-xl relative z-10 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <div className={cn("w-2 h-2 rounded-full shadow-[0_0_10px_currentColor]", dotColors[status])} />
+                <h3 className="text-[11px] font-display font-bold uppercase tracking-wider text-white/95 truncate">
                   {STATUS_LABELS[status]}
                 </h3>
-                <span className="ml-auto text-[10px] bg-white/10 text-white/60 rounded-full px-2.5 py-0.5 font-black">
+                <span className="ml-auto text-[10px] font-mono bg-white/[0.06] border border-white/10 text-white/80 rounded-md px-2 py-0.5 font-bold">
                   {columnSales.length}
                 </span>
               </div>
-              <div className="flex justify-between items-end">
-                  <p className="text-lg font-black text-white tracking-tighter shimmer-gold">
-                    {formatCurrency(totalValue)}
-                  </p>
-                  <p className="text-[8px] font-bold text-white/30 uppercase tracking-tighter">Volume Total</p>
+
+              <div className="flex justify-between items-baseline">
+                <p className="text-lg font-mono font-black text-white tracking-tight tabular-nums shimmer-gold">
+                  {formatCurrency(totalValue)}
+                </p>
+                <span className="text-[9px] font-mono font-semibold text-white/40 uppercase">
+                  {columnSharePercent}% do funil
+                </span>
+              </div>
+
+              <div className="w-full h-1 bg-white/[0.05] rounded-full overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full transition-all duration-700", dotColors[status])}
+                  style={{ width: `${Math.max(columnSales.length > 0 ? 6 : 0, columnSharePercent)}%` }}
+                />
               </div>
             </div>
 
@@ -188,6 +202,13 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
                 const isFreezing = isPendingProposal && lostDays >= 6;
                 const isFollowUp = isPendingProposal && lostDays >= 3 && lostDays < 6;
                 const showWarning = lostDays >= 15 && sale.status && !['fechado', 'nao_fechou', 'congelado'].includes(sale.status);
+                const score = calculateLeadScore(sale);
+                const initials = (sale.clientName || "CL")
+                  .split(" ")
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((w) => w[0]?.toUpperCase())
+                  .join("");
 
                 return (
                   <Card
@@ -196,104 +217,115 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
                     onDragStart={(e) => handleDragStart(e, sale.id)}
                     onClick={() => onEdit(sale)}
                     className={cn(
-                      "cursor-grab active:cursor-grabbing hover:shadow-2xl transition-all duration-300 shadow-lg relative overflow-hidden group spotlight-card tilt-card border-beam-card rounded-2xl backdrop-blur-md",
+                      "cursor-grab active:cursor-grabbing hover:shadow-2xl transition-all duration-300 shadow-lg relative overflow-hidden group rounded-2xl backdrop-blur-xl border",
                       temperatureCardStyles[sale.temperature || "morno"]
                     )}
                   >
                     {hot && (
-                      <div className="absolute top-0 right-0 p-2 bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-bl-xl shadow-lg z-20">
-                        <Flame size={14} className="animate-pulse" />
+                      <div className="absolute top-0 right-0 p-1.5 bg-gradient-to-br from-orange-400 to-rose-600 text-white rounded-bl-xl shadow-lg z-20">
+                        <Flame size={12} className="animate-pulse" />
                       </div>
                     )}
-                    <CardContent className="p-4 relative z-10">
+                    <CardContent className="p-3.5 relative z-10 space-y-3">
                       {isFreezing ? (
-                        <div className="flex items-center gap-1.5 text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full mb-3 w-fit border border-rose-500/30 backdrop-blur-sm animate-pulse">
-                          <Clock size={12} className="text-rose-400" />
-                          <span className="text-[9px] uppercase font-black tracking-widest">
+                        <div className="flex items-center gap-1.5 text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-md w-fit border border-rose-500/30 backdrop-blur-sm animate-pulse">
+                          <Clock size={11} className="text-rose-400" />
+                          <span className="text-[9px] font-mono uppercase font-bold tracking-wider">
                             {lostDays}D S/ RETORNO • ESFRIANDO
                           </span>
                         </div>
                       ) : isFollowUp ? (
-                        <div className="flex items-center gap-1.5 text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full mb-3 w-fit border border-amber-500/30 backdrop-blur-sm">
-                          <Clock size={12} className="text-amber-400" />
-                          <span className="text-[9px] uppercase font-black tracking-widest">
-                            {lostDays}D • FAZER FOLLOW-UP
+                        <div className="flex items-center gap-1.5 text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-md w-fit border border-amber-500/30 backdrop-blur-sm">
+                          <Clock size={11} className="text-amber-400" />
+                          <span className="text-[9px] font-mono uppercase font-bold tracking-wider">
+                            {lostDays}D • FOLLOW-UP
                           </span>
                         </div>
                       ) : showWarning ? (
-                        <div className="flex items-center gap-1.5 text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full mb-3 w-fit border border-rose-500/20 backdrop-blur-sm">
-                          <Clock size={12} className="animate-pulse" />
-                          <span className="text-[9px] uppercase font-black tracking-widest">
+                        <div className="flex items-center gap-1.5 text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-md w-fit border border-rose-500/20 backdrop-blur-sm">
+                          <Clock size={11} className="animate-pulse" />
+                          <span className="text-[9px] font-mono uppercase font-bold tracking-wider">
                             {lostDays} DIAS EM HIATO
                           </span>
                         </div>
                       ) : null}
                       
-                      <div className="space-y-1 mb-4">
-                        <p className="font-black text-sm tracking-tight text-white group-hover:text-primary transition-colors truncate pr-4 uppercase">
+                      <div className="flex items-start gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-[10px] font-mono font-bold text-primary shrink-0 group-hover:border-primary/40 group-hover:bg-primary/15 transition-colors">
+                          {initials}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-display font-bold text-xs tracking-tight text-white group-hover:text-primary transition-colors truncate pr-3 uppercase">
                             {sale.clientName || 'CLIENTE S/ NOME'}
-                        </p>
-                        <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest truncate">
+                          </p>
+                          <p className="text-[10px] text-white/45 font-medium truncate mt-0.5">
                             {sale.product} {sale.quantity > 1 && `[×${sale.quantity}]`}
-                        </p>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {sale.budget_id && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/admin/orcamento?client=${encodeURIComponent(sale.clientName)}&budgetId=${sale.budget_id}`);
-                              }}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                              title="Abrir Orçamento Ativo deste Lead"
-                            >
-                              <Calculator className="h-2.5 w-2.5" />
-                              Orçamento Ativo
-                            </button>
-                          )}
-                          {sale.temperature && (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border ${temperatureBadgeStyles[sale.temperature]}`}>
-                              {TEMPERATURE_LABELS[sale.temperature]}
-                            </span>
-                          )}
-                          {/* Lead Scoring Badge (Probabilidade de Fechamento) */}
-                          {(() => {
-                            const score = calculateLeadScore(sale);
-                            return (
-                              <span className={cn(
-                                "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border",
-                                score >= 70 ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
-                                score >= 40 ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
-                                "bg-rose-500/20 text-rose-400 border-rose-500/30"
-                              )}>
-                                <Target size={10} />
-                                <span>{score}% Score</span>
-                              </span>
-                            );
-                          })()}
+                          </p>
                         </div>
                       </div>
 
-                      <div className="flex items-end justify-between gap-2 mt-auto">
-                        <div className="space-y-1">
-                            <p className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Proposta</p>
-                            <p className="text-base font-black text-primary tracking-tighter">
-                                {formatCurrency(sale.totalValue || 0)}
-                            </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {sale.budget_id && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/admin/orcamento?client=${encodeURIComponent(sale.clientName)}&budgetId=${sale.budget_id}`);
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-mono font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition-all cursor-pointer"
+                            title="Abrir Orçamento Ativo deste Lead"
+                          >
+                            <Calculator className="h-2.5 w-2.5" />
+                            Orçamento Ativo
+                          </button>
+                        )}
+                        {sale.temperature && (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-mono font-bold uppercase tracking-wider border ${temperatureBadgeStyles[sale.temperature]}`}>
+                            {TEMPERATURE_LABELS[sale.temperature]}
+                          </span>
+                        )}
+                        <span className={cn(
+                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-mono font-bold uppercase tracking-wider border ml-auto",
+                          score >= 70 ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
+                          score >= 40 ? "bg-amber-500/15 text-amber-400 border-amber-500/30" :
+                          "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                        )}>
+                          <Target size={9} />
+                          <span>{score}%</span>
+                        </span>
+                      </div>
+
+                      {/* Micro Probability Bar */}
+                      <div className="w-full h-1 bg-white/[0.04] rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-500",
+                            score >= 70 ? "bg-emerald-400" : score >= 40 ? "bg-amber-400" : "bg-rose-400"
+                          )}
+                          style={{ width: `${score}%` }}
+                        />
+                      </div>
+
+                      <div className="flex items-end justify-between gap-2 pt-1 border-t border-white/[0.05]">
+                        <div>
+                          <p className="text-[8px] font-mono font-semibold text-white/35 uppercase tracking-wider leading-none mb-0.5">Proposta</p>
+                          <p className="text-sm font-mono font-black text-primary tracking-tight tabular-nums">
+                            {formatCurrency(sale.totalValue || 0)}
+                          </p>
                         </div>
                         
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               navigate(`/admin/orcamento?client=${encodeURIComponent(sale.clientName)}&saleId=${sale.id}&phone=${encodeURIComponent(sale.clientPhone || '')}&project=${encodeURIComponent(sale.product || '')}&new=true`);
                             }}
-                            className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 transition-all hover:scale-110 active:scale-95 flex items-center gap-1"
+                            className="px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-1"
                             title="Criar / Abrir Orçamento no Sistema"
                           >
                             <Calculator className="h-3 w-3" />
-                            <span className="text-[8px] font-black uppercase hidden sm:inline">Orçar</span>
+                            <span className="text-[8px] font-mono font-bold uppercase hidden sm:inline">Orçar</span>
                           </button>
 
                           {sale.clientPhone && (
@@ -304,17 +336,17 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
                                 setWhatsAppSale(sale);
                                 setIsWhatsAppOpen(true);
                               }}
-                              className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all hover:scale-110 active:scale-95"
+                              className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all hover:scale-105 active:scale-95"
                               title="Enviar WhatsApp"
                             >
                               <MessageSquare className="h-3 w-3" />
                             </button>
                           )}
-                          <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity">
-                              <Phone className="h-3 w-3 text-white/40" />
-                              <span className="text-[9px] font-black text-white/60 tracking-tighter">
-                                  {sale.clientPhone ? sale.clientPhone.split(' ').pop() : '---'}
-                              </span>
+                          <div className="flex items-center gap-1 bg-white/[0.04] px-1.5 py-1 rounded-lg border border-white/[0.06] opacity-70 group-hover:opacity-100 transition-opacity">
+                            <Phone className="h-2.5 w-2.5 text-white/40" />
+                            <span className="text-[9px] font-mono font-semibold text-white/70">
+                              {sale.clientPhone ? sale.clientPhone.split(' ').pop() : '---'}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -325,7 +357,7 @@ const KanbanBoard = ({ sales, onStatusChange, onEdit, onAddQuickSale }: KanbanBo
             </div>
 
             {/* Rodapé da Coluna com Adição Rápida */}
-            <div className="p-3 border-t border-white/5 relative z-10 bg-black/10">
+            <div className="p-3 border-t border-white/[0.06] relative z-10 bg-black/20">
               <ColumnQuickAdd
                 status={status}
                 onAdd={(name, product, val) => onAddQuickSale(status, name, product, val)}

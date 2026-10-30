@@ -12,6 +12,8 @@ As Edge Functions atuam como um "cofre seguro" no servidor Supabase, garantindo 
 4. Adicione os seguintes Secrets:
    * **`GEMINI_API_KEY`**: Sua chave de API do Google AI Studio.
    * **`ASAAS_API_KEY`**: Sua chave de API do Asaas (começa com `$` se for Sandbox).
+   * **`NUVEM_FISCAL_CLIENT_ID`**: Client ID gratuito da [Nuvem Fiscal](https://console.nuvemfiscal.com.br/).
+   * **`NUVEM_FISCAL_CLIENT_SECRET`**: Client Secret gratuito da Nuvem Fiscal.
 
 ---
 
@@ -47,6 +49,7 @@ npx supabase secrets set ASAAS_API_KEY=sua_chave_asaas_aqui
 # Deploy das funções
 npx supabase functions deploy gemini-proxy --no-verify-jwt
 npx supabase functions deploy asaas-proxy --no-verify-jwt
+npx supabase functions deploy nuvem-fiscal --no-verify-jwt
 ```
 
 ---

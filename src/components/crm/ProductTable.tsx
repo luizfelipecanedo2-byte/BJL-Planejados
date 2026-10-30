@@ -31,71 +31,78 @@ const ProductTable = ({ products, onEdit, onDelete, onOrder, isAdmin = true }: P
     return (
         <div className="space-y-4">
             {/* Mobile View: Card-based layout */}
-            <div className="grid grid-cols-1 gap-4 md:hidden">
+            <div className="grid grid-cols-1 gap-3.5 md:hidden">
                 {products.map((product) => {
                     const totalValue = product.quantity * product.unitPrice;
                     const isLowStock = product.quantity < product.minStockLevel;
                     const orderQuantity = isLowStock ? product.minStockLevel - product.quantity : 0;
+                    const levelPct = product.minStockLevel > 0 ? Math.min(100, Math.round((product.quantity / (product.minStockLevel * 1.5)) * 100)) : 100;
 
                     return (
-                        <div key={product.id} className="bg-card border rounded-xl p-4 shadow-sm space-y-3">
-                            <div className="flex justify-between items-start">
+                        <div key={product.id} className="executive-card border-metallic rounded-2xl p-4 space-y-3">
+                            <div className="flex justify-between items-start gap-2">
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-bold px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
+                                        <span className="text-[10px] font-tech font-bold px-2 py-0.5 bg-primary/10 border border-primary/20 rounded-md text-primary">
                                             #{product.idEstoque || "-"}
                                         </span>
-                                        <h3 className="font-bold text-lg leading-tight">{product.name}</h3>
+                                        <h3 className="font-display font-bold text-base leading-tight text-foreground">{product.name}</h3>
                                     </div>
                                     {isAdmin && (
-                                        <p className="text-sm text-muted-foreground mt-1">
+                                        <p className="text-xs font-tech text-muted-foreground mt-1">
                                             {formatCurrency(product.unitPrice)} / un
                                         </p>
                                     )}
                                 </div>
                                 <div className="flex gap-1">
-                                    <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => onEdit(product)}>
-                                        <Pencil className="h-4 w-4 text-primary" />
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-white/[0.03] border border-white/[0.06]" onClick={() => onEdit(product)}>
+                                        <Pencil className="h-3.5 w-3.5 text-primary" />
                                     </Button>
                                     {onOrder && (
                                         <Button 
-                                            variant="outline" 
+                                            variant="ghost" 
                                             size="icon" 
-                                            className="h-9 w-9 text-emerald-500 border-emerald-200 hover:bg-emerald-50" 
+                                            className="h-8 w-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20" 
                                             onClick={() => onOrder(product)}
                                             title="Pedir mais"
                                         >
-                                            <Plus className="h-4 w-4" />
+                                            <Plus className="h-3.5 w-3.5" />
                                         </Button>
                                     )}
-                                    <Button variant="outline" size="icon" className="h-9 w-9 text-red-500 border-red-200 hover:bg-red-50" onClick={() => onDelete(product.id)}>
-                                        <Trash2 className="h-4 w-4" />
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20" onClick={() => onDelete(product.id)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                 </div>
                             </div>
 
-                            <div className={cn("grid gap-4 py-2 border-y border-border/50", isAdmin ? "grid-cols-2" : "grid-cols-1")}>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Estoque</span>
-                                    <span className="font-mono text-lg">{product.quantity}</span>
+                            <div className={cn("grid gap-4 py-2.5 border-y border-white/[0.06]", isAdmin ? "grid-cols-2" : "grid-cols-1")}>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Saldo / Mín. ({product.minStockLevel})</span>
+                                    <span className="font-tech font-bold text-base tabular-nums">{product.quantity} un</span>
+                                    <div className="w-full h-1 bg-white/[0.06] rounded-full overflow-hidden">
+                                        <div
+                                            className={cn("h-full rounded-full", isLowStock ? "bg-rose-500" : "bg-emerald-500")}
+                                            style={{ width: `${levelPct}%` }}
+                                        />
+                                    </div>
                                 </div>
                                 {isAdmin && (
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Total</span>
-                                        <span className="font-mono text-lg">{formatCurrency(totalValue)}</span>
+                                    <div className="flex flex-col justify-center">
+                                        <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Total Estocado</span>
+                                        <span className="font-tech font-bold text-base text-primary tabular-nums">{formatCurrency(totalValue)}</span>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex items-center justify-between pt-1">
-                                <Badge variant={isLowStock ? "destructive" : "default"} className={!isLowStock ? "bg-green-600/90 text-[10px]" : "text-[10px]"}>
+                            <div className="flex items-center justify-between pt-0.5">
+                                <Badge variant="outline" className={cn("text-[9px] font-black uppercase tracking-widest rounded-lg", isLowStock ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400")}>
                                     {isLowStock ? "Abaixo do Mínimo" : "Estoque OK"}
                                 </Badge>
 
                                 {orderQuantity > 0 && (
-                                    <div className="text-right">
-                                        <span className="text-[10px] text-muted-foreground block">Pedir:</span>
-                                        <span className="font-bold text-red-600">+{orderQuantity} un</span>
+                                    <div className="text-right flex items-center gap-1.5">
+                                        <span className="text-[9px] uppercase font-bold text-muted-foreground">Repor:</span>
+                                        <span className="font-tech font-bold text-xs text-rose-400 px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">+{orderQuantity} un</span>
                                     </div>
                                 )}
                             </div>
@@ -103,26 +110,26 @@ const ProductTable = ({ products, onEdit, onDelete, onOrder, isAdmin = true }: P
                     );
                 })}
                 {products.length === 0 && (
-                    <div className="text-center py-10 bg-muted/20 rounded-xl border-2 border-dashed">
-                        <p className="text-muted-foreground">Nenhum produto no estoque.</p>
+                    <div className="text-center py-10 bg-white/[0.02] rounded-2xl border border-dashed border-white/10">
+                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nenhum produto encontrado no estoque.</p>
                     </div>
                 )}
             </div>
 
             {/* Desktop View: Table layout */}
-            <div className="hidden md:block rounded-md border overflow-hidden">
+            <div className="hidden md:block rounded-2xl border border-white/[0.06] bg-black/20 overflow-hidden">
                 <Table className="min-w-[700px]">
                     <TableHeader>
-                        <TableRow className="bg-muted/30">
-                            <TableHead className="w-[80px]">Editar</TableHead>
-                            <TableHead>Cod.</TableHead>
-                            <TableHead>Nome</TableHead>
-                            {isAdmin && <TableHead>Preço</TableHead>}
-                            <TableHead>Qtd.</TableHead>
-                            {isAdmin && <TableHead>Valor Total</TableHead>}
-                            <TableHead>Status</TableHead>
-                            <TableHead>Pedir</TableHead>
-                            <TableHead className="w-[50px] text-right">Excluir</TableHead>
+                        <TableRow className="bg-white/[0.02] border-b border-white/[0.06] hover:bg-white/[0.02]">
+                            <TableHead className="w-[70px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">Editar</TableHead>
+                            <TableHead className="w-[90px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">SKU</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Insumo / Produto</TableHead>
+                            {isAdmin && <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Custo Unit.</TableHead>}
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Saldo & Nível</TableHead>
+                            {isAdmin && <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total Imobilizado</TableHead>}
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Sugestão Compra</TableHead>
+                            <TableHead className="w-[90px] text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -130,29 +137,49 @@ const ProductTable = ({ products, onEdit, onDelete, onOrder, isAdmin = true }: P
                             const totalValue = product.quantity * product.unitPrice;
                             const isLowStock = product.quantity < product.minStockLevel;
                             const orderQuantity = isLowStock ? product.minStockLevel - product.quantity : 0;
+                            const levelPct = product.minStockLevel > 0 ? Math.min(100, Math.round((product.quantity / (product.minStockLevel * 1.5)) * 100)) : 100;
 
                             return (
-                                <TableRow key={product.id} className="hover:bg-muted/10 transition-colors">
+                                <TableRow key={product.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors">
                                     <TableCell>
-                                        <Button variant="ghost" size="icon" className="hover:scale-110 active:scale-95 transition-all" onClick={() => onEdit(product)}>
-                                            <Pencil className="h-4 w-4 text-primary" />
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-primary/10 transition-all" onClick={() => onEdit(product)}>
+                                            <Pencil className="h-3.5 w-3.5 text-primary" />
                                         </Button>
                                     </TableCell>
-                                    <TableCell className="font-medium font-mono text-xs">{product.idEstoque || "-"}</TableCell>
-                                    <TableCell className="font-semibold">{product.name}</TableCell>
-                                    {isAdmin && <TableCell>{formatCurrency(product.unitPrice)}</TableCell>}
-                                    <TableCell className="font-mono">{product.quantity}</TableCell>
-                                    {isAdmin && <TableCell className="font-mono">{formatCurrency(totalValue)}</TableCell>}
                                     <TableCell>
-                                        <Badge variant={isLowStock ? "destructive" : "default"} className={!isLowStock ? "bg-green-600 hover:bg-green-700" : ""}>
-                                            {isLowStock ? "Baixo" : "OK"}
+                                        <span className="font-tech font-bold text-[11px] px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-muted-foreground">
+                                            #{product.idEstoque || "-"}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className="font-semibold text-sm text-foreground">{product.name}</TableCell>
+                                    {isAdmin && <TableCell className="font-tech text-xs text-muted-foreground tabular-nums">{formatCurrency(product.unitPrice)}</TableCell>}
+                                    <TableCell>
+                                        <div className="flex flex-col gap-1 w-28">
+                                            <div className="flex items-baseline justify-between">
+                                                <span className="font-tech font-bold text-xs text-foreground tabular-nums">{product.quantity} un</span>
+                                                <span className="font-tech text-[9px] text-muted-foreground">mín {product.minStockLevel}</span>
+                                            </div>
+                                            <div className="w-full h-1 bg-white/[0.06] rounded-full overflow-hidden">
+                                                <div
+                                                    className={cn("h-full rounded-full transition-all duration-500", isLowStock ? "bg-rose-500" : "bg-emerald-500")}
+                                                    style={{ width: `${levelPct}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    {isAdmin && <TableCell className="font-tech font-bold text-xs text-primary tabular-nums">{formatCurrency(totalValue)}</TableCell>}
+                                    <TableCell>
+                                        <Badge variant="outline" className={cn("text-[9px] font-black uppercase tracking-widest rounded-lg", isLowStock ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400")}>
+                                            {isLowStock ? "Crítico" : "Normal"}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
                                         {orderQuantity > 0 ? (
-                                            <span className="font-bold text-red-600">+{orderQuantity}</span>
+                                            <span className="font-tech font-bold text-xs text-rose-400 px-2 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/20">
+                                                +{orderQuantity} un
+                                            </span>
                                         ) : (
-                                            <span className="text-muted-foreground">-</span>
+                                            <span className="text-muted-foreground/40 font-tech text-xs">—</span>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -161,15 +188,15 @@ const ProductTable = ({ products, onEdit, onDelete, onOrder, isAdmin = true }: P
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" 
+                                                    className="h-8 w-8 rounded-xl text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/15 transition-colors" 
                                                     onClick={() => onOrder(product)}
-                                                    title="Pedir mais"
+                                                    title="Enviar para Pedido da Semana"
                                                 >
-                                                    <Plus className="h-4 w-4" />
+                                                    <Plus className="h-3.5 w-3.5" />
                                                 </Button>
                                             )}
-                                            <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors" onClick={() => onDelete(product.id)}>
-                                                <Trash2 className="h-4 w-4" />
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/15 transition-colors" onClick={() => onDelete(product.id)}>
+                                                <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
                                         </div>
                                     </TableCell>
@@ -178,7 +205,7 @@ const ProductTable = ({ products, onEdit, onDelete, onOrder, isAdmin = true }: P
                         })}
                         {products.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 9 : 7} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={isAdmin ? 9 : 7} className="text-center py-10 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                                     Nenhum produto encontrado no estoque.
                                 </TableCell>
                             </TableRow>

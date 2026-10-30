@@ -385,8 +385,8 @@ const Dashboard = ({ sales }: DashboardProps) => {
                 </span>
               </div>
               
-              <h2 className="text-2xl sm:text-4xl font-['Cinzel'] font-bold text-foreground tracking-wide flex items-center gap-3">
-                {greeting}, <span className="shimmer-gold uppercase">{userName}</span>
+              <h2 className="text-2xl sm:text-4xl font-display font-black text-foreground tracking-tight flex items-center gap-2.5">
+                {greeting}, <span className="shimmer-gold">{userName}</span>
               </h2>
               <p className="text-xs text-muted-foreground max-w-lg leading-relaxed">
                 Painel gerencial de alta precisão comercial e desempenho fabril. Monitorando fluxo de receita, conversão e pipeline estratégico em tempo real.

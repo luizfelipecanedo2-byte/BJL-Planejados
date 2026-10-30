@@ -187,18 +187,30 @@ const ClientTable = ({ clients, onEdit, onDelete, onViewTimeline, onViewFiles }:
                     <TableBody>
                         {clients.map((client) => {
                             const addressQuery = getFullAddress(client);
+                            const initials = (client.name || "CL")
+                                .split(" ")
+                                .filter(Boolean)
+                                .slice(0, 2)
+                                .map((w) => w[0]?.toUpperCase())
+                                .join("");
+                            const isSupplier = client.type === 'fornecedor';
                             return (
-                                <TableRow key={client.id} className="border-white/5 hover:bg-white/[0.03] transition-colors">
+                                <TableRow key={client.id} className="border-white/5 hover:bg-white/[0.03] transition-colors group">
                                     <TableCell className="font-bold text-white">
-                                        <div className="flex flex-col">
-                                            <span>{client.name}</span>
-                                            <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-normal">
-                                                {client.type === 'fornecedor' ? 'Fornecedor' : 'Cliente'}
-                                            </span>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-mono font-bold border shrink-0 transition-colors ${isSupplier ? 'bg-cyan-500/10 border-cyan-500/25 text-cyan-400' : 'bg-primary/10 border-primary/25 text-primary'}`}>
+                                                {initials}
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="font-display font-bold text-sm text-white group-hover:text-primary transition-colors truncate">{client.name}</span>
+                                                <span className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground font-semibold">
+                                                    {isSupplier ? 'Fornecedor Homologado' : 'Cliente BJL'}
+                                                </span>
+                                            </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-xs font-mono text-white/70">{client.document || '---'}</TableCell>
-                                    <TableCell className="text-xs text-white/70">{client.phone || '---'}</TableCell>
+                                    <TableCell className="text-xs font-mono text-white/75">{client.document || '---'}</TableCell>
+                                    <TableCell className="text-xs font-mono text-white/80">{client.phone || '---'}</TableCell>
                                     <TableCell className="text-xs text-white/70">{client.email || '---'}</TableCell>
                                     <TableCell className="text-xs">
                                         {addressQuery ? (
