@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { DollarSign, Calendar, Rocket, Users, Pencil, Check, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 import { PremiumCard } from "@/components/ui/PremiumCard";
 import {
     ComposedChart,
@@ -82,7 +83,7 @@ const DashboardTab = ({
     handleEditTransaction,
     transactions = [],
     sales = [],
-}) => {
+}: DashboardTabProps) => {
     const [userName, setUserName] = useState("Luiz Felipe");
 
     useEffect(() => {
