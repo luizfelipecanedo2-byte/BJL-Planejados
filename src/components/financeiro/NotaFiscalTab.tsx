@@ -137,8 +137,8 @@ export default function NotaFiscalTab() {
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [isTestingApi, setIsTestingApi] = useState(false);
     const [fiscalConfig, setFiscalConfig] = useState({
-        provider: "asaas" as "asaas" | "focusnfe" | "notaas" | "local",
-        clientId: "",
+        provider: "notaas" as "asaas" | "focusnfe" | "notaas" | "local",
+        clientId: "notaas",
         clientSecret: "",
         environment: "sandbox" as "sandbox" | "production",
         regimeTributario: "simples_nacional",
@@ -154,14 +154,52 @@ export default function NotaFiscalTab() {
     }, []);
 
     const loadFiscalConfig = async () => {
+        let loadedFromLocal = false;
         const localRaw = localStorage.getItem("bjl_nuvem_fiscal_config");
         if (localRaw) {
             try {
                 const parsed = JSON.parse(localRaw);
-                setFiscalConfig((prev) => ({ ...prev, ...parsed }));
+                if (parsed.clientSecret) {
+                    setFiscalConfig((prev) => ({
+                        ...prev,
+                        ...parsed,
+                        provider: parsed.clientSecret.startsWith("ntaas_")
+                            ? "notaas"
+                            : parsed.provider || "notaas",
+                    }));
+                    loadedFromLocal = true;
+                }
             } catch (e) {
                 console.error(e);
             }
+        }
+
+        // Busca automaticamente a chave salva no Supabase (api_settings -> notaas_api_key)
+        try {
+            const { data } = await supabase
+                .from("api_settings")
+                .select("key_name, key_value")
+                .in("key_name", ["notaas_api_key", "asaas_api_key"]);
+
+            if (data && data.length > 0) {
+                const notaasRow = data.find((r) => r.key_name === "notaas_api_key" && r.key_value);
+                if (notaasRow && !loadedFromLocal) {
+                    const updatedConfig = {
+                        provider: "notaas" as const,
+                        clientId: "notaas",
+                        clientSecret: notaasRow.key_value,
+                        environment: "sandbox" as const,
+                        regimeTributario: "simples_nacional",
+                        certPassword: "",
+                        certFileName: "Certificado A1 (Configurado no Notaas)",
+                        certBase64: "",
+                    };
+                    setFiscalConfig(updatedConfig);
+                    localStorage.setItem("bjl_nuvem_fiscal_config", JSON.stringify(updatedConfig));
+                }
+            }
+        } catch (err) {
+            console.warn("Não foi possível buscar api_settings:", err);
         }
     };
 
@@ -373,15 +411,17 @@ export default function NotaFiscalTab() {
             );
             let finalStatus: Invoice["status"] = "Autorizada";
 
-            // Se o usuário configurou Client ID & Secret da Nuvem Fiscal, tenta transmitir via Edge Function
-            if (fiscalConfig.clientId.trim() && fiscalConfig.clientSecret.trim()) {
+            // Se o usuário configurou Token Fiscal (Notaas / Asaas / Focus NFe), transmite via API/Edge Function
+            if (fiscalConfig.clientSecret.trim()) {
                 try {
                     const actionName = emitForm.type === "NF-e" ? "emit-nfe" : "emit-nfse";
                     const { data, error } = await supabase.functions.invoke("nuvem-fiscal", {
                         body: {
                             action: actionName,
                             credentials: {
-                                clientId: fiscalConfig.clientId.trim(),
+                                provider: fiscalConfig.provider,
+                                apiKey: fiscalConfig.clientSecret.trim(),
+                                clientId: fiscalConfig.clientId.trim() || fiscalConfig.provider,
                                 clientSecret: fiscalConfig.clientSecret.trim(),
                                 environment: fiscalConfig.environment,
                             },
@@ -405,11 +445,11 @@ export default function NotaFiscalTab() {
                         },
                     });
 
-                    if (!error && data?.data?.numero) {
-                        invoiceNumberGenerated = String(data.data.numero);
+                    if (!error && (data?.data?.numero || data?.data?.invoiceNumber)) {
+                        invoiceNumberGenerated = String(data.data.numero || data.data.invoiceNumber);
                     }
                 } catch (apiErr) {
-                    console.warn("Fallback para emissão local de homologação:", apiErr);
+                    console.warn("Fallback para emissão local:", apiErr);
                 }
             }
 
@@ -860,7 +900,7 @@ export default function NotaFiscalTab() {
     const freeQuotaPercent = Math.min(100, Math.round((monthlyIssuedCount / FREE_TIER_LIMIT) * 100));
     const nfeCount = invoices.filter((i) => i.type === "NF-e").length;
     const nfseCount = invoices.filter((i) => i.type === "NFS-e").length;
-    const isApiConfigured = Boolean(fiscalConfig.clientId && fiscalConfig.clientSecret);
+    const isApiConfigured = Boolean(fiscalConfig.clientSecret);
 
     const getStatusBadge = (status: string) => {
         switch (status) {

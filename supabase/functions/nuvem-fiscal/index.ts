@@ -152,18 +152,93 @@ serve(async (req: Request) => {
     }
 
     // =========================================================================
-    // PROVEDOR 3: NOTAAS (https://notaas.com.br)
+    // PROVEDOR 3: NOTAAS (https://notaas.com.br -> https://platform.notaas.com.br/api/v1)
     // =========================================================================
-    if (provider === "notaas") {
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          provider: "Notaas",
-          environment,
-          message: "Token Notaas configurado com sucesso!",
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (provider === "notaas" || apiKey.startsWith("ntaas_")) {
+      const baseUrl = "https://platform.notaas.com.br/api/v1";
+
+      if (action === "ping") {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            provider: "Notaas",
+            environment,
+            message: "API Key Notaas (ntaas_...) autenticada e pronta para emissão!",
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (action === "emit-nfe" || action === "emit-nfse") {
+        const endpoint = action === "emit-nfe" ? `${baseUrl}/nfe/emitir` : `${baseUrl}/emitir`;
+        const notaasPayload =
+          action === "emit-nfe"
+            ? {
+                ambiente: environment === "production" ? "producao" : "homologacao",
+                referencia: payload?.referencia || `BJL-${Date.now()}`,
+                destinatario: {
+                  nome: payload?.cliente?.nome,
+                  cpfCnpj: payload?.cliente?.cpf_cnpj,
+                  email: payload?.cliente?.email,
+                },
+                itens: [
+                  {
+                    codigo: "001",
+                    descricao: payload?.item?.descricao || "Móveis planejados sob medida",
+                    ncm: payload?.item?.ncm || "94036000",
+                    cfop: payload?.item?.cfop || "5101",
+                    unidade: "UN",
+                    quantidade: 1,
+                    valorUnitario: payload?.item?.valor || 0,
+                    valorTotal: payload?.item?.valor || 0,
+                  },
+                ],
+                valores: {
+                  total: payload?.item?.valor || 0,
+                },
+              }
+            : {
+                tomador: {
+                  cnpj: payload?.cliente?.cpf_cnpj || "",
+                  nome: payload?.cliente?.nome || "Cliente",
+                  email: payload?.cliente?.email || "",
+                },
+                servico: {
+                  codigo: (payload?.item?.codigo_servico || "1413").replace(/\D/g, ""),
+                  descricao: payload?.item?.descricao || "Serviço de marcenaria sob medida",
+                },
+                valores: {
+                  total: payload?.item?.valor || 0,
+                  aliquotaIss: 2.0,
+                },
+                competencia: new Date().toISOString().substring(0, 7),
+              };
+
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(notaasPayload),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          return new Response(
+            JSON.stringify({
+              error: data.message || data.error || `Erro Notaas (${res.status})`,
+              details: data,
+            }),
+            { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(JSON.stringify({ data }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     return new Response(
