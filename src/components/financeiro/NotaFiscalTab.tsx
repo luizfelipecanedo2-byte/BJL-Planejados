@@ -413,16 +413,19 @@ export default function NotaFiscalTab() {
 
             // Se o usuário configurou Token Fiscal (Notaas / Asaas / Focus NFe), transmite via API/Edge Function
             if (fiscalConfig.clientSecret.trim()) {
+                const apiKeyClean = fiscalConfig.clientSecret.trim();
+                const actionName = emitForm.type === "NF-e" ? "emit-nfe" : "emit-nfse";
+                let transmittedViaEdge = false;
+
                 try {
-                    const actionName = emitForm.type === "NF-e" ? "emit-nfe" : "emit-nfse";
                     const { data, error } = await supabase.functions.invoke("nuvem-fiscal", {
                         body: {
                             action: actionName,
                             credentials: {
                                 provider: fiscalConfig.provider,
-                                apiKey: fiscalConfig.clientSecret.trim(),
+                                apiKey: apiKeyClean,
                                 clientId: fiscalConfig.clientId.trim() || fiscalConfig.provider,
-                                clientSecret: fiscalConfig.clientSecret.trim(),
+                                clientSecret: apiKeyClean,
                                 environment: fiscalConfig.environment,
                             },
                             payload: {
@@ -445,11 +448,71 @@ export default function NotaFiscalTab() {
                         },
                     });
 
-                    if (!error && (data?.data?.numero || data?.data?.invoiceNumber)) {
-                        invoiceNumberGenerated = String(data.data.numero || data.data.invoiceNumber);
+                    if (!error && (data?.data?.numero || data?.data?.invoiceNumber || data?.data?.id)) {
+                        invoiceNumberGenerated = String(
+                            data.data.numero || data.data.invoiceNumber || invoiceNumberGenerated
+                        );
+                        transmittedViaEdge = true;
                     }
                 } catch (apiErr) {
-                    console.warn("Fallback para emissão local:", apiErr);
+                    console.warn("Edge function indisponível, tentando chamada direta Notaas:", apiErr);
+                }
+
+                // Fallback direto para API Notaas caso a Edge Function ainda não tenha sido publicada
+                if (!transmittedViaEdge && (fiscalConfig.provider === "notaas" || apiKeyClean.startsWith("ntaas_"))) {
+                    try {
+                        const endpoint =
+                            emitForm.type === "NF-e"
+                                ? "https://platform.notaas.com.br/api/v1/nfe/emitir"
+                                : "https://platform.notaas.com.br/api/v1/emitir";
+                        const directRes = await fetch(endpoint, {
+                            method: "POST",
+                            headers: {
+                                "x-api-key": apiKeyClean,
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                ambiente: fiscalConfig.environment === "production" ? "producao" : "homologacao",
+                                referencia: `BJL-${Date.now()}`,
+                                destinatario: {
+                                    nome: emitForm.clientName.trim(),
+                                    cpfCnpj: emitForm.clientDoc.replace(/\D/g, ""),
+                                    email: emitForm.clientEmail,
+                                },
+                                tomador: {
+                                    nome: emitForm.clientName.trim(),
+                                    cnpj: emitForm.clientDoc.replace(/\D/g, ""),
+                                    email: emitForm.clientEmail,
+                                },
+                                itens: [
+                                    {
+                                        codigo: "001",
+                                        descricao: emitForm.description,
+                                        ncm: emitForm.ncm,
+                                        cfop: emitForm.cfop,
+                                        unidade: "UN",
+                                        quantidade: 1,
+                                        valorUnitario: numericAmount,
+                                        valorTotal: numericAmount,
+                                    },
+                                ],
+                                servico: {
+                                    codigo: emitForm.serviceCode.replace(/\D/g, ""),
+                                    descricao: emitForm.description,
+                                },
+                                valores: {
+                                    total: numericAmount,
+                                    aliquotaIss: 2.0,
+                                },
+                            }),
+                        });
+                        const directData = await directRes.json().catch(() => ({}));
+                        if (directData?.numero || directData?.data?.numero) {
+                            invoiceNumberGenerated = String(directData.numero || directData.data.numero);
+                        }
+                    } catch (directErr) {
+                        console.warn("Aviso na chamada direta Notaas:", directErr);
+                    }
                 }
             }
 
