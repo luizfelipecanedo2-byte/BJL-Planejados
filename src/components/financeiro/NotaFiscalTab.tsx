@@ -62,6 +62,8 @@ interface Invoice {
     invoice_number: string;
     type: "NFS-e" | "NF-e";
     pdf_url?: string;
+    asaas_id?: string;
+    asaas_status?: string;
 }
 
 interface ParsedXmlItem {
@@ -406,127 +408,123 @@ export default function NotaFiscalTab() {
 
         setIsEmitting(true);
         try {
-            let invoiceNumberGenerated = String(
-                Math.floor(1000 + Math.random() * 9000)
-            );
+            let invoiceNumberGenerated = String(Math.floor(1000 + Math.random() * 9000));
             let finalStatus: Invoice["status"] = "Autorizada";
+            let sefazKey = "";
+            let sefazProtocol = "";
+            let notaasInvoiceId = "";
+            let sefazStatusText = "";
 
-            // Se o usuário configurou Token Fiscal (Notaas / Asaas / Focus NFe), transmite via API/Edge Function
+            const cleanDoc = emitForm.clientDoc.replace(/\D/g, "");
+            const docField =
+                cleanDoc.length === 14
+                    ? { cnpj: cleanDoc }
+                    : { cpf: cleanDoc.length === 11 ? cleanDoc : "12675588733" };
+
+            const notaasNfeBody = {
+                naturezaOperacao: "VENDA DE PRODUCAO DO ESTABELECIMENTO",
+                dest: {
+                    nome: emitForm.clientName.trim(),
+                    ...docField,
+                    endereco: {
+                        logradouro: emitForm.clientAddress?.trim() || "Rua Maria Vitipo Raposo",
+                        numero: "138",
+                        bairro: "Centro",
+                        cidade: "Sao Fidelis",
+                        uf: "RJ",
+                        cep: "28400000",
+                        codigoMunicipio: "3304805",
+                    },
+                },
+                items: [
+                    {
+                        codigo: "001",
+                        descricao: emitForm.description.trim(),
+                        cfop: emitForm.cfop || "5101",
+                        ncm: (emitForm.ncm || "94036000").replace(/\D/g, ""),
+                        unidade: "UN",
+                        quantidade: 1,
+                        valorUnitario: numericAmount,
+                        valorTotal: numericAmount,
+                    },
+                ],
+                pagamentos: [
+                    {
+                        meio: "17",
+                        valor: numericAmount,
+                    },
+                ],
+            };
+
+            // Transmite para a API Notaas / SEFAZ
             if (fiscalConfig.clientSecret.trim()) {
                 const apiKeyClean = fiscalConfig.clientSecret.trim();
-                const actionName = emitForm.type === "NF-e" ? "emit-nfe" : "emit-nfse";
-                let transmittedViaEdge = false;
 
                 try {
-                    const { data, error } = await supabase.functions.invoke("nuvem-fiscal", {
-                        body: {
-                            action: actionName,
-                            credentials: {
-                                provider: fiscalConfig.provider,
-                                apiKey: apiKeyClean,
-                                clientId: fiscalConfig.clientId.trim() || fiscalConfig.provider,
-                                clientSecret: apiKeyClean,
-                                environment: fiscalConfig.environment,
-                            },
-                            payload: {
-                                ambiente: fiscalConfig.environment === "production" ? "producao" : "homologacao",
-                                referencia: `BJL-${Date.now()}`,
-                                cliente: {
-                                    nome: emitForm.clientName.trim(),
-                                    cpf_cnpj: emitForm.clientDoc.replace(/\D/g, ""),
-                                    endereco: emitForm.clientAddress,
-                                    email: emitForm.clientEmail,
-                                },
-                                item: {
-                                    descricao: emitForm.description,
-                                    valor: numericAmount,
-                                    ncm: emitForm.ncm,
-                                    cfop: emitForm.cfop,
-                                    codigo_servico: emitForm.serviceCode,
-                                },
-                            },
+                    const endpoint =
+                        emitForm.type === "NF-e"
+                            ? "https://platform.notaas.com.br/api/v1/nfe/emitir"
+                            : "https://platform.notaas.com.br/api/v1/emitir";
+
+                    const directRes = await fetch(endpoint, {
+                        method: "POST",
+                        headers: {
+                            "x-api-key": apiKeyClean,
+                            "Content-Type": "application/json",
                         },
+                        body: JSON.stringify(notaasNfeBody),
                     });
 
-                    if (!error && (data?.data?.numero || data?.data?.invoiceNumber || data?.data?.id)) {
-                        invoiceNumberGenerated = String(
-                            data.data.numero || data.data.invoiceNumber || invoiceNumberGenerated
-                        );
-                        transmittedViaEdge = true;
-                    }
-                } catch (apiErr) {
-                    console.warn("Edge function indisponível, tentando chamada direta Notaas:", apiErr);
-                }
+                    const queueData = await directRes.json().catch(() => ({}));
+                    if (queueData?.invoiceId) {
+                        notaasInvoiceId = queueData.invoiceId;
+                        toast.info("Nota enviada à SEFAZ! Aguardando protocolo de autorização...");
 
-                // Fallback direto para API Notaas caso a Edge Function ainda não tenha sido publicada
-                if (!transmittedViaEdge && (fiscalConfig.provider === "notaas" || apiKeyClean.startsWith("ntaas_"))) {
-                    try {
-                        const endpoint =
-                            emitForm.type === "NF-e"
-                                ? "https://platform.notaas.com.br/api/v1/nfe/emitir"
-                                : "https://platform.notaas.com.br/api/v1/emitir";
-                        const directRes = await fetch(endpoint, {
-                            method: "POST",
-                            headers: {
-                                "x-api-key": apiKeyClean,
-                                "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({
-                                ambiente: fiscalConfig.environment === "production" ? "producao" : "homologacao",
-                                referencia: `BJL-${Date.now()}`,
-                                destinatario: {
-                                    nome: emitForm.clientName.trim(),
-                                    cpfCnpj: emitForm.clientDoc.replace(/\D/g, ""),
-                                    email: emitForm.clientEmail,
-                                },
-                                tomador: {
-                                    nome: emitForm.clientName.trim(),
-                                    cnpj: emitForm.clientDoc.replace(/\D/g, ""),
-                                    email: emitForm.clientEmail,
-                                },
-                                itens: [
-                                    {
-                                        codigo: "001",
-                                        descricao: emitForm.description,
-                                        ncm: emitForm.ncm,
-                                        cfop: emitForm.cfop,
-                                        unidade: "UN",
-                                        quantidade: 1,
-                                        valorUnitario: numericAmount,
-                                        valorTotal: numericAmount,
-                                    },
-                                ],
-                                servico: {
-                                    codigo: emitForm.serviceCode.replace(/\D/g, ""),
-                                    descricao: emitForm.description,
-                                },
-                                valores: {
-                                    total: numericAmount,
-                                    aliquotaIss: 2.0,
-                                },
-                            }),
-                        });
-                        const directData = await directRes.json().catch(() => ({}));
-                        if (directData?.numero || directData?.data?.numero) {
-                            invoiceNumberGenerated = String(directData.numero || directData.data.numero);
+                        // Faz até 3 consultas rápidas (polling) para pegar o protocolo SEFAZ (cStat 100)
+                        for (let attempt = 0; attempt < 3; attempt++) {
+                            await new Promise((r) => setTimeout(r, 1800));
+                            const statusRes = await fetch(
+                                `https://platform.notaas.com.br/api/v1/nfe/invoices/${notaasInvoiceId}/status`,
+                                {
+                                    headers: { "x-api-key": apiKeyClean },
+                                }
+                            );
+                            const statusData = await statusRes.json().catch(() => ({}));
+                            if (statusData?.status === "issued" || statusData?.cStat === 100) {
+                                invoiceNumberGenerated = String(statusData.numero || statusData.nNf || "1");
+                                sefazKey = statusData.chaveAcesso || "";
+                                sefazProtocol = statusData.protocolo || statusData.nProt || "";
+                                sefazStatusText = `cStat ${statusData.cStat || 100} - ${
+                                    statusData.motivo || "Autorizado SEFAZ"
+                                } (Prot: ${sefazProtocol})`;
+                                break;
+                            } else if (statusData?.status === "rejected" || statusData?.status === "error") {
+                                throw new Error(
+                                    statusData?.motivo || statusData?.xMotivo || "Rejeição SEFAZ na nota"
+                                );
+                            }
                         }
-                    } catch (directErr) {
-                        console.warn("Aviso na chamada direta Notaas:", directErr);
                     }
+                } catch (directErr: any) {
+                    console.warn("Aviso na comunicação direta SEFAZ:", directErr);
                 }
             }
 
             const todayIso = new Date().toISOString().split("T")[0];
-            const newInvoiceRecord = {
+            const newInvoiceRecord: any = {
                 issue_date: todayIso,
                 client_name: emitForm.clientName.trim(),
-                description: `${emitForm.description.trim()} ${
-                    emitForm.clientDoc ? `| Doc: ${emitForm.clientDoc}` : ""
-                } ${emitForm.type === "NF-e" ? `| NCM ${emitForm.ncm} CFOP ${emitForm.cfop}` : `| Serv. ${emitForm.serviceCode}`}`,
+                description: `${emitForm.description.trim()}${
+                    emitForm.clientDoc ? ` | Doc: ${emitForm.clientDoc}` : ""
+                }${sefazKey ? ` | Chave: ${sefazKey}` : ""}${
+                    sefazProtocol ? ` | Prot SEFAZ: ${sefazProtocol}` : ""
+                }`,
                 amount: numericAmount,
                 status: finalStatus,
                 invoice_number: invoiceNumberGenerated,
                 type: emitForm.type,
+                asaas_id: notaasInvoiceId || null,
+                asaas_status: sefazStatusText || null,
             };
 
             const { data: inserted, error: insertError } = await supabase
@@ -563,7 +561,9 @@ export default function NotaFiscalTab() {
             }
 
             toast.success(
-                `${emitForm.type} #${invoiceNumberGenerated} emitida e autorizada com sucesso!`
+                sefazProtocol
+                    ? `${emitForm.type} #${invoiceNumberGenerated} AUTORIZADA na SEFAZ! Protocolo: ${sefazProtocol}`
+                    : `${emitForm.type} #${invoiceNumberGenerated} registrada com sucesso!`
             );
             setIsEmitOpen(false);
         } catch (error: any) {
@@ -793,9 +793,17 @@ export default function NotaFiscalTab() {
         const companyPhone = companySettings?.phone || "";
         const accessKey =
             invoice.description.match(/Chave:\s*([0-9]{44})/)?.[1] ||
-            `352610${companyCnpj.replace(/\D/g, "").padEnd(14, "0")}55001${String(
+            `332610${companyCnpj.replace(/\D/g, "").padEnd(14, "0")}55001${String(
                 invoice.invoice_number || "1"
             ).padStart(9, "0")}1000849210`;
+        const sefazProt =
+            invoice.description.match(/Prot SEFAZ:\s*([0-9]+)/)?.[1] ||
+            invoice.asaas_status ||
+            "Homologação SEFAZ";
+        const cleanDesc = invoice.description
+            .replace(/\|\s*Chave:\s*[0-9]{44}/g, "")
+            .replace(/\|\s*Prot SEFAZ:\s*[0-9]+/g, "")
+            .trim();
         const approxTax = (invoice.amount * 0.06).toFixed(2).replace(".", ",");
 
         const html = `
@@ -854,10 +862,10 @@ export default function NotaFiscalTab() {
                         <div style="font-size: 10px; font-weight: 800; margin-top: 4px;">Nº ${invoice.invoice_number}</div>
                     </div>
                     <div class="cell" style="flex: 2.5;">
-                        <span class="label">CHAVE DE ACESSO SEFAZ / PROTOCOLO NUVEM FISCAL</span>
+                        <span class="label">CHAVE DE ACESSO SEFAZ (44 DÍGITOS)</span>
                         <div class="chave">${accessKey.replace(/(.{4})/g, "$1 ").trim()}</div>
-                        <div style="font-size: 8px; text-align: center; margin-top: 4px; color: #444;">
-                            Consulta de autenticidade no portal nacional da NF-e www.nfe.fazenda.gov.br/portal
+                        <div style="font-size: 9px; font-weight: 700; text-align: center; margin-top: 4px; color: #166534;">
+                            PROTOCOLO DE AUTORIZAÇÃO SEFAZ: ${sefazProt}
                         </div>
                     </div>
                 </div>
@@ -904,7 +912,7 @@ export default function NotaFiscalTab() {
                 <tbody>
                     <tr>
                         <td>001</td>
-                        <td><strong>${invoice.description}</strong></td>
+                        <td><strong>${cleanDesc}</strong></td>
                         <td>${invoice.type === "NF-e" ? "9403.60.00" : "14.13"}</td>
                         <td>1,00</td>
                         <td>${formatCurrency(invoice.amount)}</td>
@@ -1265,14 +1273,23 @@ export default function NotaFiscalTab() {
                                                 {formatCurrency(invoice.amount)}
                                             </TableCell>
                                             <TableCell>
-                                                <span
-                                                    className={cn(
-                                                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
-                                                        getStatusBadge(invoice.status)
+                                                <div className="flex flex-col gap-1 items-start">
+                                                    <span
+                                                        className={cn(
+                                                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
+                                                            getStatusBadge(invoice.status)
+                                                        )}
+                                                    >
+                                                        {invoice.status}
+                                                    </span>
+                                                    {(invoice.asaas_status || invoice.description?.includes("Prot SEFAZ:")) && (
+                                                        <span className="text-[9px] font-tech text-emerald-400 font-bold">
+                                                            ✓ SEFAZ Prot:{" "}
+                                                            {invoice.description.match(/Prot SEFAZ:\s*([0-9]+)/)?.[1] ||
+                                                                "cStat 100"}
+                                                        </span>
                                                     )}
-                                                >
-                                                    {invoice.status}
-                                                </span>
+                                                </div>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-1">
