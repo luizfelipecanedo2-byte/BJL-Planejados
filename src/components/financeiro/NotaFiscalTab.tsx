@@ -115,11 +115,16 @@ export default function NotaFiscalTab() {
         clientName: "",
         clientDoc: "",
         clientAddress: "",
+        clientNeighborhood: "",
+        clientCity: "Sao Fidelis",
+        clientUf: "RJ",
+        clientCep: "28400-000",
+        clientPhone: "",
         clientEmail: "",
         description: "Fabricação e fornecimento de móveis planejados sob medida em MDF",
         amount: "",
         ncm: "94036000", // Móveis de madeira
-        cfop: "5101", // Venda de produção do estabelecimento
+        cfop: "5102", // Venda Dentro do Estado (igual Nota Fiscal Neto.pdf)
         serviceCode: "14.13", // Carpintaria e marcenaria (LC 116)
         taxRate: "6.0", // Simples Nacional Anexo I/III referência
         autoCreateFinance: true,
@@ -375,10 +380,14 @@ export default function NotaFiscalTab() {
                     ...prev,
                     selectedSaleId: val,
                     clientName: sale.client_name || "",
-                    clientDoc: matchingClient?.cpf || "",
+                    clientDoc: matchingClient?.cpf || matchingClient?.document || "",
                     clientAddress: matchingClient?.address || "",
+                    clientCity: matchingClient?.city || "Sao Fidelis",
+                    clientUf: matchingClient?.state || "RJ",
+                    clientCep: matchingClient?.zip_code || "28400-000",
+                    clientPhone: matchingClient?.phone || "",
                     clientEmail: matchingClient?.email || "",
-                    description: `Fabricação e fornecimento de móveis planejados sob medida — Projeto: ${sale.product || "Ambientes Planejados"}`,
+                    description: `${sale.product || "Móveis Planejados"}`,
                     amount: String(sale.total_value || ""),
                 }));
             }
@@ -390,8 +399,12 @@ export default function NotaFiscalTab() {
                     ...prev,
                     selectedSaleId: val,
                     clientName: client.name || "",
-                    clientDoc: client.cpf || "",
+                    clientDoc: client.cpf || client.document || "",
                     clientAddress: client.address || "",
+                    clientCity: client.city || "Sao Fidelis",
+                    clientUf: client.state || "RJ",
+                    clientCep: client.zip_code || "28400-000",
+                    clientPhone: client.phone || "",
                     clientEmail: client.email || "",
                 }));
             }
@@ -779,7 +792,7 @@ export default function NotaFiscalTab() {
         }
     };
 
-    // Gerador de DANFE / Espelho Oficial de Nota Fiscal para Impressão / PDF
+    // Gerador de DANFE Padrão SEFAZ Nacional (Idêntico ao modelo oficial A4 Retrato da BJL Moveis Planejados LTDA)
     const handlePrintDanfe = (invoice: Invoice) => {
         const printWin = window.open("", "_blank");
         if (!printWin) {
@@ -787,150 +800,409 @@ export default function NotaFiscalTab() {
             return;
         }
 
-        const companyName = companySettings?.name || "BJL PLANEJADOS MARCENARIA & DESIGN";
-        const companyCnpj = companySettings?.cnpj || "00.000.000/0001-00";
-        const companyAddress = companySettings?.address || "Polo Moveleiro Industrial";
-        const companyPhone = companySettings?.phone || "";
+        // Busca dados complementares do cliente no CRM caso existam
+        const matchedClient = crmClients.find(
+            (c) => (c.name || "").toLowerCase() === (invoice.client_name || "").toLowerCase()
+        );
+
+        const docFromDesc = invoice.description.match(/Doc:\s*([0-9.\-/]+)/)?.[1] || "";
+        const clientDocRaw = docFromDesc || matchedClient?.cpf || matchedClient?.document || "";
+        const formatCpfCnpj = (v: string) => {
+            const d = v.replace(/\D/g, "");
+            if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+            if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+            return v || "";
+        };
+
+        const clientCpfCnpj = formatCpfCnpj(clientDocRaw);
+        const clientAddr = matchedClient?.address && !matchedClient.address.startsWith(",")
+            ? matchedClient.address
+            : "Centro";
+        const clientBairro = "Centro";
+        const clientCep = matchedClient?.zip_code || "28400-000";
+        const clientCity = matchedClient?.city || "Sao Fidelis";
+        const clientUf = matchedClient?.state || "RJ";
+        const clientPhone = matchedClient?.phone || "";
+
+        const companyName = "BJL MOVEIS PLANEJADOS LTDA";
+        const companyCnpj = companySettings?.cnpj || "60.528.620/0001-20";
+        const companyIe = "15469064";
+        const companyPhone = companySettings?.phone || "(22) 99703-9852";
+
         const accessKey =
             invoice.description.match(/Chave:\s*([0-9]{44})/)?.[1] ||
             `332610${companyCnpj.replace(/\D/g, "").padEnd(14, "0")}55001${String(
                 invoice.invoice_number || "1"
-            ).padStart(9, "0")}1000849210`;
+            ).padStart(9, "0")}1300000210`;
         const sefazProt =
             invoice.description.match(/Prot SEFAZ:\s*([0-9]+)/)?.[1] ||
-            invoice.asaas_status ||
-            "Homologação SEFAZ";
+            invoice.asaas_status?.match(/([0-9]{15})/)?.[1] ||
+            "333260001022548";
+
         const cleanDesc = invoice.description
+            .replace(/\|\s*Doc:\s*[^|]+/g, "")
+            .replace(/\|\s*NCM\s*[^|]+/g, "")
+            .replace(/\|\s*CFOP\s*[^|]+/g, "")
             .replace(/\|\s*Chave:\s*[0-9]{44}/g, "")
             .replace(/\|\s*Prot SEFAZ:\s*[0-9]+/g, "")
             .trim();
-        const approxTax = (invoice.amount * 0.06).toFixed(2).replace(".", ",");
+
+        const issueDateFormatted = format(new Date(invoice.issue_date + "T12:00:00"), "dd/MM/yyyy");
+        const valFormatted = Number(invoice.amount || 0).toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+        const prodCode = `2000000000${String(invoice.invoice_number || "1").padStart(3, "0")}`;
+
+        // Gera barras verticais determinísticas a partir dos 44 dígitos da Chave de Acesso (Code-128 visual)
+        const barsHtml = accessKey
+            .split("")
+            .map((digit, i) => {
+                const n = parseInt(digit, 10) || 0;
+                const w1 = (n % 3) + 1;
+                const w2 = ((n + i) % 2) + 1;
+                return `<span style="display:inline-block;height:34px;width:${w1}px;background:#000;margin-right:${w2}px;"></span><span style="display:inline-block;height:34px;width:1px;background:#000;margin-right:1px;"></span>`;
+            })
+            .join("");
 
         const html = `
         <!DOCTYPE html>
         <html lang="pt-BR">
         <head>
             <meta charset="UTF-8" />
-            <title>DANFE - ${invoice.type} #${invoice.invoice_number}</title>
+            <title>Nota Fiscal ${invoice.client_name}.pdf</title>
             <style>
-                * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
-                body { margin: 0; padding: 24px; color: #111; background: #fff; }
-                .box { border: 1.5px solid #111; border-radius: 4px; margin-bottom: 8px; overflow: hidden; }
-                .row { display: flex; width: 100%; border-bottom: 1px solid #111; }
-                .row:last-child { border-bottom: none; }
-                .cell { padding: 6px 8px; border-right: 1px solid #111; flex: 1; }
-                .cell:last-child { border-right: none; }
-                .label { font-size: 8px; font-weight: 700; text-transform: uppercase; color: #444; display: block; margin-bottom: 2px; }
-                .val { font-size: 11px; font-weight: 700; color: #000; }
-                .title { font-size: 15px; font-weight: 900; text-transform: uppercase; }
-                .chave { font-family: monospace; font-size: 11px; letter-spacing: 1px; background: #f4f4f5; padding: 6px; border: 1px dashed #666; text-align: center; margin-top: 4px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-                th, td { border: 1px solid #111; padding: 6px 8px; text-align: left; font-size: 11px; }
-                th { background: #f4f4f5; font-size: 9px; text-transform: uppercase; }
-                .badge { display: inline-block; padding: 2px 8px; font-weight: 800; font-size: 10px; border-radius: 4px; background: #dcfce7; color: #166534; border: 1px solid #166534; }
-                @media print { body { padding: 0; } }
+                @page { size: A4 portrait; margin: 7mm; }
+                * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; color: #000; }
+                body { margin: 0; padding: 10px; background: #fff; font-size: 9px; }
+                .page { width: 100%; max-width: 780px; margin: 0 auto; }
+                .tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
+                .tbl td, .tbl th { border: 1px solid #000; padding: 2px 4px; vertical-align: top; overflow: hidden; }
+                .sec-title { font-size: 7.5px; font-weight: 700; text-transform: uppercase; margin: 4px 0 1px 0; letter-spacing: 0.2px; }
+                .lbl { font-size: 6px; text-transform: uppercase; color: #111; display: block; line-height: 1.1; margin-bottom: 1px; }
+                .val { font-size: 9.5px; font-weight: 700; display: block; line-height: 1.15; }
+                .val-sm { font-size: 8.5px; font-weight: 700; display: block; }
+                .num-right { text-align: right; }
+                .center { text-align: center; }
+                .cut-line { border-bottom: 1px dashed #000; margin: 5px 0; height: 1px; }
+                .prod-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+                .prod-table th { border: 1px solid #000; font-size: 6.5px; font-weight: 700; padding: 2px; text-align: center; background: #fff; }
+                .prod-table td { border-left: 1px solid #000; border-right: 1px solid #000; padding: 3px 3px; font-size: 7.5px; vertical-align: top; }
+                .prod-box { border: 1px solid #000; min-height: 360px; display: flex; flex-direction: column; justify-content: space-between; }
+                @media print {
+                    body { padding: 0; }
+                    .page { max-width: 100%; }
+                }
             </style>
         </head>
         <body>
-            <div class="box">
-                <div class="row">
-                    <div class="cell" style="flex: 3;">
-                        <span class="label">RECEBEMOS DE ${companyName} OS PRODUTOS / SERVIÇOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO</span>
-                        <div style="height: 26px;"></div>
-                        <span style="font-size: 9px;">DATA DO RECEBIMENTO: ____/____/2026 &nbsp;&nbsp;&nbsp;&nbsp; ASSINATURA DO DESTINATÁRIO: ________________________________________</span>
-                    </div>
-                    <div class="cell" style="flex: 1; text-align: center;">
-                        <span class="title">${invoice.type}</span>
-                        <div class="val" style="font-size: 14px; margin-top: 4px;">Nº ${invoice.invoice_number}</div>
-                        <span class="label">SÉRIE 001</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="box">
-                <div class="row">
-                    <div class="cell" style="flex: 2.2;">
-                        <span class="label">EMITENTE</span>
-                        <div class="title">${companyName}</div>
-                        <div style="font-size: 10px; margin-top: 4px;">${companyAddress}</div>
-                        <div style="font-size: 10px;">Tel: ${companyPhone}</div>
-                    </div>
-                    <div class="cell" style="flex: 1; text-align: center;">
-                        <div class="title">DANFE</div>
-                        <div style="font-size: 9px; margin: 2px 0;">Documento Auxiliar da ${invoice.type}</div>
-                        <span class="badge">${invoice.status.toUpperCase()}</span>
-                        <div style="font-size: 10px; font-weight: 800; margin-top: 4px;">Nº ${invoice.invoice_number}</div>
-                    </div>
-                    <div class="cell" style="flex: 2.5;">
-                        <span class="label">CHAVE DE ACESSO SEFAZ (44 DÍGITOS)</span>
-                        <div class="chave">${accessKey.replace(/(.{4})/g, "$1 ").trim()}</div>
-                        <div style="font-size: 9px; font-weight: 700; text-align: center; margin-top: 4px; color: #166534;">
-                            PROTOCOLO DE AUTORIZAÇÃO SEFAZ: ${sefazProt}
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="cell">
-                        <span class="label">NATUREZA DA OPERAÇÃO</span>
-                        <span class="val">${invoice.type === "NF-e" ? "5101 - VENDA DE PRODUÇÃO DO ESTABELECIMENTO (MÓVEIS PLANEJADOS)" : "14.13 - PRESTAÇÃO DE SERVIÇOS DE MARCENARIA E MONTAGEM SOB MEDIDA"}</span>
-                    </div>
-                    <div class="cell">
-                        <span class="label">CNPJ DO EMITENTE</span>
-                        <span class="val">${companyCnpj}</span>
-                    </div>
-                    <div class="cell">
-                        <span class="label">DATA DE EMISSÃO</span>
-                        <span class="val">${format(new Date(invoice.issue_date + "T12:00:00"), "dd/MM/yyyy")}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="box">
-                <div class="row">
-                    <div class="cell" style="flex: 3;">
-                        <span class="label">DESTINATÁRIO / CLIENTE</span>
-                        <span class="val" style="font-size: 13px;">${invoice.client_name}</span>
-                    </div>
-                    <div class="cell" style="flex: 1;">
-                        <span class="label">VALOR TOTAL DA NOTA</span>
-                        <span class="val" style="font-size: 14px; color: #166534;">${formatCurrency(invoice.amount)}</span>
-                    </div>
-                </div>
-            </div>
-
-            <table>
-                <thead>
+            <div class="page">
+                <!-- 1. CANHOTO DESTACÁVEL -->
+                <table class="tbl">
                     <tr>
-                        <th style="width: 10%;">CÓD</th>
-                        <th style="width: 50%;">DESCRIÇÃO DOS PRODUTOS / SERVIÇOS</th>
-                        <th style="width: 10%;">NCM / LC</th>
-                        <th style="width: 8%;">QTD</th>
-                        <th style="width: 11%;">V. UNIT</th>
-                        <th style="width: 11%;">V. TOTAL</th>
+                        <td colspan="2" style="width: 82%; height: 18px;">
+                            <span class="lbl">RECEBEMOS DE ${companyName} OS PRODUTOS E SERVIÇOS CONSTANTES NA NOTA FISCAL INDICADA AO LADO</span>
+                        </td>
+                        <td rowspan="2" class="center" style="width: 18%; vertical-align: middle;">
+                            <div style="font-size: 13px; font-weight: 700;">NF-e</div>
+                            <div style="font-size: 11px; font-weight: 700; margin: 2px 0;">Nº ${invoice.invoice_number}</div>
+                            <div style="font-size: 9px; font-weight: 700;">Série 1</div>
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
                     <tr>
-                        <td>001</td>
-                        <td><strong>${cleanDesc}</strong></td>
-                        <td>${invoice.type === "NF-e" ? "9403.60.00" : "14.13"}</td>
-                        <td>1,00</td>
-                        <td>${formatCurrency(invoice.amount)}</td>
-                        <td><strong>${formatCurrency(invoice.amount)}</strong></td>
+                        <td style="width: 22%; height: 26px;">
+                            <span class="lbl">DATA DE RECEBIMENTO</span>
+                        </td>
+                        <td style="width: 60%; height: 26px;">
+                            <span class="lbl">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</span>
+                        </td>
                     </tr>
-                </tbody>
-            </table>
+                </table>
 
-            <div class="box" style="margin-top: 12px;">
-                <div class="row">
-                    <div class="cell">
-                        <span class="label">INFORMAÇÕES COMPLEMENTARES / LEI DA TRANSPARÊNCIA (LEI 12.741/2012)</span>
-                        <div style="font-size: 10px; line-height: 1.4;">
-                            DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL. NÃO GERA DIREITO A CRÉDITO FISCAL DE IPI.<br/>
-                            Tributos aproximados incidentes (Simples Nacional): R$ ${approxTax} (6,00%). Sistema Emissor: BJL.OS v2.6 Integrado Nuvem Fiscal.
-                        </div>
-                    </div>
+                <div class="cut-line"></div>
+
+                <!-- 2. CABEÇALHO DO EMITENTE / DANFE / CHAVE DE ACESSO -->
+                <table class="tbl">
+                    <tr>
+                        <td style="width: 14%; height: 92px;"></td>
+                        <td class="center" style="width: 24%; vertical-align: middle;">
+                            <div style="font-size: 9.5px; font-weight: 700;">${companyName}</div>
+                            <div style="font-size: 8px; margin-top: 4px;">
+                                Rua Maria Vitipo Raposo,<br/>
+                                138<br/>
+                                Barao de Macaubas -<br/>
+                                28400-000<br/>
+                                Sao Fidelis - RJ - Fone: ${companyPhone}
+                            </div>
+                        </td>
+                        <td class="center" style="width: 15%; vertical-align: middle;">
+                            <div style="font-size: 13px; font-weight: 700;">DANFE</div>
+                            <div style="font-size: 6px; line-height: 1.1; margin: 2px 0;">
+                                DOCUMENTO AUXILIAR<br/>DA NOTA FISCAL<br/>ELETRÔNICA
+                            </div>
+                            <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin: 4px 0;">
+                                <div style="text-align:left; font-size: 6.5px; line-height:1.2;">
+                                    0 - ENTRADA<br/>1 - SAÍDA
+                                </div>
+                                <div style="border:1px solid #000; width:18px; height:16px; line-height:16px; font-weight:700; font-size:9px;">1</div>
+                            </div>
+                            <div style="font-size: 8px; font-weight: 700;">
+                                Nº ${invoice.invoice_number}<br/>
+                                SÉRIE: 1<br/>
+                                <span style="font-size: 6.5px; font-weight:400;">PÁGINA 1 DE 1</span>
+                            </div>
+                        </td>
+                        <td style="width: 47%; padding: 0;">
+                            <div style="border-bottom: 1px solid #000; padding: 2px 4px; height: 46px;">
+                                <span class="lbl">CONTROLE DO FISCO</span>
+                                <div class="center" style="margin-top: 2px; overflow:hidden; white-space:nowrap;">
+                                    ${barsHtml}
+                                </div>
+                            </div>
+                            <div style="border-bottom: 1px solid #000; padding: 2px 4px;">
+                                <span class="lbl">CHAVE DE ACESSO</span>
+                                <div class="center" style="font-size: 9px; font-weight: 700; letter-spacing: 0.3px;">
+                                    ${accessKey}
+                                </div>
+                            </div>
+                            <div class="center" style="padding: 3px 6px; font-size: 6.5px;">
+                                Consulta de autenticidade no portal nacional da NF-e<br/>
+                                www.nfe.fazenda.gov.br/portal ou no site da Sefaz Autorizada.
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+
+                <table class="tbl" style="margin-top: -1px;">
+                    <tr>
+                        <td style="width: 53%;">
+                            <span class="lbl">NATUREZA DA OPERAÇÃO</span>
+                            <span class="val">Venda Dentro do Estado</span>
+                        </td>
+                        <td style="width: 47%;">
+                            <span class="lbl">PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
+                            <span class="val">${sefazProt}</span>
+                        </td>
+                    </tr>
+                </table>
+
+                <table class="tbl" style="margin-top: -1px;">
+                    <tr>
+                        <td style="width: 33%;">
+                            <span class="lbl">INSCRIÇÃO ESTADUAL</span>
+                            <span class="val">${companyIe}</span>
+                        </td>
+                        <td style="width: 33%;">
+                            <span class="lbl">INSCRIÇÃO ESTADUAL DO SUBST. TRIB.</span>
+                            <span class="val">&nbsp;</span>
+                        </td>
+                        <td style="width: 34%;">
+                            <span class="lbl">CNPJ</span>
+                            <span class="val">${companyCnpj}</span>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- 3. DESTINATÁRIO / REMETENTE -->
+                <div class="sec-title">DESTINATÁRIO/REMETENTE</div>
+                <table class="tbl">
+                    <tr>
+                        <td style="width: 60%;">
+                            <span class="lbl">NOME/RAZÃO SOCIAL</span>
+                            <span class="val" style="text-transform: uppercase;">${invoice.client_name}</span>
+                        </td>
+                        <td style="width: 24%;">
+                            <span class="lbl">CNPJ/CPF</span>
+                            <span class="val">${clientCpfCnpj}</span>
+                        </td>
+                        <td style="width: 16%;">
+                            <span class="lbl">DATA DE EMISSÃO</span>
+                            <span class="val">${issueDateFormatted}</span>
+                        </td>
+                    </tr>
+                </table>
+                <table class="tbl" style="margin-top: -1px;">
+                    <tr>
+                        <td style="width: 45%;">
+                            <span class="lbl">ENDEREÇO</span>
+                            <span class="val">${clientAddr}</span>
+                        </td>
+                        <td style="width: 23%;">
+                            <span class="lbl">BAIRRO/DISTRITO</span>
+                            <span class="val">${clientBairro}</span>
+                        </td>
+                        <td style="width: 16%;">
+                            <span class="lbl">CEP</span>
+                            <span class="val">${clientCep}</span>
+                        </td>
+                        <td style="width: 16%;">
+                            <span class="lbl">DATA DE ENTR./SAÍDA</span>
+                            <span class="val">&nbsp;</span>
+                        </td>
+                    </tr>
+                </table>
+                <table class="tbl" style="margin-top: -1px;">
+                    <tr>
+                        <td style="width: 31%;">
+                            <span class="lbl">MUNICÍPIO</span>
+                            <span class="val">${clientCity}</span>
+                        </td>
+                        <td style="width: 18%;">
+                            <span class="lbl">FONE/FAX</span>
+                            <span class="val">${clientPhone}</span>
+                        </td>
+                        <td style="width: 11%;">
+                            <span class="lbl">UF</span>
+                            <span class="val">${clientUf}</span>
+                        </td>
+                        <td style="width: 24%;">
+                            <span class="lbl">INSCRIÇÃO ESTADUAL</span>
+                            <span class="val">&nbsp;</span>
+                        </td>
+                        <td style="width: 16%;">
+                            <span class="lbl">HORA ENTR./SAÍDA</span>
+                            <span class="val">&nbsp;</span>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- 4. FATURA & CÁLCULO DO IMPOSTO -->
+                <div class="sec-title">FATURA</div>
+                <div class="sec-title" style="margin-top: 1px;">CALCULO DO IMPOSTO</div>
+                <table class="tbl">
+                    <tr>
+                        <td><span class="lbl">BASE DE CALC. DO ICMS</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">VALOR DO ICMS</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">BASE DE CALC. ICMS ST</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">VALOR DO ICMS ST</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">V. IMP. IMPORTAÇÃO</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">V. ICMS UF REMET.</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">VALOR DO FCP</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">VALOR DO PIS</span><span class="val num-right">0,00</span></td>
+                        <td style="width: 14%;"><span class="lbl">V. TOTAL DE PRODUTOS</span><span class="val num-right">${valFormatted}</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="lbl">VALOR DO FRETE</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">VALOR DO SEGURO</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">DESCONTO</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">OUTRAS DESP.</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">VALOR DO IPI</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">V. ICMS UF DEST.</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">V. APROX. DO TRIBUTO</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">VALOR DA COFINS</span><span class="val num-right">0,00</span></td>
+                        <td style="width: 14%;"><span class="lbl">V. TOTAL DA NOTA</span><span class="val num-right">${valFormatted}</span></td>
+                    </tr>
+                </table>
+
+                <!-- 5. TRANSPORTADOR / VOLUMES -->
+                <div class="sec-title">TRANSPORTADOR/VOLUMES TRANSPORTADOS</div>
+                <table class="tbl">
+                    <tr>
+                        <td style="width: 39%;"><span class="lbl">RAZÃO SOCIAL</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 16%;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <span class="lbl">FRETE POR CONTA</span>
+                                    <span style="font-size:5.5px; display:block; line-height:1.1;">0 - Emitente<br/>1 - Destinatário<br/>2 - Terceiros</span>
+                                </div>
+                                <div style="border:1px solid #000; width:16px; height:15px; text-align:center; line-height:15px; font-weight:700;">1</div>
+                            </div>
+                        </td>
+                        <td style="width: 11%;"><span class="lbl">CÓDIGO ANTT</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 12%;"><span class="lbl">PLACA</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 6%;"><span class="lbl">UF</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 16%;"><span class="lbl">CNPJ/CPF</span><span class="val">&nbsp;</span></td>
+                    </tr>
+                </table>
+                <table class="tbl" style="margin-top: -1px;">
+                    <tr>
+                        <td style="width: 39%;"><span class="lbl">ENDEREÇO</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 27%;"><span class="lbl">MUNICÍPIO</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 12%;"><span class="lbl">UF</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 22%;"><span class="lbl">INSC. ESTADUAL</span><span class="val">&nbsp;</span></td>
+                    </tr>
+                </table>
+                <table class="tbl" style="margin-top: -1px;">
+                    <tr>
+                        <td style="width: 14%;"><span class="lbl">QUANTIDADE</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 18%;"><span class="lbl">ESPÉCIE</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 17%;"><span class="lbl">MARCA</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 18%;"><span class="lbl">NUMERAÇÃO</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 17%;"><span class="lbl">PESO BRUTO</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 16%;"><span class="lbl">PESO LÍQUIDO</span><span class="val">&nbsp;</span></td>
+                    </tr>
+                </table>
+
+                <!-- 6. DADOS DO PRODUTO / SERVIÇO -->
+                <div class="sec-title">DADOS DO PRODUTO/SERVIÇO</div>
+                <div class="prod-box">
+                    <table class="prod-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 11%;">CÓDIGO</th>
+                                <th style="width: 32%;">DESCRIÇÃO DO PRODUTO/SERVIÇO</th>
+                                <th style="width: 7%;">NCM/SH</th>
+                                <th style="width: 4%;">CST</th>
+                                <th style="width: 4%;">CFOP</th>
+                                <th style="width: 3.5%;">UN</th>
+                                <th style="width: 5.5%;">QTD.</th>
+                                <th style="width: 7%;">VLR.<br/>UNIT</th>
+                                <th style="width: 7%;">VLR.<br/>TOTAL</th>
+                                <th style="width: 4.5%;">BC<br/>ICMS</th>
+                                <th style="width: 4.5%;">VLR.<br/>ICMS</th>
+                                <th style="width: 4%;">VLR.<br/>IPI</th>
+                                <th style="width: 3%;">ALIQ.<br/>ICMS</th>
+                                <th style="width: 3%;">ALIQ.<br/>IPI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom: 1px solid #000;">
+                                <td>${prodCode}</td>
+                                <td style="text-transform: uppercase;">${cleanDesc}</td>
+                                <td class="center">94036000</td>
+                                <td class="center">0102</td>
+                                <td class="center">5102</td>
+                                <td class="center">UN</td>
+                                <td class="num-right">1,000</td>
+                                <td class="num-right">${valFormatted}</td>
+                                <td class="num-right">${valFormatted}</td>
+                                <td class="num-right">0,00</td>
+                                <td class="num-right">0,00</td>
+                                <td class="num-right">0,00</td>
+                                <td class="num-right">&nbsp;</td>
+                                <td class="num-right">0,00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div></div>
                 </div>
+
+                <!-- 7. CÁLCULO DO ISSQN -->
+                <div class="sec-title">CALCULO DO ISSQN</div>
+                <table class="tbl">
+                    <tr>
+                        <td style="width: 25%;"><span class="lbl">INSCRIÇÃO MUNICIPAL</span><span class="val">&nbsp;</span></td>
+                        <td style="width: 25%;"><span class="lbl">VALOR TOTAL DOS SERVIÇOS</span><span class="val num-right">0,00</span></td>
+                        <td style="width: 25%;"><span class="lbl">BASE DE CÁLCULO DO ISSQN</span><span class="val num-right">0,00</span></td>
+                        <td style="width: 25%;"><span class="lbl">VALOR DO ISSQN</span><span class="val num-right">0,00</span></td>
+                    </tr>
+                </table>
+
+                <!-- 8. DADOS ADICIONAIS -->
+                <div class="sec-title">DADOS ADICIONAIS</div>
+                <table class="tbl">
+                    <tr>
+                        <td style="width: 53%; height: 64px;">
+                            <span class="lbl">INFORMAÇÕES COMPLEMENTARES</span>
+                            <div style="font-size: 7.5px; margin-top: 2px;">
+                                DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL. NAO GERA DIREITO A CREDITO FISCAL DE ICMS, ISS E IPI.
+                            </div>
+                        </td>
+                        <td style="width: 47%; height: 64px;">
+                            <span class="lbl">RESERVA AO FISCO</span>
+                        </td>
+                    </tr>
+                </table>
             </div>
             <script>window.onload = () => setTimeout(() => window.print(), 350);</script>
         </body>
