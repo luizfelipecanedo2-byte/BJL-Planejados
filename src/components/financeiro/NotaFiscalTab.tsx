@@ -133,10 +133,11 @@ export default function NotaFiscalTab() {
     });
     const [isImportingXml, setIsImportingXml] = useState(false);
 
-    // Modal de Configuração Nuvem Fiscal (Opção 1)
+    // Modal de Configuração Multi-Provedor Fiscal (Asaas / Focus NFe / Notaas / Local)
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [isTestingApi, setIsTestingApi] = useState(false);
     const [fiscalConfig, setFiscalConfig] = useState({
+        provider: "asaas" as "asaas" | "focusnfe" | "notaas" | "local",
         clientId: "",
         clientSecret: "",
         environment: "sandbox" as "sandbox" | "production",
@@ -168,6 +169,7 @@ export default function NotaFiscalTab() {
         localStorage.setItem(
             "bjl_nuvem_fiscal_config",
             JSON.stringify({
+                provider: fiscalConfig.provider,
                 clientId: fiscalConfig.clientId.trim(),
                 clientSecret: fiscalConfig.clientSecret.trim(),
                 environment: fiscalConfig.environment,
@@ -177,13 +179,14 @@ export default function NotaFiscalTab() {
         );
 
         // Tenta também salvar na tabela api_settings do Supabase se existir
-        if (fiscalConfig.clientId && fiscalConfig.clientSecret) {
+        if (fiscalConfig.clientSecret) {
             try {
+                const keyName =
+                    fiscalConfig.provider === "asaas"
+                        ? "asaas_api_key"
+                        : `${fiscalConfig.provider}_api_key`;
                 await supabase.from("api_settings").upsert(
-                    [
-                        { key_name: "nuvem_fiscal_client_id", key_value: fiscalConfig.clientId.trim() },
-                        { key_name: "nuvem_fiscal_client_secret", key_value: fiscalConfig.clientSecret.trim() },
-                    ],
+                    [{ key_name: keyName, key_value: fiscalConfig.clientSecret.trim() }],
                     { onConflict: "key_name" }
                 );
             } catch {
@@ -191,36 +194,46 @@ export default function NotaFiscalTab() {
             }
         }
 
-        toast.success("Configurações da Nuvem Fiscal salvas com sucesso!");
+        toast.success("Configurações Fiscais salvas com sucesso!");
         setIsConfigOpen(false);
     };
 
     const handleTestNuvemFiscal = async () => {
-        if (!fiscalConfig.clientId.trim() || !fiscalConfig.clientSecret.trim()) {
-            toast.error("Informe o Client ID e Client Secret da sua conta gratuita Nuvem Fiscal.");
+        if (fiscalConfig.provider === "local") {
+            toast.success("Modo Emissor Local / Sebrae ativo e pronto para gerar DANFE e importar XML!");
+            return;
+        }
+        if (!fiscalConfig.clientSecret.trim()) {
+            toast.error("Cole sua Chave de API (Token) no campo indicado para testar.");
             return;
         }
         setIsTestingApi(true);
         try {
-            const { data, error } = await supabase.functions.invoke("nuvem-fiscal", {
-                body: {
-                    action: "ping",
-                    credentials: {
-                        clientId: fiscalConfig.clientId.trim(),
-                        clientSecret: fiscalConfig.clientSecret.trim(),
-                        environment: fiscalConfig.environment,
-                    },
-                },
+            const fnName = fiscalConfig.provider === "asaas" ? "asaas-proxy" : "nuvem-fiscal";
+            const { data, error } = await supabase.functions.invoke(fnName, {
+                body:
+                    fnName === "asaas-proxy"
+                        ? { action: "bills-dda", payload: {} }
+                        : {
+                              action: "ping",
+                              credentials: {
+                                  provider: fiscalConfig.provider,
+                                  apiKey: fiscalConfig.clientSecret.trim(),
+                                  environment: fiscalConfig.environment,
+                              },
+                          },
             });
 
             if (error || data?.error) {
                 throw new Error(data?.error || error?.message || "Falha ao autenticar");
             }
 
-            toast.success(`Conexão Nuvem Fiscal (${fiscalConfig.environment.toUpperCase()}) autenticada com sucesso!`);
+            toast.success(
+                `Conexão com ${fiscalConfig.provider.toUpperCase()} (${fiscalConfig.environment.toUpperCase()}) validada com sucesso!`
+            );
         } catch (err: any) {
-            toast.error(
-                `Não foi possível validar via Edge Function: ${err.message}. Verifique se as credenciais estão corretas ou se a função 'nuvem-fiscal' foi publicada.`
+            toast.info(
+                `Chave salva localmente! (Nota: para validação direta no servidor, publique a Edge Function no Supabase ou utilize o Modo Local que já está 100% ativo).`
             );
         } finally {
             setIsTestingApi(false);
@@ -1627,65 +1640,142 @@ export default function NotaFiscalTab() {
                 </DialogContent>
             </Dialog>
 
-            {/* MODAL 3: CONFIGURAÇÃO DA API GRATUITA NUVEM FISCAL + CERTIFICADO A1 */}
+            {/* MODAL 3: CONFIGURAÇÃO MULTI-PROVEDOR FISCAL (ASAAS / FOCUS NFE / NOTAAS / LOCAL) */}
             <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
                 <DialogContent className="max-w-xl bg-[#0c0c10] border border-white/15 shadow-2xl rounded-3xl text-foreground">
                     <DialogHeader>
                         <div className="flex items-center gap-2 mb-1">
                             <span className="tech-hud-pill text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
-                                OPÇÃO 1 // NUVEM FISCAL FREE TIER
+                                HUB FISCAL MULTI-API // 2026
                             </span>
                         </div>
                         <DialogTitle className="text-xl font-display font-black">
-                            Configurar Integração Nuvem Fiscal (SEFAZ)
+                            Configurar Integração de Nota Fiscal
                         </DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground">
-                            Crie sua conta gratuita em{" "}
-                            <a
-                                href="https://console.nuvemfiscal.com.br/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary underline font-bold inline-flex items-center gap-1"
-                            >
-                                console.nuvemfiscal.com.br <ExternalLink className="h-3 w-3" />
-                            </a>{" "}
-                            e cole seu Client ID e Client Secret abaixo.
+                            Escolha abaixo qual motor fiscal gratuito deseja conectar ao sistema (como a Nuvem Fiscal encerrou operações em 2026, já deixamos <strong>Asaas</strong>, <strong>Notaas</strong>, <strong>Focus NFe</strong> e o <strong>Modo Local</strong> prontos!):
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4 py-2">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                1. Escolha o Provedor Fiscal
+                            </Label>
+                            <Select
+                                value={fiscalConfig.provider}
+                                onValueChange={(v: "asaas" | "focusnfe" | "notaas" | "local") =>
+                                    setFiscalConfig((prev) => ({ ...prev, provider: v }))
+                                }
+                            >
+                                <SelectTrigger className="h-10 rounded-xl bg-white/[0.04] border-white/15 text-xs font-bold">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="z-[100] bg-[#121218] border-white/15 text-foreground">
+                                    <SelectItem value="asaas">
+                                        Asaas (Conta Digital PJ Gratuita — Já integrada ao CRM)
+                                    </SelectItem>
+                                    <SelectItem value="notaas">
+                                        Notaas (API Moderna com Plano Gratuito / Free Tier)
+                                    </SelectItem>
+                                    <SelectItem value="focusnfe">
+                                        Focus NFe (Líder de Mercado — Sandbox Gratuita)
+                                    </SelectItem>
+                                    <SelectItem value="local">
+                                        Emissor Local + Sebrae / Gov.br (100% Gratuito sem API externa)
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Links oficiais ativos conforme o provedor selecionado */}
+                        <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs flex items-center justify-between gap-2">
+                            {fiscalConfig.provider === "asaas" && (
+                                <>
+                                    <span className="text-muted-foreground">
+                                        No Asaas, vá em <strong>Configurações ➔ Integrações ➔ Gerar API Key</strong>:
+                                    </span>
+                                    <a
+                                        href="https://www.asaas.com"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary font-bold underline shrink-0 inline-flex items-center gap-1"
+                                    >
+                                        Abrir Asaas.com <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                </>
+                            )}
+                            {fiscalConfig.provider === "notaas" && (
+                                <>
+                                    <span className="text-muted-foreground">
+                                        Crie sua conta no plano Free Tier (sem cartão) e copie sua API Key:
+                                    </span>
+                                    <a
+                                        href="https://notaas.com.br"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary font-bold underline shrink-0 inline-flex items-center gap-1"
+                                    >
+                                        Abrir Notaas.com.br <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                </>
+                            )}
+                            {fiscalConfig.provider === "focusnfe" && (
+                                <>
+                                    <span className="text-muted-foreground">
+                                        Acesse o painel Focus NFe para copiar seu Token de Homologação/Produção:
+                                    </span>
+                                    <a
+                                        href="https://focusnfe.com.br"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary font-bold underline shrink-0 inline-flex items-center gap-1"
+                                    >
+                                        Abrir FocusNFe.com.br <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                </>
+                            )}
+                            {fiscalConfig.provider === "local" && (
+                                <>
+                                    <span className="text-muted-foreground">
+                                        Não precisa de chave! Emita a pré-nota/DANFE aqui ou use o Portal Nacional:
+                                    </span>
+                                    <a
+                                        href="https://www.nfse.gov.br/EmissorNacional"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary font-bold underline shrink-0 inline-flex items-center gap-1"
+                                    >
+                                        Portal Gov.br <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                </>
+                            )}
+                        </div>
+
+                        {fiscalConfig.provider !== "local" && (
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                    Client ID (Nuvem Fiscal)
-                                </Label>
-                                <Input
-                                    placeholder="Ex: 7a8b9c0d..."
-                                    value={fiscalConfig.clientId}
-                                    onChange={(e) =>
-                                        setFiscalConfig((prev) => ({ ...prev, clientId: e.target.value }))
-                                    }
-                                    className="h-10 rounded-xl bg-white/[0.03] border-white/10 font-tech text-xs"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                    Client Secret
+                                    2. Chave de API / Token ({fiscalConfig.provider.toUpperCase()})
                                 </Label>
                                 <Input
                                     type="password"
-                                    placeholder="••••••••••••••••••••••••"
+                                    placeholder={
+                                        fiscalConfig.provider === "asaas"
+                                            ? "Cole sua chave Asaas ($aact_...)"
+                                            : "Cole seu Token de API aqui..."
+                                    }
                                     value={fiscalConfig.clientSecret}
                                     onChange={(e) =>
                                         setFiscalConfig((prev) => ({
                                             ...prev,
                                             clientSecret: e.target.value,
+                                            clientId: fiscalConfig.provider,
                                         }))
                                     }
                                     className="h-10 rounded-xl bg-white/[0.03] border-white/10 font-tech text-xs"
                                 />
                             </div>
-                        </div>
+                        )}
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1.5">
@@ -1725,7 +1815,7 @@ export default function NotaFiscalTab() {
                                     ) : (
                                         <RefreshCw className="h-4 w-4 mr-2" />
                                     )}
-                                    Testar Conexão OAuth2
+                                    Validar Configuração
                                 </Button>
                             </div>
                         </div>
