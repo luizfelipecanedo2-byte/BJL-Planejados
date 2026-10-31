@@ -873,7 +873,7 @@ export default function NotaFiscalTab() {
             <title>Nota Fiscal ${invoice.client_name}.pdf</title>
             <style>
                 @page { size: A4 portrait; margin: 7mm; }
-                * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; color: #000; }
+                * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; color: #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 body { margin: 0; padding: 10px; background: #fff; font-size: 9px; }
                 .page { width: 100%; max-width: 780px; margin: 0 auto; }
                 .tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -924,7 +924,9 @@ export default function NotaFiscalTab() {
                 <!-- 2. CABEÇALHO DO EMITENTE / DANFE / CHAVE DE ACESSO -->
                 <table class="tbl">
                     <tr>
-                        <td style="width: 14%; height: 92px;"></td>
+                        <td class="center" style="width: 14%; height: 92px; vertical-align: middle; padding: 4px;">
+                            <img src="${window.location.origin}/logo-danfe-bjl.png" alt="BJL Planejados" style="width: 78px; height: 78px; object-fit: contain; border-radius: 50%; background: #000; display: block; margin: 0 auto;" />
+                        </td>
                         <td class="center" style="width: 24%; vertical-align: middle;">
                             <div style="font-size: 9.5px; font-weight: 700;">${companyName}</div>
                             <div style="font-size: 8px; margin-top: 4px;">
