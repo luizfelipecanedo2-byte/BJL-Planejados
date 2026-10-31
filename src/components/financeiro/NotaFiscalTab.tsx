@@ -19,6 +19,7 @@ import {
     ExternalLink,
     RefreshCw,
     KeyRound,
+    Ban,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -777,6 +778,80 @@ export default function NotaFiscalTab() {
             toast.error("Erro ao salvar dados do XML no banco.");
         } finally {
             setIsImportingXml(false);
+        }
+    };
+
+    const handleCancelInvoice = async (invoice: Invoice) => {
+        if (invoice.status === "Cancelada") {
+            toast.info("Esta nota fiscal já está cancelada.");
+            return;
+        }
+
+        const motivo = window.prompt(
+            "Informe o motivo do cancelamento para a SEFAZ (mínimo de 15 caracteres):",
+            "Cancelamento por erro de preenchimento nos valores da nota fiscal"
+        );
+        if (motivo === null) return;
+        if (motivo.trim().length < 15) {
+            toast.error("A SEFAZ exige que a justificativa tenha pelo menos 15 caracteres.");
+            return;
+        }
+
+        try {
+            toast.info("Enviando evento de cancelamento (110111) para a SEFAZ...");
+
+            // Se possui ID da nota no Notaas e API Key configurada, transmite o cancelamento oficial para a SEFAZ
+            if (invoice.asaas_id && fiscalConfig.clientSecret.trim()) {
+                const res = await fetch("https://platform.notaas.com.br/api/v1/nfe/cancelar", {
+                    method: "POST",
+                    headers: {
+                        "x-api-key": fiscalConfig.clientSecret.trim(),
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        invoiceId: invoice.asaas_id,
+                        motivo: motivo.trim(),
+                    }),
+                });
+                const cancelData = await res.json().catch(() => ({}));
+                if (!res.ok && cancelData?.error) {
+                    toast.warning(`Aviso SEFAZ: ${cancelData.error}`);
+                }
+            }
+
+            const updatedStatusText = `Cancelada na SEFAZ (${motivo.trim()})`;
+            const { error } = await supabase
+                .from("invoices")
+                .update({
+                    status: "Cancelada",
+                    asaas_status: updatedStatusText,
+                })
+                .eq("id", invoice.id);
+
+            if (error) throw error;
+
+            // Remove também o lançamento financeiro automático vinculado a esta nota (se existir)
+            if (invoice.invoice_number) {
+                await supabase
+                    .from("transactions")
+                    .delete()
+                    .eq("invoice_number", invoice.invoice_number);
+            }
+
+            setInvoices((prev) =>
+                prev.map((inv) =>
+                    inv.id === invoice.id
+                        ? { ...inv, status: "Cancelada", asaas_status: updatedStatusText }
+                        : inv
+                )
+            );
+
+            toast.success(
+                `Nota Fiscal #${invoice.invoice_number} cancelada na SEFAZ e estornada do Financeiro!`
+            );
+        } catch (err) {
+            console.error("Erro ao cancelar nota fiscal:", err);
+            toast.error("Erro ao cancelar nota fiscal.");
         }
     };
 
@@ -1594,12 +1669,24 @@ export default function NotaFiscalTab() {
                                                             </a>
                                                         </Button>
                                                     )}
+                                                    {invoice.status !== "Cancelada" && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleCancelInvoice(invoice)}
+                                                            className="h-8 px-2.5 rounded-xl text-[10px] font-bold text-amber-400 hover:bg-amber-500/15 gap-1"
+                                                            title="Cancelar Nota Fiscal na SEFAZ"
+                                                        >
+                                                            <Ban className="h-3.5 w-3.5" />
+                                                            Cancelar NF
+                                                        </Button>
+                                                    )}
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => handleDeleteInvoice(invoice.id)}
                                                         className="h-8 w-8 rounded-xl text-rose-400 hover:bg-rose-500/15"
-                                                        title="Excluir registro"
+                                                        title="Excluir registro do histórico"
                                                     >
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>
