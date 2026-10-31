@@ -1209,7 +1209,7 @@ export default function NotaFiscalTab() {
 
             {/* MODAL 1: EMITIR NOTA FISCAL EM 1 CLIQUE */}
             <Dialog open={isEmitOpen} onOpenChange={setIsEmitOpen}>
-                <DialogContent className="max-w-2xl executive-card border-metallic text-foreground">
+                <DialogContent className="max-w-2xl bg-[#0c0c10] border border-white/15 shadow-2xl rounded-3xl text-foreground">
                     <DialogHeader>
                         <div className="flex items-center gap-2 mb-1">
                             <span className="tech-hud-pill text-primary border-primary/30 bg-primary/10">
@@ -1235,7 +1235,7 @@ export default function NotaFiscalTab() {
                                 <SelectTrigger className="h-10 rounded-xl bg-black/40 border-white/10 text-xs">
                                     <SelectValue placeholder="Escolher Venda Fechada ou Cliente Cadastrado..." />
                                 </SelectTrigger>
-                                <SelectContent className="max-h-72">
+                                <SelectContent className="max-h-72 z-[100] bg-[#121218] border-white/15 text-foreground">
                                     {crmSales.length > 0 && (
                                         <>
                                             <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-primary">
@@ -1285,7 +1285,7 @@ export default function NotaFiscalTab() {
                                     <SelectTrigger className="h-10 rounded-xl bg-white/[0.03] border-white/10 text-xs font-bold">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="z-[100] bg-[#121218] border-white/15 text-foreground">
                                         <SelectItem value="NF-e">
                                             NF-e (Modelo 55 — Venda de Móveis / Produtos)
                                         </SelectItem>
@@ -1465,7 +1465,7 @@ export default function NotaFiscalTab() {
 
             {/* MODAL 2: IMPORTADOR DE XML SEFAZ (COMPRA DE INSUMOS / NOTA EMITIDA) */}
             <Dialog open={isXmlDialogOpen} onOpenChange={setIsXmlDialogOpen}>
-                <DialogContent className="max-w-2xl executive-card border-metallic text-foreground">
+                <DialogContent className="max-w-2xl bg-[#0c0c10] border border-white/15 shadow-2xl rounded-3xl text-foreground">
                     <DialogHeader>
                         <div className="flex items-center gap-2 mb-1">
                             <span className="tech-hud-pill text-amber-400 border-amber-500/30 bg-amber-500/10">
@@ -1553,7 +1553,7 @@ export default function NotaFiscalTab() {
                                         <SelectTrigger className="w-56 h-8 rounded-lg bg-black/40 border-white/10 text-xs">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="z-[100] bg-[#121218] border-white/15 text-foreground">
                                             <SelectItem value="entrada">
                                                 Nota de Compra (Fornecedor / MDF)
                                             </SelectItem>
@@ -1629,7 +1629,7 @@ export default function NotaFiscalTab() {
 
             {/* MODAL 3: CONFIGURAÇÃO DA API GRATUITA NUVEM FISCAL + CERTIFICADO A1 */}
             <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-                <DialogContent className="max-w-xl executive-card border-metallic text-foreground">
+                <DialogContent className="max-w-xl bg-[#0c0c10] border border-white/15 shadow-2xl rounded-3xl text-foreground">
                     <DialogHeader>
                         <div className="flex items-center gap-2 mb-1">
                             <span className="tech-hud-pill text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
@@ -1701,7 +1701,7 @@ export default function NotaFiscalTab() {
                                     <SelectTrigger className="h-10 rounded-xl bg-white/[0.03] border-white/10 text-xs font-bold">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="z-[100] bg-[#121218] border-white/15 text-foreground">
                                         <SelectItem value="sandbox">
                                             Homologação / Sandbox (Testes sem valor fiscal)
                                         </SelectItem>
