@@ -123,6 +123,8 @@ export default function NotaFiscalTab() {
         clientPhone: "",
         clientEmail: "",
         description: "Fabricação e fornecimento de móveis planejados sob medida em MDF",
+        quantity: "1",
+        unitPrice: "",
         amount: "",
         ncm: "94036000", // Móveis de madeira
         cfop: "5102", // Venda Dentro do Estado (igual Nota Fiscal Neto.pdf)
@@ -377,6 +379,9 @@ export default function NotaFiscalTab() {
                 const matchingClient = crmClients.find(
                     (c) => (c.name || "").toLowerCase() === (sale.client_name || "").toLowerCase()
                 );
+                const saleTotal = Number(sale.total_value || 0);
+                const saleQty = Math.max(1, Number(sale.quantity || 1));
+                const calcUnit = saleTotal > 0 ? (saleTotal / saleQty).toFixed(2) : "";
                 setEmitForm((prev) => ({
                     ...prev,
                     selectedSaleId: val,
@@ -389,7 +394,9 @@ export default function NotaFiscalTab() {
                     clientPhone: matchingClient?.phone || "",
                     clientEmail: matchingClient?.email || "",
                     description: `${sale.product || "Móveis Planejados"}`,
-                    amount: String(sale.total_value || ""),
+                    quantity: String(saleQty),
+                    unitPrice: calcUnit,
+                    amount: saleTotal > 0 ? String(saleTotal) : "",
                 }));
             }
         } else if (val.startsWith("client:")) {
@@ -414,7 +421,13 @@ export default function NotaFiscalTab() {
 
     const handleEmitInvoice = async (e: React.FormEvent) => {
         e.preventDefault();
-        const numericAmount = parseFloat(emitForm.amount.replace(",", "."));
+        const numericQty = Math.max(1, parseFloat(String(emitForm.quantity || "1").replace(",", ".")) || 1);
+        const numericAmount = parseFloat(String(emitForm.amount || "0").replace(",", "."));
+        const numericUnitPrice =
+            parseFloat(String(emitForm.unitPrice || "0").replace(",", ".")) > 0
+                ? parseFloat(String(emitForm.unitPrice || "0").replace(",", "."))
+                : Number((numericAmount / numericQty).toFixed(2));
+
         if (!emitForm.clientName.trim() || isNaN(numericAmount) || numericAmount <= 0) {
             toast.error("Preencha o nome do cliente e um valor válido para emitir a nota.");
             return;
@@ -454,11 +467,11 @@ export default function NotaFiscalTab() {
                     {
                         codigo: "001",
                         descricao: emitForm.description.trim(),
-                        cfop: emitForm.cfop || "5101",
+                        cfop: emitForm.cfop || "5102",
                         ncm: (emitForm.ncm || "94036000").replace(/\D/g, ""),
                         unidade: "UN",
-                        quantidade: 1,
-                        valorUnitario: numericAmount,
+                        quantidade: numericQty,
+                        valorUnitario: numericUnitPrice,
                         valorTotal: numericAmount,
                     },
                 ],
@@ -528,7 +541,7 @@ export default function NotaFiscalTab() {
             const newInvoiceRecord: any = {
                 issue_date: todayIso,
                 client_name: emitForm.clientName.trim(),
-                description: `${emitForm.description.trim()}${
+                description: `${emitForm.description.trim()} | Qtd: ${numericQty} | VUnit: ${numericUnitPrice.toFixed(2)}${
                     emitForm.clientDoc ? ` | Doc: ${emitForm.clientDoc}` : ""
                 }${sefazKey ? ` | Chave: ${sefazKey}` : ""}${
                     sefazProtocol ? ` | Prot SEFAZ: ${sefazProtocol}` : ""
@@ -914,7 +927,12 @@ export default function NotaFiscalTab() {
             invoice.asaas_status?.match(/([0-9]{15})/)?.[1] ||
             "333260001022548";
 
+        const qtyFromDesc = parseFloat(invoice.description.match(/Qtd:\s*([0-9.,]+)/)?.[1]?.replace(",", ".") || "1") || 1;
+        const unitFromDesc = parseFloat(invoice.description.match(/VUnit:\s*([0-9.,]+)/)?.[1]?.replace(",", ".") || "0");
+
         const cleanDesc = invoice.description
+            .replace(/\|\s*Qtd:\s*[^|]+/g, "")
+            .replace(/\|\s*VUnit:\s*[^|]+/g, "")
             .replace(/\|\s*Doc:\s*[^|]+/g, "")
             .replace(/\|\s*NCM\s*[^|]+/g, "")
             .replace(/\|\s*CFOP\s*[^|]+/g, "")
@@ -923,7 +941,17 @@ export default function NotaFiscalTab() {
             .trim();
 
         const issueDateFormatted = format(new Date(invoice.issue_date + "T12:00:00"), "dd/MM/yyyy");
-        const valFormatted = Number(invoice.amount || 0).toLocaleString("pt-BR", {
+        const totalNumeric = Number(invoice.amount || 0);
+        const unitNumeric = unitFromDesc > 0 ? unitFromDesc : totalNumeric / qtyFromDesc;
+        const qtyFormatted = qtyFromDesc.toLocaleString("pt-BR", {
+            minimumFractionDigits: 3,
+            maximumFractionDigits: 3,
+        });
+        const unitFormatted = unitNumeric.toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+        const valFormatted = totalNumeric.toLocaleString("pt-BR", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         });
@@ -1240,8 +1268,8 @@ export default function NotaFiscalTab() {
                                 <td class="center">0102</td>
                                 <td class="center">5102</td>
                                 <td class="center">UN</td>
-                                <td class="num-right">1,000</td>
-                                <td class="num-right">${valFormatted}</td>
+                                <td class="num-right">${qtyFormatted}</td>
+                                <td class="num-right">${unitFormatted}</td>
                                 <td class="num-right">${valFormatted}</td>
                                 <td class="num-right">0,00</td>
                                 <td class="num-right">0,00</td>
@@ -1800,9 +1828,19 @@ export default function NotaFiscalTab() {
                                     required
                                     placeholder="0.00"
                                     value={emitForm.amount}
-                                    onChange={(e) =>
-                                        setEmitForm((prev) => ({ ...prev, amount: e.target.value }))
-                                    }
+                                    onChange={(e) => {
+                                        const newTotal = e.target.value;
+                                        const qty = Math.max(1, parseFloat(emitForm.quantity || "1") || 1);
+                                        const totalNum = parseFloat(newTotal);
+                                        setEmitForm((prev) => ({
+                                            ...prev,
+                                            amount: newTotal,
+                                            unitPrice:
+                                                !isNaN(totalNum) && totalNum > 0
+                                                    ? (totalNum / qty).toFixed(2)
+                                                    : prev.unitPrice,
+                                        }));
+                                    }}
                                     className="h-10 rounded-xl bg-white/[0.03] border-white/10 font-tech font-bold text-primary"
                                 />
                             </div>
@@ -1837,18 +1875,80 @@ export default function NotaFiscalTab() {
                             </div>
                         </div>
 
-                        <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                Discriminação dos Móveis / Serviços na Nota
-                            </Label>
-                            <Input
-                                required
-                                value={emitForm.description}
-                                onChange={(e) =>
-                                    setEmitForm((prev) => ({ ...prev, description: e.target.value }))
-                                }
-                                className="h-10 rounded-xl bg-white/[0.03] border-white/10 text-xs"
-                            />
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                            <div className="sm:col-span-6 space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                    Discriminação dos Móveis / Serviços na Nota
+                                </Label>
+                                <Input
+                                    required
+                                    placeholder="Ex: Nicho 30x30 em MDF"
+                                    value={emitForm.description}
+                                    onChange={(e) =>
+                                        setEmitForm((prev) => ({ ...prev, description: e.target.value }))
+                                    }
+                                    className="h-10 rounded-xl bg-white/[0.03] border-white/10 text-xs"
+                                />
+                            </div>
+
+                            <div className="sm:col-span-3 space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                    Quantidade (Unid.)
+                                </Label>
+                                <Input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    required
+                                    placeholder="1"
+                                    value={emitForm.quantity}
+                                    onChange={(e) => {
+                                        const newQtyStr = e.target.value;
+                                        const qty = Math.max(1, parseFloat(newQtyStr) || 1);
+                                        const unit = parseFloat(emitForm.unitPrice || "0");
+                                        const total = parseFloat(emitForm.amount || "0");
+                                        setEmitForm((prev) => ({
+                                            ...prev,
+                                            quantity: newQtyStr,
+                                            amount:
+                                                !isNaN(unit) && unit > 0
+                                                    ? (qty * unit).toFixed(2)
+                                                    : prev.amount,
+                                            unitPrice:
+                                                (isNaN(unit) || unit <= 0) && !isNaN(total) && total > 0
+                                                    ? (total / qty).toFixed(2)
+                                                    : prev.unitPrice,
+                                        }));
+                                    }}
+                                    className="h-10 rounded-xl bg-primary/10 border-primary/30 font-tech font-bold text-primary text-center text-xs"
+                                />
+                            </div>
+
+                            <div className="sm:col-span-3 space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                    Valor Unitário (R$)
+                                </Label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={emitForm.unitPrice}
+                                    onChange={(e) => {
+                                        const newUnitStr = e.target.value;
+                                        const unit = parseFloat(newUnitStr);
+                                        const qty = Math.max(1, parseFloat(emitForm.quantity || "1") || 1);
+                                        setEmitForm((prev) => ({
+                                            ...prev,
+                                            unitPrice: newUnitStr,
+                                            amount:
+                                                !isNaN(unit) && unit > 0
+                                                    ? (qty * unit).toFixed(2)
+                                                    : prev.amount,
+                                        }));
+                                    }}
+                                    className="h-10 rounded-xl bg-white/[0.03] border-white/10 font-tech text-xs"
+                                />
+                            </div>
                         </div>
 
                         {/* Parâmetros Fiscais de Marcenaria já pré-configurados */}
