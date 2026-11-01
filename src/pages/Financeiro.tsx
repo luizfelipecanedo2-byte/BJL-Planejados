@@ -1836,16 +1836,22 @@ const Financeiro = () => {
   };
 
   const handleDeleteServiceExpense = async (id: string) => {
-    if (id.startsWith('os-')) {
-        toast.error("Este projeto vem das Ordens de Serviço. Para remover os custos manuais atrelados a ele, clique em Editar e exclua os itens da lista.");
-        return;
-    }
-    if (!window.confirm("Excluir?")) return;
+    if (!window.confirm("Tem certeza que deseja apagar esta Ordem de Serviço / Projeto?")) return;
     try {
+      if (id.startsWith('os-')) {
+        const osId = id.replace('os-', '');
+        await supabase.from('service_order_labor_logs').delete().eq('service_order_id', osId);
+        await supabase.from('tasks').delete().eq('service_order_id', osId);
+        const { error } = await supabase.from('service_orders').delete().eq('id', osId);
+        if (error) throw error;
+        setServiceOrders(prev => prev.filter(o => o.id !== osId));
+        toast.success("Ordem de Serviço apagada com sucesso!");
+        return;
+      }
       await supabase.from('service_expenses').delete().eq('id', id);
       setServiceExpenses(serviceExpenses.filter(e => e.id !== id));
       toast.success("Gasto removido!");
-    } catch (error) { toast.error("Erro ao remover."); }
+    } catch (error) { toast.error("Erro ao remover Ordem de Serviço."); }
   };
 
 

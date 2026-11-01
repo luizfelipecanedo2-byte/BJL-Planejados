@@ -452,17 +452,15 @@ const ServiceExpensesTab = ({
                                                     <Pencil className="h-3.5 w-3.5" />
                                                 </Button>
 
-                                                {!expense.id.startsWith('os-') && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:text-rose-500"
-                                                        onClick={() => handleDeleteServiceExpense(expense.id)}
-                                                        title="Excluir"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                )}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-rose-500"
+                                                    onClick={() => handleDeleteServiceExpense(expense.id)}
+                                                    title="Apagar Ordem de Serviço / Registro"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
 
                                                 <Button
                                                     variant="outline"

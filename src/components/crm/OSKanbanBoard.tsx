@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ServiceOrder, ServiceStatus } from "@/types/serviceOrder";
 import { Card, CardContent } from "@/components/ui/card";
-import { Phone, Calendar, ClipboardList, MessageSquare, Camera, Ruler, MapPin, Navigation } from "lucide-react";
+import { Phone, Calendar, ClipboardList, MessageSquare, Camera, Ruler, MapPin, Navigation, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WhatsAppQuickDialog } from "./WhatsAppQuickDialog";
 
@@ -9,6 +9,7 @@ interface OSKanbanBoardProps {
   orders: ServiceOrder[];
   onStatusChange: (id: string, status: ServiceStatus) => void;
   onEdit: (order: ServiceOrder) => void;
+  onDelete?: (id: string) => void;
   onOpenGallery?: (order: ServiceOrder) => void;
   isAdmin?: boolean;
 }
@@ -58,7 +59,7 @@ const dotColors: Record<ServiceStatus, string> = {
   "Entregue e Finalizado": "bg-emerald-600",
 };
 
-const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onOpenGallery, isAdmin = true }: OSKanbanBoardProps) => {
+const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onDelete, onOpenGallery, isAdmin = true }: OSKanbanBoardProps) => {
   const [whatsAppOrder, setWhatsAppOrder] = useState<ServiceOrder | null>(null);
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
 
@@ -247,21 +248,36 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onOpenGallery, isAdmin 
                           <span>{(order.attachments?.length || 0) > 0 ? `${order.attachments?.length} fotos/medidas` : '+ Medidas'}</span>
                         </button>
 
-                        {order.clientPhone && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setWhatsAppOrder(order);
-                              setIsWhatsAppOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all flex items-center gap-1 text-[9px] font-black"
-                            title="Avisar cliente no WhatsApp"
-                          >
-                            <MessageSquare className="h-3 w-3" />
-                            <span>Avisar</span>
-                          </button>
-                        )}
+                        <div className="flex items-center gap-1 ml-auto">
+                          {order.clientPhone && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setWhatsAppOrder(order);
+                                setIsWhatsAppOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all flex items-center gap-1 text-[9px] font-black"
+                              title="Avisar cliente no WhatsApp"
+                            >
+                              <MessageSquare className="h-3 w-3" />
+                              <span>Avisar</span>
+                            </button>
+                          )}
+                          {onDelete && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(order.id);
+                              }}
+                              className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 transition-all flex items-center justify-center"
+                              title="Apagar Ordem de Serviço"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

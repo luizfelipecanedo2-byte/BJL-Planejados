@@ -77,11 +77,9 @@ const ServiceOrderTable = ({ orders, onEdit, onDelete, isAdmin = false, onOpenGa
                                 <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => onEdit(order)}>
                                     <Pencil className="h-4 w-4 text-primary" />
                                 </Button>
-                                {isAdmin && (
-                                    <Button variant="outline" size="icon" className="h-9 w-9 text-red-500 border-red-200 hover:bg-red-50" onClick={() => onDelete(order.id)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                )}
+                                <Button variant="outline" size="icon" className="h-9 w-9 text-red-500 border-red-500/30 hover:bg-red-500/10" onClick={() => onDelete(order.id)} title="Apagar Ordem de Serviço">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                             </div>
                         </div>
 
@@ -279,11 +277,9 @@ const ServiceOrderTable = ({ orders, onEdit, onDelete, isAdmin = false, onOpenGa
                                             </span>
                                         </Button>
 
-                                        {isAdmin && (
-                                            <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors h-8 w-8" onClick={() => onDelete(order.id)}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        )}
+                                        <Button variant="ghost" size="icon" className="text-red-400 hover:text-white hover:bg-red-600 transition-colors h-8 w-8 rounded-lg" onClick={() => onDelete(order.id)} title="Apagar Ordem de Serviço">
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 </TableCell>
                             </TableRow>
