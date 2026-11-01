@@ -705,18 +705,39 @@ ${topCats || "• Sem despesas pagas registradas neste mês."}
 export async function askBJLPartnerAI(
   messages: PartnerChatMessage[],
   customApiKey?: string,
-  forceRefreshSnapshot = false
-): Promise<{ reply: string; snapshot: BJLPartnerSnapshot; mode: "gemini" | "local-cfo" }> {
+  forceRefreshSnapshot = false,
+  preferredModel: "gemini-2.5-pro" | "gemini-2.5-flash" = "gemini-2.5-pro"
+): Promise<{ reply: string; snapshot: BJLPartnerSnapshot; mode: "gemini-pro" | "gemini-flash" | "local-cfo"; executedAction?: string }> {
   const snapshot = await buildBJLBusinessSnapshot(forceRefreshSnapshot);
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
 
-  const systemPrompt = `Você é o "Sócio IA da BJL Planejados" — um Diretor Financeiro (CFO), Estrategista Comercial e Engenheiro Mestre de Marcenaria de Alto Padrão, trabalhando lado a lado com o dono da BJL Móveis Planejados (CNPJ 60.528.620/0001-20).
+  const activeKey = (
+    customApiKey ||
+    localStorage.getItem("bjl_gemini_api_key") ||
+    import.meta.env.VITE_GEMINI_API_KEY ||
+    ""
+  ).trim();
 
-Seu tom de voz:
-- Fale como um SÓCIO DE CONFIANÇA: direto, leal, inteligente, estratégico e focado em lucro, proteção de caixa e eficiência na fábrica.
-- Sempre cite os NÚMEROS REAIS da empresa presentes no Raio-X abaixo quando responder perguntas sobre financeiro, contas a pagar, orçamentos, materiais ou ordens de serviço.
-- Formate valores em Reais (R$) de forma clara, use tópicos (bullet points) e destaque números importantes em **negrito**.
-- Quando o sócio pedir ajuda para precificar ou avaliar um orçamento, considere os custos reais do catálogo abaixo, lembre-o das taxas de cartão, custos de MDF/ferragens, dias de produção e recomende margens saudáveis para marcenaria sob medida (markup ideal entre 2.3x e 2.8x).
+  if (!activeKey) {
+    const fallbackReply = generateLocalPartnerFallback(lastUserMessage, snapshot);
+    return {
+      reply: `⚠️ **Atenção Sócio: Motor Gemini 2.5 Pro ainda não ativado com Chave de API.**\n*(No momento estou respondendo apenas com o Resumo Automático Local, que não possui inteligência livre para conversar ou executar ordens complexas).* \n\n👉 **Para ativar a inteligência máxima (Gemini 2.5 Pro):** Clique no botão amarelo **"Ativar Gemini 2.5 Pro"** logo acima (ou no ícone de chave 🔑 no topo) e cole sua chave gratuita do Google AI Studio (\`AIzaSy...\`), ou envie a chave para o assistente configurar para você!\n\n---\n\n${fallbackReply}`,
+      snapshot,
+      mode: "local-cfo",
+    };
+  }
+
+  const todayISO = new Date().toISOString().split("T")[0];
+
+  const systemPrompt = `Você é o "Sócio IA da BJL Planejados" (rodando no motor Google Gemini 2.5 de última geração) — você atua como Sócio Estrategista, Diretor Financeiro (CFO) e Engenheiro Mestre de Marcenaria de Alto Padrão ao lado de Luiz Felipe Canedo, proprietário da BJL Móveis Planejados (CNPJ 60.528.620/0001-20).
+
+DIRETRIZES DE INTELIGÊNCIA E EXECUÇÃO:
+1. Fale como um SÓCIO HUMANO EXTREMAMENTE INTELIGENTE, direto, analítico, proativo e leal. NUNCA dê respostas genéricas ou robóticas.
+2. Faça TODAS as contas matemáticas passo a passo quando o sócio pedir simulações de preços, descontos, ponto de equilíbrio, comissões, impostos, taxas de maquininha, rateio de fábrica ou fluxo de caixa.
+3. Você tem ferramentas reais (Function Calling) conectadas ao banco de dados Supabase da BJL:
+   - Se o sócio pedir para BUSCAR ou FILTRAR gastos de um fornecedor específico (ex: "Quanto pagamos para a CED?", "Quais compras fizemos de MDF?", "O que pagamos para fulano?"), chame a ferramenta \`buscar_lancamentos_financeiros\`.
+   - Se o sócio pedir para LANÇAR / CADASTRAR uma despesa ou receita no financeiro (ex: "Lança uma despesa de R$ 250 de gasolina hoje no PIX Itaú"), chame a ferramenta \`criar_lancamento_financeiro\`.
+4. Use SEMPRE os números reais do Raio-X abaixo para embasar seus cálculos. Data de hoje: ${todayISO}.
 
 === RAIO-X EM TEMPO REAL DA BJL PLANEJADOS (${snapshot.generatedAt}) ===
 Mês Atual: ${snapshot.currentMonthLabel}
@@ -760,70 +781,227 @@ ${JSON.stringify(snapshot.catalogHighlights)}
 - OS Ativas Recentes: ${JSON.stringify(snapshot.productionSummary.recentActiveOS)}
 =======================================================================`;
 
-  // 1. Tenta via Supabase Edge Function (gemini-proxy)
-  try {
-    const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke("gemini-proxy", {
-      body: {
-        action: "partner-chat",
-        payload: {
-          systemPrompt,
-          messages: messages.slice(-10),
+  const tools = [
+    {
+      functionDeclarations: [
+        {
+          name: "buscar_lancamentos_financeiros",
+          description:
+            "Busca lançamentos financeiros reais no banco de dados da BJL por termo (fornecedor, cliente, descrição, categoria) ou status.",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              termo: {
+                type: "STRING",
+                description: "Termo de busca (ex: nome do fornecedor, cliente, MDF, CED, Bruta, energia, etc.)",
+              },
+              tipo: {
+                type: "STRING",
+                enum: ["all", "income", "expense"],
+                description: "Filtrar por receita (income), despesa (expense) ou todos (all)",
+              },
+            },
+            required: ["termo"],
+          },
         },
-      },
-    });
+        {
+          name: "criar_lancamento_financeiro",
+          description:
+            "Cria e salva um novo lançamento financeiro (despesa ou receita) diretamente no banco de dados da BJL Planejados quando o sócio pedir para lançar ou registrar um valor.",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              description: { type: "STRING", description: "Descrição clara do lançamento" },
+              amount: { type: "NUMBER", description: "Valor em Reais (ex: 350.50)" },
+              type: { type: "STRING", enum: ["income", "expense"], description: "income para Receita, expense para Despesa" },
+              category: { type: "STRING", description: "Categoria (ex: Custos Variáveis, Despesas Operacionais, Receita de Vendas)" },
+              subcategory: { type: "STRING", description: "Subcategoria (ex: Matéria-Prima (MDF/Insumos), Combustível / Pedágio, Ferragens)" },
+              contact: { type: "STRING", description: "Nome do Cliente ou Fornecedor" },
+              financial_institution: { type: "STRING", description: "Banco/Conta (Itaú, Nubank, Dinheiro, RecargaPay)" },
+              payment_method: { type: "STRING", description: "Forma de pagamento (PIX, Boleto, Cartão de Crédito, Dinheiro)" },
+              due_date: { type: "STRING", description: "Data de vencimento no formato YYYY-MM-DD" },
+              status: { type: "STRING", enum: ["paid", "pending"], description: "paid se já foi pago, pending se está a pagar" },
+            },
+            required: ["description", "amount", "type", "due_date", "status"],
+          },
+        },
+      ],
+    },
+  ];
 
-    if (!edgeErr && edgeRes?.data?.reply) {
-      return { reply: edgeRes.data.reply, snapshot, mode: "gemini" };
-    }
-  } catch (err) {
-    console.warn("Edge Function gemini-proxy indisponível para partner-chat, tentando chave local.", err);
-  }
+  const modelsToTry =
+    preferredModel === "gemini-2.5-pro"
+      ? ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"]
+      : ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
 
-  // 2. Tenta chamada direta ao Gemini (2.5-flash -> fallback 2.0-flash) com a chave configurada
-  const activeKey = (customApiKey || localStorage.getItem("bjl_gemini_api_key") || "").trim();
-  if (activeKey) {
-    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash"];
-    const contents = messages.slice(-10).map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }));
+  const baseContents: any[] = messages.slice(-14).map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
 
-    for (const modelName of modelsToTry) {
-      try {
-        const response = await fetch(
+  let lastErrorMsg = "";
+  let executedAction: string | undefined;
+
+  for (const modelName of modelsToTry) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: systemPrompt }],
+            },
+            contents: baseContents,
+            tools,
+            generationConfig: {
+              temperature: 0.4,
+              maxOutputTokens: 8192,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        lastErrorMsg = errData?.error?.message || `HTTP ${response.status}`;
+        continue;
+      }
+
+      const result = await response.json();
+      const candidatePart = result?.candidates?.[0]?.content?.parts?.[0];
+
+      // Verifica se o Gemini solicitou executar uma ferramenta (Function Call)
+      const fnCall = result?.candidates?.[0]?.content?.parts?.find((p: any) => p.functionCall)?.functionCall;
+
+      if (fnCall) {
+        let toolOutput: any = {};
+
+        if (fnCall.name === "buscar_lancamentos_financeiros") {
+          const termo = String(fnCall.args?.termo || "").toLowerCase();
+          const tipo = fnCall.args?.tipo || "all";
+          const { data: rows } = await supabase
+            .from("transactions")
+            .select("description, amount, type, category, subcategory, contact, financial_institution, payment_method, due_date, payment_date, status, order_service")
+            .order("due_date", { ascending: false })
+            .limit(800);
+
+          const matched = (rows || []).filter((r: any) => {
+            if (tipo !== "all" && r.type !== tipo) return false;
+            const hay = `${r.description || ""} ${r.contact || ""} ${r.category || ""} ${r.subcategory || ""} ${r.order_service || ""}`.toLowerCase();
+            return hay.includes(termo);
+          });
+
+          const totalMatched = matched.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0);
+          toolOutput = {
+            termo_buscado: termo,
+            quantidade_encontrada: matched.length,
+            valor_total_soma: totalMatched,
+            lancamentos: matched.slice(0, 35),
+          };
+          executedAction = `Busca realizada: "${termo}" (${matched.length} itens encontrados)`;
+        } else if (fnCall.name === "criar_lancamento_financeiro") {
+          const args = fnCall.args || {};
+          const newTx = {
+            description: args.description || "Lançamento via Sócio IA",
+            amount: Number(args.amount) || 0,
+            type: args.type || "expense",
+            category: args.category || (args.type === "income" ? "Receita de Vendas" : "Despesas Operacionais"),
+            subcategory: args.subcategory || "Geral",
+            contact: args.contact || "",
+            financial_institution: args.financial_institution || "Itaú",
+            payment_method: args.payment_method || "PIX",
+            competence_date: args.due_date || todayISO,
+            due_date: args.due_date || todayISO,
+            payment_date: args.status === "paid" ? (args.due_date || todayISO) : null,
+            status: args.status || "pending",
+          };
+
+          const { data: inserted, error: insErr } = await supabase
+            .from("transactions")
+            .insert([newTx])
+            .select()
+            .single();
+
+          if (insErr) {
+            toolOutput = { success: false, error: insErr.message };
+          } else {
+            cachedSnapshot = null; // invalida cache para atualizar os saldos
+            toolOutput = { success: true, lancamento_criado: inserted };
+            executedAction = `Lançamento registrado: ${newTx.description} (${formatBRL(newTx.amount)})`;
+          }
+        }
+
+        // Segunda chamada enviando o resultado da ferramenta de volta para o Gemini formular a resposta final
+        const followUpContents = [
+          ...baseContents,
+          result.candidates[0].content,
+          {
+            role: "function",
+            parts: [
+              {
+                functionResponse: {
+                  name: fnCall.name,
+                  response: toolOutput,
+                },
+              },
+            ],
+          },
+        ];
+
+        const secondRes = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              systemInstruction: {
-                parts: [{ text: systemPrompt }],
-              },
-              contents,
-              generationConfig: {
-                temperature: 0.35,
-                maxOutputTokens: 2048,
-              },
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              contents: followUpContents,
+              generationConfig: { temperature: 0.35, maxOutputTokens: 8192 },
             }),
           }
         );
 
-        if (response.ok) {
-          const result = await response.json();
-          const reply = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (reply) {
-            return { reply, snapshot, mode: "gemini" };
+        if (secondRes.ok) {
+          const secondData = await secondRes.json();
+          const finalReply = secondData?.candidates?.[0]?.content?.parts
+            ?.map((p: any) => p.text || "")
+            .join("")
+            .trim();
+          const refreshedSnap = await buildBJLBusinessSnapshot(true);
+          if (finalReply) {
+            return {
+              reply: finalReply,
+              snapshot: refreshedSnap,
+              mode: modelName.includes("pro") ? "gemini-pro" : "gemini-flash",
+              executedAction,
+            };
           }
         }
-      } catch (err) {
-        console.warn(`Tentativa com modelo ${modelName} falhou:`, err);
       }
+
+      const textParts = result?.candidates?.[0]?.content?.parts
+        ?.map((p: any) => p.text || "")
+        .join("")
+        .trim();
+
+      if (textParts) {
+        return {
+          reply: textParts,
+          snapshot,
+          mode: modelName.includes("pro") ? "gemini-pro" : "gemini-flash",
+        };
+      }
+    } catch (err: any) {
+      lastErrorMsg = err?.message || "Falha de conexão";
+      console.warn(`Tentativa com modelo ${modelName} falhou:`, err);
     }
   }
 
-  // 3. Fallback Analítico Instantâneo Local (funciona mesmo sem chave de API!)
-  const fallbackReply = generateLocalPartnerFallback(lastUserMessage, snapshot);
-  return { reply: fallbackReply, snapshot, mode: "local-cfo" };
+  throw new Error(
+    `Não foi possível conectar ao Gemini com a chave atual (${lastErrorMsg}). Verifique se sua chave API do Google AI Studio está correta no ícone de chave 🔑 no topo do chat.`
+  );
 }
 
 

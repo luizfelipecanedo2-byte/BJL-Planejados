@@ -121,9 +121,10 @@ export const BJLPartnerChat: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [snapshot, setSnapshot] = useState<BJLPartnerSnapshot | null>(null);
   const [isRefreshingSnap, setIsRefreshingSnap] = useState(false);
-  const [showKeyConfig, setShowKeyConfig] = useState(false);
+  const [showKeyConfig, setShowKeyConfig] = useState(() => !localStorage.getItem("bjl_gemini_api_key"));
   const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem("bjl_gemini_api_key") || "");
-  const [aiMode, setAiMode] = useState<"gemini" | "local-cfo">("gemini");
+  const [preferredModel, setPreferredModel] = useState<"gemini-2.5-pro" | "gemini-2.5-flash">("gemini-2.5-pro");
+  const [aiMode, setAiMode] = useState<"gemini-pro" | "gemini-flash" | "local-cfo">("gemini-pro");
 
   const [messages, setMessages] = useState<PartnerChatMessage[]>(() => {
     try {
@@ -229,19 +230,24 @@ export const BJLPartnerChat: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const { reply, snapshot: freshSnap, mode } = await askBJLPartnerAI(
+      const { reply, snapshot: freshSnap, mode, executedAction } = await askBJLPartnerAI(
         updatedMessages,
         apiKeyInput.trim() || undefined,
-        false
+        false,
+        preferredModel
       );
       setSnapshot(freshSnap);
       setAiMode(mode);
+
+      if (executedAction) {
+        toast.success(`⚡ ${executedAction}`);
+      }
 
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: reply,
+          content: executedAction ? `⚡ **[Ação Executada: ${executedAction}]**\n\n${reply}` : reply,
           timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
@@ -291,14 +297,33 @@ export const BJLPartnerChat: React.FC = () => {
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-sm font-black uppercase tracking-wider text-white">
-                      Sócio IA • BJL Planejados
+                      Sócio IA • BJL
                     </h3>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      {apiKeyInput ? "Gemini 2.5" : "CFO Live"}
-                    </span>
+                    {apiKeyInput.trim() ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreferredModel((prev) =>
+                            prev === "gemini-2.5-pro" ? "gemini-2.5-flash" : "gemini-2.5-pro"
+                          )
+                        }
+                        title="Clique para alternar entre Gemini 2.5 Pro (Máxima Inteligência) e 2.5 Flash (Ultra Rápido)"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        {preferredModel === "gemini-2.5-pro" ? "Gemini 2.5 Pro (Thinking)" : "Gemini 2.5 Flash"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowKeyConfig(true)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse"
+                      >
+                        ⚠️ Ativar Gemini 2.5 Pro
+                      </button>
+                    )}
                   </div>
                   <p className="text-[10px] font-semibold text-slate-400">
                     Conectado ao Financeiro, Orçamentos e Fábrica em tempo real
@@ -353,35 +378,36 @@ export const BJLPartnerChat: React.FC = () => {
             </div>
 
             {/* Gaveta de Configuração Rápida da Chave Gemini */}
-            {showKeyConfig && (
-              <div className="p-3.5 bg-amber-500/10 border-b border-amber-500/25 space-y-2 shrink-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
-                    <Key className="h-3 w-3" /> Chave Google Gemini API (Opcional para IA Generativa Completa)
+            {(showKeyConfig || !apiKeyInput.trim()) && (
+              <div className="p-3.5 bg-amber-500/15 border-b border-amber-500/35 space-y-2 shrink-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                    <Key className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                    Ativar Inteligência Gemini 2.5 Pro (Cole sua chave AIzaSy...)
                   </span>
                   <a
                     href="https://aistudio.google.com/app/apikey"
                     target="_blank"
                     rel="noreferrer"
-                    className="text-[10px] font-bold text-amber-300 underline hover:text-white"
+                    className="text-[10px] font-black text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/40 hover:bg-amber-500 hover:text-black transition-colors shrink-0"
                   >
-                    Gerar Chave Grátis ↗
+                    Pegar Chave Grátis ↗
                   </a>
                 </div>
                 <div className="flex gap-2">
                   <Input
                     type="password"
-                    placeholder="Cole sua chave AIzaSy..."
+                    placeholder="Cole aqui sua chave AIzaSy... do Google AI Studio"
                     value={apiKeyInput}
                     onChange={(e) => setApiKeyInput(e.target.value)}
-                    className="h-8 text-xs bg-[#090d16] border-white/15 rounded-xl"
+                    className="h-8 text-xs bg-[#090d16] border-amber-500/30 rounded-xl text-white"
                   />
                   <Button
                     size="sm"
                     onClick={handleSaveApiKey}
-                    className="h-8 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-black text-[10px] uppercase tracking-wider"
+                    className="h-8 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-[10px] uppercase tracking-wider"
                   >
-                    <Check className="h-3.5 w-3.5 mr-1" /> Salvar
+                    <Check className="h-3.5 w-3.5 mr-1" /> Ativar IA
                   </Button>
                 </div>
               </div>
