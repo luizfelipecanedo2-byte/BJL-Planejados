@@ -29,6 +29,7 @@ const LandingPage = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const [scrolled, setScrolled] = useState(false);
+    const [selectedProject, setSelectedProject] = useState<{ title: string; category: string; img: string } | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -148,9 +149,9 @@ const LandingPage = () => {
 
             {/* Hero Section */}
             <section id="início" className="relative h-screen flex items-center justify-center px-6 overflow-hidden">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-[#050505]" />
+                <div className="absolute inset-0 bg-[url('/projetos/20261008_191139533_iOS.jpg')] bg-cover bg-center">
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-[#050505]" />
                 </div>
 
                 <div className="relative z-10 text-center max-w-4xl space-y-8 animate-in slide-in-from-bottom duration-1000">
@@ -258,23 +259,73 @@ const LandingPage = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {[
-                        { title: "Cozinha Minimalista Black", category: "Gourmet", img: "https://images.unsplash.com/photo-1556911223-e4524c13936d?q=80&w=2070&auto=format&fit=crop" },
-                        { title: "Home Office Tecnológico", category: "Corporativo", img: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?q=80&w=1935&auto=format&fit=crop" },
-                        { title: "Suíte Master com Closet", category: "Dormitórios", img: "https://images.unsplash.com/photo-1505691938895-1758d7eaa511?q=80&w=2070&auto=format&fit=crop" },
+                        { title: "Cozinha Planejada com Bancada & LED", category: "Cozinha & Gourmet", img: "/projetos/20260809_133536869_iOS.jpg" },
+                        { title: "Painel Ripado com Porta Mimetizada & LED", category: "Sala de Estar", img: "/projetos/20261008_191139533_iOS.jpg" },
+                        { title: "Sala de Jantar com Cristaleira Iluminada", category: "Sala de Jantar", img: "/projetos/20261101_135214000_iOS.jpg" },
+                        { title: "Home TV Amadeirado com Porta Integrada", category: "Living & TV", img: "/projetos/20260821_211056411_iOS.jpg" },
+                        { title: "Painel TV Marmorizado & Rack Suspenso", category: "Home Theater", img: "/projetos/20261101_135404000_iOS.jpg" },
+                        { title: "Painel Retroiluminado & Rack Ripado", category: "Sala & Dormitório", img: "/projetos/20260824_135939593_iOS.jpg" },
+                        { title: "Gabinete Sob Medida & Armário Espelhado", category: "Banheiro & Lavabo", img: "/projetos/20251105_191714672_iOS.jpg" },
                     ].map((project, idx) => (
-                        <div key={idx} className="group relative aspect-[4/5] rounded-[2.5rem] overflow-hidden luxury-shadow border border-white/5">
-                            <img src={project.img} alt={project.title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                        <div 
+                            key={idx} 
+                            onClick={() => setSelectedProject(project)}
+                            className="group relative aspect-[4/5] rounded-[2.5rem] overflow-hidden luxury-shadow border border-white/5 cursor-pointer"
+                        >
+                            <img src={project.img} alt={project.title} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-60 group-hover:opacity-90 transition-opacity" />
                             <div className="absolute bottom-8 left-8 right-8 flex flex-col gap-2 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
                                 <span className="text-[10px] font-black uppercase tracking-widest text-primary">{project.category}</span>
                                 <h3 className="text-2xl font-black tracking-tight">{project.title}</h3>
                                 <button className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-white/60 group-hover:text-white transition-colors mt-4">
-                                    Explorar Projeto <ArrowRight className="h-3 w-3" />
+                                    Ampliar Projeto <ArrowRight className="h-3 w-3" />
                                 </button>
                             </div>
                         </div>
                     ))}
                 </div>
+
+                {/* Lightbox Modal para ampliar foto do projeto */}
+                {selectedProject && (
+                    <div 
+                        className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
+                        onClick={() => setSelectedProject(null)}
+                    >
+                        <div 
+                            className="relative max-w-4xl w-full bg-[#0a0a0c] border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button 
+                                onClick={() => setSelectedProject(null)}
+                                className="absolute top-4 right-4 z-10 h-10 w-10 rounded-full bg-black/70 border border-white/10 flex items-center justify-center text-white hover:text-primary transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                            <div className="flex-1 overflow-hidden bg-black flex items-center justify-center max-h-[70vh]">
+                                <img 
+                                    src={selectedProject.img} 
+                                    alt={selectedProject.title} 
+                                    className="max-h-[70vh] w-auto object-contain"
+                                />
+                            </div>
+                            <div className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-white/10">
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">{selectedProject.category}</span>
+                                    <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white">{selectedProject.title}</h3>
+                                </div>
+                                <a 
+                                    href={`https://wa.me/55${companyWhatsappDigits}?text=${encodeURIComponent(`Olá! Vi o projeto "${selectedProject.title}" no site da BJL Planejados e gostaria de solicitar um orçamento.`)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <MagicButton className="h-12 px-8 text-xs uppercase font-black tracking-widest">
+                                        Orçar Projeto Parecido
+                                    </MagicButton>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </section>
 
             {/* Contact Section */}
