@@ -103,23 +103,6 @@ const MainLayout = () => {
         localStorage.setItem("appTheme", currentTheme);
     }, [currentTheme]);
 
-    // High performance spring-chased mouse glow tracking (No React re-renders)
-    const mouseX = useMotionValue(-200);
-    const mouseY = useMotionValue(-200);
-
-    const glowX = useSpring(mouseX, { damping: 50, stiffness: 200, mass: 0.5 });
-    const glowY = useSpring(mouseY, { damping: 50, stiffness: 200, mass: 0.5 });
-
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            // Center the 192px glow card (96px offsets)
-            mouseX.set(e.clientX - 96);
-            mouseY.set(e.clientY - 96);
-        };
-        window.addEventListener("mousemove", handleMouseMove);
-        return () => window.removeEventListener("mousemove", handleMouseMove);
-    }, [mouseX, mouseY]);
-
     const [overdueCount, setOverdueCount] = useState<number>(0);
     const [overdueSum, setOverdueSum] = useState<number>(0);
     const [todayDueCount, setTodayDueCount] = useState<number>(0);
@@ -225,13 +208,18 @@ const MainLayout = () => {
             }
         };
         fetchUserProfile();
-        checkAndNotifyOverdueTasks();
-        checkAndAutoLaunchCommission();
+        const bgTimer = setTimeout(() => {
+            checkAndNotifyOverdueTasks();
+            checkAndAutoLaunchCommission();
+        }, 3500);
+        return () => clearTimeout(bgTimer);
     }, []);
 
     useEffect(() => {
-        fetchFinancialAlerts();
-    }, [location.pathname]);
+        if (role === 'admin') {
+            fetchFinancialAlerts();
+        }
+    }, [role]);
 
     const handleLogout = async () => {
         localStorage.removeItem("mock_admin_session");
@@ -269,22 +257,9 @@ const MainLayout = () => {
     const currentSectionName = allMenuItems.find(item => item.path === location.pathname)?.label || "Visão Geral";
 
     return (
-        <div className="h-[100dvh] h-dvh bg-background/50 flex flex-col lg:flex-row overflow-hidden w-full relative">
+        <div className="h-[100dvh] h-dvh bg-background flex flex-col lg:flex-row overflow-hidden w-full relative">
             <CommandMenu />
             <div className="aurora-bg" />
-            
-            {/* Global Pointer Glow Effect */}
-            <motion.div
-                className="fixed w-48 h-48 rounded-full bg-[radial-gradient(circle,hsl(var(--primary)/0.12)_0%,transparent_70%)] pointer-events-none z-30 filter blur-xl select-none hidden lg:block"
-                style={{ left: glowX, top: glowY }}
-            />
-
-            {/* Mesh Gradient Background (Desativado no mobile para máxima fluidez e 60 FPS) */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 select-none hidden lg:block">
-                <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-[radial-gradient(circle,hsl(var(--mesh-color-1)/0.08)_0%,transparent_70%)] animate-[float-slow_25s_infinite_alternate]" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-[radial-gradient(circle,hsl(var(--mesh-color-2)/0.06)_0%,transparent_70%)] animate-[float-medium_20s_infinite_alternate]" />
-                <div className="absolute top-[30%] right-[20%] w-[40vw] h-[40vw] rounded-full bg-[radial-gradient(circle,hsl(var(--mesh-color-1)/0.05)_0%,transparent_70%)] animate-[float-reverse_30s_infinite_alternate]" />
-            </div>
 
             <aside className={cn(
                 "hidden lg:flex fixed lg:static top-6 bottom-6 left-6 z-50 executive-card border-metallic shadow-2xl flex-col transition-all duration-500 rounded-3xl m-4 lg:mr-0 lg:my-6 overflow-hidden",
@@ -693,18 +668,9 @@ const MainLayout = () => {
                         </div>
                     )}
 
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={location.pathname}
-                            initial={{ opacity: 0, scale: 0.98, y: 12 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.98, y: -12 }}
-                            transition={{ type: "spring", damping: 25, stiffness: 190 }}
-                            className="relative z-10 w-full min-h-full"
-                        >
-                            <Outlet />
-                        </motion.div>
-                    </AnimatePresence>
+                    <div className="relative z-10 w-full min-h-full">
+                        <Outlet />
+                    </div>
                 </main>
             </div>
 

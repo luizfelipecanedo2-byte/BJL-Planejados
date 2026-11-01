@@ -32,11 +32,58 @@ import {
 import { useSales } from "@/hooks/useSales";
 import { useClients } from "@/hooks/useClients";
 
+function CommandDynamicResults({
+  runCommand,
+  navigate,
+}: {
+  runCommand: (cmd: () => void) => void;
+  navigate: ReturnType<typeof useNavigate>;
+}) {
+  const { sales } = useSales();
+  const { clients } = useClients();
+
+  return (
+    <>
+      {sales.length > 0 && (
+        <CommandGroup heading="Vendas Recentes">
+          {sales.slice(0, 4).map((sale) => (
+            <CommandItem
+              key={sale.id}
+              onSelect={() => runCommand(() => navigate(`/admin`))}
+            >
+              <FileText className="mr-2.5 h-4 w-4 text-amber-500" />
+              <div className="flex flex-col">
+                <span className="text-luxury font-bold">{sale.clientName}</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{sale.product}</span>
+              </div>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      )}
+
+      {clients.length > 0 && (
+        <>
+          <CommandSeparator className="my-2 bg-white/10" />
+          <CommandGroup heading="Clientes Cadastrados">
+            {clients.filter(c => c.type === 'cliente').slice(0, 4).map((client) => (
+              <CommandItem
+                key={client.id}
+                onSelect={() => runCommand(() => navigate(`/admin/clientes`))}
+              >
+                <User className="mr-2.5 h-4 w-4 text-cyan-500" />
+                <span className="text-luxury font-medium">{client.name}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </>
+      )}
+    </>
+  );
+}
+
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { sales } = useSales();
-  const { clients } = useClients();
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -55,6 +102,8 @@ export function CommandMenu() {
     command();
   };
 
+  if (!open) return null;
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput placeholder="Digite um comando ou pesquise (ex: Vendas, Orçamentos, Clientes)..." className="text-luxury font-display" />
@@ -65,7 +114,7 @@ export function CommandMenu() {
 
         <CommandGroup heading="Ações Rápidas Executivas">
           <CommandItem onSelect={() => runCommand(() => navigate("/admin"))}>
-            <Zap className="mr-2.5 h-4 w-4 text-primary animate-pulse" />
+            <Zap className="mr-2.5 h-4 w-4 text-primary" />
             <span className="text-luxury font-bold">Nova Venda / Negociação</span>
             <CommandShortcut className="text-[10px] font-mono text-primary font-bold">NV</CommandShortcut>
           </CommandItem>
@@ -127,40 +176,7 @@ export function CommandMenu() {
         </CommandGroup>
         
         <CommandSeparator className="my-2 bg-white/10" />
-        
-        {sales.length > 0 && (
-          <CommandGroup heading="Vendas Recentes">
-            {sales.slice(0, 4).map((sale) => (
-              <CommandItem
-                key={sale.id}
-                onSelect={() => runCommand(() => navigate(`/admin`))}
-              >
-                <FileText className="mr-2.5 h-4 w-4 text-amber-500" />
-                <div className="flex flex-col">
-                  <span className="text-luxury font-bold">{sale.clientName}</span>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{sale.product}</span>
-                </div>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
-
-        {clients.length > 0 && (
-          <>
-            <CommandSeparator className="my-2 bg-white/10" />
-            <CommandGroup heading="Clientes Cadastrados">
-              {clients.filter(c => c.type === 'cliente').slice(0, 4).map((client) => (
-                <CommandItem
-                  key={client.id}
-                  onSelect={() => runCommand(() => navigate(`/admin/clientes`))}
-                >
-                  <User className="mr-2.5 h-4 w-4 text-cyan-500" />
-                  <span className="text-luxury font-medium">{client.name}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
-        )}
+        <CommandDynamicResults runCommand={runCommand} navigate={navigate} />
       </CommandList>
     </CommandDialog>
   );

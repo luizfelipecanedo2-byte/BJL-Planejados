@@ -146,14 +146,22 @@ const Financeiro = () => {
         setTransactionAllocations(allocations);
       }
 
-      const mappedTransactions: Transaction[] = allTransactions.map(t => {
-        const parseDate = (dateStr: string | null) => {
-          if (!dateStr) return undefined;
-          const d = new Date(dateStr + 'T12:00:00');
-          return isNaN(d.getTime()) ? undefined : d;
-        };
+      const allocationsByTxId = new Map<string, any[]>();
+      (allocations || []).forEach((a: any) => {
+        if (!a.transaction_id) return;
+        const arr = allocationsByTxId.get(a.transaction_id) || [];
+        arr.push(a);
+        allocationsByTxId.set(a.transaction_id, arr);
+      });
 
-        const txAllocations = (allocations || []).filter((a: any) => a.transaction_id === t.id);
+      const parseDate = (dateStr: string | null) => {
+        if (!dateStr) return undefined;
+        const d = new Date(dateStr + 'T12:00:00');
+        return isNaN(d.getTime()) ? undefined : d;
+      };
+
+      const mappedTransactions: Transaction[] = allTransactions.map(t => {
+        const txAllocations = allocationsByTxId.get(t.id) || [];
         const costSplits = txAllocations.map((a: any) => ({
           client: a.client_name,
           amount: Number(a.amount),
@@ -279,6 +287,12 @@ const Financeiro = () => {
 
   const combinedServiceExpenses = useMemo(() => {
     const norm = (s?: string) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const txById = new Map<string, Transaction>();
+    transactions.forEach(t => txById.set(t.id, t));
+    const allocatedTxIds = new Set<string>();
+    transactionAllocations.forEach(a => {
+      if (a.transaction_id) allocatedTxIds.add(a.transaction_id);
+    });
 
     // Guardar os IDs de alocações que foram atreladas a alguma OS
     const claimedAllocationIds = new Set<string>();
@@ -328,8 +342,7 @@ const Financeiro = () => {
       const directTransactions = transactions.filter(t => {
         if (t.type !== 'expense') return false;
 
-        const hasSplits = (t.costSplits && t.costSplits.length > 0) ||
-                          transactionAllocations.some(a => a.transaction_id === t.id);
+        const hasSplits = (t.costSplits && t.costSplits.length > 0) || allocatedTxIds.has(t.id);
         if (hasSplits) return false;
 
         if (!ticketClean || ticketClean === 's/n') return false;
@@ -344,7 +357,7 @@ const Financeiro = () => {
       const directTxCost = directTransactions.reduce((acc, t) => acc + Number(t.amount), 0);
 
       const autoItems = osAllocations.map(a => {
-        const parentTx = transactions.find(t => t.id === a.transaction_id);
+        const parentTx = txById.get(a.transaction_id);
         const nfText = parentTx?.invoiceNumber ? ` (NF: ${parentTx.invoiceNumber})` : '';
         const parentDesc = parentTx?.description ? ` - ${parentTx.description}` : '';
         return {
@@ -414,7 +427,7 @@ const Financeiro = () => {
       const totalSpent = allocs.reduce((acc, a) => acc + Number(a.amount), 0);
       const isEstoque = norm(clientKey).includes("estoque");
       const autoItems = allocs.map(a => {
-        const parentTx = transactions.find(t => t.id === a.transaction_id);
+        const parentTx = txById.get(a.transaction_id);
         const nfText = parentTx?.invoiceNumber ? ` (NF: ${parentTx.invoiceNumber})` : '';
         const parentDesc = parentTx?.description ? ` - ${parentTx.description}` : '';
         return {
@@ -443,8 +456,7 @@ const Financeiro = () => {
       if (t.type !== 'expense') return false;
       if (!t.orderService && t.category !== "Despesa com Serviço") return false;
 
-      const hasSplits = (t.costSplits && t.costSplits.length > 0) ||
-                        transactionAllocations.some(a => a.transaction_id === t.id);
+      const hasSplits = (t.costSplits && t.costSplits.length > 0) || allocatedTxIds.has(t.id);
       if (hasSplits) return false;
 
       const matchedInOS = serviceOrders.some(os => {
@@ -2193,44 +2205,52 @@ const Financeiro = () => {
         </TabsContent>
 
         <TabsContent value="dre">
-          <DRETab
-            selectedDREYear={selectedDREYear}
-            setSelectedDREYear={setSelectedDREYear}
-            dreRegime={dreRegime}
-            setDreRegime={setDreRegime}
-            dreData={dreData}
-            detailedExpenses={detailedExpenses}
-            formatCurrency={formatCurrency}
-          />
+          {activeTab === "dre" && (
+            <DRETab
+              selectedDREYear={selectedDREYear}
+              setSelectedDREYear={setSelectedDREYear}
+              dreRegime={dreRegime}
+              setDreRegime={setDreRegime}
+              dreData={dreData}
+              detailedExpenses={detailedExpenses}
+              formatCurrency={formatCurrency}
+            />
+          )}
         </TabsContent>
-        <TabsContent value="gastos_servicos"><ServiceExpensesTab serviceExpenses={combinedServiceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} /></TabsContent>
+        <TabsContent value="gastos_servicos">
+          {activeTab === "gastos_servicos" && (
+            <ServiceExpensesTab serviceExpenses={combinedServiceExpenses} handleNewServiceExpense={handleNewServiceExpense} handleEditServiceExpense={handleEditServiceExpense} handleDeleteServiceExpense={handleDeleteServiceExpense} formatCurrency={formatCurrency} />
+          )}
+        </TabsContent>
         <TabsContent value="conciliacao">
-          <ConciliationTab
-            selectedAccount={selectedAccount}
-            setSelectedAccount={setSelectedAccount}
-            currentDateReconciliation={currentDateReconciliation}
-            handlePrevMonth={handlePrevMonth}
-            handleNextMonth={handleNextMonth}
-            totalAccountBalance={totalAccountBalance}
-            reconciliationDailyData={reconciliationDailyData}
-            formatCurrency={formatCurrency}
-            transactions={transactions}
-            serviceOrders={serviceOrders}
-            onRefresh={() => {
-              fetchTransactions();
-              fetchTransactionAllocations();
-              fetchServiceExpenses();
-            }}
-          />
+          {activeTab === "conciliacao" && (
+            <ConciliationTab
+              selectedAccount={selectedAccount}
+              setSelectedAccount={setSelectedAccount}
+              currentDateReconciliation={currentDateReconciliation}
+              handlePrevMonth={handlePrevMonth}
+              handleNextMonth={handleNextMonth}
+              totalAccountBalance={totalAccountBalance}
+              reconciliationDailyData={reconciliationDailyData}
+              formatCurrency={formatCurrency}
+              transactions={transactions}
+              serviceOrders={serviceOrders}
+              onRefresh={() => {
+                fetchTransactions();
+                fetchTransactionAllocations();
+                fetchServiceExpenses();
+              }}
+            />
+          )}
         </TabsContent>
-        <TabsContent value="notas_fiscais"><NotaFiscalTab /></TabsContent>
-        <TabsContent value="profitability"><ProfitabilityTab /></TabsContent>
-        <TabsContent value="patrimonio"><AssetsTab assets={assets} handleNewAsset={handleNewAsset} formatCurrency={formatCurrency} /></TabsContent>
+        <TabsContent value="notas_fiscais">{activeTab === "notas_fiscais" && <NotaFiscalTab />}</TabsContent>
+        <TabsContent value="profitability">{activeTab === "profitability" && <ProfitabilityTab />}</TabsContent>
+        <TabsContent value="patrimonio">{activeTab === "patrimonio" && <AssetsTab assets={assets} handleNewAsset={handleNewAsset} formatCurrency={formatCurrency} />}</TabsContent>
       </Tabs>
 
-      <TransactionFormDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} onSubmit={handleSubmit} onUpdate={handleUpdate} editingTransaction={editingTransaction} initialType={dialogInitialType} />
-      <AssetFormDialog open={isAssetDialogOpen} onOpenChange={setIsAssetDialogOpen} onSubmit={handleAssetSubmit} onUpdate={() => { }} editingAsset={editingAsset} />
-      <ServiceExpenseFormDialog open={isServiceExpenseDialogOpen} onOpenChange={setIsServiceExpenseDialogOpen} onSubmit={handleServiceExpenseSubmit} onUpdate={handleUpdateServiceExpense} editingExpense={editingServiceExpense} />
+      {isDialogOpen && <TransactionFormDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} onSubmit={handleSubmit} onUpdate={handleUpdate} editingTransaction={editingTransaction} initialType={dialogInitialType} />}
+      {isAssetDialogOpen && <AssetFormDialog open={isAssetDialogOpen} onOpenChange={setIsAssetDialogOpen} onSubmit={handleAssetSubmit} onUpdate={() => { }} editingAsset={editingAsset} />}
+      {isServiceExpenseDialogOpen && <ServiceExpenseFormDialog open={isServiceExpenseDialogOpen} onOpenChange={setIsServiceExpenseDialogOpen} onSubmit={handleServiceExpenseSubmit} onUpdate={handleUpdateServiceExpense} editingExpense={editingServiceExpense} />}
       
       <PartialPaymentDialog
         open={isPartialPaymentOpen}
