@@ -11,7 +11,23 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, FileImage, Split, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+    Pencil,
+    Trash2,
+    ArrowUpRight,
+    ArrowDownRight,
+    FileImage,
+    Split,
+    ChevronLeft,
+    ChevronRight,
+    CheckCircle2,
+    Clock,
+    Landmark,
+    Zap,
+    Receipt,
+    CreditCard,
+    Banknote,
+} from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -35,7 +51,7 @@ const TransactionTable = ({
     onSelectAll,
     onEdit,
     onDelete,
-    onPartialPayment
+    onPartialPayment,
 }: TransactionTableProps) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [showAllOnScreen, setShowAllOnScreen] = useState(false);
@@ -62,19 +78,107 @@ const TransactionTable = ({
         }).format(value);
     };
 
-    const startIdx = transactions.length === 0 ? 0 : showAllOnScreen ? 1 : (safePage - 1) * PAGE_SIZE + 1;
-    const endIdx = showAllOnScreen ? transactions.length : Math.min(safePage * PAGE_SIZE, transactions.length);
+    const getBankBadge = (inst?: string) => {
+        if (!inst) return <span className="text-muted-foreground/40 text-[11px]">—</span>;
+        const lower = inst.toLowerCase();
+        if (lower.includes("itau") || lower.includes("itaú")) {
+            return (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#EC7000]/15 text-[#FF9436] border border-[#EC7000]/30 whitespace-nowrap">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#FF8C24]" />
+                    Itaú
+                </span>
+            );
+        }
+        if (lower.includes("nubank")) {
+            return (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30 whitespace-nowrap">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                    Nubank
+                </span>
+            );
+        }
+        if (lower.includes("dinheiro") || lower.includes("caixa")) {
+            return (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    Dinheiro
+                </span>
+            );
+        }
+        if (lower.includes("recarga")) {
+            return (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 whitespace-nowrap">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                    RecargaPay
+                </span>
+            );
+        }
+        return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-white/[0.04] text-muted-foreground border border-white/10 whitespace-nowrap">
+                <Landmark className="h-2.5 w-2.5 opacity-70" />
+                {inst}
+            </span>
+        );
+    };
+
+    const getMethodBadge = (method?: string) => {
+        if (!method) return <span className="text-muted-foreground/40 text-[11px]">—</span>;
+        const lower = method.toLowerCase();
+        if (lower.includes("pix")) {
+            return (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
+                    <Zap className="h-2.5 w-2.5" />
+                    PIX
+                </span>
+            );
+        }
+        if (lower.includes("boleto")) {
+            return (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
+                    <Receipt className="h-2.5 w-2.5" />
+                    Boleto
+                </span>
+            );
+        }
+        if (lower.includes("cart")) {
+            return (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 whitespace-nowrap">
+                    <CreditCard className="h-2.5 w-2.5" />
+                    {method}
+                </span>
+            );
+        }
+        return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-medium bg-white/[0.03] text-muted-foreground border border-white/[0.07] whitespace-nowrap">
+                <Banknote className="h-2.5 w-2.5 opacity-70" />
+                {method}
+            </span>
+        );
+    };
+
+    const startIdx =
+        transactions.length === 0 ? 0 : showAllOnScreen ? 1 : (safePage - 1) * PAGE_SIZE + 1;
+    const endIdx = showAllOnScreen
+        ? transactions.length
+        : Math.min(safePage * PAGE_SIZE, transactions.length);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3">
             {/* Barra de Paginação Rápida no Topo (se houver mais de 50 lançamentos) */}
             {transactions.length > PAGE_SIZE && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 bg-white/[0.02] border-b border-border/40 text-xs">
-                    <div className="text-muted-foreground font-medium">
-                        Exibindo <strong className="text-foreground font-mono">{startIdx}–{endIdx}</strong> de{" "}
-                        <strong className="text-primary font-mono">{transactions.length}</strong> lançamentos
-                        <span className="ml-2 text-[10px] text-emerald-400 font-semibold">
-                            (Na impressão saem todos os {transactions.length} lançamentos)
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06] text-xs">
+                    <div className="text-muted-foreground font-medium flex items-center gap-2 flex-wrap">
+                        <span>
+                            Exibindo{" "}
+                            <strong className="text-foreground font-mono">
+                                {startIdx}–{endIdx}
+                            </strong>{" "}
+                            de{" "}
+                            <strong className="text-primary font-mono">{transactions.length}</strong>{" "}
+                            lançamentos
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-mono font-semibold">
+                            ✓ Impressão inclui todos os {transactions.length} registros
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -84,21 +188,21 @@ const TransactionTable = ({
                                     variant="outline"
                                     size="sm"
                                     disabled={safePage <= 1}
-                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                    className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1"
+                                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                    className="h-7 px-2.5 rounded-lg text-[11px] font-bold gap-1 border-white/10 bg-white/[0.02]"
                                 >
                                     <ChevronLeft className="h-3.5 w-3.5" />
                                     Anterior
                                 </Button>
-                                <span className="font-mono text-xs font-bold px-2">
+                                <span className="font-mono text-[11px] font-bold px-2 text-white/80">
                                     Pág. {safePage} / {totalPages}
                                 </span>
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     disabled={safePage >= totalPages}
-                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                    className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1"
+                                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                    className="h-7 px-2.5 rounded-lg text-[11px] font-bold gap-1 border-white/10 bg-white/[0.02]"
                                 >
                                     Próxima
                                     <ChevronRight className="h-3.5 w-3.5" />
@@ -108,292 +212,456 @@ const TransactionTable = ({
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setShowAllOnScreen(prev => !prev)}
-                            className="h-8 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/10"
+                            onClick={() => setShowAllOnScreen((prev) => !prev)}
+                            className="h-7 px-2.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider text-primary hover:bg-primary/10"
                         >
-                            {showAllOnScreen ? "Paginar (50 por pág.)" : `Ver todos (${transactions.length})`}
+                            {showAllOnScreen
+                                ? "Paginar (50/pág)"
+                                : `Ver todos (${transactions.length})`}
                         </Button>
                     </div>
                 </div>
             )}
 
-            {/* Mobile View: Card-based layout */}
-            <div className="grid grid-cols-1 gap-4 md:hidden">
+            {/* Mobile View: Next-Gen Card Layout */}
+            <div className="grid grid-cols-1 gap-3 md:hidden p-2">
                 {visibleTransactions.map((transaction) => {
-                    const isIncome = transaction.type === 'income';
-                    const isPaid = transaction.status === 'paid';
+                    const isIncome = transaction.type === "income";
+                    const isPaid = transaction.status === "paid";
                     const isSelected = selectedIds.includes(transaction.id);
 
                     return (
-                        <div key={transaction.id} className={cn(
-                            "bg-card border rounded-xl p-4 shadow-sm space-y-3 transition-all",
-                            isSelected ? "border-primary ring-1 ring-primary/20 bg-primary/5" : ""
-                        )}>
-                            <div className="flex justify-between items-start">
-                                <div className="flex gap-3 items-start">
+                        <div
+                            key={transaction.id}
+                            className={cn(
+                                "executive-card rounded-2xl p-4 space-y-3 transition-colors",
+                                isSelected
+                                    ? "border-primary ring-1 ring-primary/30 bg-primary/[0.04]"
+                                    : ""
+                            )}
+                        >
+                            <div className="flex justify-between items-start gap-2">
+                                <div className="flex gap-3 items-start min-w-0">
                                     <div className="mt-1">
                                         <Checkbox
                                             checked={isSelected}
                                             onCheckedChange={() => onSelect(transaction.id)}
-                                            className="h-5 w-5"
+                                            className="h-4 w-4 rounded border-white/20"
                                         />
                                     </div>
-                                    <div className="flex flex-col">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className="font-bold text-sm text-primary">
-                                                {format(new Date(transaction.dueDate), "dd/MM/yy", { locale: ptBR })}
+                                    <div className="flex flex-col min-w-0">
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                            <span className="font-mono font-bold text-xs text-primary">
+                                                {format(new Date(transaction.dueDate), "dd/MM/yyyy", {
+                                                    locale: ptBR,
+                                                })}
                                             </span>
                                             {transaction.orderService && (
-                                                <Badge variant="outline" className="text-[10px] h-4 py-0 font-mono">
+                                                <span className="px-1.5 py-0.5 rounded bg-primary/15 border border-primary/30 text-primary text-[9px] font-mono font-bold">
                                                     OS: {transaction.orderService}
-                                                </Badge>
+                                                </span>
                                             )}
                                             {transaction.invoiceNumber && (
-                                                <Badge variant="secondary" className="text-[10px] h-4 py-0 font-mono">
-                                                    NF: {transaction.invoiceNumber}
-                                                </Badge>
+                                                <span className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/10 text-white/80 text-[9px] font-mono font-bold">
+                                                    NF #{transaction.invoiceNumber}
+                                                </span>
                                             )}
                                         </div>
-                                        <h3 className="font-bold text-base leading-tight mt-0.5">{transaction.description}</h3>
+                                        <h3 className="font-display font-bold text-sm text-white leading-snug mt-1 break-words">
+                                            {transaction.description}
+                                        </h3>
                                         <div className="flex flex-col gap-0.5 mt-0.5">
-                                            {transaction.service && <span className="text-xs font-semibold text-muted-foreground">{transaction.service}</span>}
-                                            <span className="text-[11px] text-muted-foreground/80">{transaction.contact}</span>
-                                            {transaction.costSplits && transaction.costSplits.length > 0 && (
-                                                <div className="flex flex-wrap gap-1 mt-1">
-                                                    {transaction.costSplits.map((split, sIdx) => (
-                                                        <Badge key={sIdx} variant="outline" className="text-[9px] bg-emerald-50 text-emerald-700 border-emerald-200 py-0 px-1 font-semibold">
-                                                            {split.client}: {formatCurrency(split.amount)}
-                                                        </Badge>
-                                                    ))}
-                                                </div>
+                                            {transaction.contact && (
+                                                <span className="text-[11px] font-medium text-muted-foreground">
+                                                    {transaction.contact}
+                                                </span>
                                             )}
+                                            {transaction.costSplits &&
+                                                transaction.costSplits.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                                        {transaction.costSplits.map((split, sIdx) => (
+                                                            <span
+                                                                key={sIdx}
+                                                                className="inline-flex items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 rounded-md py-0.5 px-1.5 font-mono font-semibold"
+                                                            >
+                                                                {split.client}:{" "}
+                                                                {formatCurrency(split.amount)}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex gap-1">
+                                <div className="flex gap-1 shrink-0">
                                     {transaction.boletoUrl && (
                                         <Button
-                                            variant="outline"
+                                            variant="ghost"
                                             size="icon"
-                                            className="h-9 w-9 text-blue-600 border-blue-100"
-                                            onClick={() => window.open(transaction.boletoUrl, '_blank')}
+                                            className="h-8 w-8 rounded-lg text-sky-400 bg-sky-500/10 border border-sky-500/20"
+                                            onClick={() =>
+                                                window.open(transaction.boletoUrl, "_blank")
+                                            }
                                         >
-                                            <FileImage className="h-4 w-4" />
+                                            <FileImage className="h-3.5 w-3.5" />
                                         </Button>
                                     )}
                                     {!isPaid && onPartialPayment && (
-                                        <Button 
-                                            variant="outline" 
-                                            size="icon" 
-                                            className="h-9 w-9 text-amber-500 border-amber-100" 
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 rounded-lg text-amber-400 bg-amber-500/10 border border-amber-500/20"
                                             onClick={() => onPartialPayment(transaction)}
                                             title="Baixa Parcial"
                                         >
-                                            <Split className="h-4 w-4" />
+                                            <Split className="h-3.5 w-3.5" />
                                         </Button>
                                     )}
-                                    <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => onEdit(transaction)}>
-                                        <Pencil className="h-4 w-4 text-primary" />
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-lg bg-white/[0.04] border border-white/10"
+                                        onClick={() => onEdit(transaction)}
+                                    >
+                                        <Pencil className="h-3.5 w-3.5 text-primary" />
                                     </Button>
-                                    <Button variant="outline" size="icon" className="h-9 w-9 text-red-500 border-red-100" onClick={() => onDelete(transaction.id)}>
-                                        <Trash2 className="h-4 w-4" />
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-lg text-rose-400 bg-rose-500/10 border border-rose-500/20"
+                                        onClick={() => onDelete(transaction.id)}
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 py-2 border-y border-border/50">
+                            <div className="grid grid-cols-2 gap-3 py-2.5 border-y border-white/[0.06]">
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Valor</span>
-                                    <span className={cn(
-                                        "font-mono text-lg font-bold flex items-center gap-1",
-                                        isIncome ? "text-green-600" : "text-red-600"
-                                    )}>
-                                        {isIncome ? <ArrowUpCircle className="h-4 w-4" /> : <ArrowDownCircle className="h-4 w-4" />}
-                                        {formatCurrency(transaction.amount)}
+                                    <span className="text-[9px] uppercase font-mono font-bold text-muted-foreground tracking-wider">
+                                        Valor
+                                    </span>
+                                    <span
+                                        className={cn(
+                                            "font-tech text-base font-black tabular-nums flex items-center gap-1 mt-0.5",
+                                            isIncome ? "text-emerald-400" : "text-rose-400"
+                                        )}
+                                    >
+                                        {isIncome ? "+" : "-"} {formatCurrency(transaction.amount)}
                                     </span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Categoria</span>
-                                    <span className="text-sm truncate">{transaction.category}</span>
-                                    <span className="text-[10px] text-muted-foreground truncate">{transaction.subcategory}</span>
+                                    <span className="text-[9px] uppercase font-mono font-bold text-muted-foreground tracking-wider">
+                                        Classificação
+                                    </span>
+                                    <span className="text-xs font-semibold text-white/90 truncate mt-0.5">
+                                        {transaction.category}
+                                    </span>
+                                    {transaction.subcategory && (
+                                        <span className="text-[10px] text-muted-foreground truncate">
+                                            {transaction.subcategory}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between pt-1">
-                                <div className="flex items-center gap-2">
-                                    <Badge variant={isPaid ? "default" : "outline"} className={isPaid ? "bg-green-600/90 text-[10px]" : "text-yellow-600 border-yellow-600 text-[10px]"}>
-                                        {isPaid ? "Concluído" : "Pendente"}
-                                    </Badge>
-                                    <div className="flex flex-col">
-                                        {transaction.paymentDate && (
-                                            <span className="text-[9px] text-muted-foreground">
-                                                Pago: {format(new Date(transaction.paymentDate), "dd/MM", { locale: ptBR })}
-                                            </span>
-                                        )}
-                                        {transaction.competenceDate && (
-                                            <span className="text-[9px] text-muted-foreground">
-                                                Compra: {format(new Date(transaction.competenceDate), "dd/MM", { locale: ptBR })}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="text-right flex flex-col items-end">
-                                    <span className="text-[10px] font-medium px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
-                                        {transaction.paymentMethod}
-                                    </span>
-                                    <span className="text-[9px] text-muted-foreground mt-0.5">{transaction.financialInstitution}</span>
+                            <div className="flex items-center justify-between pt-0.5">
+                                <span
+                                    className={cn(
+                                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border",
+                                        isPaid
+                                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+                                            : "bg-amber-500/10 text-amber-400 border-amber-500/25"
+                                    )}
+                                >
+                                    {isPaid ? (
+                                        <CheckCircle2 className="h-3 w-3" />
+                                    ) : (
+                                        <Clock className="h-3 w-3" />
+                                    )}
+                                    {isPaid ? "Pago" : "Pendente"}
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                    {getMethodBadge(transaction.paymentMethod)}
+                                    {getBankBadge(transaction.financialInstitution)}
                                 </div>
                             </div>
                         </div>
                     );
                 })}
                 {transactions.length === 0 && (
-                    <div className="text-center py-10 bg-muted/20 rounded-xl border-2 border-dashed">
-                        <p className="text-muted-foreground">Nenhum lançamento encontrado.</p>
+                    <div className="text-center py-12 bg-white/[0.02] rounded-2xl border border-dashed border-white/10">
+                        <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest">
+                            Nenhum lançamento encontrado para este filtro.
+                        </p>
                     </div>
                 )}
             </div>
 
-            {/* Desktop View: Table layout */}
-            <div className="hidden md:block rounded-md border overflow-hidden">
+            {/* Desktop View: Next-Gen Linear / Fintech Data-Grid */}
+            <div className="hidden md:block overflow-x-auto">
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-muted/30">
-                            <TableHead className="w-[40px]">
+                        <TableRow className="bg-white/[0.02] border-b border-white/[0.07] hover:bg-white/[0.02]">
+                            <TableHead className="w-[38px] pl-4">
                                 <Checkbox
-                                    checked={transactions.length > 0 && selectedIds.length === transactions.length}
-                                    onCheckedChange={() => onSelectAll(transactions.map(t => t.id))}
+                                    checked={
+                                        transactions.length > 0 &&
+                                        selectedIds.length === transactions.length
+                                    }
+                                    onCheckedChange={() =>
+                                        onSelectAll(transactions.map((t) => t.id))
+                                    }
+                                    className="border-white/20"
                                 />
                             </TableHead>
-                            <TableHead className="w-[80px]">Editar</TableHead>
-                            <TableHead>Pagamento / Compra</TableHead>
-                            <TableHead>Descrição</TableHead>
-                            <TableHead>OS</TableHead>
-                            <TableHead>Classificação</TableHead>
-                            <TableHead>Contato</TableHead>
-                            <TableHead>Banco</TableHead>
-                            <TableHead>Forma Pagto</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Valor</TableHead>
-                            <TableHead className="w-[50px] text-right">Ação</TableHead>
+                            <TableHead className="w-[105px] text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+                                Vencimento
+                            </TableHead>
+                            <TableHead className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+                                Descrição & Rateios
+                            </TableHead>
+                            <TableHead className="w-[100px] text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+                                OS / NF
+                            </TableHead>
+                            <TableHead className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+                                Plano de Contas
+                            </TableHead>
+                            <TableHead className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+                                Favorecido / Cliente
+                            </TableHead>
+                            <TableHead className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+                                Conta / Forma
+                            </TableHead>
+                            <TableHead className="w-[110px] text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+                                Status
+                            </TableHead>
+                            <TableHead className="w-[135px] text-right text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+                                Valor (R$)
+                            </TableHead>
+                            <TableHead className="w-[110px] text-right pr-4 text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+                                Ações
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {visibleTransactions.map((transaction) => {
-                            const isIncome = transaction.type === 'income';
-                            const isPaid = transaction.status === 'paid';
+                            const isIncome = transaction.type === "income";
+                            const isPaid = transaction.status === "paid";
                             const isSelected = selectedIds.includes(transaction.id);
 
                             return (
-                                <TableRow key={transaction.id} className={cn("hover:bg-muted/10 transition-colors", isSelected ? "bg-muted/50" : "")}>
-                                    <TableCell>
+                                <TableRow
+                                    key={transaction.id}
+                                    className={cn(
+                                        "border-b border-white/[0.04] hover:bg-white/[0.025] transition-colors group",
+                                        isSelected ? "bg-primary/[0.06]" : ""
+                                    )}
+                                >
+                                    <TableCell className="pl-4 py-2.5">
                                         <Checkbox
                                             checked={isSelected}
                                             onCheckedChange={() => onSelect(transaction.id)}
+                                            className="border-white/20"
                                         />
                                     </TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" size="icon" className="hover:scale-110 active:scale-95 transition-all" onClick={() => onEdit(transaction)}>
-                                            <Pencil className="h-4 w-4 text-primary" />
-                                        </Button>
-                                    </TableCell>
-                                    <TableCell>
+
+                                    <TableCell className="py-2.5">
                                         <div className="flex flex-col">
-                                            <span className="font-bold text-primary font-mono text-xs">{format(new Date(transaction.dueDate), "dd/MM/yyyy", { locale: ptBR })}</span>
-                                            <span className="text-[10px] text-muted-foreground">{transaction.competenceDate ? `Compra: ${format(new Date(transaction.competenceDate), "dd/MM", { locale: ptBR })}` : '-'}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col">
-                                            <span className="font-semibold">{transaction.description}</span>
-                                            <span className="text-[10px] text-muted-foreground">{transaction.service}</span>
-                                            {transaction.costSplits && transaction.costSplits.length > 0 && (
-                                                <div className="flex flex-wrap gap-1 mt-1">
-                                                    {transaction.costSplits.map((split, sIdx) => (
-                                                        <Badge key={sIdx} variant="outline" className="text-[9px] bg-emerald-50 text-emerald-700 border-emerald-200 py-0 px-1 font-semibold">
-                                                            {split.client}: {formatCurrency(split.amount)}
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="font-mono text-xs font-bold">
-                                        <div className="flex flex-col gap-1">
-                                            <span>{transaction.orderService || "-"}</span>
-                                            {transaction.invoiceNumber && (
-                                                <Badge variant="secondary" className="text-[9px] px-1 py-0 w-fit">NF: {transaction.invoiceNumber}</Badge>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col">
-                                            <span className="font-medium">{transaction.category}</span>
-                                            <span className="text-[10px] text-muted-foreground">{transaction.subcategory}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-xs">{transaction.contact}</TableCell>
-                                    <TableCell className="text-xs">{transaction.financialInstitution}</TableCell>
-                                    <TableCell className="text-xs">{transaction.paymentMethod}</TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col gap-1">
-                                            <Badge variant={isPaid ? "default" : "outline"} className={cn("text-[10px] py-0 px-2", isPaid ? "bg-green-600 hover:bg-green-700" : "text-yellow-600 border-yellow-600")}>
-                                                {isPaid ? "Concluído" : "Pendente"}
-                                            </Badge>
-                                            {transaction.paymentDate && (
-                                                <span className="text-[9px] text-muted-foreground text-center">
-                                                    P: {format(new Date(transaction.paymentDate), "dd/MM", { locale: ptBR })}
+                                            <span className="font-mono font-bold text-xs text-white group-hover:text-primary transition-colors tabular-nums">
+                                                {format(new Date(transaction.dueDate), "dd/MM/yyyy", {
+                                                    locale: ptBR,
+                                                })}
+                                            </span>
+                                            {transaction.competenceDate && (
+                                                <span className="text-[10px] font-mono text-muted-foreground/70 tabular-nums">
+                                                    Comp:{" "}
+                                                    {format(
+                                                        new Date(transaction.competenceDate),
+                                                        "dd/MM",
+                                                        { locale: ptBR }
+                                                    )}
                                                 </span>
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className={cn("font-bold text-sm", isIncome ? "text-green-600" : "text-red-600")}>
-                                        <div className="flex items-center gap-1 font-mono">
-                                            {isIncome ? <ArrowUpCircle className="h-3 w-3" /> : <ArrowDownCircle className="h-3 w-3" />}
-                                            {formatCurrency(transaction.amount)}
+
+                                    <TableCell className="py-2.5 max-w-[320px]">
+                                        <div className="flex flex-col">
+                                            <span className="font-display font-semibold text-xs text-white/95 leading-snug">
+                                                {transaction.description}
+                                            </span>
+                                            {transaction.service && (
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {transaction.service}
+                                                </span>
+                                            )}
+                                            {transaction.costSplits &&
+                                                transaction.costSplits.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                        {transaction.costSplits.map((split, sIdx) => (
+                                                            <span
+                                                                key={sIdx}
+                                                                className="inline-flex items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 rounded-md py-0.5 px-1.5 font-mono font-semibold"
+                                                            >
+                                                                {split.client}:{" "}
+                                                                {formatCurrency(split.amount)}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right">
+
+                                    <TableCell className="py-2.5">
+                                        <div className="flex flex-col gap-1 items-start">
+                                            {transaction.orderService ? (
+                                                <span className="px-2 py-0.5 rounded-md bg-primary/15 border border-primary/30 text-primary font-mono text-[10px] font-bold">
+                                                    {transaction.orderService}
+                                                </span>
+                                            ) : (
+                                                <span className="text-muted-foreground/30 text-xs font-mono">
+                                                    —
+                                                </span>
+                                            )}
+                                            {transaction.invoiceNumber && (
+                                                <span className="px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/10 text-white/75 font-mono text-[9px] font-semibold">
+                                                    NF #{transaction.invoiceNumber}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </TableCell>
+
+                                    <TableCell className="py-2.5">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-semibold text-white/85">
+                                                {transaction.category}
+                                            </span>
+                                            {transaction.subcategory && (
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {transaction.subcategory}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </TableCell>
+
+                                    <TableCell className="py-2.5">
+                                        <span className="text-xs font-medium text-white/80">
+                                            {transaction.contact || "—"}
+                                        </span>
+                                    </TableCell>
+
+                                    <TableCell className="py-2.5">
+                                        <div className="flex flex-col gap-1 items-start">
+                                            {getBankBadge(transaction.financialInstitution)}
+                                            {getMethodBadge(transaction.paymentMethod)}
+                                        </div>
+                                    </TableCell>
+
+                                    <TableCell className="py-2.5">
+                                        <div className="flex flex-col gap-0.5 items-start">
+                                            <span
+                                                className={cn(
+                                                    "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border",
+                                                    isPaid
+                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+                                                        : "bg-amber-500/10 text-amber-400 border-amber-500/25"
+                                                )}
+                                            >
+                                                {isPaid ? (
+                                                    <CheckCircle2 className="h-2.5 w-2.5" />
+                                                ) : (
+                                                    <Clock className="h-2.5 w-2.5" />
+                                                )}
+                                                {isPaid ? "Pago" : "Pendente"}
+                                            </span>
+                                            {transaction.paymentDate && (
+                                                <span className="text-[9px] font-mono text-muted-foreground/70 pl-1">
+                                                    Baixa:{" "}
+                                                    {format(
+                                                        new Date(transaction.paymentDate),
+                                                        "dd/MM",
+                                                        { locale: ptBR }
+                                                    )}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </TableCell>
+
+                                    <TableCell className="py-2.5 text-right">
+                                        <div
+                                            className={cn(
+                                                "inline-flex items-center justify-end gap-1 font-tech font-bold text-xs tabular-nums px-2 py-1 rounded-lg",
+                                                isIncome
+                                                    ? "text-emerald-400 bg-emerald-500/[0.06]"
+                                                    : "text-rose-400 bg-rose-500/[0.06]"
+                                            )}
+                                        >
+                                            {isIncome ? (
+                                                <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
+                                            ) : (
+                                                <ArrowDownRight className="h-3.5 w-3.5 shrink-0" />
+                                            )}
+                                            <span>{formatCurrency(transaction.amount)}</span>
+                                        </div>
+                                    </TableCell>
+
+                                    <TableCell className="py-2.5 text-right pr-4">
                                         <div className="flex items-center justify-end gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                onClick={() => onEdit(transaction)}
+                                                title="Editar Lançamento"
+                                            >
+                                                <Pencil className="h-3.5 w-3.5" />
+                                            </Button>
                                             {transaction.boletoUrl && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                    onClick={() => window.open(transaction.boletoUrl, '_blank')}
-                                                    title="Ver Boleto"
+                                                    className="h-7 w-7 rounded-lg text-sky-400 hover:bg-sky-500/15"
+                                                    onClick={() =>
+                                                        window.open(transaction.boletoUrl, "_blank")
+                                                    }
+                                                    title="Ver Comprovante / Boleto"
                                                 >
-                                                    <FileImage className="h-4 w-4" />
+                                                    <FileImage className="h-3.5 w-3.5" />
                                                 </Button>
                                             )}
                                             {!isPaid && onPartialPayment && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="text-amber-500 hover:text-amber-600 hover:bg-amber-50"
+                                                    className="h-7 w-7 rounded-lg text-amber-400 hover:bg-amber-500/15"
                                                     onClick={() => onPartialPayment(transaction)}
                                                     title="Baixa Parcial"
                                                 >
-                                                    <Split className="h-4 w-4" />
+                                                    <Split className="h-3.5 w-3.5" />
                                                 </Button>
                                             )}
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                className="h-7 w-7 rounded-lg text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/15"
                                                 onClick={() => onDelete(transaction.id)}
+                                                title="Excluir Lançamento"
                                             >
-                                                <Trash2 className="h-4 w-4" />
+                                                <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            )
+                            );
                         })}
                         {transactions.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
-                                    Nenhum lançamento encontrado.
+                                <TableCell
+                                    colSpan={10}
+                                    className="text-center py-12 text-muted-foreground font-mono text-xs uppercase tracking-widest"
+                                >
+                                    Nenhum lançamento encontrado para os filtros selecionados.
                                 </TableCell>
                             </TableRow>
                         )}
@@ -403,7 +671,7 @@ const TransactionTable = ({
 
             {/* Barra de Paginação Rápida no Rodapé */}
             {transactions.length > PAGE_SIZE && !showAllOnScreen && (
-                <div className="flex items-center justify-between px-4 py-3 bg-white/[0.02] border-t border-border/40 text-xs">
+                <div className="flex items-center justify-between px-4 py-3 bg-white/[0.02] border-t border-white/[0.06] text-xs">
                     <span className="text-muted-foreground font-mono">
                         Mostrando {startIdx}–{endIdx} de {transactions.length}
                     </span>
@@ -412,8 +680,8 @@ const TransactionTable = ({
                             variant="outline"
                             size="sm"
                             disabled={safePage <= 1}
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            className="h-8 px-3 rounded-lg text-xs font-bold gap-1"
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            className="h-7 px-3 rounded-lg text-xs font-bold gap-1 border-white/10 bg-white/[0.02]"
                         >
                             <ChevronLeft className="h-3.5 w-3.5" />
                             Anterior
@@ -425,8 +693,8 @@ const TransactionTable = ({
                             variant="outline"
                             size="sm"
                             disabled={safePage >= totalPages}
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                            className="h-8 px-3 rounded-lg text-xs font-bold gap-1"
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            className="h-7 px-3 rounded-lg text-xs font-bold gap-1 border-white/10 bg-white/[0.02]"
                         >
                             Próxima
                             <ChevronRight className="h-3.5 w-3.5" />

@@ -854,8 +854,14 @@ const OrdemServico = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                   <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Ordens de Serviço</h2>
-                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Gestão de Produção e Assistência High-End</p>
+                   <div className="flex items-center gap-2 mb-1.5">
+                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">
+                           <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                           PROD.ENGINE // v3.0
+                       </span>
+                       <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">• Controle Industrial em Tempo Real</span>
+                   </div>
+                   <h2 className="text-4xl font-black tracking-tighter shimmer-gold">Ordens de Serviço</h2>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button
@@ -863,12 +869,12 @@ const OrdemServico = () => {
                         size="sm"
                         onClick={fetchOrders}
                         disabled={isLoading}
-                        className="gap-1.5 h-11 border-white/10 bg-white/5 font-black uppercase tracking-widest text-[10px] rounded-xl"
+                        className="gap-1.5 h-10 border-white/10 bg-white/[0.03] hover:bg-white/[0.07] font-black uppercase tracking-widest text-[10px] rounded-xl"
                     >
-                        <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                        <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
                         Atualizar
                     </Button>
-                    <MagicButton onClick={handleNewOrder} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
+                    <MagicButton onClick={handleNewOrder} className="gap-1.5 h-10 px-5 shadow-xl shadow-primary/20">
                         <Plus className="h-4 w-4" />
                         Nova OS
                     </MagicButton>
@@ -1044,45 +1050,45 @@ const OrdemServico = () => {
             )}
 
             <Tabs defaultValue="producao" className="w-full">
-                <TabsList className="bg-slate-950/80 border border-white/10 rounded-2xl p-1 mb-6 flex-wrap h-auto gap-1 shadow-2xl backdrop-blur-xl">
+                <TabsList className="bg-[#090d16] border border-white/[0.08] rounded-2xl p-1.5 mb-6 flex-wrap h-auto gap-1 shadow-2xl">
                     <TabsTrigger
                         value="definir"
-                        className="rounded-xl px-6 py-2.5 font-black uppercase tracking-widest text-[10px] transition-all duration-300 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(37,99,235,0.5)] border border-transparent data-[state=active]:border-blue-400/60"
+                        className="rounded-xl px-5 py-2 font-black uppercase tracking-widest text-[10px] transition-all duration-200 data-[state=active]:bg-blue-600 data-[state=active]:text-white border border-transparent data-[state=active]:border-blue-400/50"
                     >
                         <Settings2 className="h-3.5 w-3.5 mr-2" />
-                        Definir (Aguardando Pauta)
+                        Definir (Pauta)
                     </TabsTrigger>
                     <TabsTrigger
                         value="producao"
-                        className="rounded-xl px-6 py-2.5 font-black uppercase tracking-widest text-[10px] transition-all duration-300 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(16,185,129,0.5)] border border-transparent data-[state=active]:border-emerald-400/60"
+                        className="rounded-xl px-5 py-2 font-black uppercase tracking-widest text-[10px] transition-all duration-200 data-[state=active]:bg-emerald-600 data-[state=active]:text-white border border-transparent data-[state=active]:border-emerald-400/50"
                     >
                         <Hammer className="h-3.5 w-3.5 mr-2" />
                         Fila de Produção
                     </TabsTrigger>
                     <TabsTrigger
                         value="todos"
-                        className="rounded-xl px-6 py-2.5 font-black uppercase tracking-widest text-[10px] transition-all duration-300 data-[state=active]:bg-slate-800 data-[state=active]:text-white data-[state=active]:shadow-[0_0_15px_rgba(255,255,255,0.2)] border border-transparent data-[state=active]:border-slate-500"
+                        className="rounded-xl px-5 py-2 font-black uppercase tracking-widest text-[10px] transition-all duration-200 data-[state=active]:bg-slate-800 data-[state=active]:text-white border border-transparent data-[state=active]:border-slate-500"
                     >
                         <RefreshCw className="h-3.5 w-3.5 mr-2" />
                         Todas OSs
                     </TabsTrigger>
                     <TabsTrigger
                         value="cronograma"
-                        className="rounded-xl px-6 py-2.5 font-black uppercase tracking-widest text-[10px] transition-all duration-300 data-[state=active]:bg-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(8,145,178,0.5)] border border-transparent data-[state=active]:border-cyan-400/60"
+                        className="rounded-xl px-5 py-2 font-black uppercase tracking-widest text-[10px] transition-all duration-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white border border-transparent data-[state=active]:border-cyan-400/50"
                     >
                         <CalendarDays className="h-3.5 w-3.5 mr-2" />
                         Histórico Cronograma
                     </TabsTrigger>
                     <TabsTrigger
                         value="kanban"
-                        className="rounded-xl px-6 py-2.5 font-black uppercase tracking-widest text-[10px] transition-all duration-300 data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(168,85,247,0.5)] border border-transparent data-[state=active]:border-purple-400/60"
+                        className="rounded-xl px-5 py-2 font-black uppercase tracking-widest text-[10px] transition-all duration-200 data-[state=active]:bg-purple-600 data-[state=active]:text-white border border-transparent data-[state=active]:border-purple-400/50"
                     >
                         <KanbanSquare className="h-3.5 w-3.5 mr-2" />
                         Kanban (Visual)
                     </TabsTrigger>
                     <TabsTrigger
                         value="capacity"
-                        className="rounded-xl px-6 py-2.5 font-black uppercase tracking-widest text-[10px] transition-all duration-300 data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(217,119,6,0.5)] border border-transparent data-[state=active]:border-amber-400/60"
+                        className="rounded-xl px-5 py-2 font-black uppercase tracking-widest text-[10px] transition-all duration-200 data-[state=active]:bg-amber-600 data-[state=active]:text-white border border-transparent data-[state=active]:border-amber-400/50"
                     >
                         <Clock className="h-3.5 w-3.5 mr-2" />
                         Capacity Planning
@@ -1486,13 +1492,48 @@ const SortableServiceOrderCard = ({
                                     </div>
                                 )}
                                 
-                                {/* Barra de Progresso compacta no fundo */}
-                                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                                    <div 
-                                        className={cn("h-full transition-all duration-1000", order.status === "Entregue e Finalizado" ? "bg-white" : getStatusColor(order.status))}
-                                        style={{ width: `${getStatusProgress(order.status)}%` }}
-                                    />
-                                </div>
+                                {/* Stepper Visual Industrial de 5 Estágios da Fábrica */}
+                                {(() => {
+                                    const progress = getStatusProgress(order.status);
+                                    const stages = [
+                                        { label: "1. Corte", threshold: 25 },
+                                        { label: "2. Fita", threshold: 35 },
+                                        { label: "3. Montagem", threshold: 55 },
+                                        { label: "4. Embalagem", threshold: 75 },
+                                        { label: "5. Instalação", threshold: 95 },
+                                    ];
+                                    return (
+                                        <div className="mt-2 mb-1">
+                                            <div className="grid grid-cols-5 gap-1.5 mb-1.5">
+                                                {stages.map((st) => {
+                                                    const isReached = progress >= st.threshold;
+                                                    return (
+                                                        <div key={st.label} className="flex flex-col gap-1">
+                                                            <div className={cn(
+                                                                "h-1.5 rounded-full transition-colors duration-300",
+                                                                order.status === "Entregue e Finalizado"
+                                                                    ? "bg-white"
+                                                                    : isReached
+                                                                    ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.35)]"
+                                                                    : "bg-white/[0.07]"
+                                                            )} />
+                                                            <span className={cn(
+                                                                "text-[8px] font-black uppercase tracking-wider truncate",
+                                                                order.status === "Entregue e Finalizado"
+                                                                    ? "text-white/90"
+                                                                    : isReached
+                                                                    ? "text-amber-400"
+                                                                    : "text-white/25"
+                                                            )}>
+                                                                {st.label}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
 
                                 {/* Lista de Ambientes e seu progresso */}
                                 {environmentProgress.length > 0 && (

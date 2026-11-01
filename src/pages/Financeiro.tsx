@@ -1508,13 +1508,18 @@ const Financeiro = () => {
         <div class="print-btn-container no-print">
           <button class="print-btn" onclick="window.print()">Imprimir PDF / Relatório</button>
         </div>
-        <div class="header">
-          <div class="header-info">
-            <h1>Relatório Financeiro</h1>
-            <p>${periodLabel} &bull; Critério de Data: ${dateTypeLabel}</p>
+        <div class="header" style="background: linear-gradient(135deg, #090d16 0%, #111827 100%); color: white; padding: 18px 22px; border-radius: 10px; border-bottom: 3px solid #f59e0b; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <img src="${window.location.origin}/logo-danfe-bjl.png" alt="BJL Planejados" style="height: 54px; width: auto; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.4);" onerror="this.style.display='none'" />
+            <div class="header-info">
+              <div style="font-size: 9px; font-weight: 800; color: #f59e0b; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 2px;">BJL MOVEIS PLANEJADOS LTDA • CNPJ: 60.528.620/0001-20</div>
+              <h1 style="color: white; font-size: 18px; margin: 0;">Relatório Executivo de Fluxo Financeiro</h1>
+              <p style="color: #94a3b8; font-size: 11px; margin-top: 3px;">${periodLabel} &bull; Critério: ${dateTypeLabel} &bull; Total de ${filteredTransactions.length} lançamentos impressos</p>
+            </div>
           </div>
-          <div class="header-logo">
-            BJL Planejados
+          <div class="header-logo" style="color: #f59e0b; font-size: 13px; text-align: right;">
+            <div>BJL.OS // FINTECH</div>
+            <div style="font-size: 9px; color: #94a3b8; font-weight: 600; margin-top: 2px;">Relatório Completo Auditado</div>
           </div>
         </div>
 
@@ -1933,54 +1938,53 @@ const Financeiro = () => {
         </div>
       </header>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-10">
-        <div className="px-2 overflow-x-auto webkit-overflow-scrolling-touch hide-scrollbar pb-1 max-w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+        <div className="overflow-x-auto webkit-overflow-scrolling-touch hide-scrollbar pb-1 max-w-full">
           <TabsList className={cn(
-            "h-16 sm:h-20 w-max min-w-full lg:min-w-0 p-2 glass-card rounded-[2rem] luxury-shadow border-white/5 backdrop-blur-3xl transition-all duration-700",
-            activeTab === 'conciliacao' && (selectedAccount === 'itau' || selectedAccount === 'banco_itau') ? "bg-blue-900/30 border-blue-500/20" :
-            activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "bg-purple-900/30 border-purple-500/20" :
-            activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-900/30 border-emerald-500/20" :
-            activeTab === 'conciliacao' && selectedAccount === 'recarga_pay' ? "bg-orange-900/30 border-orange-500/20" :
-            "bg-white/[0.03]"
+            "h-12 w-max min-w-full lg:min-w-0 p-1.5 executive-card rounded-2xl border border-white/[0.07] bg-[#090d16]/90 shadow-xl transition-colors duration-300 gap-1",
+            activeTab === 'conciliacao' && (selectedAccount === 'itau' || selectedAccount === 'banco_itau') ? "border-blue-500/30" :
+            activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "border-purple-500/30" :
+            activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "border-emerald-500/30" :
+            activeTab === 'conciliacao' && selectedAccount === 'recarga_pay' ? "border-orange-500/30" : ""
           )}>
-            <TabsTrigger value="dashboard" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <TrendingUp className="mr-2 sm:mr-3 h-4 w-4" />
-              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Dashboard</span>
+            <TabsTrigger value="dashboard" className="rounded-xl px-4 sm:px-5 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all duration-200">
+              <TrendingUp className="mr-2 h-3.5 w-3.5" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Dashboard</span>
             </TabsTrigger>
-            <TabsTrigger value="lancamentos" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <DollarSign className="mr-2 sm:mr-3 h-4 w-4" />
-              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Lançamentos</span>
+            <TabsTrigger value="lancamentos" className="rounded-xl px-4 sm:px-5 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all duration-200">
+              <DollarSign className="mr-2 h-3.5 w-3.5" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Lançamentos</span>
             </TabsTrigger>
-            <TabsTrigger value="dre" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <Receipt className="mr-2 sm:mr-3 h-4 w-4" />
-              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">DRE</span>
+            <TabsTrigger value="dre" className="rounded-xl px-4 sm:px-5 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all duration-200">
+              <Receipt className="mr-2 h-3.5 w-3.5" />
+              <span className="font-black text-[10px] uppercase tracking-widest">DRE</span>
             </TabsTrigger>
-            <TabsTrigger value="gastos_servicos" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <Users className="mr-2 sm:mr-3 h-4 w-4" />
-              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Serviços</span>
+            <TabsTrigger value="gastos_servicos" className="rounded-xl px-4 sm:px-5 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all duration-200">
+              <Users className="mr-2 h-3.5 w-3.5" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Serviços</span>
             </TabsTrigger>
             <TabsTrigger value="conciliacao" className={cn(
-              "rounded-[1.5rem] px-5 sm:px-8 h-full transition-all duration-500",
-              activeTab === 'conciliacao' && (selectedAccount === 'itau' || selectedAccount === 'banco_itau') ? "data-[state=active]:bg-[#00246B] data-[state=active]:text-white shadow-blue-500/30" :
+              "rounded-xl px-4 sm:px-5 h-full transition-all duration-200",
+              activeTab === 'conciliacao' && (selectedAccount === 'itau' || selectedAccount === 'banco_itau') ? "data-[state=active]:bg-[#00246B] data-[state=active]:text-white" :
               activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "data-[state=active]:bg-purple-600 data-[state=active]:text-white" :
               activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "data-[state=active]:bg-emerald-600 data-[state=active]:text-white" :
               activeTab === 'conciliacao' && selectedAccount === 'recarga_pay' ? "data-[state=active]:bg-orange-600 data-[state=active]:text-white" :
               "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             )}>
-              <AlertTriangle className="mr-2 sm:mr-3 h-4 w-4" />
-              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Conciliação</span>
+              <AlertTriangle className="mr-2 h-3.5 w-3.5" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Conciliação</span>
             </TabsTrigger>
-            <TabsTrigger value="notas_fiscais" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <Receipt className="mr-2 sm:mr-3 h-4 w-4" />
-              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Notas</span>
+            <TabsTrigger value="notas_fiscais" className="rounded-xl px-4 sm:px-5 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all duration-200">
+              <Receipt className="mr-2 h-3.5 w-3.5" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Notas</span>
             </TabsTrigger>
-            <TabsTrigger value="profitability" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <DollarSign className="mr-2 sm:mr-3 h-4 w-4" />
-              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Rentabilidade</span>
+            <TabsTrigger value="profitability" className="rounded-xl px-4 sm:px-5 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all duration-200">
+              <DollarSign className="mr-2 h-3.5 w-3.5" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Rentabilidade</span>
             </TabsTrigger>
-            <TabsTrigger value="patrimonio" className="rounded-[1.5rem] px-5 sm:px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-2xl transition-all duration-500">
-              <Package className="mr-2 sm:mr-3 h-4 w-4" />
-              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Ativos</span>
+            <TabsTrigger value="patrimonio" className="rounded-xl px-4 sm:px-5 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all duration-200">
+              <Package className="mr-2 h-3.5 w-3.5" />
+              <span className="font-black text-[10px] uppercase tracking-widest">Ativos</span>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -2006,24 +2010,26 @@ const Financeiro = () => {
           />
         </TabsContent>
 
-        <TabsContent value="lancamentos" className="space-y-6">
-          <Card className="bg-card/40 backdrop-blur-md border-border/40 shadow-xl rounded-2xl overflow-hidden">
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-9 gap-4">
+        <TabsContent value="lancamentos" className="space-y-4">
+          {/* Unified Executive Command Bar */}
+          <Card className="executive-card border border-white/[0.07] shadow-2xl rounded-2xl overflow-hidden bg-[#0a0f18]">
+            <CardContent className="p-4 sm:p-5 space-y-4">
+              {/* Row 1: Smart Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-9 gap-3">
                 <div className="md:col-span-2 lg:col-span-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Filtrar por Termo</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest mb-1.5 block text-muted-foreground/80">Busca Rápida</label>
                   <div className="relative group">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input placeholder="Descrição, OS, Cliente..." className="pl-10 h-10 rounded-xl bg-muted/30 border-border/20 text-xs" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <Input placeholder="Descrição, OS, Cliente..." className="pl-9 h-9 rounded-xl bg-white/[0.03] border-white/[0.08] text-xs" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
                 </div>
                 <div className="md:col-span-2 lg:col-span-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Período Vencimento</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest mb-1.5 block text-muted-foreground/80">Período Vencimento</label>
                   <div className="flex gap-1 items-center">
                     <div className="relative flex-1">
                       <Input
                         type="date"
-                        className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs pr-6"
+                        className="rounded-xl h-9 bg-white/[0.03] border-white/[0.08] text-xs pr-6"
                         value={startDateFilter}
                         onChange={(e) => setStartDateFilter(e.target.value)}
                         placeholder="Início"
@@ -2031,7 +2037,7 @@ const Financeiro = () => {
                       {startDateFilter && (
                         <button
                           onClick={() => setStartDateFilter("")}
-                          className="absolute right-1.5 top-3 text-muted-foreground hover:text-foreground text-[10px] font-bold"
+                          className="absolute right-1.5 top-2.5 text-muted-foreground hover:text-foreground text-[10px] font-bold"
                           title="Limpar início"
                         >
                           ✕
@@ -2042,7 +2048,7 @@ const Financeiro = () => {
                     <div className="relative flex-1">
                       <Input
                         type="date"
-                        className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs pr-6"
+                        className="rounded-xl h-9 bg-white/[0.03] border-white/[0.08] text-xs pr-6"
                         value={endDateFilter}
                         onChange={(e) => setEndDateFilter(e.target.value)}
                         placeholder="Fim"
@@ -2050,7 +2056,7 @@ const Financeiro = () => {
                       {endDateFilter && (
                         <button
                           onClick={() => setEndDateFilter("")}
-                          className="absolute right-1.5 top-3 text-muted-foreground hover:text-foreground text-[10px] font-bold"
+                          className="absolute right-1.5 top-2.5 text-muted-foreground hover:text-foreground text-[10px] font-bold"
                           title="Limpar fim"
                         >
                           ✕
@@ -2060,10 +2066,10 @@ const Financeiro = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Referência</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest mb-1.5 block text-muted-foreground/80">Referência</label>
                   <div className="flex gap-1">
                     <Select value={selectedYear} onValueChange={setSelectedYear}>
-                      <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 text-[10px] font-bold w-[75px]">
+                      <SelectTrigger className="rounded-xl h-9 bg-white/[0.03] border-white/[0.08] text-[10px] font-bold w-[72px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -2074,7 +2080,7 @@ const Financeiro = () => {
                       </SelectContent>
                     </Select>
                     <Select value={selectedFilterMonth} onValueChange={setSelectedFilterMonth}>
-                      <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 flex-1 text-[10px] font-bold uppercase">
+                      <SelectTrigger className="rounded-xl h-9 bg-white/[0.03] border-white/[0.08] flex-1 text-[10px] font-bold uppercase">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -2087,9 +2093,9 @@ const Financeiro = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Tipo Data</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest mb-1.5 block text-muted-foreground/80">Tipo Data</label>
                   <Select value={dateFilterType} onValueChange={(v: any) => setDateFilterType(v)}>
-                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-9 bg-white/[0.03] border-white/[0.08] text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="competence">Data da Compra</SelectItem>
                       <SelectItem value="due">Data do Pagamento</SelectItem>
@@ -2097,23 +2103,23 @@ const Financeiro = () => {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Fluxo</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest mb-1.5 block text-muted-foreground/80">Fluxo</label>
                   <Select value={typeFilter} onValueChange={(v: any) => setTypeFilter(v)}>
-                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-9 bg-white/[0.03] border-white/[0.08] text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="income">Receitas</SelectItem><SelectItem value="expense">Despesas</SelectItem></SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Status</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest mb-1.5 block text-muted-foreground/80">Status</label>
                   <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-9 bg-white/[0.03] border-white/[0.08] text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="paid">Pagos</SelectItem><SelectItem value="pending">Pendentes</SelectItem></SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-muted-foreground/80">Forma</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest mb-1.5 block text-muted-foreground/80">Forma</label>
                   <Select value={paymentMethodFilter} onValueChange={(v: any) => setPaymentMethodFilter(v)}>
-                    <SelectTrigger className="rounded-xl h-10 bg-muted/30 border-border/20 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-9 bg-white/[0.03] border-white/[0.08] text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas</SelectItem>
                       {PAYMENT_METHODS.map(method => (
@@ -2123,13 +2129,91 @@ const Financeiro = () => {
                   </Select>
                 </div>
               </div>
+
+              {/* Row 2: Live Financial KPIs + Quick Filter Pills + Primary Actions */}
+              <div className="pt-3 border-t border-white/[0.06] flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-5 bg-white/[0.02] px-4 py-2 rounded-xl border border-white/[0.06]">
+                  <div className="flex flex-col">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400">Total Receitas</span>
+                    <span className="text-base font-black tabular-nums text-emerald-400">{formatCurrency(metrics.income)}</span>
+                  </div>
+                  <div className="w-px h-7 bg-white/10" />
+                  <div className="flex flex-col">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-rose-400">Total Despesas</span>
+                    <span className="text-base font-black tabular-nums text-rose-400">{formatCurrency(metrics.expense)}</span>
+                  </div>
+                  <div className="w-px h-7 bg-white/10" />
+                  <div className="flex flex-col">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-amber-400">Saldo do Filtro</span>
+                    <span className={cn("text-base font-black tabular-nums", metrics.balance >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                      {formatCurrency(metrics.balance)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-end">
+                  <Button
+                    onClick={() => { setShowRecentlyAdded(!showRecentlyAdded); setShowRecentlyPaid(false); setShowOverdueOnly(false); setShowTodayOnly(false); }}
+                    variant={showRecentlyAdded ? "default" : "outline"}
+                    className={cn(
+                      "rounded-xl px-3 font-black uppercase tracking-wider text-[10px] h-9 transition-all border-white/10 bg-white/[0.02]",
+                      showRecentlyAdded && "bg-primary text-primary-foreground shadow-lg shadow-primary/20 border-none"
+                    )}
+                  >
+                    {showRecentlyAdded ? "Filtro Normal" : "Últimas Lançadas"}
+                  </Button>
+                  <Button
+                    onClick={() => { setShowRecentlyPaid(!showRecentlyPaid); setShowRecentlyAdded(false); setShowOverdueOnly(false); setShowTodayOnly(false); }}
+                    variant={showRecentlyPaid ? "default" : "outline"}
+                    className={cn(
+                      "rounded-xl px-3 font-black uppercase tracking-wider text-[10px] h-9 transition-all border-white/10 bg-white/[0.02]",
+                      showRecentlyPaid && "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 border-none"
+                    )}
+                  >
+                    {showRecentlyPaid ? "Filtro Normal" : "Últimas Pagas"}
+                  </Button>
+                  <Button
+                    onClick={() => { setShowTodayOnly(!showTodayOnly); setShowOverdueOnly(false); setShowRecentlyAdded(false); setShowRecentlyPaid(false); }}
+                    variant={showTodayOnly ? "default" : "outline"}
+                    className={cn(
+                      "rounded-xl px-3 font-black uppercase tracking-wider text-[10px] h-9 transition-all border-white/10",
+                      showTodayOnly 
+                        ? "bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-500/20 border-none" 
+                        : "hover:bg-amber-500/10 hover:text-amber-400 border-amber-500/30 text-amber-400 bg-amber-500/5"
+                    )}
+                  >
+                    <Clock size={14} className={cn("mr-1.5", showTodayOnly ? "text-white" : "text-amber-400")} />
+                    {showTodayOnly ? "Ver Todos" : `Hoje (${todayDueTransactions.length})`}
+                  </Button>
+                  <Button
+                    onClick={() => { setShowOverdueOnly(!showOverdueOnly); setShowTodayOnly(false); setShowRecentlyAdded(false); setShowRecentlyPaid(false); }}
+                    variant={showOverdueOnly ? "destructive" : "outline"}
+                    className={cn(
+                      "rounded-xl px-3 font-black uppercase tracking-wider text-[10px] h-9 transition-all border-rose-500/30 text-rose-400 bg-rose-500/5 hover:bg-rose-500/15",
+                      showOverdueOnly && "bg-rose-600 text-white border-none"
+                    )}
+                  >
+                    <AlertTriangle size={14} className={cn("mr-1.5", showOverdueOnly ? "text-white" : "text-rose-400")} />
+                    {showOverdueOnly ? "Ver Todos" : `Atrasados (${overdueTransactions.length})`}
+                  </Button>
+                  <Button
+                    onClick={handlePrintReport}
+                    variant="outline"
+                    className="rounded-xl px-3.5 font-black uppercase tracking-wider text-[10px] h-9 transition-all border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                  >
+                    <Printer size={14} className="mr-1.5 text-amber-400" />
+                    Imprimir ({filteredTransactions.length})
+                  </Button>
+                  <Button onClick={handleNewTransaction} className="rounded-xl px-4 font-black uppercase tracking-wider text-[10px] h-9 shadow-lg shadow-primary/20"><Plus size={14} className="mr-1.5" /> Novo Fluxo</Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
           {(startDateFilter || endDateFilter) && (
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center gap-4 text-amber-200 shadow-lg shadow-amber-500/5 transition-all duration-300">
               <div className="flex items-center gap-3">
-                <AlertTriangle className="text-amber-500 h-5 w-5 shrink-0 animate-pulse" />
+                <AlertTriangle className="text-amber-500 h-5 w-5 shrink-0" />
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-amber-500">Previsão de Caixa Necessário</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -2145,89 +2229,12 @@ const Financeiro = () => {
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-xl font-black text-amber-500">{formatCurrency(pendingAmountInRange)}</span>
+                <span className="text-xl font-black tabular-nums text-amber-500">{formatCurrency(pendingAmountInRange)}</span>
               </div>
             </div>
           )}
 
-          <div className="flex justify-between items-end gap-4 bg-muted/10 p-4 rounded-2xl border border-border/20">
-            <div className="flex gap-4">
-              <div className="flex flex-col">
-                <span className="text-[8px] font-black uppercase tracking-widest text-emerald-500">Total Receitas</span>
-                <span className="text-lg font-black">{formatCurrency(metrics.income)}</span>
-              </div>
-              <div className="w-px h-8 bg-border/20 mx-2" />
-              <div className="flex flex-col">
-                <span className="text-[8px] font-black uppercase tracking-widest text-rose-500">Total Despesas</span>
-                <span className="text-lg font-black">{formatCurrency(metrics.expense)}</span>
-              </div>
-              <div className="w-px h-8 bg-border/20 mx-2" />
-              <div className="flex flex-col">
-                <span className="text-[8px] font-black uppercase tracking-widest text-blue-500">Saldo</span>
-                <span className={`text-lg font-black ${metrics.balance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {formatCurrency(metrics.balance)}
-                </span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => { setShowRecentlyAdded(!showRecentlyAdded); setShowRecentlyPaid(false); setShowOverdueOnly(false); setShowTodayOnly(false); }}
-                variant={showRecentlyAdded ? "default" : "outline"}
-                className={cn(
-                  "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
-                  showRecentlyAdded && "bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 border-none"
-                )}
-              >
-                {showRecentlyAdded ? "Filtro Normal" : "Últimas Lançadas"}
-              </Button>
-              <Button
-                onClick={() => { setShowRecentlyPaid(!showRecentlyPaid); setShowRecentlyAdded(false); setShowOverdueOnly(false); setShowTodayOnly(false); }}
-                variant={showRecentlyPaid ? "default" : "outline"}
-                className={cn(
-                  "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
-                  showRecentlyPaid && "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 border-none"
-                )}
-              >
-                {showRecentlyPaid ? "Filtro Normal" : "Últimas Pagas"}
-              </Button>
-              <Button
-                onClick={() => { setShowTodayOnly(!showTodayOnly); setShowOverdueOnly(false); setShowRecentlyAdded(false); setShowRecentlyPaid(false); }}
-                variant={showTodayOnly ? "default" : "outline"}
-                className={cn(
-                  "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
-                  showTodayOnly 
-                    ? "bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-500/20 border-none animate-pulse" 
-                    : "hover:bg-amber-500/10 hover:text-amber-500 border-amber-500/30 text-amber-500"
-                )}
-              >
-                <Clock size={16} className={cn("mr-2", showTodayOnly ? "text-white" : "text-amber-500")} />
-                {showTodayOnly ? "Ver Todos" : `Vencem Hoje (${todayDueTransactions.length})`}
-              </Button>
-              <Button
-                onClick={() => { setShowOverdueOnly(!showOverdueOnly); setShowTodayOnly(false); setShowRecentlyAdded(false); setShowRecentlyPaid(false); }}
-                variant={showOverdueOnly ? "destructive" : "outline"}
-                className={cn(
-                  "rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20",
-                  showOverdueOnly && "animate-pulse shadow-lg shadow-destructive/20 border-none"
-                )}
-              >
-                <AlertTriangle size={16} className={cn("mr-2", showOverdueOnly ? "text-white" : "text-rose-500")} />
-                {showOverdueOnly ? "Ver Todos" : `Atrasados (${overdueTransactions.length})`}
-              </Button>
-              <Button
-                onClick={handlePrintReport}
-                variant="outline"
-                className="rounded-xl px-4 font-black uppercase tracking-widest text-[10px] h-11 transition-all border-border/20 hover:bg-muted/50"
-              >
-                <Printer size={16} className="mr-2 text-amber-500" />
-                Imprimir Relatório
-              </Button>
-              <Button onClick={handleNewTransaction} className="rounded-xl px-6 font-black uppercase tracking-widest text-xs h-11 shadow-lg shadow-primary/20 transition-transform active:scale-95"><Plus size={16} className="mr-2" /> Novo Fluxo</Button>
-              <Button onClick={handleNewTransfer} className="rounded-xl px-4 font-black uppercase tracking-widest text-xs h-11 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-transform active:scale-95"><Plus size={16} className="mr-2" /> Transferência</Button>
-            </div>
-          </div>
-
-          <Card className="rounded-2xl border-none shadow-2xl overflow-hidden bg-card/40 backdrop-blur-md">
+          <Card className="rounded-2xl border border-white/[0.07] shadow-2xl overflow-hidden bg-[#090d16]">
             <TransactionTable
               transactions={filteredTransactions}
               selectedIds={selectedIds}
