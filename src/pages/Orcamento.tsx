@@ -1219,6 +1219,25 @@ const Orcamento = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                        variant="ghost"
+                        onClick={() => {
+                            window.dispatchEvent(
+                                new CustomEvent("open-bjl-partner-ai", {
+                                    detail: {
+                                        prompt: "Sócio, analise nossos últimos orçamentos: quais estão pendentes para fecharmos, qual o valor na mesa e como estão nossas margens de lucro?",
+                                    },
+                                })
+                            );
+                        }}
+                        className="h-14 px-6 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition-all group shadow-[0_0_20px_rgba(245,158,11,0.15)]"
+                    >
+                        <Sparkles className="mr-2.5 h-5 w-5 text-amber-400 group-hover:text-black transition-colors" />
+                        <span className="font-black text-[11px] uppercase tracking-widest">
+                            Sócio IA • Orçamentos
+                        </span>
+                    </Button>
+
                     <Button 
                         variant="ghost" 
                         onClick={() => setActiveTab(activeTab === "materiais" ? "orcamentos" : "materiais")} 

@@ -56,6 +56,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { Magnetic } from "./ui/Magnetic";
 import { playClickSound, playHoverSound, playTransitionSound } from "@/lib/audio";
 import { PWAInstallButton } from "./shared/PWAInstallButton";
+import { BJLPartnerChat } from "./ai/BJLPartnerChat";
 
 
 const MainLayout = () => {
@@ -1050,8 +1051,24 @@ const MainLayout = () => {
                 )}
             </AnimatePresence>
 
+            {/* Sócio IA Drawer Global (Exclusivo Admin) */}
+            {role === 'admin' && <BJLPartnerChat />}
+
             {/* High-Tech Floating Quick Actions Dock */}
             <div className="fixed bottom-6 right-6 z-40 hidden sm:flex items-center gap-2 p-1.5 glass-panel-pro rounded-2xl shadow-2xl border border-white/10">
+                {role === 'admin' && (
+                    <button
+                        onClick={() => {
+                            window.dispatchEvent(new CustomEvent('open-bjl-partner-ai'));
+                        }}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black uppercase tracking-wider text-[11px] shadow-[0_0_20px_rgba(245,158,11,0.35)] transition-all hover:scale-105"
+                        title="Abrir Sócio IA (Ctrl+J)"
+                    >
+                        <Sparkles className="h-3.5 w-3.5 fill-black" />
+                        <span>Sócio IA</span>
+                        <span className="text-[9px] font-mono opacity-75 ml-0.5">⌘J</span>
+                    </button>
+                )}
                 <Link
                     to="/admin/orcamento"
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-semibold transition-all hover:scale-105"

@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, AlertTriangle, Receipt, FileSearch, Package, Target, Printer, Clock } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, AlertTriangle, Receipt, FileSearch, Package, Target, Printer, Clock, Sparkles } from "lucide-react";
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -1919,6 +1919,22 @@ const Financeiro = () => {
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <Button
+            variant="ghost"
+            className="h-11 px-5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition-all group w-full sm:w-auto shadow-[0_0_20px_rgba(245,158,11,0.15)]"
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent("open-bjl-partner-ai", {
+                  detail: {
+                    prompt: "Sócio, faça um raio-x completo do nosso financeiro deste mês: quanto entrou, quanto saiu, qual nosso saldo e quais contas vencem nos próximos 7 dias?",
+                  },
+                })
+              );
+            }}
+          >
+            <Sparkles className="mr-2 h-4 w-4 text-amber-400 group-hover:text-black transition-colors" />
+            <span className="font-display font-black text-xs uppercase tracking-wider">Consultar Sócio IA</span>
+          </Button>
           <Button 
             variant="ghost" 
             className="h-11 px-6 rounded-2xl executive-card border-metallic hover:bg-primary/10 hover:text-primary transition-all group overflow-hidden relative w-full sm:w-auto"

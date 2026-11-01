@@ -312,3 +312,518 @@ Retorne sua resposta estritamente no formato JSON especificado.`;
   }
 }
 
+export interface PartnerChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp?: string;
+}
+
+export interface BJLPartnerSnapshot {
+  generatedAt: string;
+  currentMonthLabel: string;
+  monthMetrics: {
+    paidIncome: number;
+    paidExpense: number;
+    paidBalance: number;
+    pendingIncome: number;
+    pendingExpense: number;
+    projectedBalance: number;
+  };
+  yearMetrics: {
+    year: number;
+    paidIncome: number;
+    paidExpense: number;
+    paidBalance: number;
+  };
+  alerts: {
+    overdueCount: number;
+    overdueTotal: number;
+    overdueItems: Array<{ description: string; amount: number; dueDate: string; contact?: string }>;
+    dueNext7DaysCount: number;
+    dueNext7DaysTotal: number;
+    dueNext7DaysItems: Array<{ description: string; amount: number; dueDate: string; contact?: string }>;
+  };
+  topExpenseCategoriesMonth: Array<{ category: string; total: number }>;
+  bankBalances: Array<{ bank: string; balance: number }>;
+  budgetsSummary: {
+    totalCount: number;
+    approvedCount: number;
+    pendingCount: number;
+    pendingTotalValue: number;
+    approvedTotalValue: number;
+    recentBudgets: Array<{
+      client: string;
+      project: string;
+      cost: number;
+      value: number;
+      marginPercent: number;
+      status: string;
+      days: number;
+      createdAt: string;
+    }>;
+  };
+  catalogHighlights: Array<{ name: string; category: string; unitPrice: number; unit: string }>;
+  productionSummary: {
+    activeOSCount: number;
+    completedOSCount: number;
+    recentActiveOS: Array<{
+      ticket: string;
+      client: string;
+      action: string;
+      status: string;
+      value: number;
+    }>;
+  };
+}
+
+let cachedSnapshot: { data: BJLPartnerSnapshot; timestamp: number } | null = null;
+
+const formatBRL = (val: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val || 0);
+
+export async function buildBJLBusinessSnapshot(forceRefresh = false): Promise<BJLPartnerSnapshot> {
+  if (!forceRefresh && cachedSnapshot && Date.now() - cachedSnapshot.timestamp < 45000) {
+    return cachedSnapshot.data;
+  }
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const todayStr = now.toISOString().split("T")[0];
+  const next7Date = new Date(now);
+  next7Date.setDate(now.getDate() + 7);
+  const next7Str = next7Date.toISOString().split("T")[0];
+
+  const monthNames = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+  ];
+
+  const [transRes, budgetsRes, materialsRes, osRes] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("description, amount, type, category, subcategory, contact, financial_institution, payment_method, competence_date, due_date, payment_date, status, order_service")
+      .order("due_date", { ascending: false })
+      .limit(1500),
+    supabase
+      .from("budgets")
+      .select("id, client_name, project_name, status, days_estimated, markup_factor, total_cost, total_value, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabase
+      .from("budget_materials")
+      .select("name, category, unit, unit_price")
+      .order("category", { ascending: true })
+      .limit(120),
+    supabase
+      .from("service_orders")
+      .select("ticket_number, client, action, status, value, prediction_date")
+      .order("open_date", { ascending: false })
+      .limit(80),
+  ]);
+
+  const transactions = transRes.data || [];
+  const budgets = budgetsRes.data || [];
+  const materials = materialsRes.data || [];
+  const serviceOrders = osRes.data || [];
+
+  let monthPaidIncome = 0;
+  let monthPaidExpense = 0;
+  let monthPendingIncome = 0;
+  let monthPendingExpense = 0;
+
+  let yearPaidIncome = 0;
+  let yearPaidExpense = 0;
+
+  const overdueItems: Array<{ description: string; amount: number; dueDate: string; contact?: string }> = [];
+  let overdueTotal = 0;
+
+  const dueNext7DaysItems: Array<{ description: string; amount: number; dueDate: string; contact?: string }> = [];
+  let dueNext7DaysTotal = 0;
+
+  const monthCatMap = new Map<string, number>();
+  const bankMap = new Map<string, number>([
+    ["Itaú", 0],
+    ["Nubank", 0],
+    ["Dinheiro", 0],
+    ["RecargaPay", 0],
+  ]);
+
+  for (const t of transactions) {
+    const amt = Number(t.amount) || 0;
+    const isIncome = t.type === "income";
+    const isPaid = t.status === "paid";
+    const dueStr = t.due_date || t.competence_date || "";
+    const refDateStr = (isPaid && t.payment_date) ? t.payment_date : dueStr;
+
+    if (refDateStr) {
+      const [yStr, mStr] = refDateStr.split("-");
+      const y = Number(yStr);
+      const m = Number(mStr) - 1;
+
+      if (y === currentYear) {
+        if (isPaid) {
+          if (isIncome) yearPaidIncome += amt;
+          else yearPaidExpense += amt;
+        }
+        if (m === currentMonth) {
+          if (isPaid) {
+            if (isIncome) monthPaidIncome += amt;
+            else {
+              monthPaidExpense += amt;
+              const cat = t.category || "Sem Categoria";
+              monthCatMap.set(cat, (monthCatMap.get(cat) || 0) + amt);
+            }
+          } else {
+            if (isIncome) monthPendingIncome += amt;
+            else monthPendingExpense += amt;
+          }
+        }
+      }
+    }
+
+    // Bank balances (paid transactions)
+    if (isPaid && t.financial_institution) {
+      const inst = String(t.financial_institution).toLowerCase();
+      const signed = isIncome ? amt : -amt;
+      if (inst.includes("itau") || inst.includes("itaú")) {
+        bankMap.set("Itaú", (bankMap.get("Itaú") || 0) + signed);
+      } else if (inst.includes("nubank")) {
+        bankMap.set("Nubank", (bankMap.get("Nubank") || 0) + signed);
+      } else if (inst.includes("dinheiro")) {
+        bankMap.set("Dinheiro", (bankMap.get("Dinheiro") || 0) + signed);
+      } else if (inst.includes("recarga")) {
+        bankMap.set("RecargaPay", (bankMap.get("RecargaPay") || 0) + signed);
+      }
+    }
+
+    // Overdue & Next 7 Days (pending expenses)
+    if (!isPaid && !isIncome && dueStr) {
+      if (dueStr < todayStr) {
+        overdueTotal += amt;
+        if (overdueItems.length < 15) {
+          overdueItems.push({
+            description: t.description,
+            amount: amt,
+            dueDate: dueStr.split("-").reverse().join("/"),
+            contact: t.contact || undefined,
+          });
+        }
+      } else if (dueStr >= todayStr && dueStr <= next7Str) {
+        dueNext7DaysTotal += amt;
+        if (dueNext7DaysItems.length < 15) {
+          dueNext7DaysItems.push({
+            description: t.description,
+            amount: amt,
+            dueDate: dueStr.split("-").reverse().join("/"),
+            contact: t.contact || undefined,
+          });
+        }
+      }
+    }
+  }
+
+  const topExpenseCategoriesMonth = Array.from(monthCatMap.entries())
+    .map(([category, total]) => ({ category, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 8);
+
+  const bankBalances = Array.from(bankMap.entries()).map(([bank, balance]) => ({ bank, balance }));
+
+  // Budgets summary
+  const approvedBudgets = budgets.filter(
+    (b) => b.status?.toLowerCase() === "aprovado" || b.status?.toLowerCase() === "fechado"
+  );
+  const pendingBudgets = budgets.filter(
+    (b) => !b.status || b.status?.toLowerCase() === "pendente" || b.status?.toLowerCase() === "em análise"
+  );
+
+  const recentBudgets = budgets.slice(0, 15).map((b) => {
+    const cost = Number(b.total_cost) || 0;
+    const value = Number(b.total_value) || 0;
+    const marginPercent = value > 0 ? Math.round(((value - cost) / value) * 100) : 0;
+    return {
+      client: b.client_name || "Cliente",
+      project: b.project_name || "Projeto",
+      cost,
+      value,
+      marginPercent,
+      status: b.status || "pendente",
+      days: Number(b.days_estimated) || 0,
+      createdAt: b.created_at ? new Date(b.created_at).toLocaleDateString("pt-BR") : "",
+    };
+  });
+
+  // Active OS
+  const activeOS = serviceOrders.filter((o) => o.status !== "Entregue e Finalizado");
+  const completedOS = serviceOrders.filter((o) => o.status === "Entregue e Finalizado");
+
+  const snapshot: BJLPartnerSnapshot = {
+    generatedAt: now.toLocaleString("pt-BR"),
+    currentMonthLabel: `${monthNames[currentMonth]}/${currentYear}`,
+    monthMetrics: {
+      paidIncome: monthPaidIncome,
+      paidExpense: monthPaidExpense,
+      paidBalance: monthPaidIncome - monthPaidExpense,
+      pendingIncome: monthPendingIncome,
+      pendingExpense: monthPendingExpense,
+      projectedBalance: (monthPaidIncome + monthPendingIncome) - (monthPaidExpense + monthPendingExpense),
+    },
+    yearMetrics: {
+      year: currentYear,
+      paidIncome: yearPaidIncome,
+      paidExpense: yearPaidExpense,
+      paidBalance: yearPaidIncome - yearPaidExpense,
+    },
+    alerts: {
+      overdueCount: overdueItems.length,
+      overdueTotal,
+      overdueItems,
+      dueNext7DaysCount: dueNext7DaysItems.length,
+      dueNext7DaysTotal,
+      dueNext7DaysItems,
+    },
+    topExpenseCategoriesMonth,
+    bankBalances,
+    budgetsSummary: {
+      totalCount: budgets.length,
+      approvedCount: approvedBudgets.length,
+      pendingCount: pendingBudgets.length,
+      pendingTotalValue: pendingBudgets.reduce((acc, b) => acc + (Number(b.total_value) || 0), 0),
+      approvedTotalValue: approvedBudgets.reduce((acc, b) => acc + (Number(b.total_value) || 0), 0),
+      recentBudgets,
+    },
+    catalogHighlights: materials.slice(0, 40).map((m) => ({
+      name: m.name,
+      category: m.category,
+      unitPrice: Number(m.unit_price) || 0,
+      unit: m.unit,
+    })),
+    productionSummary: {
+      activeOSCount: activeOS.length,
+      completedOSCount: completedOS.length,
+      recentActiveOS: activeOS.slice(0, 12).map((o) => ({
+        ticket: o.ticket_number || "OS",
+        client: o.client || "Cliente",
+        action: o.action || "Projeto",
+        status: o.status || "Em Produção",
+        value: Number(o.value) || 0,
+      })),
+    },
+  };
+
+  cachedSnapshot = { data: snapshot, timestamp: Date.now() };
+  return snapshot;
+}
+
+function generateLocalPartnerFallback(question: string, snap: BJLPartnerSnapshot): string {
+  const q = question.toLowerCase();
+
+  if (q.includes("venc") || q.includes("atrasad") || q.includes("pagar") || q.includes("semana") || q.includes("hoje")) {
+    const overdueList = snap.alerts.overdueItems.length > 0
+      ? snap.alerts.overdueItems.slice(0, 6).map(i => `• **${i.description}** (${i.dueDate}): **${formatBRL(i.amount)}**`).join("\n")
+      : "• Nenhuma conta atrasada no momento! 👏";
+
+    const next7List = snap.alerts.dueNext7DaysItems.length > 0
+      ? snap.alerts.dueNext7DaysItems.slice(0, 6).map(i => `• **${i.description}** (${i.dueDate}): **${formatBRL(i.amount)}**`).join("\n")
+      : "• Nenhuma conta pendente para os próximos 7 dias.";
+
+    return `### 🚨 Radar de Contas a Pagar & Vencimentos (${snap.currentMonthLabel})
+
+Analisei nosso fluxo de caixa agora mesmo, sócio. Aqui está a situação:
+
+* **Total em Atraso:** **${formatBRL(snap.alerts.overdueTotal)}** (${snap.alerts.overdueCount} lançamentos listados)
+* **Vencendo nos Próximos 7 Dias:** **${formatBRL(snap.alerts.dueNext7DaysTotal)}** (${snap.alerts.dueNext7DaysCount} lançamentos)
+
+#### 📌 Principais Contas em Atraso:
+${overdueList}
+
+#### 📅 Vencendo nos Próximos 7 Dias:
+${next7List}
+
+💡 **Conselho de Sócio:** Nosso saldo realizado em **${snap.currentMonthLabel}** está em **${formatBRL(snap.monthMetrics.paidBalance)}**. Priorize quitar as pendências de fornecedores críticos de matéria-prima (MDF/ferragens) para não travar a produção.`;
+  }
+
+  if (q.includes("orçamento") || q.includes("orcamento") || q.includes("margem") || q.includes("preço") || q.includes("precificar")) {
+    const recentList = snap.budgetsSummary.recentBudgets.slice(0, 6).map(
+      b => `• **${b.client}** (${b.project}): Venda **${formatBRL(b.value)}** | Custo **${formatBRL(b.cost)}** | Margem Bruta: **${b.marginPercent}%** (${b.status.toUpperCase()})`
+    ).join("\n");
+
+    return `### 📐 Análise de Orçamentos & Margens da BJL
+
+Aqui está o retrato atual da nossa carteira comercial:
+
+* **Orçamentos Pendentes (Em Negociação):** **${snap.budgetsSummary.pendingCount}** projetos somando **${formatBRL(snap.budgetsSummary.pendingTotalValue)}** na mesa!
+* **Orçamentos Aprovados:** **${snap.budgetsSummary.approvedCount}** projetos somando **${formatBRL(snap.budgetsSummary.approvedTotalValue)}**
+
+#### 🔍 Últimos Orçamentos Calculados:
+${recentList || "• Nenhum orçamento recente encontrado."}
+
+💡 **Regra de Ouro da Marcenaria:** Para manter a BJL altamente lucrativa, busque um **Markup entre 2.3x e 2.8x** sobre o custo direto de materiais + mão de obra fabril, garantindo uma margem bruta saudável mesmo após descontar taxas de maquininha e impostos.`;
+  }
+
+  if (q.includes("produção") || q.includes("producao") || q.includes("fábrica") || q.includes("fabrica") || q.includes("os") || q.includes("ordem")) {
+    const osList = snap.productionSummary.recentActiveOS.slice(0, 6).map(
+      o => `• **${o.ticket} - ${o.client}** (${o.action}): Status **[${o.status}]** | Valor: **${formatBRL(o.value)}**`
+    ).join("\n");
+
+    return `### 🏭 Cockpit da Fábrica (Ordens de Serviço)
+
+Temos atualmente **${snap.productionSummary.activeOSCount} Ordens de Serviço ativas** na fábrica e **${snap.productionSummary.completedOSCount} finalizadas**.
+
+#### 🔨 Projetos em Andamento:
+${osList || "• Nenhuma OS ativa no momento."}
+
+💡 **Dica Operacional:** Acompanhe o consumo de chapas de MDF e ferragens por OS na aba *Financeiro → Serviços* para garantir que nenhum projeto ultrapasse 45% de custo de matéria-prima.`;
+  }
+
+  const topCats = snap.topExpenseCategoriesMonth.slice(0, 5).map(
+    c => `• **${c.category}:** ${formatBRL(c.total)}`
+  ).join("\n");
+
+  return `### 🤝 Raio-X Executivo BJL Planejados (${snap.currentMonthLabel})
+
+Sócio, puxei os números atualizados do nosso sistema agora mesmo:
+
+#### 💰 Resultado de ${snap.currentMonthLabel}:
+* **Receitas Recebidas (Pagas):** **${formatBRL(snap.monthMetrics.paidIncome)}** *(+ ${formatBRL(snap.monthMetrics.pendingIncome)} a receber)*
+* **Despesas Pagas:** **${formatBRL(snap.monthMetrics.paidExpense)}** *(+ ${formatBRL(snap.monthMetrics.pendingExpense)} pendentes)*
+* **Saldo Líquido Realizado no Mês:** **${formatBRL(snap.monthMetrics.paidBalance)}**
+* **Saldo Acumulado no Ano (${snap.yearMetrics.year}):** **${formatBRL(snap.yearMetrics.paidBalance)}**
+
+#### 📊 Maiores Gastos do Mês por Categoria:
+${topCats || "• Sem despesas pagas registradas neste mês."}
+
+#### ⚠️ Alertas Imediatos:
+* **Contas em Atraso:** ${formatBRL(snap.alerts.overdueTotal)} (${snap.alerts.overdueCount} itens)
+* **Vencendo em 7 Dias:** ${formatBRL(snap.alerts.dueNext7DaysTotal)} (${snap.alerts.dueNext7DaysCount} itens)
+* **Orçamentos em Negociação:** ${formatBRL(snap.budgetsSummary.pendingTotalValue)} (${snap.budgetsSummary.pendingCount} projetos)
+
+*(💡 Dica: Para respostas abertas com Inteligência Artificial Generativa Gemini 2.5 Pro/Flash, clique no ícone de **Chave API** no topo deste chat e cole sua chave gratuita do Google AI Studio).*`;
+}
+
+export async function askBJLPartnerAI(
+  messages: PartnerChatMessage[],
+  customApiKey?: string,
+  forceRefreshSnapshot = false
+): Promise<{ reply: string; snapshot: BJLPartnerSnapshot; mode: "gemini" | "local-cfo" }> {
+  const snapshot = await buildBJLBusinessSnapshot(forceRefreshSnapshot);
+  const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+
+  const systemPrompt = `Você é o "Sócio IA da BJL Planejados" — um Diretor Financeiro (CFO), Estrategista Comercial e Engenheiro Mestre de Marcenaria de Alto Padrão, trabalhando lado a lado com o dono da BJL Móveis Planejados (CNPJ 60.528.620/0001-20).
+
+Seu tom de voz:
+- Fale como um SÓCIO DE CONFIANÇA: direto, leal, inteligente, estratégico e focado em lucro, proteção de caixa e eficiência na fábrica.
+- Sempre cite os NÚMEROS REAIS da empresa presentes no Raio-X abaixo quando responder perguntas sobre financeiro, contas a pagar, orçamentos, materiais ou ordens de serviço.
+- Formate valores em Reais (R$) de forma clara, use tópicos (bullet points) e destaque números importantes em **negrito**.
+- Quando o sócio pedir ajuda para precificar ou avaliar um orçamento, considere os custos reais do catálogo abaixo, lembre-o das taxas de cartão, custos de MDF/ferragens, dias de produção e recomende margens saudáveis para marcenaria sob medida (markup ideal entre 2.3x e 2.8x).
+
+=== RAIO-X EM TEMPO REAL DA BJL PLANEJADOS (${snapshot.generatedAt}) ===
+Mês Atual: ${snapshot.currentMonthLabel}
+1. FINANCEIRO DO MÊS (${snapshot.currentMonthLabel}):
+- Receitas Pagas (Caixa Realizado): ${formatBRL(snapshot.monthMetrics.paidIncome)}
+- Despesas Pagas (Saídas Realizadas): ${formatBRL(snapshot.monthMetrics.paidExpense)}
+- Saldo Líquido Realizado no Mês: ${formatBRL(snapshot.monthMetrics.paidBalance)}
+- Receitas Pendentes no Mês: ${formatBRL(snapshot.monthMetrics.pendingIncome)}
+- Despesas Pendentes no Mês: ${formatBRL(snapshot.monthMetrics.pendingExpense)}
+- Saldo Projetado do Mês: ${formatBRL(snapshot.monthMetrics.projectedBalance)}
+
+2. ACUMULADO DO ANO (${snapshot.yearMetrics.year}):
+- Receitas Pagas no Ano: ${formatBRL(snapshot.yearMetrics.paidIncome)}
+- Despesas Pagas no Ano: ${formatBRL(snapshot.yearMetrics.paidExpense)}
+- Saldo Realizado no Ano: ${formatBRL(snapshot.yearMetrics.paidBalance)}
+
+3. ALERTAS DE CAIXA (CONTAS A PAGAR):
+- Total Atrasado: ${formatBRL(snapshot.alerts.overdueTotal)} (${snapshot.alerts.overdueCount} contas)
+  Itens atrasados: ${JSON.stringify(snapshot.alerts.overdueItems)}
+- Vencendo nos Próximos 7 Dias: ${formatBRL(snapshot.alerts.dueNext7DaysTotal)} (${snapshot.alerts.dueNext7DaysCount} contas)
+  Itens próximos 7 dias: ${JSON.stringify(snapshot.alerts.dueNext7DaysItems)}
+
+4. MAIORES GASTOS DO MÊS POR CATEGORIA:
+${JSON.stringify(snapshot.topExpenseCategoriesMonth)}
+
+5. SALDO HISTÓRICO POR BANCO (LANÇAMENTOS PAGOS):
+${JSON.stringify(snapshot.bankBalances)}
+
+6. CARTEIRA DE ORÇAMENTOS:
+- Total de Orçamentos Recentes: ${snapshot.budgetsSummary.totalCount}
+- Aprovados: ${snapshot.budgetsSummary.approvedCount} (${formatBRL(snapshot.budgetsSummary.approvedTotalValue)})
+- Pendentes em Negociação: ${snapshot.budgetsSummary.pendingCount} (${formatBRL(snapshot.budgetsSummary.pendingTotalValue)})
+- Lista dos últimos 15 Orçamentos (Cliente, Projeto, Custo, Valor de Venda, Margem %, Status):
+${JSON.stringify(snapshot.budgetsSummary.recentBudgets)}
+
+7. PREÇOS DE REFERÊNCIA DO CATÁLOGO BJL (MDF, FERRAGENS, INSUMOS):
+${JSON.stringify(snapshot.catalogHighlights)}
+
+8. FÁBRICA E ORDENS DE SERVIÇO (OS):
+- OS em Produção: ${snapshot.productionSummary.activeOSCount} | OS Finalizadas: ${snapshot.productionSummary.completedOSCount}
+- OS Ativas Recentes: ${JSON.stringify(snapshot.productionSummary.recentActiveOS)}
+=======================================================================`;
+
+  // 1. Tenta via Supabase Edge Function (gemini-proxy)
+  try {
+    const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke("gemini-proxy", {
+      body: {
+        action: "partner-chat",
+        payload: {
+          systemPrompt,
+          messages: messages.slice(-10),
+        },
+      },
+    });
+
+    if (!edgeErr && edgeRes?.data?.reply) {
+      return { reply: edgeRes.data.reply, snapshot, mode: "gemini" };
+    }
+  } catch (err) {
+    console.warn("Edge Function gemini-proxy indisponível para partner-chat, tentando chave local.", err);
+  }
+
+  // 2. Tenta chamada direta ao Gemini (2.5-flash -> fallback 2.0-flash) com a chave configurada
+  const activeKey = (customApiKey || localStorage.getItem("bjl_gemini_api_key") || "").trim();
+  if (activeKey) {
+    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash"];
+    const contents = messages.slice(-10).map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
+
+    for (const modelName of modelsToTry) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              systemInstruction: {
+                parts: [{ text: systemPrompt }],
+              },
+              contents,
+              generationConfig: {
+                temperature: 0.35,
+                maxOutputTokens: 2048,
+              },
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          const reply = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (reply) {
+            return { reply, snapshot, mode: "gemini" };
+          }
+        }
+      } catch (err) {
+        console.warn(`Tentativa com modelo ${modelName} falhou:`, err);
+      }
+    }
+  }
+
+  // 3. Fallback Analítico Instantâneo Local (funciona mesmo sem chave de API!)
+  const fallbackReply = generateLocalPartnerFallback(lastUserMessage, snapshot);
+  return { reply: fallbackReply, snapshot, mode: "local-cfo" };
+}
+
+
