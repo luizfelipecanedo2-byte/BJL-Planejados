@@ -23,7 +23,15 @@ const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const Agenda = lazy(() => import("./pages/Agenda"));
 
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutos de cache instantâneo entre telas
+      gcTime: 1000 * 60 * 30,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => {
   const [session, setSession] = useState<Session | null>(null);

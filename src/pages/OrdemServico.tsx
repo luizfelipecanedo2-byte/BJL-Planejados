@@ -40,6 +40,17 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { GripVertical, User } from "lucide-react";
 
+// Cache Inteligente em Memória para abertura instantânea (0ms)
+const osMemoryCache: {
+    orders: ServiceOrder[];
+    tasks: any[];
+    lastFetchedAt: number;
+} = {
+    orders: [],
+    tasks: [],
+    lastFetchedAt: 0,
+};
+
 const OrdemServico = () => {
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -52,12 +63,15 @@ const OrdemServico = () => {
         })
     );
     const { settings } = useCompanySettings();
-    const [orders, setOrders] = useState<ServiceOrder[]>([]);
-    const [tasks, setTasks] = useState<any[]>([]);
+    const [orders, setOrders] = useState<ServiceOrder[]>(() => osMemoryCache.orders);
+    const [tasks, setTasks] = useState<any[]>(() => osMemoryCache.tasks);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
     const [selectedGalleryOrder, setSelectedGalleryOrder] = useState<ServiceOrder | null>(null);
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+
+    useEffect(() => { osMemoryCache.orders = orders; }, [orders]);
+    useEffect(() => { osMemoryCache.tasks = tasks; }, [tasks]);
 
     const handleOpenGallery = (order: ServiceOrder) => {
         setSelectedGalleryOrder(order);
@@ -70,7 +84,7 @@ const OrdemServico = () => {
             setSelectedGalleryOrder(prev => prev ? { ...prev, attachments: updatedAttachments } : null);
         }
     };
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(() => osMemoryCache.orders.length === 0);
     const [userRole, setUserRole] = useState<string | null>("admin");
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const isAdmin = userRole === 'admin';
@@ -90,9 +104,15 @@ const OrdemServico = () => {
     }, []);
 
     const fetchInitialData = async () => {
+        const now = Date.now();
         try {
             if (localStorage.getItem("mock_admin_session") === "true") {
                 setUserRole('admin');
+                if (osMemoryCache.orders.length > 0 && now - osMemoryCache.lastFetchedAt < 45000) {
+                    setIsLoading(false);
+                    return;
+                }
+                osMemoryCache.lastFetchedAt = now;
                 await fetchOrders();
                 return;
             }
@@ -119,12 +139,19 @@ const OrdemServico = () => {
         } catch (err) {
             console.warn("Erro ao buscar dados do usuário na OS:", err);
         }
+        if (osMemoryCache.orders.length > 0 && now - osMemoryCache.lastFetchedAt < 45000) {
+            setIsLoading(false);
+            return;
+        }
+        osMemoryCache.lastFetchedAt = now;
         await fetchOrders();
     };
 
     const fetchOrders = async () => {
         try {
-            setIsLoading(true);
+            if (osMemoryCache.orders.length === 0) {
+                setIsLoading(true);
+            }
             const { data, error } = await supabase
                 .from('service_orders')
                 .select('*, clients(phone, address, city, state)')
@@ -200,6 +227,10 @@ const OrdemServico = () => {
                 ]);
 
                 const allocations = allocData || [];
+                const allocatedTxIds = new Set<string>();
+                allocations.forEach((a: any) => {
+                    if (a.transaction_id) allocatedTxIds.add(a.transaction_id);
+                });
                 const expenses = allTransData.filter(t => t.type === 'expense');
                 const norm = (s?: string) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
@@ -221,7 +252,7 @@ const OrdemServico = () => {
                     const allocCost = matchedAllocations.reduce((sum, a) => sum + Number(a.amount || 0), 0);
 
                     const matchedDirectTx = expenses.filter(t => {
-                        if (allocations.some(a => a.transaction_id === t.id)) return false;
+                        if (allocatedTxIds.has(t.id)) return false;
                         if (!ticketClean || ticketClean === 's/n') return false;
                         const matchesOS = t.order_service && norm(t.order_service).includes(ticketClean);
                         const matchesDesc = t.description && norm(t.description).includes(ticketClean);

@@ -35,16 +35,49 @@ import NotaFiscalTab from "@/components/financeiro/NotaFiscalTab";
 import PartialPaymentDialog from "@/components/financeiro/PartialPaymentDialog";
 import ProfitabilityTab from "@/components/financeiro/ProfitabilityTab";
 
+// Cache em memória de alta velocidade (Stale-While-Revalidate) para abertura instantânea (0ms) ao voltar para a tela
+const financeMemoryCache: {
+  transactions: Transaction[];
+  assets: Asset[];
+  serviceOrders: ServiceOrder[];
+  serviceExpenses: ServiceExpense[];
+  transactionAllocations: any[];
+  sales: any[];
+  lastFetchedAt: number;
+} = {
+  transactions: [],
+  assets: [],
+  serviceOrders: [],
+  serviceExpenses: [],
+  transactionAllocations: [],
+  sales: [],
+  lastFetchedAt: 0,
+};
+
 const Financeiro = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
-  const [serviceExpenses, setServiceExpenses] = useState<ServiceExpense[]>([]);
-  const [transactionAllocations, setTransactionAllocations] = useState<any[]>([]);
-  const [sales, setSales] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>(() => financeMemoryCache.transactions);
+  const [assets, setAssets] = useState<Asset[]>(() => financeMemoryCache.assets);
+  const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>(() => financeMemoryCache.serviceOrders);
+  const [serviceExpenses, setServiceExpenses] = useState<ServiceExpense[]>(() => financeMemoryCache.serviceExpenses);
+  const [transactionAllocations, setTransactionAllocations] = useState<any[]>(() => financeMemoryCache.transactionAllocations);
+  const [sales, setSales] = useState<any[]>(() => financeMemoryCache.sales);
+
+  // Sincroniza alterações locais imediatamente com o cache em memória
+  useEffect(() => { financeMemoryCache.transactions = transactions; }, [transactions]);
+  useEffect(() => { financeMemoryCache.assets = assets; }, [assets]);
+  useEffect(() => { financeMemoryCache.serviceOrders = serviceOrders; }, [serviceOrders]);
+  useEffect(() => { financeMemoryCache.serviceExpenses = serviceExpenses; }, [serviceExpenses]);
+  useEffect(() => { financeMemoryCache.transactionAllocations = transactionAllocations; }, [transactionAllocations]);
+  useEffect(() => { financeMemoryCache.sales = sales; }, [sales]);
 
   useEffect(() => {
+    const now = Date.now();
+    // Se já tem cache recente (< 45s), exibe na hora (0ms) e evita recarregar tudo do zero sem necessidade
+    if (financeMemoryCache.transactions.length > 0 && now - financeMemoryCache.lastFetchedAt < 45000) {
+      return;
+    }
+    financeMemoryCache.lastFetchedAt = now;
     Promise.allSettled([
       fetchTransactions(),
       fetchAssets(),

@@ -1,3 +1,4 @@
+import { useState, useEffect, useMemo } from "react";
 import { Transaction } from "@/types/finance";
 import {
     Table,
@@ -10,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, FileImage, Split } from "lucide-react";
+import { Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, FileImage, Split, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,8 @@ interface TransactionTableProps {
     onPartialPayment?: (transaction: Transaction) => void;
 }
 
+const PAGE_SIZE = 50;
+
 const TransactionTable = ({
     transactions,
     selectedIds,
@@ -34,6 +37,24 @@ const TransactionTable = ({
     onDelete,
     onPartialPayment
 }: TransactionTableProps) => {
+    const [currentPage, setCurrentPage] = useState(1);
+    const [showAllOnScreen, setShowAllOnScreen] = useState(false);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [transactions.length]);
+
+    const totalPages = Math.max(1, Math.ceil(transactions.length / PAGE_SIZE));
+    const safePage = Math.min(currentPage, totalPages);
+
+    const visibleTransactions = useMemo(() => {
+        if (showAllOnScreen || transactions.length <= PAGE_SIZE) {
+            return transactions;
+        }
+        const start = (safePage - 1) * PAGE_SIZE;
+        return transactions.slice(start, start + PAGE_SIZE);
+    }, [transactions, safePage, showAllOnScreen]);
+
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
             style: "currency",
@@ -41,11 +62,64 @@ const TransactionTable = ({
         }).format(value);
     };
 
+    const startIdx = transactions.length === 0 ? 0 : showAllOnScreen ? 1 : (safePage - 1) * PAGE_SIZE + 1;
+    const endIdx = showAllOnScreen ? transactions.length : Math.min(safePage * PAGE_SIZE, transactions.length);
+
     return (
         <div className="space-y-4">
+            {/* Barra de Paginação Rápida no Topo (se houver mais de 50 lançamentos) */}
+            {transactions.length > PAGE_SIZE && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 bg-white/[0.02] border-b border-border/40 text-xs">
+                    <div className="text-muted-foreground font-medium">
+                        Exibindo <strong className="text-foreground font-mono">{startIdx}–{endIdx}</strong> de{" "}
+                        <strong className="text-primary font-mono">{transactions.length}</strong> lançamentos
+                        <span className="ml-2 text-[10px] text-emerald-400 font-semibold">
+                            (Na impressão saem todos os {transactions.length} lançamentos)
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {!showAllOnScreen && (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={safePage <= 1}
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1"
+                                >
+                                    <ChevronLeft className="h-3.5 w-3.5" />
+                                    Anterior
+                                </Button>
+                                <span className="font-mono text-xs font-bold px-2">
+                                    Pág. {safePage} / {totalPages}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={safePage >= totalPages}
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1"
+                                >
+                                    Próxima
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                </Button>
+                            </>
+                        )}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowAllOnScreen(prev => !prev)}
+                            className="h-8 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/10"
+                        >
+                            {showAllOnScreen ? "Paginar (50 por pág.)" : `Ver todos (${transactions.length})`}
+                        </Button>
+                    </div>
+                </div>
+            )}
+
             {/* Mobile View: Card-based layout */}
             <div className="grid grid-cols-1 gap-4 md:hidden">
-                {transactions.map((transaction) => {
+                {visibleTransactions.map((transaction) => {
                     const isIncome = transaction.type === 'income';
                     const isPaid = transaction.status === 'paid';
                     const isSelected = selectedIds.includes(transaction.id);
@@ -205,7 +279,7 @@ const TransactionTable = ({
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {transactions.map((transaction) => {
+                        {visibleTransactions.map((transaction) => {
                             const isIncome = transaction.type === 'income';
                             const isPaid = transaction.status === 'paid';
                             const isSelected = selectedIds.includes(transaction.id);
@@ -326,6 +400,40 @@ const TransactionTable = ({
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Barra de Paginação Rápida no Rodapé */}
+            {transactions.length > PAGE_SIZE && !showAllOnScreen && (
+                <div className="flex items-center justify-between px-4 py-3 bg-white/[0.02] border-t border-border/40 text-xs">
+                    <span className="text-muted-foreground font-mono">
+                        Mostrando {startIdx}–{endIdx} de {transactions.length}
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={safePage <= 1}
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            className="h-8 px-3 rounded-lg text-xs font-bold gap-1"
+                        >
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                            Anterior
+                        </Button>
+                        <span className="font-mono text-xs font-bold px-2">
+                            Página {safePage} de {totalPages}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={safePage >= totalPages}
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            className="h-8 px-3 rounded-lg text-xs font-bold gap-1"
+                        >
+                            Próxima
+                            <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
