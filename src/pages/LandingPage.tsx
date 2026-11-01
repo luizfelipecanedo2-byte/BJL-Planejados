@@ -74,6 +74,12 @@ const LandingPage = () => {
         }
     };
 
+    const companyPhone = (settings?.phone && settings.phone !== "(11) 9999-9999") ? settings.phone : "(22) 99703-9852";
+    const companyWhatsappDigits = companyPhone.replace(/\D/g, '') || "22997039852";
+    const whatsappUrl = `https://wa.me/55${companyWhatsappDigits}?text=${encodeURIComponent("Olá! Vim pelo site da BJL Planejados e gostaria de solicitar um orçamento.")}`;
+    const companyAddress = (settings?.address && settings.address !== "Av. Luxury, 1000 - SP") ? settings.address : "Rua Maria Vitipo Raposo, 138";
+    const companyInstagram = (settings?.instagram || "@bjlmoveisplanejados").replace('@', '');
+
     return (
         <div className="min-h-screen bg-[#050505] text-white selection:bg-primary selection:text-black overflow-x-hidden font-sans">
             {/* Header */}
@@ -88,7 +94,7 @@ const LandingPage = () => {
 
 
                 <nav className="hidden lg:flex items-center gap-10">
-                    {["Início", "Sobre", "Projetos", "Depoimentos", "Contato"].map((item) => (
+                    {["Início", "Sobre", "Projetos", "Contato"].map((item) => (
                         <a key={item} href={`#${item.toLowerCase()}`} className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 hover:text-primary transition-colors">
                             {item}
                         </a>
@@ -116,7 +122,7 @@ const LandingPage = () => {
             {/* Mobile Menu */}
             {isMenuOpen && (
                 <div className="fixed inset-0 z-40 bg-black flex flex-col items-center justify-center gap-8 animate-in fade-in duration-300">
-                    {["Início", "Sobre", "Projetos", "Depoimentos", "Contato"].map((item) => (
+                    {["Início", "Sobre", "Projetos", "Contato"].map((item) => (
                         <a 
                             key={item} 
                             href={`#${item.toLowerCase()}`} 
@@ -127,11 +133,14 @@ const LandingPage = () => {
                         </a>
                     ))}
                     <div className="h-px w-20 bg-white/10 my-4" />
+                    <Button variant="outline" className="rounded-full border-primary/30 text-primary hover:bg-primary/10 font-bold uppercase text-xs tracking-widest px-8">
+                        Portal do Cliente
+                    </Button>
                     <button 
-                        className="text-lg font-black uppercase tracking-widest text-primary flex items-center gap-3"
+                        className="text-sm font-black uppercase tracking-widest text-white/50 hover:text-primary flex items-center gap-3"
                         onClick={() => navigate('/login')}
                     >
-                        <Lock className="h-5 w-5" />
+                        <Lock className="h-4 w-4" />
                         Área do Colaborador
                     </button>
                 </div>
@@ -147,7 +156,7 @@ const LandingPage = () => {
                 <div className="relative z-10 text-center max-w-4xl space-y-8 animate-in slide-in-from-bottom duration-1000">
                     <div className="flex justify-center">
                         <div className="px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-md mb-4">
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Arquitetura & Design High-End</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Móveis Planejados Sob Medida</span>
                         </div>
                     </div>
                     <h1 className="text-5xl lg:text-8xl font-black tracking-tighter leading-[0.9] lg:leading-[0.8]">
@@ -156,15 +165,17 @@ const LandingPage = () => {
                         Obras de Arte
                     </h1>
                     <p className="text-lg lg:text-xl text-white/60 font-medium max-w-2xl mx-auto leading-relaxed">
-                        Móveis planejados com tecnologia alemã e acabamento artesanal para quem não abre mão do extraordinário.
+                        Realize o sonho de mobiliar seu espaço com qualidade, prazo e garantia.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-4">
-                        <MagicButton className="h-16 px-12 text-sm uppercase font-black tracking-widest shadow-2xl shadow-primary/20">
-                            Solicitar Orçamento Gratuito
-                        </MagicButton>
-                        <button className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-white hover:text-primary transition-all group">
+                        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                            <MagicButton className="h-16 px-12 text-sm uppercase font-black tracking-widest shadow-2xl shadow-primary/20">
+                                Solicitar Orçamento Gratuito
+                            </MagicButton>
+                        </a>
+                        <a href="#projetos" className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-white hover:text-primary transition-all group">
                             Ver Galeria de Projetos <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                        </button>
+                        </a>
                     </div>
                 </div>
 
@@ -176,18 +187,60 @@ const LandingPage = () => {
 
             {/* Stats Section */}
             <section className="py-20 px-6 lg:px-20 relative border-y border-white/5 bg-white/[0.01]">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-20">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 lg:gap-20 max-w-3xl mx-auto">
                     {[
-                        { label: "Projetos Entregues", value: "1.2k+" },
-                        { label: "Anos de Experiência", value: "15+" },
-                        { label: "Garantia Total", value: "10 Anos" },
-                        { label: "Clientes Satisfeitos", value: "100%" },
+                        { label: "Projetos Entregues", value: "+200" },
+                        { label: "Entregando Sonhos", value: "+ de 7 anos" },
                     ].map((stat, idx) => (
                         <div key={idx} className="flex flex-col items-center text-center space-y-2">
                             <span className="text-4xl lg:text-5xl font-black tracking-tighter text-luxury">{stat.value}</span>
                             <span className="text-[10px] font-black uppercase tracking-widest text-white/40">{stat.label}</span>
                         </div>
                     ))}
+                </div>
+            </section>
+
+            {/* About Section */}
+            <section id="sobre" className="py-32 px-6 lg:px-20 bg-white/[0.01] border-b border-white/5">
+                <div className="max-w-6xl mx-auto space-y-16">
+                    <div className="text-center max-w-3xl mx-auto space-y-4">
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Sobre a BJL Planejados</span>
+                        <h2 className="text-4xl lg:text-6xl font-black tracking-tighter">
+                            Excelência em cada <span className="shimmer-gold">detalhe</span>
+                        </h2>
+                        <p className="text-white/60 text-base lg:text-lg font-medium leading-relaxed">
+                            Há mais de 7 anos transformando projetos em realidade, unindo fabricação própria sob medida, materiais de primeira linha e compromisso rigoroso com cada entrega.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {[
+                            {
+                                title: "100% MDF de Alto Padrão",
+                                desc: "Trabalhamos com chapas selecionadas e acabamentos resistentes para máxima durabilidade em todos os ambientes."
+                            },
+                            {
+                                title: "Ferragens com Amortecedor",
+                                desc: "Corrediças telescópicas e dobradiças com fechamento suave (Soft Close) para conforto no dia a dia."
+                            },
+                            {
+                                title: "Fabricação & Montagem Própria",
+                                desc: "Acompanhamento direto da nossa marcenaria até a instalação final na sua casa ou empresa."
+                            },
+                            {
+                                title: "Qualidade, Prazo e Garantia",
+                                desc: "Mais de 200 projetos entregues com transparência, respeito ao cronograma e garantia contratual."
+                            }
+                        ].map((item, idx) => (
+                            <div key={idx} className="p-8 rounded-[2rem] bg-white/5 border border-white/10 space-y-4 hover:border-primary/40 transition-all">
+                                <div className="h-10 w-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary">
+                                    <CheckCircle2 className="h-5 w-5" />
+                                </div>
+                                <h3 className="text-lg font-black tracking-tight">{item.title}</h3>
+                                <p className="text-sm text-white/50 font-medium leading-relaxed">{item.desc}</p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </section>
 
@@ -224,41 +277,6 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* Testimonials */}
-            <section id="depoimentos" className="py-32 px-6 lg:px-20 bg-white/[0.01]">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-                    <div className="space-y-12">
-                        <div className="space-y-4">
-                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Experiência do Cliente</span>
-                            <h2 className="text-4xl lg:text-6xl font-black tracking-tighter">O que dizem sobre nós</h2>
-                        </div>
-                        
-                        <div className="space-y-8">
-                            {[
-                                { name: "Ricardo Almeida", role: "Arquiteto", text: "A precisão da BJL Planejados é impressionante. Meus projetos ganham vida com uma fidelidade que raramente encontro no mercado." },
-                                { name: "Juliana Mendes", role: "Empresária", text: "Minha cozinha ficou exatamente como eu sonhava. O atendimento é impecável do início ao fim." }
-                            ].map((test, idx) => (
-                                <div key={idx} className="p-8 rounded-[2rem] bg-white/5 border border-white/5 space-y-4 relative overflow-hidden group">
-                                    <div className="flex gap-1">
-                                        {[1, 2, 3, 4, 5].map(s => <Star key={s} className="h-3 w-3 fill-primary text-primary" />)}
-                                    </div>
-                                    <p className="text-lg italic font-medium text-white/80 leading-relaxed">"{test.text}"</p>
-                                    <div className="flex flex-col">
-                                        <span className="font-black text-sm text-luxury">{test.name}</span>
-                                        <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{test.role}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    
-                    <div className="relative aspect-square rounded-[3rem] overflow-hidden luxury-shadow border-4 border-white/5 group">
-                         <img src="https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=2000&auto=format&fit=crop" className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-105" />
-                         <div className="absolute inset-0 bg-primary/20 mix-blend-overlay opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                </div>
-            </section>
-
             {/* Contact Section */}
             <section id="contato" className="py-32 px-6 lg:px-20 relative overflow-hidden">
                 <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/20 rounded-full blur-[160px]" />
@@ -272,35 +290,41 @@ const LandingPage = () => {
                         </div>
 
                         <div className="space-y-8">
-                            <div className="flex items-center gap-6 group">
+                            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-6 group">
                                 <div className="h-14 w-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-all duration-500">
                                     <Phone className="h-6 w-6" />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Ligue para nós</span>
-                                    <span className="text-xl font-bold">{settings?.phone || "(11) 9999-9999"}</span>
+                                    <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Fale Conosco / WhatsApp</span>
+                                    <span className="text-xl font-bold group-hover:text-primary transition-colors">{companyPhone}</span>
                                 </div>
-                            </div>
+                            </a>
                             <div className="flex items-center gap-6 group">
                                 <div className="h-14 w-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-all duration-500">
                                     <MapPin className="h-6 w-6" />
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Nossa Sede</span>
-                                    <span className="text-xl font-bold">{settings?.address || "Av. Luxury, 1000 - SP"}</span>
+                                    <span className="text-xl font-bold">{companyAddress}</span>
                                 </div>
                             </div>
-
+                            <a href={`https://instagram.com/${companyInstagram}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-6 group">
+                                <div className="h-14 w-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-all duration-500">
+                                    <Instagram className="h-6 w-6" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Nosso Instagram</span>
+                                    <span className="text-xl font-bold group-hover:text-primary transition-colors">@{companyInstagram}</span>
+                                </div>
+                            </a>
                         </div>
 
                         <div className="flex gap-4">
-                            {settings?.instagram && (
-                                <a href={`https://instagram.com/${settings.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
-                                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 hover:text-primary transition-all">
-                                        <Instagram className="h-5 w-5" />
-                                    </Button>
-                                </a>
-                            )}
+                            <a href={`https://instagram.com/${companyInstagram}`} target="_blank" rel="noopener noreferrer">
+                                <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 hover:text-primary transition-all">
+                                    <Instagram className="h-5 w-5" />
+                                </Button>
+                            </a>
                             {settings?.facebook && (
                                 <a href={settings.facebook} target="_blank" rel="noopener noreferrer">
                                     <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 hover:text-primary transition-all">
@@ -308,13 +332,11 @@ const LandingPage = () => {
                                     </Button>
                                 </a>
                             )}
-                            {settings?.phone && (
-                                <a href={`https://wa.me/55${settings.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
-                                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 hover:text-primary transition-all">
-                                        <MessageCircle className="h-5 w-5" />
-                                    </Button>
-                                </a>
-                            )}
+                            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                                <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 hover:text-primary transition-all">
+                                    <MessageCircle className="h-5 w-5" />
+                                </Button>
+                            </a>
                         </div>
 
                     </div>
@@ -326,7 +348,7 @@ const LandingPage = () => {
                                 <input 
                                     required
                                     className="w-full bg-white/5 border border-white/10 rounded-2xl h-14 px-6 focus:border-primary outline-none transition-all font-bold text-sm" 
-                                    placeholder="Ex: Luiz Felipe"
+                                    placeholder="Seu nome"
                                     value={formData.name}
                                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                                 />
@@ -336,7 +358,7 @@ const LandingPage = () => {
                                 <input 
                                     required
                                     className="w-full bg-white/5 border border-white/10 rounded-2xl h-14 px-6 focus:border-primary outline-none transition-all font-bold text-sm" 
-                                    placeholder="(11) 99999-9999"
+                                    placeholder="(22) 99999-9999"
                                     value={formData.phone}
                                     onChange={(e) => setFormData({...formData, phone: e.target.value})}
                                 />
@@ -400,8 +422,9 @@ const LandingPage = () => {
 
             {/* Floating WhatsApp */}
             <a 
-                href={`https://wa.me/55${(settings?.phone || "11999999999").replace(/\D/g, '')}`} 
+                href={whatsappUrl} 
                 target="_blank" 
+                rel="noopener noreferrer"
                 className="fixed bottom-10 right-10 z-50 h-16 w-16 bg-emerald-500 rounded-full flex items-center justify-center shadow-2xl shadow-emerald-500/40 hover:scale-110 transition-transform cursor-pointer"
             >
                 <MessageCircle className="h-8 w-8 text-white" />
