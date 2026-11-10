@@ -113,11 +113,90 @@ const Orcamento = () => {
         return [];
     };
 
+    const budgetNumberMap = useMemo(() => {
+        const isUnifiedCandidate = (b: any) => {
+            if (extractChildIdsFromNotes(b.notes).length > 0) return true;
+            const projUpper = (b.project_name || "").trim().toUpperCase();
+            if (projUpper.startsWith("PROJETO COMPLETO")) return true;
+            const ambs = extractAmbientesFromNotes(b.notes);
+            if (ambs.length > 1 && projUpper.includes("+")) return true;
+            return false;
+        };
+
+        const parentCandidates = budgets.filter(b => isUnifiedCandidate(b));
+        const consumedChildIds = new Set<string>();
+        const childToParentId = new Map<string, string>();
+
+        parentCandidates.forEach(parent => {
+            const explicitIds = extractChildIdsFromNotes(parent.notes);
+            if (explicitIds.length > 0) {
+                const matched = budgets.filter(
+                    c => c.id !== parent.id && explicitIds.includes(c.id) && !consumedChildIds.has(c.id)
+                );
+                matched.forEach(c => {
+                    consumedChildIds.add(c.id);
+                    childToParentId.set(c.id, parent.id);
+                });
+            }
+        });
+
+        parentCandidates.forEach(parent => {
+            if (Array.from(childToParentId.values()).includes(parent.id)) return;
+            const parentClient = (parent.client_name || "").split('+')[0].trim().toUpperCase();
+            const parentProjUpper = (parent.project_name || "").toUpperCase();
+            const ambDescs = extractAmbientesFromNotes(parent.notes)
+                .map((a: any) => (a.description || "").trim().toUpperCase())
+                .filter(Boolean);
+
+            const matched = budgets.filter(c => {
+                if (c.id === parent.id) return false;
+                if (isUnifiedCandidate(c)) return false;
+                if (consumedChildIds.has(c.id)) return false;
+                const cClient = (c.client_name || "").split('+')[0].trim().toUpperCase();
+                if (cClient !== parentClient) return false;
+                const cProj = (c.project_name || "").trim().toUpperCase();
+                if (!cProj) return false;
+                return (
+                    parentProjUpper.includes(cProj) ||
+                    ambDescs.some(a => a.includes(cProj) || cProj.includes(a))
+                );
+            });
+
+            matched.forEach(c => {
+                consumedChildIds.add(c.id);
+                childToParentId.set(c.id, parent.id);
+            });
+        });
+
+        // Numerar apenas os itens principais (Pastas e orçamentos avulsos), em ordem cronológica, sem pular números
+        const topLevelChronological = [...budgets]
+            .filter(b => !consumedChildIds.has(b.id))
+            .reverse();
+
+        const map = new Map<string, string>();
+        topLevelChronological.forEach((b, idx) => {
+            map.set(b.id, String(600 + idx));
+        });
+
+        // Os orçamentos de dentro da pasta recebem exatamente o mesmo número da pasta (1 único número!)
+        childToParentId.forEach((parentId, childId) => {
+            const parentNum = map.get(parentId);
+            if (parentNum) {
+                map.set(childId, parentNum);
+            }
+        });
+
+        return map;
+    }, [budgets]);
+
     const getBudgetNumber = (orc: any) => {
         if (!orc) return "000";
-        if (orc.budgetNumber) return orc.budgetNumber;
+        if (orc.id && budgetNumberMap.has(orc.id)) {
+            return budgetNumberMap.get(orc.id)!;
+        }
+        if (orc.budgetNumber) return String(orc.budgetNumber);
         const index = [...budgets].reverse().findIndex(b => b.id === orc.id);
-        return index >= 0 ? 600 + index : "600";
+        return index >= 0 ? String(600 + index) : "600";
     };
 
     const selectedBudgetsList = useMemo(() => {
