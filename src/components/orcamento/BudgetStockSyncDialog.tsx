@@ -30,6 +30,8 @@ interface BudgetStockSyncDialogProps {
     client_name: string;
     project_name?: string;
     total_value?: number;
+    childBudgets?: Array<{ id: string; project_name?: string; budget_items?: any[] }>;
+    budget_items?: any[];
   } | null;
 }
 
@@ -40,6 +42,7 @@ interface ItemComparison {
   inStock: number;
   diff: number; // inStock - needed
   inventoryId?: string;
+  breakdown?: string;
 }
 
 export const BudgetStockSyncDialog: React.FC<BudgetStockSyncDialogProps> = ({
@@ -63,10 +66,15 @@ export const BudgetStockSyncDialog: React.FC<BudgetStockSyncDialogProps> = ({
   const loadComparison = async () => {
     setLoading(true);
     try {
-      // 1. Buscar itens do orçamento
-      const { data: budgetItems, error: biError } = await supabase
+      // 1. Buscar itens do orçamento (ou dos orçamentos da pasta unificada)
+      const childIds = (budget.childBudgets || []).map((c) => c.id).filter(Boolean);
+      const targetIds = childIds.length > 0 ? childIds : [budget.id];
+
+      let { data: budgetItems, error: biError } = await supabase
         .from("budget_items")
         .select(`
+          budget_id,
+          material_id,
           quantity,
           custom_description,
           budget_materials (
@@ -74,9 +82,27 @@ export const BudgetStockSyncDialog: React.FC<BudgetStockSyncDialogProps> = ({
             category
           )
         `)
-        .eq("budget_id", budget.id);
+        .in("budget_id", targetIds);
 
       if (biError) throw biError;
+
+      // Fallback para o próprio budget.id caso os filhos não tenham itens
+      if ((!budgetItems || budgetItems.length === 0) && childIds.length > 0) {
+        const res = await supabase
+          .from("budget_items")
+          .select(`
+            budget_id,
+            material_id,
+            quantity,
+            custom_description,
+            budget_materials (
+              name,
+              category
+            )
+          `)
+          .eq("budget_id", budget.id);
+        budgetItems = res.data || [];
+      }
 
       // 2. Buscar estoque atual
       const { data: inventoryData, error: invError } = await supabase
@@ -87,31 +113,72 @@ export const BudgetStockSyncDialog: React.FC<BudgetStockSyncDialogProps> = ({
 
       const inventory = inventoryData || [];
 
-      // 3. Cruzar dados
-      const comparisonList: ItemComparison[] = (budgetItems || []).map((bi: any) => {
-        const materialName = bi.budget_materials?.name || bi.custom_description || "Material de Marcenaria";
+      // 3. Agrupar itens repetidos (ex: mesmo MDF nos dois ambientes da pasta) e filtrar SERVICOS
+      const groupedMap = new Map<
+        string,
+        { name: string; category: string; needed: number; envs: string[] }
+      >();
+
+      (budgetItems || []).forEach((bi: any) => {
         const category = bi.budget_materials?.category || "Geral";
-        const needed = Number(bi.quantity) || 1;
+        if (category === "SERVICOS") return;
 
-        // Tentar encontrar no inventário por similaridade de nome
-        const cleanName = materialName.toLowerCase().trim();
-        const matched = inventory.find((inv: any) => {
-          const invName = (inv.name || "").toLowerCase().trim();
-          return invName === cleanName || invName.includes(cleanName) || cleanName.includes(invName);
-        });
+        const materialName =
+          bi.budget_materials?.name ||
+          bi.custom_description ||
+          "Material de Marcenaria";
+        const key = (bi.material_id || materialName).toLowerCase().trim();
+        const qty = Number(bi.quantity) || 1;
 
-        const inStock = matched ? Number(matched.quantity) || 0 : 0;
-        const diff = inStock - needed;
+        const childMatch = (budget.childBudgets || []).find(
+          (c) => c.id === bi.budget_id
+        );
+        const envLabel = childMatch?.project_name
+          ? `${childMatch.project_name}: ${qty}`
+          : "";
 
-        return {
-          name: materialName,
-          category,
-          needed,
-          inStock,
-          diff,
-          inventoryId: matched?.id,
-        };
+        const existing = groupedMap.get(key);
+        if (existing) {
+          existing.needed += qty;
+          if (envLabel) existing.envs.push(envLabel);
+        } else {
+          groupedMap.set(key, {
+            name: materialName,
+            category,
+            needed: qty,
+            envs: envLabel ? [envLabel] : [],
+          });
+        }
       });
+
+      // 4. Cruzar dados agrupados com o estoque
+      const comparisonList: ItemComparison[] = Array.from(groupedMap.values()).map(
+        (grouped) => {
+          const cleanName = grouped.name.toLowerCase().trim();
+          const matched = inventory.find((inv: any) => {
+            const invName = (inv.name || "").toLowerCase().trim();
+            return (
+              invName === cleanName ||
+              invName.includes(cleanName) ||
+              cleanName.includes(invName)
+            );
+          });
+
+          const inStock = matched ? Number(matched.quantity) || 0 : 0;
+          const diff = inStock - grouped.needed;
+
+          return {
+            name: grouped.name,
+            category: grouped.category,
+            needed: grouped.needed,
+            inStock,
+            diff,
+            inventoryId: matched?.id,
+            breakdown:
+              grouped.envs.length > 1 ? grouped.envs.join(" + ") : undefined,
+          };
+        }
+      );
 
       // Se o orçamento não tiver budget_items detalhados (ex: estimativa global), criar estimativa inteligente
       if (comparisonList.length === 0) {
@@ -258,7 +325,12 @@ export const BudgetStockSyncDialog: React.FC<BudgetStockSyncDialogProps> = ({
                   <div key={idx} className="p-3 flex items-center justify-between text-xs gap-3">
                     <div className="min-w-0">
                       <p className="font-bold text-white truncate">{item.name}</p>
-                      <span className="text-[10px] text-muted-foreground uppercase">{item.category}</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] text-muted-foreground uppercase">{item.category}</span>
+                        {item.breakdown && (
+                          <span className="text-[10px] text-amber-400/90 font-semibold">• ({item.breakdown})</span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-4 shrink-0 font-mono">

@@ -148,6 +148,7 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
         const cleaned = initialBudget.notes
             .replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '')
             .replace(/<!--BJL_CARD_FEES:[\s\S]*?-->/g, '')
+            .replace(/<!--BJL_CHILD_IDS:[\s\S]*?-->/g, '')
             .trim();
         return cleaned || defaultPaymentTerms;
     }, [initialBudget?.notes]);
@@ -755,19 +756,38 @@ const BudgetPrintView: React.FC<BudgetPrintViewProps> = ({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {(initialBudget.budget_items || []).map((item: any, idx: number) => {
-                                        const material = item.budget_materials || item.material;
-                                        const name = item.custom_description || material?.name || "Item não identificado";
-                                        return (
-                                            <tr key={item.id || idx} className="text-[11px] text-slate-700 font-bold hover:bg-slate-50/50">
-                                                <td className="py-4 px-6 uppercase">{name}</td>
-                                                <td className="py-4 px-4 text-center">{item.quantity}</td>
-                                                <td className="py-4 px-4 uppercase text-slate-400 text-[10px]">{material?.unit || 'UN'}</td>
-                                                <td className="py-4 px-4 text-right">{formatCurrency(item.unit_price_at_time)}</td>
-                                                <td className="py-4 px-6 text-right font-black text-slate-900">{formatCurrency(item.total_price)}</td>
-                                            </tr>
-                                        );
-                                    })}
+                                    {(() => {
+                                        const grouped = new Map<string, any>();
+                                        (initialBudget.budget_items || []).forEach((item: any) => {
+                                            const material = item.budget_materials || item.material;
+                                            const name = item.custom_description || material?.name || "Item não identificado";
+                                            const key = (item.material_id || name).toLowerCase().trim();
+                                            const existing = grouped.get(key);
+                                            if (existing) {
+                                                existing.quantity = (Number(existing.quantity) || 0) + (Number(item.quantity) || 0);
+                                                existing.total_price = (Number(existing.total_price) || 0) + (Number(item.total_price) || 0);
+                                            } else {
+                                                grouped.set(key, {
+                                                    ...item,
+                                                    quantity: Number(item.quantity) || 0,
+                                                    total_price: Number(item.total_price) || 0
+                                                });
+                                            }
+                                        });
+                                        return Array.from(grouped.values()).map((item: any, idx: number) => {
+                                            const material = item.budget_materials || item.material;
+                                            const name = item.custom_description || material?.name || "Item não identificado";
+                                            return (
+                                                <tr key={item.id || idx} className="text-[11px] text-slate-700 font-bold hover:bg-slate-50/50">
+                                                    <td className="py-4 px-6 uppercase">{name}</td>
+                                                    <td className="py-4 px-4 text-center">{item.quantity}</td>
+                                                    <td className="py-4 px-4 uppercase text-slate-400 text-[10px]">{material?.unit || 'UN'}</td>
+                                                    <td className="py-4 px-4 text-right">{formatCurrency(item.unit_price_at_time)}</td>
+                                                    <td className="py-4 px-6 text-right font-black text-slate-900">{formatCurrency(item.total_price)}</td>
+                                                </tr>
+                                            );
+                                        });
+                                    })()}
                                     {(!initialBudget.budget_items || initialBudget.budget_items.length === 0) && (
                                         <tr>
                                             <td colSpan={5} className="py-8 text-center text-slate-400 italic">

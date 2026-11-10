@@ -1,11 +1,11 @@
 
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
-import { Plus, Calculator, FileText, Search, TrendingUp, DollarSign, Package, Trash2, Pencil, CheckCircle2, History as HistoryIcon, Settings2, Save, X, Layers, ChevronDown, ChevronRight, AlertCircle, XCircle, Printer, Filter, LayoutGrid, List, RotateCcw, Folder, FolderPlus, FolderOpen } from "lucide-react";
+import { Plus, Calculator, FileText, Search, TrendingUp, DollarSign, Package, Trash2, Pencil, CheckCircle2, History as HistoryIcon, Settings2, Save, X, Layers, ChevronDown, ChevronRight, AlertCircle, XCircle, Printer, Filter, LayoutGrid, List, RotateCcw, Folder, FolderPlus, FolderOpen, Copy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -69,12 +69,49 @@ const Orcamento = () => {
     const [listViewMode, setListViewMode] = useState<'list' | 'folders'>('list');
     const [selectedBudgetIds, setSelectedBudgetIds] = useState<string[]>([]);
     const [expandedFolders, setExpandedFolders] = useState<string[]>([]);
+    const [expandedBudgetFolders, setExpandedBudgetFolders] = useState<string[]>([]);
     const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
     const [budgetsToMerge, setBudgetsToMerge] = useState<any[]>([]);
     const [mergeClientName, setMergeClientName] = useState("");
     const [mergeProjectName, setMergeProjectName] = useState("");
     const [deleteOriginalsAfterMerge, setDeleteOriginalsAfterMerge] = useState(false);
     const [isMerging, setIsMerging] = useState(false);
+
+    const toggleBudgetFolder = (budgetId: string) => {
+        setExpandedBudgetFolders(prev =>
+            prev.includes(budgetId)
+                ? prev.filter(id => id !== budgetId)
+                : [...prev, budgetId]
+        );
+    };
+
+    const extractChildIdsFromNotes = (notes?: string): string[] => {
+        if (!notes || typeof notes !== 'string' || !notes.includes('<!--BJL_CHILD_IDS:')) return [];
+        try {
+            const match = notes.match(/<!--BJL_CHILD_IDS:([\s\S]*?)-->/);
+            if (match && match[1]) {
+                const parsed = JSON.parse(match[1]);
+                if (Array.isArray(parsed)) return parsed.filter(Boolean);
+            }
+        } catch (e) {
+            console.error("Erro ao extrair IDs filhos da pasta:", e);
+        }
+        return [];
+    };
+
+    const extractAmbientesFromNotes = (notes?: string): any[] => {
+        if (!notes || typeof notes !== 'string' || !notes.includes('<!--BJL_AMBIENTES:')) return [];
+        try {
+            const match = notes.match(/<!--BJL_AMBIENTES:([\s\S]*?)-->/);
+            if (match && match[1]) {
+                const parsed = JSON.parse(match[1]);
+                if (Array.isArray(parsed)) return parsed;
+            }
+        } catch (e) {
+            console.error("Erro ao extrair ambientes:", e);
+        }
+        return [];
+    };
 
     const getBudgetNumber = (orc: any) => {
         if (!orc) return "000";
@@ -101,38 +138,53 @@ const Orcamento = () => {
         const totalCost = selectedList.reduce((acc, b) => acc + (Number(b.total_cost) || 0), 0);
         const daysEstimated = selectedList.reduce((acc, b) => acc + (Number(b.days_estimated) || 0), 0);
 
-        const allItems: any[] = [];
+        // Agrupar e somar materiais repetidos dos orçamentos selecionados
+        const groupedItemsMap = new Map<string, any>();
         selectedList.forEach(b => {
-            const items = b.budget_items || b.items || [];
+            const items = b.consolidatedBudgetItems || b.budget_items || b.items || [];
             items.forEach((item: any) => {
-                allItems.push({
-                    material_id: item.material_id,
-                    quantity: Number(item.quantity) || 0,
-                    unit_price_at_time: Number(item.unit_price_at_time) || 0,
-                    total_price: Number(item.total_price) || 0,
-                    custom_description: item.custom_description || item.budget_materials?.name || "Item",
-                    budget_materials: item.budget_materials || item.material
-                });
+                const matObj = item.budget_materials || item.material || allMaterials.find(m => m.id === item.material_id);
+                const desc = item.custom_description || matObj?.name || "Item";
+                const key = (item.material_id || desc).toLowerCase().trim();
+                const qty = Number(item.quantity) || 0;
+                const uPrice = Number(item.unit_price_at_time) || 0;
+                const tPrice = Number(item.total_price) || (qty * uPrice);
+
+                const existing = groupedItemsMap.get(key);
+                if (existing) {
+                    existing.quantity += qty;
+                    existing.total_price += tPrice;
+                } else {
+                    groupedItemsMap.set(key, {
+                        material_id: item.material_id,
+                        quantity: qty,
+                        unit_price_at_time: uPrice,
+                        total_price: tPrice,
+                        custom_description: desc,
+                        budget_materials: matObj
+                    });
+                }
             });
         });
+        const allItems = Array.from(groupedItemsMap.values());
+
+        // Coletar IDs dos orçamentos individuais que ficarão dentro desta pasta
+        const childIdsSet = new Set<string>();
+        selectedList.forEach(b => {
+            const nestedIds = extractChildIdsFromNotes(b.notes);
+            if (nestedIds.length > 0) {
+                nestedIds.forEach(id => childIdsSet.add(id));
+            } else if (b.childBudgets && b.childBudgets.length > 0) {
+                b.childBudgets.forEach((c: any) => c?.id && childIdsSet.add(c.id));
+            } else if (b.id) {
+                childIdsSet.add(b.id);
+            }
+        });
+        const childIds = Array.from(childIdsSet);
 
         const ambientes: any[] = [];
         selectedList.forEach(b => {
-            let extractedAmbientes: any[] = [];
-            if (b.notes && typeof b.notes === 'string' && b.notes.includes('<!--BJL_AMBIENTES:')) {
-                try {
-                    const match = b.notes.match(/<!--BJL_AMBIENTES:([\s\S]*?)-->/);
-                    if (match && match[1]) {
-                        const parsed = JSON.parse(match[1]);
-                        if (Array.isArray(parsed) && parsed.length > 0) {
-                            extractedAmbientes = parsed;
-                        }
-                    }
-                } catch (e) {
-                    console.error("Erro ao extrair ambientes:", e);
-                }
-            }
-
+            const extractedAmbientes = extractAmbientesFromNotes(b.notes);
             if (extractedAmbientes.length > 0) {
                 extractedAmbientes.forEach(amb => {
                     ambientes.push({
@@ -155,25 +207,33 @@ const Orcamento = () => {
         const cleanNotes = (baseBudget.notes || "")
             .replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '')
             .replace(/<!--BJL_CARD_FEES:[\s\S]*?-->/g, '')
+            .replace(/<!--BJL_CHILD_IDS:[\s\S]*?-->/g, '')
             .trim();
 
         const cleanClientName = baseBudget.client_name.split('+')[0].trim();
+        const combinedProjectNames = selectedList.map(b => b.project_name).filter(Boolean).join(' + ');
+        const unifiedProjectName = selectedList.length > 1 && !combinedProjectNames.toUpperCase().startsWith("PROJETO COMPLETO")
+            ? `PROJETO COMPLETO: ${combinedProjectNames}`
+            : combinedProjectNames;
+
+        const childIdsTag = childIds.length > 1 ? `\n\n<!--BJL_CHILD_IDS:${JSON.stringify(childIds)}-->` : '';
 
         const unifiedBudget: any = {
             ...baseBudget,
-            id: baseBudget.id,
+            // Se está unificando mais de 1 orçamento, cria uma pasta nova para não sobrescrever o orçamento individual
+            id: selectedList.length > 1 ? undefined : baseBudget.id,
             budgetNumber: getBudgetNumber(baseBudget),
             isUnified: true,
             client_name: cleanClientName || baseBudget.client_name,
-            project_name: selectedList.map(b => b.project_name).filter(Boolean).join(' + '),
+            project_name: unifiedProjectName,
             total_value: totalValue,
             total_cost: totalCost,
             days_estimated: daysEstimated,
             budget_items: allItems,
-            notes: `${cleanNotes}\n\n<!--BJL_AMBIENTES:${JSON.stringify(ambientes)}-->`
+            notes: `${cleanNotes}\n\n<!--BJL_AMBIENTES:${JSON.stringify(ambientes)}-->${childIdsTag}`
         };
 
-        return { unifiedBudget, ambientes, refNumber: getBudgetNumber(baseBudget) };
+        return { unifiedBudget, ambientes, refNumber: getBudgetNumber(baseBudget), childIds };
     };
 
     const handleOpenUnifiedPrint = (budgetsList: any[]) => {
@@ -185,7 +245,7 @@ const Orcamento = () => {
 
     const handleOpenMergeModalWithBudgets = (budgetsList: any[]) => {
         if (budgetsList.length < 2) {
-            toast.error("É necessário selecionar pelo menos 2 orçamentos para unificar.");
+            toast.error("É necessário selecionar pelo menos 2 orçamentos para juntar na pasta.");
             return;
         }
         setBudgetsToMerge(budgetsList);
@@ -193,14 +253,18 @@ const Orcamento = () => {
         const cleanClient = base.client_name.split('+')[0].trim();
         setMergeClientName(cleanClient || base.client_name);
         const projectNames = budgetsList.map(b => b.project_name).filter(Boolean).join(' + ');
-        setMergeProjectName(`PROJETO COMPLETO: ${projectNames}`);
+        setMergeProjectName(
+            projectNames.toUpperCase().startsWith("PROJETO COMPLETO")
+                ? projectNames
+                : `PROJETO COMPLETO: ${projectNames}`
+        );
         setDeleteOriginalsAfterMerge(false);
         setIsMergeDialogOpen(true);
     };
 
     const handleConfirmMerge = async () => {
         if (budgetsToMerge.length < 2) {
-            toast.error("Selecione pelo menos 2 orçamentos para unificar");
+            toast.error("Selecione pelo menos 2 orçamentos para juntar na pasta");
             return;
         }
         setIsMerging(true);
@@ -228,8 +292,8 @@ const Orcamento = () => {
                 status: 'em_elaboracao'
             };
 
-            const success = await saveBudget(budgetDataToSave, itemsToSave);
-            if (success) {
+            const savedFolder = await saveBudget(budgetDataToSave, itemsToSave);
+            if (savedFolder) {
                 if (deleteOriginalsAfterMerge) {
                     for (const oldB of budgetsToMerge) {
                         await deleteBudget(oldB.id);
@@ -237,7 +301,10 @@ const Orcamento = () => {
                 }
                 setSelectedBudgetIds([]);
                 setIsMergeDialogOpen(false);
-                toast.success("Orçamentos unificados com sucesso!");
+                if (savedFolder.id) {
+                    setExpandedBudgetFolders(prev => prev.includes(savedFolder.id) ? prev : [...prev, savedFolder.id]);
+                }
+                toast.success("Pasta do projeto criada com os orçamentos e lista de materiais!");
             }
         } catch (e: any) {
             toast.error("Erro ao unificar orçamentos: " + (e.message || "Erro desconhecido"));
@@ -308,11 +375,153 @@ const Orcamento = () => {
         });
     }, [budgets, selectedYear]);
 
+    // Organiza orçamentos unificados como "Pastas" contendo os orçamentos individuais e materiais somados
+    const organizedBudgetsByYear = useMemo(() => {
+        const isUnifiedCandidate = (b: any) => {
+            if (extractChildIdsFromNotes(b.notes).length > 0) return true;
+            const projUpper = (b.project_name || "").trim().toUpperCase();
+            if (projUpper.startsWith("PROJETO COMPLETO")) return true;
+            const ambs = extractAmbientesFromNotes(b.notes);
+            if (ambs.length > 1 && projUpper.includes("+")) return true;
+            return false;
+        };
+
+        const parentCandidates = filteredBudgetsByYear.filter(b => isUnifiedCandidate(b));
+        const consumedChildIds = new Set<string>();
+        const childrenByParentId = new Map<string, any[]>();
+
+        // 1º passo: Vincular pelos IDs explícitos salvos em <!--BJL_CHILD_IDS:...-->
+        parentCandidates.forEach(parent => {
+            const explicitIds = extractChildIdsFromNotes(parent.notes);
+            if (explicitIds.length > 0) {
+                const matched = budgets.filter(
+                    c => c.id !== parent.id && explicitIds.includes(c.id) && !consumedChildIds.has(c.id)
+                );
+                if (matched.length > 0) {
+                    matched.forEach(c => consumedChildIds.add(c.id));
+                    childrenByParentId.set(parent.id, matched);
+                }
+            }
+        });
+
+        // 2º passo: Vincular automaticamente orçamentos "PROJETO COMPLETO:" já existentes do mesmo cliente
+        parentCandidates.forEach(parent => {
+            if (childrenByParentId.has(parent.id)) return;
+            const parentClient = (parent.client_name || "").split('+')[0].trim().toUpperCase();
+            const parentProjUpper = (parent.project_name || "").toUpperCase();
+            const ambDescs = extractAmbientesFromNotes(parent.notes)
+                .map((a: any) => (a.description || "").trim().toUpperCase())
+                .filter(Boolean);
+
+            const matched = filteredBudgetsByYear.filter(c => {
+                if (c.id === parent.id) return false;
+                if (isUnifiedCandidate(c)) return false;
+                if (consumedChildIds.has(c.id)) return false;
+                const cClient = (c.client_name || "").split('+')[0].trim().toUpperCase();
+                if (cClient !== parentClient) return false;
+
+                const cProj = (c.project_name || "").trim().toUpperCase();
+                if (!cProj) return false;
+
+                return (
+                    parentProjUpper.includes(cProj) ||
+                    ambDescs.some(a => a.includes(cProj) || cProj.includes(a))
+                );
+            });
+
+            if (matched.length > 0) {
+                matched.forEach(c => consumedChildIds.add(c.id));
+                childrenByParentId.set(parent.id, matched);
+            }
+        });
+
+        const categoryOrder = ["MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"];
+
+        // 3º passo: Montar lista final de itens do topo (pastas unificadas + orçamentos avulsos que não estão dentro de pasta)
+        return filteredBudgetsByYear
+            .filter(b => !consumedChildIds.has(b.id))
+            .map(b => {
+                const childBudgets = childrenByParentId.get(b.id) || [];
+                const isFolder = childBudgets.length > 0 || isUnifiedCandidate(b);
+
+                // Consolidar os materiais que precisam ser comprados (somando dos orçamentos individuais da pasta)
+                const hasChildItems = childBudgets.some(c => (c.budget_items || c.items || []).length > 0);
+                const sourceBudgets = (childBudgets.length > 0 && hasChildItems) ? childBudgets : [b];
+
+                const groupedMaterials = new Map<string, any>();
+                sourceBudgets.forEach(src => {
+                    const envName = src.project_name || "Ambiente";
+                    const items = src.budget_items || src.items || [];
+                    items.forEach((item: any) => {
+                        const matObj = item.budget_materials || item.material || allMaterials.find(m => m.id === item.material_id);
+                        const name = item.custom_description || matObj?.name || "Material";
+                        const category = matObj?.category || "OUTROS";
+                        const supplier = matObj?.supplier || "Outros";
+                        const unit = matObj?.unit || "UN";
+                        const qty = Number(item.quantity) || 0;
+                        if (qty <= 0) return;
+
+                        const uPrice = Number(item.unit_price_at_time) || Number(matObj?.unit_price) || 0;
+                        const tPrice = Number(item.total_price) || (qty * uPrice);
+                        const key = (item.material_id || name).toLowerCase().trim();
+
+                        const existing = groupedMaterials.get(key);
+                        if (existing) {
+                            existing.quantity += qty;
+                            existing.total_price += tPrice;
+                            existing.breakdown.push({ envName, qty });
+                        } else {
+                            groupedMaterials.set(key, {
+                                material_id: item.material_id,
+                                name,
+                                category,
+                                supplier,
+                                unit,
+                                quantity: qty,
+                                unit_price_at_time: uPrice,
+                                total_price: tPrice,
+                                custom_description: item.custom_description || name,
+                                budget_materials: matObj || { name, category, supplier, unit, unit_price: uPrice },
+                                breakdown: [{ envName, qty }]
+                            });
+                        }
+                    });
+                });
+
+                const allConsolidated = Array.from(groupedMaterials.values()).sort((a, bItem) => {
+                    const idxA = categoryOrder.indexOf(a.category);
+                    const idxB = categoryOrder.indexOf(bItem.category);
+                    if (idxA !== idxB) return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+                    return a.name.localeCompare(bItem.name);
+                });
+
+                const materialsToBuy = allConsolidated.filter(m => m.category !== "SERVICOS");
+                const totalMaterialsCost = materialsToBuy.reduce((acc, m) => acc + (Number(m.total_price) || 0), 0);
+                const childrenSumValue = childBudgets.reduce((acc, c) => acc + (Number(c.total_value) || 0), 0);
+
+                return {
+                    ...b,
+                    isFolder,
+                    childBudgets,
+                    childrenSumValue,
+                    consolidatedBudgetItems: allConsolidated,
+                    materialsToBuy,
+                    totalMaterialsCost
+                };
+            });
+    }, [filteredBudgetsByYear, budgets, allMaterials]);
+
     const filteredBudgets = useMemo(() => {
-        return filteredBudgetsByYear.filter(b => {
-            const matchesSearch = b.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                b.project_name.toLowerCase().includes(searchTerm.toLowerCase());
-            if (!matchesSearch) return false;
+        const query = searchTerm.toLowerCase().trim();
+        return organizedBudgetsByYear.filter(b => {
+            const matchesParent =
+                b.client_name.toLowerCase().includes(query) ||
+                b.project_name.toLowerCase().includes(query);
+            const matchesChild = (b.childBudgets || []).some((c: any) =>
+                (c.client_name || "").toLowerCase().includes(query) ||
+                (c.project_name || "").toLowerCase().includes(query)
+            );
+            if (query && !matchesParent && !matchesChild) return false;
 
             if (followUpFilter === 'all') return true;
             if (followUpFilter === 'aprovado') return b.status === 'aprovado';
@@ -323,10 +532,10 @@ const Orcamento = () => {
             }
             return true;
         });
-    }, [filteredBudgetsByYear, searchTerm, followUpFilter]);
+    }, [organizedBudgetsByYear, searchTerm, followUpFilter]);
 
     const groupedBudgetsByClient = useMemo(() => {
-        const groups: { [key: string]: { client_name: string; budgets: any[]; totalValue: number } } = {};
+        const groups: { [key: string]: { client_name: string; budgets: any[]; totalValue: number; materialsToBuy: any[] } } = {};
 
         filteredBudgets.forEach(b => {
             const baseName = b.client_name.split('+')[0].trim().toUpperCase();
@@ -336,15 +545,89 @@ const Orcamento = () => {
                 groups[key] = {
                     client_name: baseName || b.client_name,
                     budgets: [],
-                    totalValue: 0
+                    totalValue: 0,
+                    materialsToBuy: []
                 };
             }
             groups[key].budgets.push(b);
             groups[key].totalValue += (Number(b.total_value) || 0);
         });
 
+        // Consolidar materiais por pasta de cliente também
+        Object.values(groups).forEach(group => {
+            const matMap = new Map<string, any>();
+            group.budgets.forEach(b => {
+                (b.materialsToBuy || []).forEach((m: any) => {
+                    const key = (m.material_id || m.name).toLowerCase().trim();
+                    const existing = matMap.get(key);
+                    if (existing) {
+                        existing.quantity += m.quantity;
+                        existing.total_price += m.total_price;
+                        existing.breakdown.push(...(m.breakdown || []));
+                    } else {
+                        matMap.set(key, {
+                            ...m,
+                            breakdown: [...(m.breakdown || [])]
+                        });
+                    }
+                });
+            });
+            group.materialsToBuy = Array.from(matMap.values());
+        });
+
         return Object.values(groups);
     }, [filteredBudgets]);
+
+    const handleCopyFolderMaterials = async (orc: any) => {
+        const materials = orc.materialsToBuy || [];
+        if (materials.length === 0) {
+            toast.info("Nenhum material listado para compra nesta pasta.");
+            return;
+        }
+        let text = `📦 *MATERIAIS PARA COMPRAR - BJL PLANEJADOS*\n`;
+        text += `Cliente: ${orc.client_name}\n`;
+        text += `Projeto: ${orc.project_name}\n`;
+        if (orc.childBudgets?.length > 0) {
+            text += `Ambientes: ${orc.childBudgets.map((c: any) => c.project_name).join(" + ")}\n`;
+        }
+        text += `Data: ${new Date().toLocaleDateString("pt-BR")}\n\n`;
+        text += `*Relação de Materiais Somados:*\n`;
+        materials.forEach((m: any, idx: number) => {
+            const breakdownStr = m.breakdown && m.breakdown.length > 1
+                ? ` (${m.breakdown.map((b: any) => `${b.envName}: ${b.qty}`).join(" + ")})`
+                : "";
+            text += `${idx + 1}. ${m.name} — *${m.quantity} ${m.unit}*${breakdownStr}\n`;
+        });
+        try {
+            await navigator.clipboard.writeText(text);
+            toast.success("Lista de materiais para compra copiada!");
+        } catch {
+            toast.error("Não foi possível copiar a lista.");
+        }
+    };
+
+    const handleDeleteFolderOrBudget = async (orc: any) => {
+        if (orc.childBudgets && orc.childBudgets.length > 0) {
+            if (!confirm(`Deseja excluir a pasta unificada "${orc.project_name}" de "${orc.client_name}"?`)) {
+                return;
+            }
+            const alsoDeleteChildren = confirm(
+                `Deseja excluir TAMBÉM os ${orc.childBudgets.length} orçamentos individuais (${orc.childBudgets.map((c: any) => c.project_name).join(", ")})?\n\n• Clique em "OK" para excluir TUDO.\n• Clique em "Cancelar" para apenas DESFAZER A PASTA e manter os ${orc.childBudgets.length} orçamentos separados.`
+            );
+            await deleteBudget(orc.id);
+            if (alsoDeleteChildren) {
+                for (const child of orc.childBudgets) {
+                    await deleteBudget(child.id);
+                }
+            } else {
+                toast.info("Pasta desfeita! Os orçamentos individuais voltaram para a lista.");
+            }
+        } else {
+            if (confirm(`Tem certeza que deseja excluir o orçamento "${orc.project_name}" de "${orc.client_name}"?`)) {
+                await deleteBudget(orc.id);
+            }
+        }
+    };
 
     // Form State & CRM Integration
     const [searchParams, setSearchParams] = useSearchParams();
@@ -903,6 +1186,7 @@ const Orcamento = () => {
         }
 
         let savedNotes = formData.notes || "";
+        let childIdsTagToKeep = "";
         if (editingBudgetId) {
             const currentOrc = budgets.find(b => b.id === editingBudgetId);
             if (currentOrc?.notes && currentOrc.notes.includes('<!--BJL_AMBIENTES:')) {
@@ -911,10 +1195,16 @@ const Orcamento = () => {
                     savedNotes = `${savedNotes.trim()}\n\n${match[0]}`;
                 }
             }
+            if (currentOrc?.notes && currentOrc.notes.includes('<!--BJL_CHILD_IDS:')) {
+                const childMatch = currentOrc.notes.match(/<!--BJL_CHILD_IDS:[\s\S]*?-->/);
+                if (childMatch) {
+                    childIdsTagToKeep = childMatch[0];
+                }
+            }
         }
 
         const cardFeesTag = `<!--BJL_CARD_FEES:${JSON.stringify({ fee10: formData.installment_fee, fee21: formData.installment_fee_21 || 18 })}-->`;
-        savedNotes = `${savedNotes.replace(/<!--BJL_CARD_FEES:[\s\S]*?-->/g, '').trim()}\n\n${cardFeesTag}`;
+        savedNotes = `${savedNotes.replace(/<!--BJL_CARD_FEES:[\s\S]*?-->/g, '').replace(/<!--BJL_CHILD_IDS:[\s\S]*?-->/g, '').trim()}\n\n${cardFeesTag}${childIdsTagToKeep ? `\n\n${childIdsTagToKeep}` : ''}`;
 
         const budgetData: any = {
             client_name: formData.client_name,
@@ -953,7 +1243,11 @@ const Orcamento = () => {
 
     const handleEditBudget = (budget: any) => {
         setEditingBudgetId(budget.id);
-        const cleanNotes = (budget.notes || "").replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '').trim();
+        const cleanNotes = (budget.notes || "")
+            .replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '')
+            .replace(/<!--BJL_CARD_FEES:[\s\S]*?-->/g, '')
+            .replace(/<!--BJL_CHILD_IDS:[\s\S]*?-->/g, '')
+            .trim();
         const rawFee10 = budget.card_fee_percent_10 || (budget.card_fee_percent === 18 ? 11 : budget.card_fee_percent);
         const resolvedFee10 = (rawFee10 !== undefined && rawFee10 !== null) ? Number(rawFee10) : 11;
         const resolvedFee21 = Number(budget.card_fee_percent_21) || 18;
@@ -1045,8 +1339,21 @@ const Orcamento = () => {
     };
 
     const handleApproveBudgetWithWorkflow = async (orc: any) => {
-        const ok = await convertToWeeklyOrders(orc);
+        const budgetWithConsolidated = {
+            ...orc,
+            budget_items: (orc.consolidatedBudgetItems && orc.consolidatedBudgetItems.length > 0)
+                ? orc.consolidatedBudgetItems
+                : orc.budget_items
+        };
+        const ok = await convertToWeeklyOrders(budgetWithConsolidated);
         if (ok) {
+            // Se for uma pasta unificada, sincroniza o status dos orçamentos individuais de dentro da pasta
+            if (orc.childBudgets && orc.childBudgets.length > 0) {
+                for (const child of orc.childBudgets) {
+                    await supabase.from('budgets').update({ status: 'aprovado' }).eq('id', child.id);
+                }
+                refreshBudgets();
+            }
             const pseudoSale: Sale = {
                 id: orc.id,
                 clientName: orc.client_name,
@@ -1084,22 +1391,33 @@ const Orcamento = () => {
             const ambientes = extraData?.ambientes || [];
             const paymentTerms = extraData?.paymentTerms || updatedBudget.notes || "";
             
-            // Preserva BJL_CARD_FEES se existir no orçamento
+            // Preserva BJL_CARD_FEES e BJL_CHILD_IDS se existirem no orçamento
             let cardFeesTag = "";
-            if (updatedBudget.notes && typeof updatedBudget.notes === 'string' && updatedBudget.notes.includes('<!--BJL_CARD_FEES:')) {
-                const match = updatedBudget.notes.match(/<!--BJL_CARD_FEES:[\s\S]*?-->/);
-                if (match) cardFeesTag = match[0];
+            let childIdsTag = "";
+            if (updatedBudget.notes && typeof updatedBudget.notes === 'string') {
+                if (updatedBudget.notes.includes('<!--BJL_CARD_FEES:')) {
+                    const match = updatedBudget.notes.match(/<!--BJL_CARD_FEES:[\s\S]*?-->/);
+                    if (match) cardFeesTag = match[0];
+                }
+                if (updatedBudget.notes.includes('<!--BJL_CHILD_IDS:')) {
+                    const matchChild = updatedBudget.notes.match(/<!--BJL_CHILD_IDS:[\s\S]*?-->/);
+                    if (matchChild) childIdsTag = matchChild[0];
+                }
             }
             // Limpa notas de comentários de metadados antigos e anexa ambientes atualizados
             const cleanNotes = paymentTerms
                 .replace(/<!--BJL_AMBIENTES:[\s\S]*?-->/g, '')
                 .replace(/<!--BJL_CARD_FEES:[\s\S]*?-->/g, '')
+                .replace(/<!--BJL_CHILD_IDS:[\s\S]*?-->/g, '')
                 .trim();
             let notesWithAmbientes = ambientes.length > 0 
                 ? `${cleanNotes}\n\n<!--BJL_AMBIENTES:${JSON.stringify(ambientes)}-->` 
                 : cleanNotes;
             if (cardFeesTag) {
                 notesWithAmbientes = `${notesWithAmbientes}\n\n${cardFeesTag}`;
+            }
+            if (childIdsTag) {
+                notesWithAmbientes = `${notesWithAmbientes}\n\n${childIdsTag}`;
             }
 
             // 1. PRESERVAÇÃO TOTAL DOS MATERIAIS ORIGINAIS (MDF, ferragens, fitas, parafusos, etc.)
@@ -2095,21 +2413,24 @@ const Orcamento = () => {
                                         const isExpanded = expandedFolders.includes(group.client_name);
 
                                         return (
-                                            <div key={group.client_name} className="bg-white rounded-2xl border border-border/60 shadow-sm overflow-hidden transition-all hover:border-amber-500/30">
+                                            <div key={group.client_name} className="bg-zinc-950/60 rounded-2xl border border-white/10 shadow-sm overflow-hidden transition-all hover:border-amber-500/40">
                                                 {/* Cabeçalho da Pasta */}
                                                 <div 
-                                                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-pointer select-none"
+                                                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/[0.02] hover:bg-white/[0.04] transition-colors cursor-pointer select-none"
                                                     onClick={() => toggleFolder(group.client_name)}
                                                 >
                                                     <div className="flex items-center gap-4 flex-1">
-                                                        <div className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-black text-lg border border-amber-500/20 shrink-0 shadow-inner">
-                                                            <Folder size={24} />
+                                                        <div className="h-12 w-12 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center font-black text-lg border border-amber-500/30 shrink-0 shadow-inner">
+                                                            {isExpanded ? <FolderOpen size={24} /> : <Folder size={24} />}
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <div className="flex items-center gap-3">
+                                                            <div className="flex flex-wrap items-center gap-2.5">
                                                                 <h3 className="text-base font-black uppercase text-foreground leading-none">{group.client_name}</h3>
-                                                                <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-700 px-2.5 py-0.5 rounded-full border border-amber-500/30">
-                                                                    {group.budgets.length} {group.budgets.length === 1 ? 'Ambiente' : 'Ambientes na Obra'}
+                                                                <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                                                                    {group.budgets.length} {group.budgets.length === 1 ? 'Proposta' : 'Propostas'}
+                                                                </span>
+                                                                <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                                                                    {(group.materialsToBuy || []).length} Materiais p/ Comprar
                                                                 </span>
                                                             </div>
                                                             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-tight">
@@ -2118,7 +2439,7 @@ const Orcamento = () => {
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex items-center justify-between md:justify-end gap-4 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-border/10" onClick={e => e.stopPropagation()}>
+                                                    <div className="flex items-center justify-between md:justify-end gap-4 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-white/10" onClick={e => e.stopPropagation()}>
                                                         <div className="text-right">
                                                             <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 block">Total da Obra</span>
                                                             <span className="text-base font-black text-foreground tabular-nums">{formatCurrency(group.totalValue)}</span>
@@ -2140,18 +2461,18 @@ const Orcamento = () => {
                                                                     size="sm"
                                                                     variant="outline"
                                                                     onClick={() => handleOpenMergeModalWithBudgets(group.budgets)}
-                                                                    className="border-amber-500/40 text-amber-800 hover:bg-amber-50 font-black text-xs uppercase tracking-wider rounded-xl px-3 h-9 flex items-center gap-1.5"
-                                                                    title="Unificar permanentemente em 1 único orçamento no sistema"
+                                                                    className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 font-black text-xs uppercase tracking-wider rounded-xl px-3 h-9 flex items-center gap-1.5"
+                                                                    title="Juntar em 1 única pasta de projeto"
                                                                 >
                                                                     <FolderPlus size={14} />
-                                                                    <span>Mesclar</span>
+                                                                    <span>Juntar em Pasta</span>
                                                                 </Button>
                                                             )}
 
                                                             <button
                                                                 onClick={() => toggleFolder(group.client_name)}
-                                                                className="p-2 text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted/30 transition-colors"
-                                                                title={isExpanded ? "Recolher ambientes" : "Ver ambientes detalhados"}
+                                                                className="p-2 text-muted-foreground hover:text-foreground rounded-xl hover:bg-white/10 transition-colors"
+                                                                title={isExpanded ? "Recolher pasta" : "Abrir pasta"}
                                                             >
                                                                 {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                                                             </button>
@@ -2159,64 +2480,98 @@ const Orcamento = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Ambientes expandidos da pasta */}
+                                                {/* Conteúdo expandido da pasta do cliente */}
                                                 {isExpanded && (
-                                                    <div className="p-4 bg-white border-t border-border/20 space-y-2">
-                                                        <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60 px-3 py-1">
-                                                            Ambientes desta obra (clique no lápis para editar materiais ou no PDF para imprimir individual):
-                                                        </div>
-                                                        <div className="divide-y divide-border/10">
-                                                            {group.budgets.map(orc => (
-                                                                <div key={orc.id} className="py-3 px-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 rounded-xl transition-colors">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <span className="text-[10px] font-black text-muted-foreground uppercase opacity-60">
-                                                                            #{getBudgetNumber(orc)}
-                                                                        </span>
-                                                                        <div>
-                                                                            <span className="font-black text-xs uppercase text-slate-800 block">{orc.project_name}</span>
-                                                                            <span className="text-[10px] text-muted-foreground font-medium">
-                                                                                {new Date(orc.created_at).toLocaleDateString('pt-BR')} • {getStatusBadge(orc.status, orc)}
+                                                    <div className="p-5 bg-black/40 border-t border-white/10 grid grid-cols-1 lg:grid-cols-2 gap-5">
+                                                        {/* Coluna 1: Orçamentos */}
+                                                        <div className="space-y-2.5 bg-white/[0.02] border border-white/10 rounded-2xl p-4">
+                                                            <div className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                                                <FolderOpen size={13} />
+                                                                Orçamentos deste Cliente:
+                                                            </div>
+                                                            <div className="divide-y divide-white/5">
+                                                                {group.budgets.flatMap(orc => (orc.childBudgets && orc.childBudgets.length > 0 ? orc.childBudgets : [orc])).map((orc: any) => (
+                                                                    <div key={orc.id} className="py-2.5 px-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white/[0.03] rounded-xl transition-colors">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <span className="text-[10px] font-black text-amber-400/80 uppercase">
+                                                                                #{getBudgetNumber(orc)}
                                                                             </span>
+                                                                            <div>
+                                                                                <span className="font-black text-xs uppercase text-foreground block">{orc.project_name}</span>
+                                                                                <span className="text-[10px] text-muted-foreground font-medium">
+                                                                                    {new Date(orc.created_at).toLocaleDateString('pt-BR')}
+                                                                                </span>
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
 
-                                                                    <div className="flex items-center justify-between sm:justify-end gap-4">
-                                                                        <span className="font-black text-sm text-foreground tabular-nums">{formatCurrency(orc.total_value)}</span>
-                                                                        <div className="flex items-center gap-1">
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-primary"
-                                                                                onClick={() => handleEditBudget(orc)}
-                                                                                title="Editar materiais deste ambiente"
-                                                                            >
-                                                                                <Pencil size={14} />
-                                                                            </Button>
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                className="h-8 w-8 rounded-lg text-amber-500 hover:text-amber-600"
-                                                                                onClick={() => setStockSyncBudget(orc)}
-                                                                                title="Estoque / Compras"
-                                                                            >
-                                                                                <Package size={14} />
-                                                                            </Button>
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-emerald-500"
-                                                                                onClick={() => {
-                                                                                    setPrintingBudget(orc);
-                                                                                    setPrintingTab('commercial');
-                                                                                }}
-                                                                                title="Imprimir individual deste ambiente"
-                                                                            >
-                                                                                <FileText size={14} />
-                                                                            </Button>
+                                                                        <div className="flex items-center justify-between sm:justify-end gap-3">
+                                                                            <span className="font-black text-sm text-foreground tabular-nums">{formatCurrency(orc.total_value)}</span>
+                                                                            <div className="flex items-center gap-1">
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-primary"
+                                                                                    onClick={() => handleEditBudget(orc)}
+                                                                                    title="Editar materiais deste ambiente"
+                                                                                >
+                                                                                    <Pencil size={14} />
+                                                                                </Button>
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-emerald-400"
+                                                                                    onClick={() => {
+                                                                                        setPrintingBudget(orc);
+                                                                                        setPrintingTab('commercial');
+                                                                                    }}
+                                                                                    title="Imprimir individual deste ambiente"
+                                                                                >
+                                                                                    <FileText size={14} />
+                                                                                </Button>
+                                                                            </div>
                                                                         </div>
                                                                     </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Coluna 2: Materiais para Comprar */}
+                                                        <div className="space-y-2.5 bg-white/[0.02] border border-white/10 rounded-2xl p-4">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <div className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                                                                    <Package size={13} />
+                                                                    Materiais que Tenho que Comprar ({(group.materialsToBuy || []).length})
                                                                 </div>
-                                                            ))}
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleCopyFolderMaterials({
+                                                                        client_name: group.client_name,
+                                                                        project_name: group.budgets.map(b => b.project_name).join(" + "),
+                                                                        materialsToBuy: group.materialsToBuy
+                                                                    })}
+                                                                    className="h-7 px-2.5 text-[10px] font-black uppercase border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 rounded-lg flex items-center gap-1"
+                                                                >
+                                                                    <Copy size={11} />
+                                                                    Copiar Lista
+                                                                </Button>
+                                                            </div>
+                                                            <div className="max-h-60 overflow-y-auto divide-y divide-white/5 pr-1">
+                                                                {(group.materialsToBuy || []).map((mat: any, idx: number) => (
+                                                                    <div key={idx} className="py-2 px-2 flex items-center justify-between gap-2 text-xs">
+                                                                        <div className="min-w-0">
+                                                                            <p className="font-bold text-foreground truncate uppercase text-[11px]">{mat.name}</p>
+                                                                            <span className="text-[9px] text-muted-foreground uppercase">{mat.category} • {mat.supplier}</span>
+                                                                        </div>
+                                                                        <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 font-black text-[11px] shrink-0">
+                                                                            {mat.quantity} {mat.unit}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                                {(!group.materialsToBuy || group.materialsToBuy.length === 0) && (
+                                                                    <p className="text-xs text-muted-foreground py-4 text-center italic">Nenhum material listado.</p>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 )}
@@ -2253,7 +2608,7 @@ const Orcamento = () => {
                                                 />
                                             </th>
                                             <th className="px-6 text-left font-black uppercase tracking-[0.1em] text-[10px]">Identificação</th>
-                                            <th className="px-6 text-left font-black uppercase tracking-[0.1em] text-[10px]">Projeto</th>
+                                            <th className="px-6 text-left font-black uppercase tracking-[0.1em] text-[10px]">Projeto / Pasta</th>
                                             <th className="px-6 text-left font-black uppercase tracking-[0.1em] text-[10px]">Data</th>
                                             <th className="px-6 text-right font-black uppercase tracking-[0.1em] text-[10px]">Status</th>
                                             <th className="px-6 text-right font-black uppercase tracking-[0.1em] text-[10px]">Valor Total</th>
@@ -2261,14 +2616,490 @@ const Orcamento = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/5">
-                                        {filteredBudgets.map((orc) => (
-                                            <tr key={orc.id} className={cn("hover:bg-slate-50/80 transition-all group", selectedBudgetIds.includes(orc.id) && "bg-amber-50/40")}>
-                                                <td className="pl-6 pr-2 py-6">
+                                        {filteredBudgets.map((orc) => {
+                                            const isFolderOpen = expandedBudgetFolders.includes(orc.id);
+                                            const hasChildBudgets = orc.childBudgets && orc.childBudgets.length > 0;
+                                            const canExpandFolder = orc.isFolder || (orc.materialsToBuy && orc.materialsToBuy.length > 0);
+
+                                            return (
+                                                <React.Fragment key={orc.id}>
+                                                    <tr
+                                                        className={cn(
+                                                            "hover:bg-white/[0.04] transition-all group",
+                                                            selectedBudgetIds.includes(orc.id) && "bg-amber-500/10",
+                                                            orc.isFolder && "bg-amber-500/[0.03]",
+                                                            isFolderOpen && "bg-amber-500/[0.08]"
+                                                        )}
+                                                    >
+                                                        <td className="pl-6 pr-2 py-6">
+                                                            <input 
+                                                                type="checkbox"
+                                                                checked={selectedBudgetIds.includes(orc.id)}
+                                                                onChange={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (e.target.checked) {
+                                                                        setSelectedBudgetIds(prev => [...prev, orc.id]);
+                                                                    } else {
+                                                                        setSelectedBudgetIds(prev => prev.filter(id => id !== orc.id));
+                                                                    }
+                                                                }}
+                                                                className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                                            />
+                                                        </td>
+                                                        <td
+                                                            className={cn("px-6 py-6", canExpandFolder && "cursor-pointer")}
+                                                            onClick={() => canExpandFolder && toggleBudgetFolder(orc.id)}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                {orc.isFolder ? (
+                                                                    <div className="h-11 w-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center font-black text-amber-400 shadow-sm group-hover:scale-105 transition-transform">
+                                                                        {isFolderOpen ? <FolderOpen size={20} /> : <Folder size={20} />}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="h-10 w-10 rounded-xl bg-muted/30 flex items-center justify-center font-black text-xs text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                                                        {orc.client_name.charAt(0)}
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex flex-col">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-black text-[13px] uppercase text-foreground group-hover:text-primary transition-colors leading-tight">
+                                                                            {orc.client_name}
+                                                                        </span>
+                                                                        {orc.isFolder && (
+                                                                            <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                                                                Pasta
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">
+                                                                        Ref: #{getBudgetNumber(orc)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td
+                                                            className={cn("px-8 py-6", canExpandFolder && "cursor-pointer")}
+                                                            onClick={() => canExpandFolder && toggleBudgetFolder(orc.id)}
+                                                        >
+                                                            <div className="flex flex-col items-start gap-1.5">
+                                                                <span className="font-bold text-[11px] uppercase text-muted-foreground tracking-tighter bg-muted/20 px-3 py-1.5 rounded-lg border border-border/5">
+                                                                    {orc.project_name}
+                                                                </span>
+                                                                {orc.isFolder ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            toggleBudgetFolder(orc.id);
+                                                                        }}
+                                                                        className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 transition-all"
+                                                                    >
+                                                                        {isFolderOpen ? <FolderOpen size={12} /> : <Folder size={12} />}
+                                                                        <span>
+                                                                            {hasChildBudgets
+                                                                                ? `${orc.childBudgets.length} Orçamentos + ${(orc.materialsToBuy || []).length} Materiais`
+                                                                                : `Abrir Pasta (${(orc.materialsToBuy || []).length} Materiais p/ Comprar)`}
+                                                                        </span>
+                                                                        {isFolderOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                                                    </button>
+                                                                ) : (
+                                                                    (orc.materialsToBuy || []).length > 0 && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                toggleBudgetFolder(orc.id);
+                                                                            }}
+                                                                            className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70 hover:text-amber-400 transition-colors"
+                                                                        >
+                                                                            <Package size={11} />
+                                                                            <span>Ver {orc.materialsToBuy.length} materiais de compra</span>
+                                                                            {isFolderOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                                                        </button>
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-8 py-6">
+                                                            <div className="flex items-center gap-2 text-muted-foreground/70 font-bold text-[11px]">
+                                                                {new Date(orc.created_at).toLocaleDateString('pt-BR')}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-8 py-6 text-right">
+                                                            {getStatusBadge(orc.status, orc)}
+                                                        </td>
+                                                        <td className="px-8 py-6 text-right">
+                                                            <div className="flex flex-col items-end">
+                                                                <span className="font-black text-sm text-foreground tabular-nums group-hover:text-primary transition-colors">{formatCurrency(orc.total_value)}</span>
+                                                                {hasChildBudgets && Math.abs(orc.childrenSumValue - orc.total_value) >= 1 ? (
+                                                                    <span className="text-[9px] font-black text-amber-400/80 uppercase">
+                                                                        Soma Ambientes: {formatCurrency(orc.childrenSumValue)}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-[9px] font-black text-muted-foreground/50 uppercase">
+                                                                        Base: {formatCurrency(orc.total_cost * orc.markup_factor)}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-8 py-6 text-right">
+                                                             <div className="flex justify-end gap-2 pr-2">
+                                                                 {/* Botão Abrir Pasta Rápido */}
+                                                                 {orc.isFolder && (
+                                                                     <Button
+                                                                         variant="ghost"
+                                                                         size="icon"
+                                                                         className={cn(
+                                                                             "h-10 w-10 rounded-xl transition-all active:scale-95 border",
+                                                                             isFolderOpen
+                                                                                 ? "bg-amber-500 text-slate-950 border-amber-500"
+                                                                                 : "hover:bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                                                         )}
+                                                                         onClick={() => toggleBudgetFolder(orc.id)}
+                                                                         title={isFolderOpen ? "Fechar Pasta" : "Abrir Pasta (Ver os orçamentos separados e materiais para comprar)"}
+                                                                     >
+                                                                         {isFolderOpen ? <FolderOpen size={16} /> : <Folder size={16} />}
+                                                                     </Button>
+                                                                 )}
+                                                                 {/* WhatsApp Follow-up Rápido */}
+                                                                 <Button
+                                                                     variant="ghost"
+                                                                     size="icon"
+                                                                     className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-emerald-600 hover:text-emerald-700 transition-all active:scale-95 border border-emerald-500/20"
+                                                                     onClick={() => handleOpenWhatsAppFollowUp(orc)}
+                                                                     title="Enviar Follow-up no WhatsApp"
+                                                                 >
+                                                                     <MessageSquare size={16} />
+                                                                 </Button>
+                                                                 {orc.status !== 'aprovado' ? (
+                                                                     <Button 
+                                                                         variant="ghost" 
+                                                                         size="icon" 
+                                                                         className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-600 transition-all active:scale-95 border border-emerald-500/10"
+                                                                         onClick={() => {
+                                                                             if (confirm(`Aprovar projeto e oficializar cliente para "${orc.client_name}"?`)) {
+                                                                                 handleApproveBudgetWithWorkflow(orc);
+                                                                             }
+                                                                         }}
+                                                                         title="Aprovar e Pedir Materiais"
+                                                                     >
+                                                                         <CheckCircle2 size={18} />
+                                                                     </Button>
+                                                                 ) : (
+                                                                     <Button 
+                                                                         variant="ghost" 
+                                                                         size="icon" 
+                                                                         className="h-10 w-10 rounded-xl hover:bg-rose-500/10 text-rose-500 hover:text-rose-600 transition-all active:scale-95 border border-rose-500/10 animate-pulse"
+                                                                         onClick={() => {
+                                                                             if (confirm(`Remover aprovação de "${orc.client_name}"? Isso também excluirá os materiais da lista de pedidos.`)) {
+                                                                                 cancelBudgetApproval(orc);
+                                                                                 if (orc.childBudgets?.length > 0) {
+                                                                                     orc.childBudgets.forEach((c: any) => {
+                                                                                         supabase.from('budgets').update({ status: 'em_elaboracao' }).eq('id', c.id);
+                                                                                     });
+                                                                                     refreshBudgets();
+                                                                                 }
+                                                                             }
+                                                                         }}
+                                                                         title="Remover Aprovação (Voltar para Edição)"
+                                                                     >
+                                                                         <RotateCcw size={18} />
+                                                                     </Button>
+                                                                 )}
+                                                                 <Button 
+                                                                     variant="ghost" 
+                                                                     size="icon" 
+                                                                     className="h-10 w-10 rounded-xl hover:bg-primary/10 text-slate-400 hover:text-primary transition-all active:scale-95 border border-border/5"
+                                                                     onClick={() => handleEditBudget(orc)}
+                                                                     title="Editar Orçamento"
+                                                                 >
+                                                                     <Pencil size={16} />
+                                                                 </Button>
+                                                                 <Button 
+                                                                     variant="ghost" 
+                                                                     size="icon" 
+                                                                     className="h-10 w-10 rounded-xl hover:bg-amber-500/10 text-amber-500 hover:text-amber-600 transition-all active:scale-95 border border-amber-500/20"
+                                                                     onClick={() => setStockSyncBudget(orc)}
+                                                                     title="Conciliar Estoque & Lista de Compras"
+                                                                 >
+                                                                     <Package size={16} />
+                                                                 </Button>
+                                                                 <Button 
+                                                                     variant="ghost" 
+                                                                     size="icon" 
+                                                                     className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-500 transition-all active:scale-95 border border-border/5"
+                                                                     onClick={() => {
+                                                                         setPrintingBudget({
+                                                                             ...orc,
+                                                                             budget_items: (orc.consolidatedBudgetItems && orc.consolidatedBudgetItems.length > 0)
+                                                                                 ? orc.consolidatedBudgetItems
+                                                                                 : orc.budget_items
+                                                                         });
+                                                                         setPrintingTab('commercial');
+                                                                     }}
+                                                                     title="Imprimir Proposta / PDF"
+                                                                 >
+                                                                     <FileText size={16} />
+                                                                 </Button>
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    className="h-10 w-10 text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors border border-border/5 rounded-xl ml-1"
+                                                                    onClick={() => handleDeleteFolderOrBudget(orc)}
+                                                                    title="Excluir Orçamento / Pasta"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+
+                                                    {/* INTERIOR DA PASTA (EXPANSÍVEL): OS DOIS ORÇAMENTOS SEPARADOS + MATERIAIS PARA COMPRAR */}
+                                                    {isFolderOpen && (
+                                                        <tr className="bg-zinc-950/90 border-b border-amber-500/30">
+                                                            <td colSpan={7} className="px-6 py-6">
+                                                                <div className="rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/[0.06] to-black/60 p-5 sm:p-6 space-y-5 shadow-2xl">
+                                                                    {/* Topo da Pasta Aberta */}
+                                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="h-10 w-10 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shadow-md">
+                                                                                <FolderOpen size={20} />
+                                                                            </div>
+                                                                            <div>
+                                                                                <h4 className="text-sm font-black uppercase text-white tracking-wide">
+                                                                                    Pasta do Cliente: {orc.client_name}
+                                                                                </h4>
+                                                                                <p className="text-[11px] font-bold text-amber-400/90 uppercase">
+                                                                                    {orc.project_name}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="flex flex-wrap items-center gap-2">
+                                                                            <Button
+                                                                                size="sm"
+                                                                                onClick={() => {
+                                                                                    setPrintingBudget({
+                                                                                        ...orc,
+                                                                                        budget_items: (orc.consolidatedBudgetItems && orc.consolidatedBudgetItems.length > 0)
+                                                                                            ? orc.consolidatedBudgetItems
+                                                                                            : orc.budget_items
+                                                                                    });
+                                                                                    setPrintingTab('commercial');
+                                                                                }}
+                                                                                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[10px] uppercase tracking-wider rounded-xl h-9 px-3.5 flex items-center gap-1.5"
+                                                                            >
+                                                                                <FileText size={13} />
+                                                                                Proposta Juntos p/ Cliente (PDF)
+                                                                            </Button>
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="outline"
+                                                                                onClick={() => setStockSyncBudget(orc)}
+                                                                                className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 font-black text-[10px] uppercase tracking-wider rounded-xl h-9 px-3.5 flex items-center gap-1.5"
+                                                                            >
+                                                                                <Package size={13} />
+                                                                                Conciliar com Estoque
+                                                                            </Button>
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="outline"
+                                                                                onClick={() => handleCopyFolderMaterials(orc)}
+                                                                                className="border-white/15 text-slate-200 hover:bg-white/10 font-black text-[10px] uppercase tracking-wider rounded-xl h-9 px-3.5 flex items-center gap-1.5"
+                                                                            >
+                                                                                <Copy size={13} />
+                                                                                Copiar Lista de Compras
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className={cn("grid gap-6", hasChildBudgets ? "grid-cols-1 lg:grid-cols-12" : "grid-cols-1")}>
+                                                                        {/* BLOCO 1: OS ORÇAMENTOS SEPARADOS QUE FORAM JUNTADOS */}
+                                                                        {hasChildBudgets && (
+                                                                            <div className="lg:col-span-5 bg-black/50 border border-white/10 rounded-2xl p-4 flex flex-col justify-between space-y-4">
+                                                                                <div className="space-y-3">
+                                                                                    <div className="flex items-center justify-between">
+                                                                                        <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                                                                                            <Layers size={14} />
+                                                                                            Orçamentos Separados ({orc.childBudgets.length})
+                                                                                        </span>
+                                                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                                                                            Ambientes Orçados
+                                                                                        </span>
+                                                                                    </div>
+
+                                                                                    <div className="space-y-2">
+                                                                                        {orc.childBudgets.map((child: any) => (
+                                                                                            <div
+                                                                                                key={child.id}
+                                                                                                className="p-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 flex items-center justify-between gap-3 transition-colors"
+                                                                                            >
+                                                                                                <div className="min-w-0">
+                                                                                                    <div className="flex items-center gap-2">
+                                                                                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 uppercase">
+                                                                                                            #{getBudgetNumber(child)}
+                                                                                                        </span>
+                                                                                                        <span className="font-black text-xs uppercase text-white truncate">
+                                                                                                            {child.project_name}
+                                                                                                        </span>
+                                                                                                    </div>
+                                                                                                    <span className="text-[10px] text-slate-400 font-semibold block mt-1">
+                                                                                                        {(child.budget_items || []).filter((i: any) => i.budget_materials?.category !== 'SERVICOS').length} itens de material • {child.days_estimated || 1} dia(s) prod.
+                                                                                                    </span>
+                                                                                                </div>
+
+                                                                                                <div className="flex items-center gap-2 shrink-0">
+                                                                                                    <span className="font-black text-sm text-amber-400 tabular-nums mr-1">
+                                                                                                        {formatCurrency(child.total_value)}
+                                                                                                    </span>
+                                                                                                    <Button
+                                                                                                        variant="ghost"
+                                                                                                        size="icon"
+                                                                                                        className="h-8 w-8 rounded-lg bg-white/5 hover:bg-primary/20 text-slate-300 hover:text-primary"
+                                                                                                        onClick={() => handleEditBudget(child)}
+                                                                                                        title="Editar este orçamento separado"
+                                                                                                    >
+                                                                                                        <Pencil size={13} />
+                                                                                                    </Button>
+                                                                                                    <Button
+                                                                                                        variant="ghost"
+                                                                                                        size="icon"
+                                                                                                        className="h-8 w-8 rounded-lg bg-white/5 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-400"
+                                                                                                        onClick={() => {
+                                                                                                            setPrintingBudget(child);
+                                                                                                            setPrintingTab('commercial');
+                                                                                                        }}
+                                                                                                        title="Ver PDF apenas deste ambiente"
+                                                                                                    >
+                                                                                                        <FileText size={13} />
+                                                                                                    </Button>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {/* Resumo comparativo dos orçamentos separados vs juntos */}
+                                                                                <div className="pt-3 border-t border-white/10 space-y-1.5 text-xs">
+                                                                                    <div className="flex justify-between items-center text-slate-400 font-bold">
+                                                                                        <span>Soma dos Orçamentos Separados:</span>
+                                                                                        <span className="tabular-nums">{formatCurrency(orc.childrenSumValue)}</span>
+                                                                                    </div>
+                                                                                    <div className="flex justify-between items-center text-white font-black">
+                                                                                        <span>Valor Juntos (Proposta Cliente):</span>
+                                                                                        <span className="text-emerald-400 text-sm tabular-nums">{formatCurrency(orc.total_value)}</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* BLOCO 2: MATERIAIS QUE TENHO QUE COMPRAR */}
+                                                                        <div className={cn("bg-black/50 border border-white/10 rounded-2xl p-4 space-y-3", hasChildBudgets ? "lg:col-span-7" : "col-span-1")}>
+                                                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                                                                                        <Package size={14} />
+                                                                                        Materiais que Tenho que Comprar ({(orc.materialsToBuy || []).length})
+                                                                                    </span>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <span className="text-[10px] font-black uppercase text-slate-400">
+                                                                                        Custo Materiais: <strong className="text-white">{formatCurrency(orc.totalMaterialsCost || 0)}</strong>
+                                                                                    </span>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => {
+                                                                                            setPrintingBudget({
+                                                                                                ...orc,
+                                                                                                budget_items: (orc.consolidatedBudgetItems && orc.consolidatedBudgetItems.length > 0)
+                                                                                                    ? orc.consolidatedBudgetItems
+                                                                                                    : orc.budget_items
+                                                                                            });
+                                                                                            setPrintingTab('technical');
+                                                                                        }}
+                                                                                        className="text-[10px] font-black uppercase text-amber-400 hover:underline flex items-center gap-1"
+                                                                                    >
+                                                                                        <Printer size={11} />
+                                                                                        Imprimir Lista
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div className="max-h-72 overflow-y-auto rounded-xl border border-white/10 divide-y divide-white/5 bg-zinc-950/60">
+                                                                                {(orc.materialsToBuy || []).map((mat: any, mIdx: number) => (
+                                                                                    <div key={mIdx} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-white/[0.03] transition-colors">
+                                                                                        <div className="min-w-0 space-y-1">
+                                                                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                                                                <span className="font-black text-xs uppercase text-white">
+                                                                                                    {mat.name}
+                                                                                                </span>
+                                                                                                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-white/10 text-slate-300">
+                                                                                                    {mat.category}
+                                                                                                </span>
+                                                                                                {mat.supplier && (
+                                                                                                    <span className={cn(
+                                                                                                        "text-[9px] font-black uppercase px-2 py-0.5 rounded",
+                                                                                                        mat.supplier === "CHM Morais"
+                                                                                                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                                                                                            : mat.supplier === "BRUTA"
+                                                                                                            ? "bg-orange-500/15 text-orange-400 border border-orange-500/30"
+                                                                                                            : "bg-white/5 text-slate-400"
+                                                                                                    )}>
+                                                                                                        {mat.supplier}
+                                                                                                    </span>
+                                                                                                )}
+                                                                                            </div>
+                                                                                            {mat.breakdown && mat.breakdown.length > 1 && (
+                                                                                                <p className="text-[10px] font-bold text-amber-400/90 uppercase">
+                                                                                                    Soma: {mat.breakdown.map((b: any) => `${b.envName}: ${b.qty}`).join(" + ")}
+                                                                                                </p>
+                                                                                            )}
+                                                                                        </div>
+
+                                                                                        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                                                                                            <span className="text-[11px] font-bold text-slate-400 tabular-nums">
+                                                                                                {formatCurrency(mat.total_price)}
+                                                                                            </span>
+                                                                                            <span className="px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-black text-xs tabular-nums">
+                                                                                                Comprar: {mat.quantity} {mat.unit}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+
+                                                                                {(!orc.materialsToBuy || orc.materialsToBuy.length === 0) && (
+                                                                                    <div className="py-8 text-center text-slate-400 text-xs italic">
+                                                                                        Nenhum material físico cadastrado neste orçamento.
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </React.Fragment>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Card view for mobile */}
+                            <div className="md:hidden divide-y divide-border/5">
+                                {filteredBudgets.map((orc) => {
+                                    const isFolderOpen = expandedBudgetFolders.includes(orc.id);
+                                    const hasChildBudgets = orc.childBudgets && orc.childBudgets.length > 0;
+
+                                    return (
+                                        <div key={orc.id} className={cn("p-6 space-y-4", selectedBudgetIds.includes(orc.id) && "bg-amber-500/10")}>
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex items-center gap-3">
                                                     <input 
                                                         type="checkbox"
                                                         checked={selectedBudgetIds.includes(orc.id)}
                                                         onChange={(e) => {
-                                                            e.stopPropagation();
                                                             if (e.target.checked) {
                                                                 setSelectedBudgetIds(prev => [...prev, orc.id]);
                                                             } else {
@@ -2277,247 +3108,182 @@ const Orcamento = () => {
                                                         }}
                                                         className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
                                                     />
-                                                </td>
-                                                <td className="px-6 py-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-10 w-10 rounded-xl bg-muted/30 flex items-center justify-center font-black text-xs text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                                    {orc.isFolder ? (
+                                                        <div className="h-10 w-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center font-black text-amber-400">
+                                                            {isFolderOpen ? <FolderOpen size={18} /> : <Folder size={18} />}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="h-10 w-10 rounded-xl bg-muted/30 flex items-center justify-center font-black text-xs text-muted-foreground">
                                                             {orc.client_name.charAt(0)}
                                                         </div>
-                                                        <div className="flex flex-col">
-                                                            <span className="font-black text-[13px] uppercase text-foreground group-hover:text-primary transition-colors leading-tight">{orc.client_name}</span>
-                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{getBudgetNumber(orc)}</span>
-                                                        </div>
+                                                    )}
+                                                    <div className="flex flex-col">
+                                                        <span className="font-black text-[13px] uppercase text-foreground leading-tight">{orc.client_name}</span>
+                                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{getBudgetNumber(orc)}</span>
                                                     </div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <span className="font-bold text-[11px] uppercase text-muted-foreground tracking-tighter bg-muted/20 px-3 py-1.5 rounded-lg border border-border/5">{orc.project_name}</span>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <div className="flex items-center gap-2 text-muted-foreground/70 font-bold text-[11px]">
-                                                        {new Date(orc.created_at).toLocaleDateString('pt-BR')}
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6 text-right">
-                                                    {getStatusBadge(orc.status, orc)}
-                                                </td>
-                                                <td className="px-8 py-6 text-right">
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="font-black text-sm text-foreground tabular-nums group-hover:text-primary transition-colors">{formatCurrency(orc.total_value)}</span>
-                                                        <span className="text-[9px] font-black text-muted-foreground/50 uppercase">Base: {formatCurrency(orc.total_cost * orc.markup_factor)}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6 text-right">
-                                                     <div className="flex justify-end gap-2 pr-2">
-                                                         {/* WhatsApp Follow-up Rápido */}
-                                                         <Button
-                                                             variant="ghost"
-                                                             size="icon"
-                                                             className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-emerald-600 hover:text-emerald-700 transition-all active:scale-95 border border-emerald-500/20"
-                                                             onClick={() => handleOpenWhatsAppFollowUp(orc)}
-                                                             title="Enviar Follow-up no WhatsApp"
-                                                         >
-                                                             <MessageSquare size={16} />
-                                                         </Button>
-                                                         {orc.status !== 'aprovado' ? (
-                                                             <Button 
-                                                                 variant="ghost" 
-                                                                 size="icon" 
-                                                                 className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-600 transition-all active:scale-95 border border-emerald-500/10"
-                                                                 onClick={() => {
-                                                                     if (confirm(`Aprovar projeto e oficializar cliente para "${orc.client_name}"?`)) {
-                                                                         handleApproveBudgetWithWorkflow(orc);
-                                                                     }
-                                                                 }}
-                                                                 title="Aprovar e Pedir Materiais"
-                                                             >
-                                                                 <CheckCircle2 size={18} />
-                                                             </Button>
-                                                         ) : (
-                                                             <Button 
-                                                                 variant="ghost" 
-                                                                 size="icon" 
-                                                                 className="h-10 w-10 rounded-xl hover:bg-rose-500/10 text-rose-500 hover:text-rose-600 transition-all active:scale-95 border border-rose-500/10 animate-pulse"
-                                                                 onClick={() => {
-                                                                     if (confirm(`Remover aprovação de "${orc.client_name}"? Isso também excluirá os materiais da lista de pedidos.`)) {
-                                                                         cancelBudgetApproval(orc);
-                                                                     }
-                                                                 }}
-                                                                 title="Remover Aprovação (Voltar para Edição)"
-                                                             >
-                                                                 <RotateCcw size={18} />
-                                                             </Button>
-                                                         )}
-                                                         <Button 
-                                                             variant="ghost" 
-                                                             size="icon" 
-                                                             className="h-10 w-10 rounded-xl hover:bg-primary/10 text-slate-400 hover:text-primary transition-all active:scale-95 border border-border/5"
-                                                             onClick={() => handleEditBudget(orc)}
-                                                         >
-                                                             <Pencil size={16} />
-                                                         </Button>
-                                                         <Button 
-                                                             variant="ghost" 
-                                                             size="icon" 
-                                                             className="h-10 w-10 rounded-xl hover:bg-amber-500/10 text-amber-500 hover:text-amber-600 transition-all active:scale-95 border border-amber-500/20"
-                                                             onClick={() => setStockSyncBudget(orc)}
-                                                             title="Conciliar Estoque & Lista de Compras"
-                                                         >
-                                                             <Package size={16} />
-                                                         </Button>
-                                                         <Button 
-                                                             variant="ghost" 
-                                                             size="icon" 
-                                                             className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-500 transition-all active:scale-95 border border-border/5"
-                                                             onClick={() => {
-                                                                 setPrintingBudget(orc);
-                                                                 setPrintingTab('commercial');
-                                                             }}
-                                                             title="Imprimir Orçamento"
-                                                         >
-                                                             <FileText size={16} />
-                                                         </Button>
+                                                </div>
+                                                {getStatusBadge(orc.status, orc)}
+                                            </div>
+                                            
+                                            <div className="flex flex-col gap-2">
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Projeto</span>
+                                                <span className="font-bold text-[11px] uppercase text-muted-foreground tracking-tighter bg-muted/20 px-3 py-1.5 rounded-lg border border-border/5 w-fit">{orc.project_name}</span>
+                                                {(orc.isFolder || (orc.materialsToBuy || []).length > 0) && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleBudgetFolder(orc.id)}
+                                                        className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 w-fit"
+                                                    >
+                                                        {isFolderOpen ? <FolderOpen size={13} /> : <Folder size={13} />}
+                                                        <span>
+                                                            {hasChildBudgets
+                                                                ? `Abrir Pasta (${orc.childBudgets.length} Orçamentos + Materiais)`
+                                                                : `Ver Materiais p/ Comprar (${(orc.materialsToBuy || []).length})`}
+                                                        </span>
+                                                        {isFolderOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div className="flex justify-between items-end pt-2">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor</span>
+                                                    <span className="font-black text-lg text-primary tabular-nums">{formatCurrency(orc.total_value)}</span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2 justify-end">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-10 w-10 rounded-xl border border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
+                                                        onClick={() => handleOpenWhatsAppFollowUp(orc)}
+                                                        title="Enviar WhatsApp"
+                                                    >
+                                                        <MessageSquare size={16} />
+                                                    </Button>
+                                                    {orc.status !== 'aprovado' ? (
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon" 
-                                                            className="h-10 w-10 text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors border border-border/5 rounded-xl ml-1"
+                                                            className="h-10 w-10 rounded-xl border border-emerald-500/50 text-emerald-500"
                                                             onClick={() => {
-                                                                if (confirm(`Tem certeza que deseja excluir o orçamento para "${orc.client_name}"?`)) {
-                                                                    deleteBudget(orc.id);
+                                                                if (confirm(`Aprovar projeto e oficializar cliente para "${orc.client_name}"?`)) {
+                                                                    handleApproveBudgetWithWorkflow(orc);
                                                                 }
                                                             }}
-                                                            title="Excluir Orçamento"
                                                         >
-                                                            <Trash2 size={16} />
+                                                            <CheckCircle2 size={16} />
                                                         </Button>
+                                                    ) : (
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-10 w-10 rounded-xl border border-rose-500/50 text-rose-500"
+                                                            onClick={() => {
+                                                                if (confirm(`Remover aprovação?`)) {
+                                                                    cancelBudgetApproval(orc);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <RotateCcw size={16} />
+                                                        </Button>
+                                                    )}
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-10 w-10 rounded-xl border border-border/50 text-slate-400"
+                                                        onClick={() => handleEditBudget(orc)}
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-10 w-10 rounded-xl border border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                                                        onClick={() => setStockSyncBudget(orc)}
+                                                        title="Conciliar Estoque & Lista de Compras"
+                                                    >
+                                                        <Package size={16} />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-10 w-10 rounded-xl border border-border/50 text-slate-400 hover:text-amber-500 hover:border-amber-500/50 transition-all"
+                                                        onClick={() => {
+                                                            toast.info("Preparando visualização para impressão...");
+                                                            setPrintingBudget({
+                                                                ...orc,
+                                                                budget_items: (orc.consolidatedBudgetItems && orc.consolidatedBudgetItems.length > 0)
+                                                                    ? orc.consolidatedBudgetItems
+                                                                    : orc.budget_items
+                                                            });
+                                                            setPrintingTab('commercial');
+                                                        }}
+                                                    >
+                                                        <Printer size={16} />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-10 w-10 rounded-xl border border-border/50 text-rose-400"
+                                                        onClick={() => handleDeleteFolderOrBudget(orc)}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            {/* Pasta expandida no Mobile */}
+                                            {isFolderOpen && (
+                                                <div className="pt-3 border-t border-amber-500/30 space-y-4">
+                                                    {hasChildBudgets && (
+                                                        <div className="space-y-2 bg-black/40 p-3 rounded-2xl border border-white/10">
+                                                            <span className="text-[10px] font-black uppercase text-amber-400 block">
+                                                                Orçamentos Separados ({orc.childBudgets.length})
+                                                            </span>
+                                                            {orc.childBudgets.map((child: any) => (
+                                                                <div key={child.id} className="flex items-center justify-between text-xs py-2 border-b border-white/5 last:border-0">
+                                                                    <div>
+                                                                        <span className="font-black text-white uppercase block">{child.project_name}</span>
+                                                                        <span className="text-[10px] text-amber-400 font-bold">{formatCurrency(child.total_value)}</span>
+                                                                    </div>
+                                                                    <div className="flex gap-1">
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300" onClick={() => handleEditBudget(child)}>
+                                                                            <Pencil size={13} />
+                                                                        </Button>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-400" onClick={() => { setPrintingBudget(child); setPrintingTab('commercial'); }}>
+                                                                            <FileText size={13} />
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    <div className="space-y-2 bg-black/40 p-3 rounded-2xl border border-white/10">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[10px] font-black uppercase text-emerald-400">
+                                                                Materiais p/ Comprar ({(orc.materialsToBuy || []).length})
+                                                            </span>
+                                                            <Button size="sm" variant="outline" onClick={() => handleCopyFolderMaterials(orc)} className="h-7 px-2 text-[10px] font-black uppercase border-white/15">
+                                                                <Copy size={11} className="mr-1" /> Copiar
+                                                            </Button>
+                                                        </div>
+                                                        <div className="max-h-52 overflow-y-auto divide-y divide-white/5">
+                                                            {(orc.materialsToBuy || []).map((mat: any, i: number) => (
+                                                                <div key={i} className="py-2 flex justify-between items-center text-xs gap-2">
+                                                                    <span className="font-bold text-white truncate uppercase text-[11px]">{mat.name}</span>
+                                                                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-black text-[10px] shrink-0">
+                                                                        {mat.quantity} {mat.unit}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* Card view for mobile */}
-                            <div className="md:hidden divide-y divide-border/5">
-                                {filteredBudgets.map((orc) => (
-                                    <div key={orc.id} className={cn("p-6 space-y-4", selectedBudgetIds.includes(orc.id) && "bg-amber-50/40")}>
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex items-center gap-3">
-                                                <input 
-                                                    type="checkbox"
-                                                    checked={selectedBudgetIds.includes(orc.id)}
-                                                    onChange={(e) => {
-                                                        if (e.target.checked) {
-                                                            setSelectedBudgetIds(prev => [...prev, orc.id]);
-                                                        } else {
-                                                            setSelectedBudgetIds(prev => prev.filter(id => id !== orc.id));
-                                                        }
-                                                    }}
-                                                    className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                                                />
-                                                <div className="h-10 w-10 rounded-xl bg-muted/30 flex items-center justify-center font-black text-xs text-muted-foreground">
-                                                    {orc.client_name.charAt(0)}
                                                 </div>
-                                                <div className="flex flex-col">
-                                                    <span className="font-black text-[13px] uppercase text-foreground leading-tight">{orc.client_name}</span>
-                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Ref: #{getBudgetNumber(orc)}</span>
-                                                </div>
-                                            </div>
-                                            {getStatusBadge(orc.status, orc)}
+                                            )}
                                         </div>
-                                        
-                                        <div className="flex flex-col gap-1">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Projeto</span>
-                                            <span className="font-bold text-[11px] uppercase text-muted-foreground tracking-tighter bg-muted/20 px-3 py-1.5 rounded-lg border border-border/5 w-fit">{orc.project_name}</span>
-                                        </div>
-
-                                        <div className="flex justify-between items-end pt-2">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor</span>
-                                                <span className="font-black text-lg text-primary tabular-nums">{formatCurrency(orc.total_value)}</span>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2 justify-end">
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-10 w-10 rounded-xl border border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
-                                                    onClick={() => handleOpenWhatsAppFollowUp(orc)}
-                                                    title="Enviar WhatsApp"
-                                                >
-                                                    <MessageSquare size={16} />
-                                                </Button>
-                                                {orc.status !== 'aprovado' ? (
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="h-10 w-10 rounded-xl border border-emerald-500/50 text-emerald-500"
-                                                        onClick={() => {
-                                                            if (confirm(`Aprovar projeto e oficializar cliente para "${orc.client_name}"?`)) {
-                                                                handleApproveBudgetWithWorkflow(orc);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <CheckCircle2 size={16} />
-                                                    </Button>
-                                                ) : (
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="h-10 w-10 rounded-xl border border-rose-500/50 text-rose-500"
-                                                        onClick={() => {
-                                                            if (confirm(`Remover aprovação?`)) {
-                                                                cancelBudgetApproval(orc);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <RotateCcw size={16} />
-                                                    </Button>
-                                                )}
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-10 w-10 rounded-xl border border-border/50 text-slate-400"
-                                                    onClick={() => handleEditBudget(orc)}
-                                                >
-                                                    <Pencil size={16} />
-                                                </Button>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-10 w-10 rounded-xl border border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
-                                                    onClick={() => setStockSyncBudget(orc)}
-                                                    title="Conciliar Estoque & Lista de Compras"
-                                                >
-                                                    <Package size={16} />
-                                                </Button>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-10 w-10 rounded-xl border border-border/50 text-slate-400 hover:text-amber-500 hover:border-amber-500/50 transition-all"
-                                                    onClick={() => {
-                                                        toast.info("Preparando visualização para impressão...");
-                                                        setPrintingBudget(orc);
-                                                        setPrintingTab('commercial');
-                                                    }}
-                                                >
-                                                    <Printer size={16} />
-                                                </Button>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-10 w-10 rounded-xl border border-border/50 text-rose-400"
-                                                    onClick={() => {
-                                                        if (confirm(`Excluir orçamento para "${orc.client_name}"?`)) {
-                                                            deleteBudget(orc.id);
-                                                        }
-                                                    }}
-                                                >
-                                                    <Trash2 size={16} />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
 
                             {budgets.length === 0 && !loading && (
@@ -2562,7 +3328,7 @@ const Orcamento = () => {
                                     className="border-white/20 hover:bg-white/10 text-white font-black text-xs uppercase tracking-wider rounded-full px-4 h-9 flex items-center gap-1.5"
                                 >
                                     <FolderPlus size={14} />
-                                    Unificar em 1 Orçamento
+                                    Juntar em 1 Pasta
                                 </Button>
 
                                 <button
@@ -2832,10 +3598,10 @@ const Orcamento = () => {
                             </div>
                             <div>
                                 <DialogTitle className="text-lg font-black uppercase text-white">
-                                    Unificar Orçamentos em 1 Projeto
+                                    Juntar Orçamentos em 1 Pasta
                                 </DialogTitle>
                                 <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                                    {budgetsToMerge.length} ambientes selecionados para mesclar
+                                    {budgetsToMerge.length} ambientes selecionados • Ficarão agrupados dentro da pasta
                                 </p>
                             </div>
                         </div>
@@ -2865,7 +3631,7 @@ const Orcamento = () => {
                         {/* Relação dos Ambientes que serão mesclados */}
                         <div className="bg-white/5 rounded-2xl p-4 border border-white/10 space-y-2">
                             <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
-                                Ambientes que farão parte do orçamento unificado:
+                                Orçamentos separados que ficarão dentro desta pasta:
                             </span>
                             <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
                                 {budgetsToMerge.map((b, idx) => (
@@ -2883,18 +3649,8 @@ const Orcamento = () => {
                             </div>
                         </div>
 
-                        {/* Opção de excluir os originais */}
-                        <div className="flex items-center gap-2 pt-1">
-                            <input
-                                type="checkbox"
-                                id="deleteOriginals"
-                                checked={deleteOriginalsAfterMerge}
-                                onChange={(e) => setDeleteOriginalsAfterMerge(e.target.checked)}
-                                className="rounded border-slate-700 bg-white/5 text-amber-500 focus:ring-amber-500 h-4 w-4"
-                            />
-                            <Label htmlFor="deleteOriginals" className="text-xs text-slate-300 font-medium cursor-pointer">
-                                Excluir os orçamentos individuais anteriores após unificar
-                            </Label>
+                        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 font-medium leading-relaxed">
+                            Na lista principal ficará <strong>apenas 1 pasta</strong>. Ao clicar nela, você verá os <strong>{budgetsToMerge.length} orçamentos separados</strong> e a <strong>lista somada dos materiais para comprar</strong>.
                         </div>
                     </div>
 
@@ -2913,7 +3669,7 @@ const Orcamento = () => {
                             onClick={handleConfirmMerge}
                             className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black uppercase text-xs tracking-wider rounded-xl shadow-lg shadow-amber-500/20"
                         >
-                            {isMerging ? "Unificando..." : "Confirmar e Unificar"}
+                            {isMerging ? "Criando Pasta..." : "Confirmar e Criar Pasta"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
