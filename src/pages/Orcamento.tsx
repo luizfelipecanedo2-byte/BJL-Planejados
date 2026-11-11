@@ -523,9 +523,15 @@ const Orcamento = () => {
                 const childBudgets = childrenByParentId.get(b.id) || [];
                 const isFolder = childBudgets.length > 0 || isUnifiedCandidate(b);
 
-                // Consolidar os materiais que precisam ser comprados (somando dos orçamentos individuais da pasta)
-                const hasChildItems = childBudgets.some(c => (c.budget_items || c.items || []).length > 0);
-                const sourceBudgets = (childBudgets.length > 0 && hasChildItems) ? childBudgets : [b];
+                const approvedChildBudgets = childBudgets.filter((c: any) => c.status === 'aprovado');
+                const isPartiallyApproved = approvedChildBudgets.length > 0 && approvedChildBudgets.length < childBudgets.length;
+                const isAllChildrenApproved = childBudgets.length > 0 && approvedChildBudgets.length === childBudgets.length;
+                const approvedChildrenValue = approvedChildBudgets.reduce((acc: number, c: any) => acc + (Number(c.total_value) || 0), 0);
+
+                // Se o cliente fechou apenas 1 (ou alguns) dos orçamentos da pasta, os materiais para comprar são APENAS os dos ambientes fechados!
+                const activeChildrenForMaterials = approvedChildBudgets.length > 0 ? approvedChildBudgets : childBudgets;
+                const hasChildItems = activeChildrenForMaterials.some(c => (c.budget_items || c.items || []).length > 0);
+                const sourceBudgets = (activeChildrenForMaterials.length > 0 && hasChildItems) ? activeChildrenForMaterials : [b];
 
                 const groupedMaterials = new Map<string, any>();
                 sourceBudgets.forEach(src => {
@@ -582,6 +588,10 @@ const Orcamento = () => {
                     ...b,
                     isFolder,
                     childBudgets,
+                    approvedChildBudgets,
+                    isPartiallyApproved,
+                    isAllChildrenApproved,
+                    approvedChildrenValue,
                     childrenSumValue,
                     consolidatedBudgetItems: allConsolidated,
                     materialsToBuy,
@@ -603,11 +613,11 @@ const Orcamento = () => {
             if (query && !matchesParent && !matchesChild) return false;
 
             if (followUpFilter === 'all') return true;
-            if (followUpFilter === 'aprovado') return b.status === 'aprovado';
-            if (followUpFilter === 'pending') return b.status !== 'aprovado' && b.status !== 'rejeitado';
+            if (followUpFilter === 'aprovado') return b.status === 'aprovado' || b.isPartiallyApproved || b.isAllChildrenApproved;
+            if (followUpFilter === 'pending') return b.status !== 'aprovado' && !b.isAllChildrenApproved && b.status !== 'rejeitado';
             if (followUpFilter === 'followup_due') {
                 const days = getBudgetDaysSinceCreation(b);
-                return b.status !== 'aprovado' && b.status !== 'rejeitado' && days >= 3;
+                return b.status !== 'aprovado' && !b.isAllChildrenApproved && !b.isPartiallyApproved && b.status !== 'rejeitado' && days >= 3;
             }
             return true;
         });
@@ -1005,8 +1015,23 @@ const Orcamento = () => {
     };
 
     const getStatusBadge = (status: string, budget?: any) => {
+        if (budget?.isPartiallyApproved) {
+            const closedNames = (budget.approvedChildBudgets || []).map((c: any) => c.project_name).join(" + ");
+            return (
+                <div className="flex flex-col sm:items-end items-start gap-1">
+                    <Badge variant="secondary" className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 font-black uppercase text-[9px] tracking-wider px-2.5 py-0.5">
+                        ✓ Fechado ({budget.approvedChildBudgets.length}/{budget.childBudgets.length}): {closedNames}
+                    </Badge>
+                    <span className="text-[8px] font-bold uppercase text-amber-400/80">
+                        Restante em aberto na pasta
+                    </span>
+                </div>
+            );
+        }
+
+        const effectiveStatus = budget?.isAllChildrenApproved ? 'aprovado' : status;
         const days = budget ? getBudgetDaysSinceCreation(budget) : 0;
-        const isStalled = status !== 'aprovado' && status !== 'rejeitado';
+        const isStalled = effectiveStatus !== 'aprovado' && effectiveStatus !== 'rejeitado';
 
         let followUpBadge = null;
         if (isStalled && days >= 6) {
@@ -1026,7 +1051,7 @@ const Orcamento = () => {
         }
 
         let mainBadge = null;
-        switch (status) {
+        switch (effectiveStatus) {
             case "em_elaboracao":
                 mainBadge = <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-200 font-bold uppercase text-[9px] tracking-widest px-2 py-0.5">Em Elaboração</Badge>;
                 break;
@@ -1040,7 +1065,7 @@ const Orcamento = () => {
                 mainBadge = <Badge variant="secondary" className="bg-rose-500/10 text-rose-600 border-rose-200 font-bold uppercase text-[9px] tracking-widest px-2 py-0.5">Rejeitado</Badge>;
                 break;
             default:
-                mainBadge = <Badge className="uppercase text-[9px] tracking-widest">{status}</Badge>;
+                mainBadge = <Badge className="uppercase text-[9px] tracking-widest">{effectiveStatus}</Badge>;
         }
 
         return (
@@ -1415,6 +1440,48 @@ const Orcamento = () => {
         setRawPrices({});
         setSelectedMaterialIds([]);
         setIsDialogOpen(false);
+    };
+
+    const handleApproveSingleChildInFolder = async (child: any, parentFolder?: any) => {
+        const ok = await convertToWeeklyOrders(child);
+        if (ok) {
+            if (parentFolder && parentFolder.childBudgets?.length > 0) {
+                const otherUnapproved = parentFolder.childBudgets.filter(
+                    (c: any) => c.id !== child.id && c.status !== 'aprovado'
+                );
+                if (otherUnapproved.length === 0) {
+                    await supabase.from('budgets').update({ status: 'aprovado' }).eq('id', parentFolder.id);
+                }
+            }
+            refreshBudgets();
+            const pseudoSale: Sale = {
+                id: child.id,
+                clientName: child.client_name,
+                clientPhone: "",
+                clientEmail: "",
+                product: child.project_name || "Móveis Planejados",
+                quantity: 1,
+                unitPrice: child.total_value,
+                totalValue: child.total_value,
+                status: "fechado",
+                contactDate: new Date().toISOString().split('T')[0],
+                expectedCloseDate: new Date().toISOString().split('T')[0],
+                notes: child.notes || "",
+                createdAt: child.created_at,
+                budget_id: child.id
+            };
+            setClosedWorkflowSale(pseudoSale);
+            setIsClosedWorkflowOpen(true);
+            toast.success(`Ambiente "${child.project_name}" fechado! A lista de materiais da pasta agora exibe apenas o que precisa comprar para ele.`);
+        }
+    };
+
+    const handleCancelSingleChildInFolder = async (child: any, parentFolder?: any) => {
+        await cancelBudgetApproval(child);
+        if (parentFolder && parentFolder.status === 'aprovado') {
+            await supabase.from('budgets').update({ status: 'em_elaboracao' }).eq('id', parentFolder.id);
+        }
+        refreshBudgets();
     };
 
     const handleApproveBudgetWithWorkflow = async (orc: any) => {
@@ -2810,7 +2877,11 @@ const Orcamento = () => {
                                                         <td className="px-8 py-6 text-right">
                                                             <div className="flex flex-col items-end">
                                                                 <span className="font-black text-sm text-foreground tabular-nums group-hover:text-primary transition-colors">{formatCurrency(orc.total_value)}</span>
-                                                                {hasChildBudgets && Math.abs(orc.childrenSumValue - orc.total_value) >= 1 ? (
+                                                                {orc.isPartiallyApproved ? (
+                                                                    <span className="text-[10px] font-black text-emerald-400 uppercase">
+                                                                        ✓ Fechado: {formatCurrency(orc.approvedChildrenValue)}
+                                                                    </span>
+                                                                ) : hasChildBudgets && Math.abs(orc.childrenSumValue - orc.total_value) >= 1 ? (
                                                                     <span className="text-[9px] font-black text-amber-400/80 uppercase">
                                                                         Soma Ambientes: {formatCurrency(orc.childrenSumValue)}
                                                                     </span>
@@ -2856,11 +2927,19 @@ const Orcamento = () => {
                                                                          size="icon" 
                                                                          className="h-10 w-10 rounded-xl hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-600 transition-all active:scale-95 border border-emerald-500/10"
                                                                          onClick={() => {
-                                                                             if (confirm(`Aprovar projeto e oficializar cliente para "${orc.client_name}"?`)) {
+                                                                             if (orc.isFolder && orc.childBudgets?.length > 1) {
+                                                                                 const envNames = orc.childBudgets.map((c: any) => c.project_name).join(' + ');
+                                                                                 if (confirm(`Esta pasta possui ${orc.childBudgets.length} ambientes (${envNames}).\n\nClique em OK para FECHAR TODOS OS AMBIENTES juntos.\n\nOu clique em CANCELAR se o cliente fechou APENAS 1 AMBIENTE (a pasta será aberta para você clicar em "✓ Fechar" só no ambiente escolhido).`)) {
+                                                                                     handleApproveBudgetWithWorkflow(orc);
+                                                                                 } else {
+                                                                                     if (!isFolderOpen) toggleBudgetFolder(orc.id);
+                                                                                     toast.info('Pasta aberta! Clique no botão verde "✓ Fechar" ao lado do ambiente que o cliente fechou.');
+                                                                                 }
+                                                                             } else if (confirm(`Aprovar projeto e oficializar cliente para "${orc.client_name}"?`)) {
                                                                                  handleApproveBudgetWithWorkflow(orc);
                                                                              }
                                                                          }}
-                                                                         title="Aprovar e Pedir Materiais"
+                                                                         title={orc.isFolder && orc.childBudgets?.length > 1 ? "Fechar Todos ou Escolher Ambiente na Pasta" : "Aprovar e Pedir Materiais"}
                                                                      >
                                                                          <CheckCircle2 size={18} />
                                                                      </Button>
@@ -3008,53 +3087,98 @@ const Orcamento = () => {
                                                                                     </div>
 
                                                                                     <div className="space-y-2">
-                                                                                        {orc.childBudgets.map((child: any) => (
-                                                                                            <div
-                                                                                                key={child.id}
-                                                                                                className="p-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 flex items-center justify-between gap-3 transition-colors"
-                                                                                            >
-                                                                                                <div className="min-w-0">
-                                                                                                    <div className="flex items-center gap-2">
-                                                                                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 uppercase">
-                                                                                                            #{getBudgetNumber(child)}
-                                                                                                        </span>
-                                                                                                        <span className="font-black text-xs uppercase text-white truncate">
-                                                                                                            {child.project_name}
+                                                                                        {orc.childBudgets.map((child: any) => {
+                                                                                            const isChildApproved = child.status === 'aprovado';
+                                                                                            return (
+                                                                                                <div
+                                                                                                    key={child.id}
+                                                                                                    className={cn(
+                                                                                                        "p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors",
+                                                                                                        isChildApproved
+                                                                                                            ? "bg-emerald-500/10 border-emerald-500/40"
+                                                                                                            : "bg-white/[0.04] hover:bg-white/[0.07] border-white/10"
+                                                                                                    )}
+                                                                                                >
+                                                                                                    <div className="min-w-0">
+                                                                                                        <div className="flex flex-wrap items-center gap-2">
+                                                                                                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 uppercase">
+                                                                                                                #{getBudgetNumber(child)}
+                                                                                                            </span>
+                                                                                                            <span className="font-black text-xs uppercase text-white truncate">
+                                                                                                                {child.project_name}
+                                                                                                            </span>
+                                                                                                            {isChildApproved && (
+                                                                                                                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 uppercase tracking-wider">
+                                                                                                                    ✓ Fechado
+                                                                                                                </span>
+                                                                                                            )}
+                                                                                                        </div>
+                                                                                                        <span className="text-[10px] text-slate-400 font-semibold block mt-1">
+                                                                                                            {(child.budget_items || []).filter((i: any) => i.budget_materials?.category !== 'SERVICOS').length} itens de material • {child.days_estimated || 1} dia(s) prod.
                                                                                                         </span>
                                                                                                     </div>
-                                                                                                    <span className="text-[10px] text-slate-400 font-semibold block mt-1">
-                                                                                                        {(child.budget_items || []).filter((i: any) => i.budget_materials?.category !== 'SERVICOS').length} itens de material • {child.days_estimated || 1} dia(s) prod.
-                                                                                                    </span>
-                                                                                                </div>
 
-                                                                                                <div className="flex items-center gap-2 shrink-0">
-                                                                                                    <span className="font-black text-sm text-amber-400 tabular-nums mr-1">
-                                                                                                        {formatCurrency(child.total_value)}
-                                                                                                    </span>
-                                                                                                    <Button
-                                                                                                        variant="ghost"
-                                                                                                        size="icon"
-                                                                                                        className="h-8 w-8 rounded-lg bg-white/5 hover:bg-primary/20 text-slate-300 hover:text-primary"
-                                                                                                        onClick={() => handleEditBudget(child)}
-                                                                                                        title="Editar este orçamento separado"
-                                                                                                    >
-                                                                                                        <Pencil size={13} />
-                                                                                                    </Button>
-                                                                                                    <Button
-                                                                                                        variant="ghost"
-                                                                                                        size="icon"
-                                                                                                        className="h-8 w-8 rounded-lg bg-white/5 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-400"
-                                                                                                        onClick={() => {
-                                                                                                            setPrintingBudget(child);
-                                                                                                            setPrintingTab('commercial');
-                                                                                                        }}
-                                                                                                        title="Ver PDF apenas deste ambiente"
-                                                                                                    >
-                                                                                                        <FileText size={13} />
-                                                                                                    </Button>
+                                                                                                    <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                                                                                                        <span className={cn("font-black text-sm tabular-nums mr-1", isChildApproved ? "text-emerald-400" : "text-amber-400")}>
+                                                                                                            {formatCurrency(child.total_value)}
+                                                                                                        </span>
+
+                                                                                                        {/* Botão para Fechar APENAS este ambiente (ex: Quarto da Filha) */}
+                                                                                                        {!isChildApproved ? (
+                                                                                                            <Button
+                                                                                                                size="sm"
+                                                                                                                className="h-8 px-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1"
+                                                                                                                onClick={() => {
+                                                                                                                    if (confirm(`Fechar apenas o ambiente "${child.project_name}" de ${orc.client_name} (${formatCurrency(child.total_value)})?\n\nA lista de materiais para compra mostrará automaticamente apenas os itens deste ambiente fechado.`)) {
+                                                                                                                        handleApproveSingleChildInFolder(child, orc);
+                                                                                                                    }
+                                                                                                                }}
+                                                                                                                title="Fechar apenas este ambiente"
+                                                                                                            >
+                                                                                                                <CheckCircle2 size={13} />
+                                                                                                                <span>Fechar</span>
+                                                                                                            </Button>
+                                                                                                        ) : (
+                                                                                                            <Button
+                                                                                                                variant="ghost"
+                                                                                                                size="icon"
+                                                                                                                className="h-8 w-8 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30"
+                                                                                                                onClick={() => {
+                                                                                                                    if (confirm(`Desfazer o fechamento do ambiente "${child.project_name}"?`)) {
+                                                                                                                        handleCancelSingleChildInFolder(child, orc);
+                                                                                                                    }
+                                                                                                                }}
+                                                                                                                title="Desfazer fechamento deste ambiente"
+                                                                                                            >
+                                                                                                                <RotateCcw size={13} />
+                                                                                                            </Button>
+                                                                                                        )}
+
+                                                                                                        <Button
+                                                                                                            variant="ghost"
+                                                                                                            size="icon"
+                                                                                                            className="h-8 w-8 rounded-lg bg-white/5 hover:bg-primary/20 text-slate-300 hover:text-primary"
+                                                                                                            onClick={() => handleEditBudget(child)}
+                                                                                                            title="Editar este orçamento separado"
+                                                                                                        >
+                                                                                                            <Pencil size={13} />
+                                                                                                        </Button>
+                                                                                                        <Button
+                                                                                                            variant="ghost"
+                                                                                                            size="icon"
+                                                                                                            className="h-8 w-8 rounded-lg bg-white/5 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-400"
+                                                                                                            onClick={() => {
+                                                                                                                setPrintingBudget(child);
+                                                                                                                setPrintingTab('commercial');
+                                                                                                            }}
+                                                                                                            title="Ver PDF apenas deste ambiente"
+                                                                                                        >
+                                                                                                            <FileText size={13} />
+                                                                                                        </Button>
+                                                                                                    </div>
                                                                                                 </div>
-                                                                                            </div>
-                                                                                        ))}
+                                                                                            );
+                                                                                        })}
                                                                                     </div>
                                                                                 </div>
 
@@ -3066,8 +3190,14 @@ const Orcamento = () => {
                                                                                     </div>
                                                                                     <div className="flex justify-between items-center text-white font-black">
                                                                                         <span>Valor Juntos (Proposta Cliente):</span>
-                                                                                        <span className="text-emerald-400 text-sm tabular-nums">{formatCurrency(orc.total_value)}</span>
+                                                                                        <span className="text-amber-400 text-sm tabular-nums">{formatCurrency(orc.total_value)}</span>
                                                                                     </div>
+                                                                                    {orc.approvedChildBudgets && orc.approvedChildBudgets.length > 0 && (
+                                                                                        <div className="flex justify-between items-center text-emerald-400 font-black pt-1 border-t border-emerald-500/20">
+                                                                                            <span>✓ Fechado ({orc.approvedChildBudgets.map((c: any) => c.project_name).join(' + ')}):</span>
+                                                                                            <span className="text-sm tabular-nums">{formatCurrency(orc.approvedChildrenValue)}</span>
+                                                                                        </div>
+                                                                                    )}
                                                                                 </div>
                                                                             </div>
                                                                         )}
@@ -3075,11 +3205,16 @@ const Orcamento = () => {
                                                                         {/* BLOCO 2: MATERIAIS QUE TENHO QUE COMPRAR */}
                                                                         <div className={cn("bg-black/50 border border-white/10 rounded-2xl p-4 space-y-3", hasChildBudgets ? "lg:col-span-7" : "col-span-1")}>
                                                                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                                                                <div className="flex items-center gap-2">
+                                                                                <div className="flex flex-wrap items-center gap-2">
                                                                                     <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                                                                                         <Package size={14} />
                                                                                         Materiais que Tenho que Comprar ({(orc.materialsToBuy || []).length})
                                                                                     </span>
+                                                                                    {orc.isPartiallyApproved && (
+                                                                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                                                                            Apenas fechado: {orc.approvedChildBudgets.map((c: any) => c.project_name).join(' + ')}
+                                                                                        </span>
+                                                                                    )}
                                                                                 </div>
                                                                                 <div className="flex items-center gap-3">
                                                                                     <span className="text-[10px] font-black uppercase text-slate-400">
@@ -3319,22 +3454,60 @@ const Orcamento = () => {
                                                             <span className="text-[10px] font-black uppercase text-amber-400 block">
                                                                 Orçamentos Separados ({orc.childBudgets.length})
                                                             </span>
-                                                            {orc.childBudgets.map((child: any) => (
-                                                                <div key={child.id} className="flex items-center justify-between text-xs py-2 border-b border-white/5 last:border-0">
-                                                                    <div>
-                                                                        <span className="font-black text-white uppercase block">{child.project_name}</span>
-                                                                        <span className="text-[10px] text-amber-400 font-bold">{formatCurrency(child.total_value)}</span>
+                                                            {orc.childBudgets.map((child: any) => {
+                                                                const isChildApproved = child.status === 'aprovado';
+                                                                return (
+                                                                    <div key={child.id} className="flex items-center justify-between text-xs py-2 border-b border-white/5 last:border-0">
+                                                                        <div>
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                <span className="font-black text-white uppercase">{child.project_name}</span>
+                                                                                {isChildApproved && (
+                                                                                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 uppercase">
+                                                                                        ✓ Fechado
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <span className={cn("text-[10px] font-bold", isChildApproved ? "text-emerald-400" : "text-amber-400")}>
+                                                                                {formatCurrency(child.total_value)}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1">
+                                                                            {!isChildApproved ? (
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    className="h-7 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-[9px] uppercase"
+                                                                                    onClick={() => {
+                                                                                        if (confirm(`Fechar apenas o ambiente "${child.project_name}" de ${orc.client_name} (${formatCurrency(child.total_value)})?`)) {
+                                                                                            handleApproveSingleChildInFolder(child, orc);
+                                                                                        }
+                                                                                    }}
+                                                                                >
+                                                                                    ✓ Fechar
+                                                                                </Button>
+                                                                            ) : (
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    className="h-7 w-7 text-rose-400"
+                                                                                    onClick={() => {
+                                                                                        if (confirm(`Desfazer fechamento de "${child.project_name}"?`)) {
+                                                                                            handleCancelSingleChildInFolder(child, orc);
+                                                                                        }
+                                                                                    }}
+                                                                                >
+                                                                                    <RotateCcw size={12} />
+                                                                                </Button>
+                                                                            )}
+                                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300" onClick={() => handleEditBudget(child)}>
+                                                                                <Pencil size={13} />
+                                                                            </Button>
+                                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-400" onClick={() => { setPrintingBudget(child); setPrintingTab('commercial'); }}>
+                                                                                <FileText size={13} />
+                                                                            </Button>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="flex gap-1">
-                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300" onClick={() => handleEditBudget(child)}>
-                                                                            <Pencil size={13} />
-                                                                        </Button>
-                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-400" onClick={() => { setPrintingBudget(child); setPrintingTab('commercial'); }}>
-                                                                            <FileText size={13} />
-                                                                        </Button>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
+                                                                );
+                                                            })}
                                                         </div>
                                                     )}
 

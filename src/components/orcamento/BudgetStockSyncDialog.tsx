@@ -66,8 +66,10 @@ export const BudgetStockSyncDialog: React.FC<BudgetStockSyncDialogProps> = ({
   const loadComparison = async () => {
     setLoading(true);
     try {
-      // 1. Buscar itens do orçamento (ou dos orçamentos da pasta unificada)
-      const childIds = (budget.childBudgets || []).map((c) => c.id).filter(Boolean);
+      // 1. Buscar itens do orçamento (se parte da pasta foi fechada, puxa apenas dos ambientes fechados)
+      const approvedChildren = (budget.childBudgets || []).filter((c: any) => c.status === "aprovado");
+      const activeChildren = approvedChildren.length > 0 ? approvedChildren : (budget.childBudgets || []);
+      const childIds = activeChildren.map((c) => c.id).filter(Boolean);
       const targetIds = childIds.length > 0 ? childIds : [budget.id];
 
       let { data: budgetItems, error: biError } = await supabase
