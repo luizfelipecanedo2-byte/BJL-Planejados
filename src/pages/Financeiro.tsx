@@ -33,7 +33,6 @@ import AssetsTab from "@/components/financeiro/AssetsTab";
 import ServiceExpensesTab from "@/components/financeiro/ServiceExpensesTab";
 import NotaFiscalTab from "@/components/financeiro/NotaFiscalTab";
 import PartialPaymentDialog from "@/components/financeiro/PartialPaymentDialog";
-import ProfitabilityTab from "@/components/financeiro/ProfitabilityTab";
 
 // Cache em memória de alta velocidade (Stale-While-Revalidate) para abertura instantânea (0ms) ao voltar para a tela
 const financeMemoryCache: {
@@ -518,6 +517,7 @@ const Financeiro = () => {
         if (!os.ticketNumber || os.ticketNumber === "S/N") return false;
         const ticketClean = norm(os.ticketNumber);
         return (t.orderService && norm(t.orderService).includes(ticketClean)) ||
+               (t.service && norm(t.service).includes(ticketClean)) ||
                (t.description && norm(t.description).includes(ticketClean)) ||
                (t.contact && norm(t.contact) === norm(os.client) && t.category === "Despesa com Serviço");
       });
@@ -561,7 +561,17 @@ const Financeiro = () => {
       });
     });
 
-    return mappedProjects;
+    return mappedProjects.sort((a, b) => {
+      const getOSNum = (name?: string) => {
+        if (!name) return -1;
+        const m = name.match(/\bOS[-\s#]*(\d+)/i);
+        return m ? parseInt(m[1], 10) : -1;
+      };
+      const numA = getOSNum(a.clientName);
+      const numB = getOSNum(b.clientName);
+      if (numB !== numA) return numB - numA;
+      return (b.clientName || "").localeCompare(a.clientName || "", undefined, { numeric: true });
+    });
   }, [serviceOrders, serviceExpenses, transactionAllocations, transactions]);
 
   const [isPartialPaymentOpen, setIsPartialPaymentOpen] = useState(false);
@@ -2016,10 +2026,6 @@ const Financeiro = () => {
               <Receipt className="mr-2 h-3.5 w-3.5" />
               <span className="font-black text-[10px] uppercase tracking-widest">Notas</span>
             </TabsTrigger>
-            <TabsTrigger value="profitability" className="rounded-xl px-4 sm:px-5 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all duration-200">
-              <DollarSign className="mr-2 h-3.5 w-3.5" />
-              <span className="font-black text-[10px] uppercase tracking-widest">Rentabilidade</span>
-            </TabsTrigger>
             <TabsTrigger value="patrimonio" className="rounded-xl px-4 sm:px-5 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all duration-200">
               <Package className="mr-2 h-3.5 w-3.5" />
               <span className="font-black text-[10px] uppercase tracking-widest">Ativos</span>
@@ -2328,7 +2334,6 @@ const Financeiro = () => {
           )}
         </TabsContent>
         <TabsContent value="notas_fiscais">{activeTab === "notas_fiscais" && <NotaFiscalTab />}</TabsContent>
-        <TabsContent value="profitability">{activeTab === "profitability" && <ProfitabilityTab />}</TabsContent>
         <TabsContent value="patrimonio">{activeTab === "patrimonio" && <AssetsTab assets={assets} handleNewAsset={handleNewAsset} formatCurrency={formatCurrency} />}</TabsContent>
       </Tabs>
 
