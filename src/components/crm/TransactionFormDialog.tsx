@@ -159,7 +159,17 @@ const TransactionFormDialog = ({
                         status: o.status,
                         forecastDate: new Date(o.forecast_date + 'T12:00:00'),
                         completionDate: o.completion_date ? new Date(o.completion_date + 'T12:00:00') : undefined
-                    }));
+                    })).sort((a: ServiceOrder, b: ServiceOrder) => {
+                        const getNum = (t?: string) => {
+                            if (!t) return -1;
+                            const m = t.match(/OS[-\s#]*(\d+)/i) || t.match(/(\d+)/);
+                            return m ? parseInt(m[1], 10) : -1;
+                        };
+                        const numA = getNum(a.ticketNumber);
+                        const numB = getNum(b.ticketNumber);
+                        if (numB !== numA) return numB - numA;
+                        return (b.ticketNumber || "").localeCompare(a.ticketNumber || "", undefined, { numeric: true });
+                    });
                     setServiceOrders(mappedOrders);
                 }
             } catch (error) {
@@ -278,14 +288,32 @@ const TransactionFormDialog = ({
                 }
             }
 
-            // Regra: Se selecionar uma OS no campo serviço, preencher cliente automaticamente
+            // Regra: Se selecionar uma OS no campo serviço, preencher cliente e número da OS automaticamente
             if (field === 'service') {
-                const selectedOS = serviceOrders.find(os => `${os.ticketNumber} - ${os.action} ` === value);
+                const trimmedVal = value.trim();
+                const selectedOS = serviceOrders.find(os => {
+                    const tNum = (os.ticketNumber || "").trim();
+                    const opt1 = `${tNum} - ${os.action || ""}`.trim();
+                    const opt2 = `${tNum} - ${(os.client || "").trim()}${os.action ? ` (${os.action.trim()})` : ""}`.trim();
+                    return (
+                        opt1.toLowerCase() === trimmedVal.toLowerCase() ||
+                        opt2.toLowerCase() === trimmedVal.toLowerCase() ||
+                        tNum.toLowerCase() === trimmedVal.toLowerCase() ||
+                        (tNum && trimmedVal.toLowerCase().startsWith(tNum.toLowerCase() + " "))
+                    );
+                });
                 if (selectedOS) {
                     if (!prev.contact) {
                         newState.contact = selectedOS.client;
                     }
                     newState.orderService = selectedOS.ticketNumber;
+                } else {
+                    const osMatch = trimmedVal.match(/\b(OS[-\s]*\d+)/i);
+                    if (osMatch) {
+                        newState.orderService = osMatch[1].toUpperCase().replace(/\s+/, '-');
+                    } else if (!trimmedVal) {
+                        newState.orderService = "";
+                    }
                 }
             }
             return newState;
@@ -520,7 +548,7 @@ const TransactionFormDialog = ({
                             />
                             <datalist id="os-suggestions">
                                 {serviceOrders.map((os) => (
-                                    <option key={os.id} value={`${os.ticketNumber} - ${os.action} `}>
+                                    <option key={os.id} value={`${os.ticketNumber} - ${os.client}${os.action ? ` (${os.action})` : ""}`}>
                                         {os.client} - {os.status}
                                     </option>
                                 ))}

@@ -275,7 +275,17 @@ const Financeiro = () => {
         amount: Number(o.amount) || 0,
         forecastDate: new Date(o.forecast_date + 'T12:00:00'),
         completionDate: o.completion_date ? new Date(o.completion_date + 'T12:00:00') : undefined
-      }));
+      })).sort((a, b) => {
+        const getNum = (t?: string) => {
+          if (!t) return -1;
+          const m = t.match(/OS[-\s#]*(\d+)/i) || t.match(/(\d+)/);
+          return m ? parseInt(m[1], 10) : -1;
+        };
+        const numA = getNum(a.ticketNumber);
+        const numB = getNum(b.ticketNumber);
+        if (numB !== numA) return numB - numA;
+        return (b.ticketNumber || "").localeCompare(a.ticketNumber || "", undefined, { numeric: true });
+      });
 
       setServiceOrders(mappedOrders);
     } catch (error) {
@@ -337,8 +347,15 @@ const Financeiro = () => {
       const osFullString = norm(`${os.ticketNumber} - ${os.client}${os.action ? ` (${os.action})` : ''}`);
 
       const osAllocations = transactionAllocations.filter(a => {
-        if (!a.client_name) return false;
+        if (!a.client_name || (a.id && claimedAllocationIds.has(a.id))) return false;
         const aName = norm(a.client_name);
+
+        // Se o rateio especifica um número de OS (ex: OS-028), vincula apenas à OS correspondente
+        const osMatchesInAlloc = Array.from(aName.matchAll(/\bos[-\s#]*(\d+(?:-\d+)?)\b/gi)).map(m => m[1].replace(/^0+(?=\d)/, ""));
+        const osTargetToken = Array.from(ticketClean.matchAll(/\bos[-\s#]*(\d+(?:-\d+)?)\b/gi)).map(m => m[1].replace(/^0+(?=\d)/, ""))[0] || (ticketClean.match(/\d+/)?.[0]?.replace(/^0+(?=\d)/, "") || "");
+        if (osMatchesInAlloc.length > 0 && osTargetToken) {
+          return osMatchesInAlloc.includes(osTargetToken);
+        }
 
         // 1. Igualdade exata da string completa ou nome do cliente
         if (aName === osFullString || aName === clientClean) return true;
@@ -381,10 +398,15 @@ const Financeiro = () => {
         if (!ticketClean || ticketClean === 's/n') return false;
 
         const matchesOrderService = t.orderService && norm(t.orderService).includes(ticketClean);
+        const matchesService = t.service && norm(t.service).includes(ticketClean);
         const matchesDesc = t.description && norm(t.description).includes(ticketClean);
-        const matchesContact = t.contact && clientClean && norm(t.contact) === clientClean;
+        const hasOtherExplicitOS =
+          (t.orderService && /\bos[-\s#]*\d+/i.test(t.orderService)) ||
+          (t.service && /\bos[-\s#]*\d+/i.test(t.service)) ||
+          (t.description && /\bos[-\s#]*\d+/i.test(t.description));
+        const matchesContact = !hasOtherExplicitOS && t.contact && clientClean && norm(t.contact) === clientClean;
 
-        return matchesOrderService || matchesDesc || (matchesContact && t.category === "Despesa com Serviço");
+        return matchesOrderService || matchesService || matchesDesc || (matchesContact && t.category === "Despesa com Serviço");
       });
 
       const directTxCost = directTransactions.reduce((acc, t) => acc + Number(t.amount), 0);

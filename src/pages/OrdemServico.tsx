@@ -209,7 +209,7 @@ const OrdemServico = () => {
                 while (hasMore) {
                     const { data: batch, error: batchError } = await supabase
                         .from('transactions')
-                        .select('id, description, amount, type, order_service, contact, category, competence_date, invoice_number')
+                        .select('id, description, amount, type, order_service, service, contact, category, competence_date, invoice_number')
                         .range(from, from + pageSize - 1);
                     if (batchError) break;
                     if (batch && batch.length > 0) {
@@ -243,6 +243,11 @@ const OrdemServico = () => {
                     const matchedAllocations = allocations.filter(a => {
                         if (!a.client_name) return false;
                         const aName = norm(a.client_name);
+                        const osMatchesInAlloc = Array.from(aName.matchAll(/\bos[-\s#]*(\d+(?:-\d+)?)\b/gi)).map(m => m[1].replace(/^0+(?=\d)/, ""));
+                        const osTargetToken = Array.from(ticketClean.matchAll(/\bos[-\s#]*(\d+(?:-\d+)?)\b/gi)).map(m => m[1].replace(/^0+(?=\d)/, ""))[0] || (ticketClean.match(/\d+/)?.[0]?.replace(/^0+(?=\d)/, "") || "");
+                        if (osMatchesInAlloc.length > 0 && osTargetToken) {
+                            return osMatchesInAlloc.includes(osTargetToken);
+                        }
                         if (aName === osFullString || aName === clientClean) return true;
                         if (ticketClean && ticketClean !== 's/n' && aName.includes(ticketClean)) return true;
                         if (clientClean && aName.includes(clientClean) && actionClean && aName.includes(actionClean)) return true;
@@ -255,9 +260,14 @@ const OrdemServico = () => {
                         if (allocatedTxIds.has(t.id)) return false;
                         if (!ticketClean || ticketClean === 's/n') return false;
                         const matchesOS = t.order_service && norm(t.order_service).includes(ticketClean);
+                        const matchesService = t.service && norm(t.service).includes(ticketClean);
                         const matchesDesc = t.description && norm(t.description).includes(ticketClean);
-                        const matchesContact = t.contact && clientClean && norm(t.contact) === clientClean;
-                        return matchesOS || matchesDesc || (matchesContact && t.category === "Despesa com Serviço");
+                        const hasOtherExplicitOS =
+                            (t.order_service && /\bos[-\s#]*\d+/i.test(t.order_service)) ||
+                            (t.service && /\bos[-\s#]*\d+/i.test(t.service)) ||
+                            (t.description && /\bos[-\s#]*\d+/i.test(t.description));
+                        const matchesContact = !hasOtherExplicitOS && t.contact && clientClean && norm(t.contact) === clientClean;
+                        return matchesOS || matchesService || matchesDesc || (matchesContact && t.category === "Despesa com Serviço");
                     });
 
                     const directCost = matchedDirectTx.reduce((sum, t) => sum + Number(t.amount || 0), 0);
