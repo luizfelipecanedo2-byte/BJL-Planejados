@@ -27,6 +27,8 @@ import { WhatsAppQuickDialog } from "@/components/crm/WhatsAppQuickDialog";
 import { MessageSquare, Clock, PhoneCall } from "lucide-react";
 import { differenceInDays } from "date-fns";
 import { Sale } from "@/types/sale";
+import { ModuleHeader } from "@/components/ui/ModuleHeader";
+import { AnimatedBlueprintBoard } from "@/components/ui/SectorArt";
 
 const analysisSteps = [
     "Analisando o desenho do projeto...",
@@ -1672,64 +1674,72 @@ const Orcamento = () => {
     };
 
     return (
-        <div className="flex flex-col gap-10 min-h-screen animate-in fade-in duration-1000 pb-20">
-            <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-2">
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-3 mb-1">
-                         <div className="h-8 w-1 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
-                         <h1 className="text-4xl font-['Cinzel'] font-bold text-luxury tracking-wider shimmer-gold uppercase">Orçamentos</h1>
+        <div className="flex flex-col gap-8 min-h-screen animate-in fade-in duration-1000 pb-20">
+            <ModuleHeader
+                badge="ORC.ENGINE // PROJETOS & VALOR"
+                statusLabel={`${budgets.length} Orçamentos Registrados`}
+                title="Orçamentos &"
+                highlight="Engenharia"
+                subtitle="Levantamento de chapas e ferragens, propostas em pastas unificadas por cliente e precificação sob medida."
+                art={<AnimatedBlueprintBoard size="md" className="w-20 h-16" />}
+                actions={
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                window.dispatchEvent(
+                                    new CustomEvent("open-bjl-partner-ai", {
+                                        detail: {
+                                            prompt: "Sócio, analise nossos últimos orçamentos: quais estão pendentes para fecharmos, qual o valor na mesa e como estão nossas margens de lucro?",
+                                        },
+                                    })
+                                );
+                            }}
+                            className="h-11 px-5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition-all group shadow-[0_0_20px_rgba(245,158,11,0.15)]"
+                        >
+                            <Sparkles className="mr-2 h-4 w-4 text-amber-400 group-hover:text-black transition-colors" />
+                            <span className="font-black text-[11px] uppercase tracking-widest">
+                                Sócio IA • Orçamentos
+                            </span>
+                        </Button>
+
+                        <Button 
+                            variant="ghost" 
+                            onClick={() => setActiveTab(activeTab === "materiais" ? "orcamentos" : "materiais")} 
+                            className="h-11 px-6 rounded-2xl executive-card border-metallic hover:bg-primary/10 hover:text-primary transition-all group overflow-hidden relative"
+                        >
+                            {activeTab === "materiais" ? <HistoryIcon className="mr-2.5 h-4 w-4 group-hover:rotate-180 transition-transform duration-500" /> : <Settings2 className="mr-2.5 h-4 w-4 group-hover:rotate-90 transition-transform duration-500" />}
+                            <span className="font-black text-[11px] uppercase tracking-widest">
+                                {activeTab === "materiais" ? "Histórico de Propostas" : "Tabela de Preços"}
+                            </span>
+                        </Button>
+
+                        <Button
+                            onClick={() => {
+                                setEditingBudgetId(null);
+                                setFormData(getDefaultBudgetFormData());
+                                setQuantities({});
+                                setCustomPrices({});
+                                setIsDialogOpen(true);
+                            }}
+                            className="h-11 px-7 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs shadow-[0_0_30px_rgba(var(--primary),0.3)] hover:shadow-[0_0_50px_rgba(var(--primary),0.5)] transition-all group hover:scale-105 active:scale-95"
+                        >
+                            <Plus className="mr-2 h-4 w-4 group-hover:rotate-90 transition-transform duration-500" />
+                            Novo Levantamento
+                        </Button>
                     </div>
-                    <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-[10px] opacity-60">Maré de Orçamentos & Engenharia de Valor</p>
-                </div>
+                }
+            />
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <Button
-                        variant="ghost"
-                        onClick={() => {
-                            window.dispatchEvent(
-                                new CustomEvent("open-bjl-partner-ai", {
-                                    detail: {
-                                        prompt: "Sócio, analise nossos últimos orçamentos: quais estão pendentes para fecharmos, qual o valor na mesa e como estão nossas margens de lucro?",
-                                    },
-                                })
-                            );
-                        }}
-                        className="h-14 px-6 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition-all group shadow-[0_0_20px_rgba(245,158,11,0.15)]"
-                    >
-                        <Sparkles className="mr-2.5 h-5 w-5 text-amber-400 group-hover:text-black transition-colors" />
-                        <span className="font-black text-[11px] uppercase tracking-widest">
-                            Sócio IA • Orçamentos
-                        </span>
-                    </Button>
-
-                    <Button 
-                        variant="ghost" 
-                        onClick={() => setActiveTab(activeTab === "materiais" ? "orcamentos" : "materiais")} 
-                        className="h-14 px-8 rounded-2xl glass-card border-white/5 luxury-shadow hover:bg-primary/5 hover:text-primary transition-all group overflow-hidden relative"
-                    >
-                        {activeTab === "materiais" ? <HistoryIcon className="mr-3 h-5 w-5 group-hover:rotate-180 transition-transform duration-500" /> : <Settings2 className="mr-3 h-5 w-5 group-hover:rotate-90 transition-transform duration-500" />}
-                        <span className="font-black text-[11px] uppercase tracking-widest text-luxury">
-                            {activeTab === "materiais" ? "Histórico de Propostas" : "Gerenciar Tabela de Preços"}
-                        </span>
-                    </Button>
-
-                    <Dialog open={isDialogOpen} onOpenChange={(open) => {
-                        setIsDialogOpen(open);
-                        if (!open) {
-                            setEditingBudgetId(null);
-                            setFormData(getDefaultBudgetFormData());
-                            setQuantities({});
-                            setCustomPrices({});
-                        }
-                    }}>
-                        <DialogTrigger asChild>
-                            <Button 
-                                className="h-14 px-10 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs shadow-[0_0_30px_rgba(var(--primary),0.3)] hover:shadow-[0_0_50px_rgba(var(--primary),0.5)] transition-all group hover:scale-105 active:scale-95"
-                            >
-                                <Plus className="mr-3 h-5 w-5 group-hover:rotate-90 transition-transform duration-500" />
-                                Novo Levantamento
-                            </Button>
-                        </DialogTrigger>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) {
+                    setEditingBudgetId(null);
+                    setFormData(getDefaultBudgetFormData());
+                    setQuantities({});
+                    setCustomPrices({});
+                }
+            }}>
                         <DialogContent className="w-[98vw] sm:w-[95vw] sm:max-w-[1350px] max-w-[1350px] h-[95vh] sm:h-[92vh] max-h-[95vh] sm:max-h-[92vh] border-none shadow-2xl rounded-2xl sm:rounded-[2.5rem] overflow-hidden p-0 flex flex-col">
                             <div className="bg-primary p-4 sm:p-8 text-primary-foreground relative shrink-0">
                                 <div className="absolute top-0 right-0 p-4 opacity-10">
@@ -1751,7 +1761,7 @@ const Orcamento = () => {
                                 </div>
                             </div>
                             <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
-                                <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-100 p-4 sm:p-8 space-y-4 sm:space-y-8 bg-slate-50/50 backdrop-blur-sm overflow-y-auto max-h-[32vh] md:max-h-full shrink-0">
+                                <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-white/10 p-4 sm:p-8 space-y-4 sm:space-y-8 bg-black/25 backdrop-blur-sm overflow-y-auto max-h-[32vh] md:max-h-full shrink-0">
                                     <div className="space-y-4">
                                         <h4 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
                                             <AlertCircle className="h-3 w-3" /> Identificação
@@ -2343,8 +2353,6 @@ const Orcamento = () => {
                             </div>
                         </DialogContent>
                     </Dialog>
-                </div>
-            </header>
 
             {activeTab === "orcamentos" ? (
                 <>
@@ -2427,27 +2435,27 @@ const Orcamento = () => {
                         </div>
                     </div>
 
-                    <Card className="border-none shadow-2xl bg-card overflow-hidden rounded-[2.5rem]">
-                        <CardHeader className="p-8 border-b border-border/10 flex flex-col sm:flex-row items-center justify-between gap-6 bg-slate-50/50">
+                    <Card className="executive-card border-metallic shadow-2xl overflow-hidden rounded-[2.5rem]">
+                        <CardHeader className="p-6 sm:p-8 border-b border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-6 bg-white/[0.02]">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-white rounded-2xl text-primary border border-border shadow-sm">
+                                <div className="p-3 bg-primary/15 rounded-2xl text-primary border border-primary/25 shadow-sm">
                                     <HistoryIcon className="h-6 w-6" />
                                 </div>
                                 <div className="space-y-0.5">
                                     <CardTitle className="text-lg font-black uppercase tracking-tighter text-foreground">Histórico de Propostas</CardTitle>
-                                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-60">Acompanhamento de orçamentos emitidos</p>
+                                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-75">Acompanhamento de orçamentos emitidos</p>
                                 </div>
                             </div>
                             <div className="flex flex-col lg:flex-row items-center gap-3 w-full lg:w-auto">
                                 <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-                                    <div className="bg-white/80 border border-border/50 p-1 rounded-2xl h-11 flex items-center shadow-sm">
+                                    <div className="bg-black/30 border border-white/10 p-1 rounded-2xl h-11 flex items-center shadow-sm">
                                         <button
                                             type="button"
                                             onClick={() => setFollowUpFilter('all')}
                                             className={cn(
                                                 "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
                                                 followUpFilter === 'all'
-                                                    ? "bg-primary text-white shadow-sm"
+                                                    ? "bg-primary text-primary-foreground shadow-sm"
                                                     : "text-muted-foreground hover:text-foreground"
                                             )}
                                         >
@@ -2459,8 +2467,8 @@ const Orcamento = () => {
                                             className={cn(
                                                 "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1",
                                                 followUpFilter === 'followup_due'
-                                                    ? "bg-amber-500 text-white shadow-sm"
-                                                    : "text-amber-600 hover:text-amber-700"
+                                                    ? "bg-amber-500 text-black shadow-sm"
+                                                    : "text-amber-400 hover:text-amber-300"
                                             )}
                                             title="Propostas em aberto há 3 ou mais dias sem fechamento"
                                         >
@@ -2473,7 +2481,7 @@ const Orcamento = () => {
                                             className={cn(
                                                 "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
                                                 followUpFilter === 'pending'
-                                                    ? "bg-slate-800 text-white shadow-sm"
+                                                    ? "bg-white/15 text-white shadow-sm"
                                                     : "text-muted-foreground hover:text-foreground"
                                             )}
                                         >
@@ -2494,13 +2502,13 @@ const Orcamento = () => {
                                     </div>
                                 </div>
 
-                                <Tabs value={selectedYear} onValueChange={setSelectedYear} className="bg-white/50 border border-border/50 p-1 rounded-2xl h-11 shadow-sm">
+                                <Tabs value={selectedYear} onValueChange={setSelectedYear} className="bg-black/30 border border-white/10 p-1 rounded-2xl h-11 shadow-sm">
                                     <TabsList className="bg-transparent h-full">
                                         {availableYears.map(year => (
                                             <TabsTrigger 
                                                 key={year} 
                                                 value={year} 
-                                                className="px-4 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest transition-all"
+                                                className="px-4 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black uppercase text-[10px] tracking-widest transition-all"
                                             >
                                                 {year}
                                             </TabsTrigger>
@@ -2509,14 +2517,14 @@ const Orcamento = () => {
                                 </Tabs>
 
                                 {/* Seletor de Modo: Lista ou Pastas por Cliente */}
-                                <div className="flex items-center gap-1 bg-white/50 border border-border/50 p-1 rounded-2xl h-11 shadow-sm">
+                                <div className="flex items-center gap-1 bg-black/30 border border-white/10 p-1 rounded-2xl h-11 shadow-sm">
                                     <button
                                         type="button"
                                         onClick={() => setListViewMode('list')}
                                         className={cn(
                                             "flex items-center gap-1.5 px-3 h-full rounded-xl font-black uppercase text-[10px] tracking-wider transition-all",
                                             listViewMode === 'list'
-                                                ? "bg-slate-900 text-white shadow-sm"
+                                                ? "bg-primary text-primary-foreground shadow-sm"
                                                 : "text-muted-foreground hover:text-foreground"
                                         )}
                                         title="Visualização em Lista Individual"
@@ -2530,7 +2538,7 @@ const Orcamento = () => {
                                         className={cn(
                                             "flex items-center gap-1.5 px-3 h-full rounded-xl font-black uppercase text-[10px] tracking-wider transition-all",
                                             listViewMode === 'folders'
-                                                ? "bg-amber-500 text-white shadow-sm"
+                                                ? "bg-amber-500 text-black shadow-sm"
                                                 : "text-muted-foreground hover:text-foreground"
                                         )}
                                         title="Visualizar Agrupado em Pastas de Obra por Cliente"
@@ -2544,7 +2552,7 @@ const Orcamento = () => {
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                                     <Input
                                         placeholder="Pesquisar cliente..."
-                                        className="pl-12 bg-white border-border/50 h-11 rounded-2xl text-xs font-medium shadow-inner focus:ring-2 focus:ring-primary/20"
+                                        className="pl-12 bg-white/[0.04] border-white/10 h-11 rounded-2xl text-xs font-medium shadow-inner focus:ring-2 focus:ring-primary/20 text-foreground"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                     />
@@ -3595,15 +3603,15 @@ const Orcamento = () => {
                     )}
                 </>
             ) : (
-                <Card className="border-none shadow-2xl bg-card overflow-hidden rounded-[2.5rem]">
-                    <CardHeader className="p-8 border-b border-border/10 flex flex-col sm:flex-row items-center justify-between gap-6 bg-slate-50/50">
+                <Card className="executive-card border-metallic shadow-2xl overflow-hidden rounded-[2.5rem]">
+                    <CardHeader className="p-6 sm:p-8 border-b border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-6 bg-white/[0.02]">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-white rounded-2xl text-primary border border-border shadow-sm">
+                            <div className="p-3 bg-primary/15 rounded-2xl text-primary border border-primary/25 shadow-sm">
                                 <Package className="h-6 w-6" />
                             </div>
                             <div className="space-y-0.5">
                                 <CardTitle className="text-lg font-black uppercase tracking-tighter text-foreground">Catálogo de Materiais</CardTitle>
-                                <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-60">Gerencie os preços base para cálculo automático</p>
+                                <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-75">Gerencie os preços base para cálculo automático</p>
                             </div>
                         </div>
 
@@ -3614,26 +3622,26 @@ const Orcamento = () => {
                                     Novo Item
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="sm:max-w-[425px] rounded-[2rem] border-none shadow-2xl">
+                            <DialogContent className="sm:max-w-[425px] rounded-[2rem] border border-amber-500/25 shadow-2xl">
                                 <DialogHeader>
                                     <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-primary">Novo Material/Serviço</DialogTitle>
                                 </DialogHeader>
                                 <div className="grid gap-6 py-6">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nome do Item</Label>
-                                        <Input value={newMaterial.name} onChange={e => setNewMaterial({ ...newMaterial, name: e.target.value })} placeholder="Ex: Dobradiça Especial" className="rounded-2xl h-12 border-slate-200 text-slate-900 font-bold" />
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Nome do Item</Label>
+                                        <Input value={newMaterial.name} onChange={e => setNewMaterial({ ...newMaterial, name: e.target.value })} placeholder="Ex: Dobradiça Especial" className="rounded-2xl h-12 bg-white/5 border-white/10 text-foreground font-bold" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Categoria</Label>
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Categoria</Label>
                                             <Select 
                                                 value={newMaterial.category} 
                                                 onValueChange={val => setNewMaterial({ ...newMaterial, category: val })}
                                             >
-                                                <SelectTrigger className="w-full h-12 rounded-2xl border-slate-200 bg-white px-4 text-xs font-bold uppercase text-slate-900 shadow-sm focus:ring-2 focus:ring-primary/20">
+                                                <SelectTrigger className="w-full h-12 rounded-2xl border-white/10 bg-white/5 px-4 text-xs font-bold uppercase text-foreground shadow-sm focus:ring-2 focus:ring-primary/20">
                                                     <SelectValue placeholder="Selecione" />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                                <SelectContent className="rounded-2xl border border-white/10 shadow-2xl">
                                                     {["MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"].map(cat => (
                                                         <SelectItem key={cat} value={cat} className="font-black uppercase text-[10px] py-3">{cat}</SelectItem>
                                                     ))}
@@ -3641,19 +3649,19 @@ const Orcamento = () => {
                                             </Select>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Unidade</Label>
-                                            <Input value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })} placeholder="Ex: UNIDADE, M2" className="rounded-2xl h-12 border-slate-200 text-slate-900 font-bold" />
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Unidade</Label>
+                                            <Input value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })} placeholder="Ex: UNIDADE, M2" className="rounded-2xl h-12 bg-white/5 border-white/10 text-foreground font-bold" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Fornecedor</Label>
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Fornecedor</Label>
                                             <Select 
                                                 value={newMaterial.supplier} 
                                                 onValueChange={val => setNewMaterial({ ...newMaterial, supplier: val })}
                                             >
-                                                <SelectTrigger className="w-full h-12 rounded-2xl border-slate-200 bg-white px-4 text-xs font-bold uppercase text-slate-900 shadow-sm focus:ring-2 focus:ring-primary/20">
+                                                <SelectTrigger className="w-full h-12 rounded-2xl border-white/10 bg-white/5 px-4 text-xs font-bold uppercase text-foreground shadow-sm focus:ring-2 focus:ring-primary/20">
                                                     <SelectValue placeholder="Selecione" />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                                <SelectContent className="rounded-2xl border border-white/10 shadow-2xl">
                                                     {["CHM Morais", "BRUTA", "EXTERNO", "OUTROS"].map(sup => (
                                                         <SelectItem key={sup} value={sup} className="font-black uppercase text-[10px] py-3">{sup}</SelectItem>
                                                     ))}
@@ -3662,8 +3670,8 @@ const Orcamento = () => {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Preço Unitário (R$)</Label>
-                                        <Input type="number" step="0.01" value={newMaterial.unit_price} onChange={e => setNewMaterial({ ...newMaterial, unit_price: parseFloat(e.target.value) || 0 })} className="rounded-2xl h-12 border-slate-200 font-bold text-slate-900" />
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Preço Unitário (R$)</Label>
+                                        <Input type="number" step="0.01" value={newMaterial.unit_price} onChange={e => setNewMaterial({ ...newMaterial, unit_price: parseFloat(e.target.value) || 0 })} className="rounded-2xl h-12 bg-white/5 border-white/10 font-bold text-foreground" />
                                     </div>
                                 </div>
                                 <DialogFooter>
@@ -3677,7 +3685,7 @@ const Orcamento = () => {
                         <div className="overflow-x-auto webkit-overflow-scrolling-touch">
                             <table className="w-full text-xs min-w-[600px]">
                                 <thead>
-                                    <tr className="bg-slate-50 text-muted-foreground/50 h-16 border-b border-border/10">
+                                    <tr className="bg-white/[0.03] text-muted-foreground h-16 border-b border-white/[0.06]">
                                         <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Categoria</th>
                                         <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Nome do Material</th>
                                         <th className="px-8 text-left font-black uppercase tracking-[0.1em] text-[10px]">Fornecedor</th>
@@ -3686,20 +3694,20 @@ const Orcamento = () => {
                                         <th className="px-8 text-right font-black uppercase tracking-[0.1em] text-[10px]">Ações</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border/5">
+                                <tbody className="divide-y divide-white/[0.05]">
                                     {allMaterials.map((mat) => (
-                                        <tr key={mat.id} className="hover:bg-slate-50/80 transition-all group">
+                                        <tr key={mat.id} className="hover:bg-white/[0.03] transition-all group">
                                             <td className="px-8 py-5">
-                                                <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest">{mat.category}</Badge>
+                                                <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-white/15">{mat.category}</Badge>
                                             </td>
-                                            <td className="px-8 py-5 font-black uppercase text-[12px] text-foreground opacity-80">{mat.name}</td>
+                                            <td className="px-8 py-5 font-black uppercase text-[12px] text-foreground">{mat.name}</td>
                                             <td className="px-8 py-5">
                                                 {mat.supplier === "CHM Morais" ? (
-                                                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200 text-[9px] font-black uppercase tracking-widest">CHM Morais</Badge>
+                                                    <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[9px] font-black uppercase tracking-widest">CHM Morais</Badge>
                                                 ) : mat.supplier === "BRUTA" ? (
-                                                    <Badge className="bg-orange-500/10 text-orange-600 border-orange-200 text-[9px] font-black uppercase tracking-widest">BRUTA</Badge>
+                                                    <Badge className="bg-orange-500/15 text-orange-400 border-orange-500/30 text-[9px] font-black uppercase tracking-widest">BRUTA</Badge>
                                                 ) : (
-                                                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest opacity-40">{mat.supplier || "Outros"}</Badge>
+                                                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest opacity-60">{mat.supplier || "Outros"}</Badge>
                                                 )}
                                             </td>
                                             <td className="px-8 py-5 text-center font-bold text-muted-foreground">{mat.unit}</td>
@@ -3708,7 +3716,7 @@ const Orcamento = () => {
                                                     type="number"
                                                     defaultValue={mat.unit_price}
                                                     onBlur={(e) => updateMaterial(mat.id, { unit_price: parseFloat(e.target.value) })}
-                                                    className="w-32 ml-auto h-10 rounded-xl text-right font-black border-transparent bg-transparent hover:border-muted focus:bg-white text-white"
+                                                    className="w-32 ml-auto h-10 rounded-xl text-right font-black border-white/10 bg-black/20 hover:border-primary/40 focus:bg-black/40 text-foreground"
                                                 />
                                             </td>
                                             <td className="px-8 py-5 text-right">
@@ -3716,7 +3724,7 @@ const Orcamento = () => {
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className="h-10 w-10 text-primary hover:bg-primary/10 transition-all shadow-sm border border-primary/10"
+                                                        className="h-10 w-10 text-primary hover:bg-primary/10 transition-all shadow-sm border border-primary/15"
                                                         onClick={() => {
                                                             setEditingMaterial(mat);
                                                             setIsEditMaterialDialogOpen(true);
@@ -3727,7 +3735,7 @@ const Orcamento = () => {
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className="h-10 w-10 text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                                                        className="h-10 w-10 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                                                         onClick={() => {
                                                             if (confirm(`Tem certeza que deseja excluir "${mat.name}"?`)) {
                                                                 deleteMaterial(mat.id);
@@ -3748,27 +3756,27 @@ const Orcamento = () => {
             )}
 
             <Dialog open={isEditMaterialDialogOpen} onOpenChange={setIsEditMaterialDialogOpen}>
-                <DialogContent className="sm:max-w-[425px] rounded-[2rem] border-none shadow-2xl">
+                <DialogContent className="sm:max-w-[425px] rounded-[2rem] border border-amber-500/25 shadow-2xl">
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-primary">Editar Item</DialogTitle>
                     </DialogHeader>
                     {editingMaterial && (
                         <div className="grid gap-6 py-6">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nome do Item</Label>
-                                <Input value={editingMaterial.name} onChange={e => setEditingMaterial({ ...editingMaterial, name: e.target.value })} className="rounded-2xl h-12 border-slate-200 text-slate-900 font-bold" />
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Nome do Item</Label>
+                                <Input value={editingMaterial.name} onChange={e => setEditingMaterial({ ...editingMaterial, name: e.target.value })} className="rounded-2xl h-12 bg-white/5 border-white/10 text-foreground font-bold" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Categoria</Label>
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Categoria</Label>
                                     <Select 
                                         value={editingMaterial.category} 
                                         onValueChange={val => setEditingMaterial({ ...editingMaterial, category: val })}
                                     >
-                                        <SelectTrigger className="w-full h-12 rounded-2xl border-slate-200 bg-white px-4 text-xs font-bold uppercase text-slate-900">
+                                        <SelectTrigger className="w-full h-12 rounded-2xl border-white/10 bg-white/5 px-4 text-xs font-bold uppercase text-foreground">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                        <SelectContent className="rounded-2xl border border-white/10 shadow-2xl">
                                             {["MDF", "FITAS", "ACABAMENTO", "ACESSORIOS", "FERRAGENS", "FIXACAO", "SUPRIMENTOS", "OUTROS", "SERVICOS"].map(cat => (
                                                 <SelectItem key={cat} value={cat} className="font-black uppercase text-[10px] py-3">{cat}</SelectItem>
                                             ))}
@@ -3776,15 +3784,15 @@ const Orcamento = () => {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Fornecedor</Label>
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Fornecedor</Label>
                                     <Select 
                                         value={editingMaterial.supplier} 
                                         onValueChange={val => setEditingMaterial({ ...editingMaterial, supplier: val })}
                                     >
-                                        <SelectTrigger className="w-full h-12 rounded-2xl border-slate-200 bg-white px-4 text-xs font-bold uppercase text-slate-900">
+                                        <SelectTrigger className="w-full h-12 rounded-2xl border-white/10 bg-white/5 px-4 text-xs font-bold uppercase text-foreground">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                        <SelectContent className="rounded-2xl border border-white/10 shadow-2xl">
                                             {["CHM Morais", "BRUTA", "EXTERNO", "OUTROS"].map(sup => (
                                                 <SelectItem key={sup} value={sup} className="font-black uppercase text-[10px] py-3">{sup}</SelectItem>
                                             ))}
@@ -3792,13 +3800,13 @@ const Orcamento = () => {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Unidade</Label>
-                                    <Input value={editingMaterial.unit} onChange={e => setEditingMaterial({ ...editingMaterial, unit: e.target.value })} className="rounded-2xl h-12 border-slate-200 text-slate-900 font-bold" />
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Unidade</Label>
+                                    <Input value={editingMaterial.unit} onChange={e => setEditingMaterial({ ...editingMaterial, unit: e.target.value })} className="rounded-2xl h-12 bg-white/5 border-white/10 text-foreground font-bold" />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Preço Unitário (R$)</Label>
-                                <Input type="number" step="0.01" value={editingMaterial.unit_price} onChange={e => setEditingMaterial({ ...editingMaterial, unit_price: parseFloat(e.target.value) || 0 })} className="rounded-2xl h-12 border-slate-200 font-bold text-slate-900" />
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Preço Unitário (R$)</Label>
+                                <Input type="number" step="0.01" value={editingMaterial.unit_price} onChange={e => setEditingMaterial({ ...editingMaterial, unit_price: parseFloat(e.target.value) || 0 })} className="rounded-2xl h-12 bg-white/5 border-white/10 font-bold text-foreground" />
                             </div>
                         </div>
                     )}

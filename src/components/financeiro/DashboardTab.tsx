@@ -25,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { toast } from "sonner";
 import { classifyTransactionForDRE, standardizeDRESubcategory } from "@/types/finance";
+import { AnimatedBankBuilding } from "@/components/ui/SectorArt";
+import { WoodCuttingProgressBar } from "@/components/ui/WoodworkingArt";
 
 interface DashboardTabProps {
     selectedYear: string;
@@ -490,57 +492,62 @@ const DashboardTab = ({
     return (
         <div className="space-y-6 text-foreground min-h-screen" onMouseMove={handleMouseMove}>
             {/* EXECUTIVE FINANCIAL COCKPIT HERO & TELEMETRY */}
-            <div className="executive-card border-metallic p-6 sm:p-8 rounded-[2.5rem] relative overflow-hidden">
+            <div className="executive-card border-metallic wood-ruler-top p-6 sm:p-8 rounded-[2.5rem] relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
                 
-                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10 mb-6 pb-6 border-b border-white/[0.06]">
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                            <span className="pulse-badge text-primary border-primary/20 bg-primary/5">
-                                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
-                                Financial Telemetry
-                            </span>
-                            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-                                BJL Enterprise • Exercício
-                            </span>
-                            <Select value={selectedYear} onValueChange={setSelectedYear}>
-                                <SelectTrigger className="w-[82px] h-6 text-[10px] font-mono bg-white/[0.05] border-white/10 uppercase font-bold py-0 px-2.5 rounded-lg text-primary">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-white/10">
-                                    <SelectItem value="2024">2024</SelectItem>
-                                    <SelectItem value="2025">2025</SelectItem>
-                                    <SelectItem value="2026">2026</SelectItem>
-                                    <SelectItem value="2027">2027</SelectItem>
-                                </SelectContent>
-                            </Select>
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10 mb-6 pb-6 border-b border-white/[0.08]">
+                    <div className="flex items-center gap-4">
+                        <div className="hidden sm:flex shrink-0 p-2 rounded-2xl bg-[#26160b]/70 border border-amber-500/25">
+                            <AnimatedBankBuilding size="md" className="w-16 h-14" />
                         </div>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                                <span className="pulse-badge text-primary border-primary/20 bg-primary/5">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
+                                    Tesouraria & Banco
+                                </span>
+                                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+                                    BJL Enterprise • Exercício
+                                </span>
+                                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                                    <SelectTrigger className="w-[82px] h-6 text-[10px] font-mono bg-white/[0.05] border-white/10 uppercase font-bold py-0 px-2.5 rounded-lg text-primary">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-card border-white/10">
+                                        <SelectItem value="2024">2024</SelectItem>
+                                        <SelectItem value="2025">2025</SelectItem>
+                                        <SelectItem value="2026">2026</SelectItem>
+                                        <SelectItem value="2027">2027</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                        <h2 className="text-2xl sm:text-4xl font-display font-black text-foreground tracking-tight">
-                            {greeting}, <span className="shimmer-gold">{userName}</span>
-                        </h2>
-                        <p className="text-xs text-muted-foreground max-w-lg">
-                            Monitoramento em tempo real de liquidez, fluxo de caixa e execução orçamentária para{" "}
-                            <span className="font-mono font-bold text-primary">
-                                {selectedDashMonth === 'anual' ? `Ano ${selectedYear}` : `${["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][selectedDashMonth as number]} / ${selectedYear}`}
-                            </span>.
-                        </p>
+                            <h2 className="text-2xl sm:text-4xl font-display font-black text-foreground tracking-tight">
+                                {greeting}, <span className="shimmer-gold">{userName}</span>
+                            </h2>
+                            <p className="text-xs text-muted-foreground max-w-lg">
+                                Monitoramento em tempo real de liquidez, fluxo de caixa e execução orçamentária para{" "}
+                                <span className="font-mono font-bold text-primary">
+                                    {selectedDashMonth === 'anual' ? `Ano ${selectedYear}` : `${["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][selectedDashMonth as number]} / ${selectedYear}`}
+                                </span>.
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="w-full lg:w-[380px] bg-black/40 backdrop-blur-xl p-5 rounded-2xl border border-white/10 space-y-3 shrink-0 shadow-2xl">
+                    <div className="w-full lg:w-[390px] bg-[#2b190d]/85 backdrop-blur-xl p-5 rounded-2xl border border-amber-500/35 space-y-2.5 shrink-0 shadow-2xl">
                         <div className="flex justify-between items-center text-xs">
-                            <span className="font-mono font-bold text-white uppercase tracking-wider text-[10px]">Meta de Caixa do Período</span>
+                            <span className="font-mono font-bold text-amber-100 uppercase tracking-wider text-[10px]">Meta de Caixa do Período</span>
                             <span className="font-mono font-black text-sm text-primary">{percentage.toFixed(0)}%</span>
                         </div>
-                        <div className="w-full bg-white/5 h-3 rounded-full overflow-hidden relative border border-white/10 p-[1px]">
-                            <div 
-                                className="bg-gradient-to-r from-amber-600 via-primary to-amber-300 h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(245,158,11,0.5)]" 
-                                style={{ width: `${percentage}%` }}
-                            />
-                        </div>
+                        <WoodCuttingProgressBar
+                            percent={percentage}
+                            showSaw={false}
+                            height="md"
+                            colorVariant="amber"
+                        />
                         <div className="flex justify-between items-center text-[10px] font-mono tabular-nums">
                             <span className="text-emerald-400 font-bold">{formatCurrency(actualRevenue)}</span>
-                            <span className="text-muted-foreground">Alvo: {formatCurrency(actualGoal)}</span>
+                            <span className="text-amber-200/75">Alvo: {formatCurrency(actualGoal)}</span>
                         </div>
                     </div>
                 </div>

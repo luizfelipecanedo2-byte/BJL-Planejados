@@ -34,6 +34,8 @@ import {
   SlidersHorizontal,
   FileText
 } from "lucide-react";
+import { ModuleHeader } from "@/components/ui/ModuleHeader";
+import { CarpentryWorkbenchScene } from "@/components/ui/WoodworkingArt";
 
 const Index = () => {
   const { sales, addSale, updateSale, deleteSale, updateStatus } = useSales();
@@ -41,13 +43,13 @@ const Index = () => {
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "hot" | "negotiation" | "closed">("all");
 
-  const hotCount = useMemo(() => sales.filter(s => s.temperature === "alta" || s.status === "visita" || s.status === "projeto").length, [sales]);
+  const hotCount = useMemo(() => sales.filter(s => s.temperature === "quente" || (s.temperature as string) === "alta" || s.status === "visita" || s.status === "projeto").length, [sales]);
   const negotiationCount = useMemo(() => sales.filter(s => s.status === "negociacao").length, [sales]);
   const closedCount = useMemo(() => sales.filter(s => s.status === "fechado" || s.status === "pos_venda").length, [sales]);
 
   const filteredSales = useMemo(() => {
     if (activeFilter === "hot") {
-      return sales.filter(s => s.temperature === "alta" || s.status === "visita" || s.status === "projeto");
+      return sales.filter(s => s.temperature === "quente" || (s.temperature as string) === "alta" || s.status === "visita" || s.status === "projeto");
     }
     if (activeFilter === "negotiation") {
       return sales.filter(s => s.status === "negociacao");
@@ -785,134 +787,127 @@ const Index = () => {
   return (
 
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="tech-hud-pill text-primary border-primary/25 bg-primary/10">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-              CRM.ENGINE // v2.6
-            </span>
-            <span className="text-[10px] font-mono font-semibold text-emerald-400 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
-              {sales.length} Negócios Mapeados
-            </span>
-          </div>
-          <h2 className="text-3xl md:text-4xl font-display font-black tracking-tight text-white flex items-center gap-3">
-            Central Comercial & <span className="shimmer-gold">Pipeline</span>
-          </h2>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                className="gap-2 h-11 px-5 border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl transition-all hover:scale-105 duration-300 w-full sm:w-auto font-semibold text-xs"
-              >
-                <Printer className="h-4 w-4 text-amber-500" />
-                <span>Imprimir CRM</span>
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72 p-2 bg-[#18181b]/95 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow-2xl z-50">
-              <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-2">
-                O que você deseja imprimir?
-              </DropdownMenuLabel>
-              
-              <DropdownMenuItem 
-                onClick={() => handlePrintSalesReport("negotiation")} 
-                className="flex items-center gap-3 p-2.5 cursor-pointer rounded-xl hover:bg-purple-500/20 hover:text-purple-200 transition-colors"
-              >
-                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
-                  <MessageSquare className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-xs flex items-center justify-between">
-                    <span>Apenas em Negociação</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold">{negotiationCount}</span>
+      <ModuleHeader
+        badge="CRM.ENGINE // FUNIL & MÓVEIS"
+        statusLabel={`${sales.length} Negócios Mapeados`}
+        title="Central Comercial &"
+        highlight="Pipeline"
+        subtitle="Acompanhamento de leads, visitas técnicas, projetos sob medida, negociações e contratos fechados."
+        art={<CarpentryWorkbenchScene variant="studio" compact className="scale-90" />}
+        actions={
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="gap-2 h-11 px-5 border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl transition-all hover:scale-105 duration-300 w-full sm:w-auto font-semibold text-xs"
+                >
+                  <Printer className="h-4 w-4 text-amber-500" />
+                  <span>Imprimir CRM</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72 p-2 bg-[#18181b]/95 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow-2xl z-50">
+                <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-2">
+                  O que você deseja imprimir?
+                </DropdownMenuLabel>
+                
+                <DropdownMenuItem 
+                  onClick={() => handlePrintSalesReport("negotiation")} 
+                  className="flex items-center gap-3 p-2.5 cursor-pointer rounded-xl hover:bg-purple-500/20 hover:text-purple-200 transition-colors"
+                >
+                  <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
+                    <MessageSquare className="h-4 w-4" />
                   </div>
-                  <div className="text-[11px] text-muted-foreground truncate">Propostas abertas e follow-up</div>
-                </div>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem 
-                onClick={() => handlePrintSalesReport("closed")} 
-                className="flex items-center gap-3 p-2.5 cursor-pointer rounded-xl hover:bg-emerald-500/20 hover:text-emerald-200 transition-colors"
-              >
-                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
-                  <CheckCircle2 className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-xs flex items-center justify-between">
-                    <span>Apenas Negócios Fechados</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">{closedCount}</span>
-                  </div>
-                  <div className="text-[11px] text-muted-foreground truncate">Vendas e pós-venda confirmados</div>
-                </div>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem 
-                onClick={() => handlePrintSalesReport("hot")} 
-                className="flex items-center gap-3 p-2.5 cursor-pointer rounded-xl hover:bg-amber-500/20 hover:text-amber-200 transition-colors"
-              >
-                <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400">
-                  <Flame className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-xs flex items-center justify-between">
-                    <span>Leads Quentes</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">{hotCount}</span>
-                  </div>
-                  <div className="text-[11px] text-muted-foreground truncate">Alta prioridade, visitas e projetos</div>
-                </div>
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator className="bg-white/10 my-1.5" />
-
-              <DropdownMenuItem 
-                onClick={() => handlePrintSalesReport("all")} 
-                className="flex items-center gap-3 p-2.5 cursor-pointer rounded-xl hover:bg-white/10 transition-colors"
-              >
-                <div className="p-2 rounded-lg bg-white/5 text-primary">
-                  <Printer className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-xs flex items-center justify-between">
-                    <span>Todos os Negócios</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-muted-foreground font-bold">{sales.length}</span>
-                  </div>
-                  <div className="text-[11px] text-muted-foreground truncate">Pipeline geral e todas as etapas</div>
-                </div>
-              </DropdownMenuItem>
-
-              {activeFilter !== "all" && (
-                <>
-                  <DropdownMenuSeparator className="bg-white/10 my-1.5" />
-                  <DropdownMenuItem 
-                    onClick={() => handlePrintSalesReport("current")} 
-                    className="flex items-center gap-3 p-2.5 cursor-pointer rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
-                  >
-                    <div className="p-2 rounded-lg bg-primary/20 text-primary">
-                      <SlidersHorizontal className="h-4 w-4" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-xs flex items-center justify-between">
+                      <span>Apenas em Negociação</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold">{negotiationCount}</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-xs flex items-center justify-between">
-                        <span>Filtro Atual da Tela</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-bold">{filteredSales.length}</span>
+                    <div className="text-[11px] text-muted-foreground truncate">Propostas abertas e follow-up</div>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem 
+                  onClick={() => handlePrintSalesReport("closed")} 
+                  className="flex items-center gap-3 p-2.5 cursor-pointer rounded-xl hover:bg-emerald-500/20 hover:text-emerald-200 transition-colors"
+                >
+                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-xs flex items-center justify-between">
+                      <span>Apenas Negócios Fechados</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">{closedCount}</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate">Vendas e pós-venda confirmados</div>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem 
+                  onClick={() => handlePrintSalesReport("hot")} 
+                  className="flex items-center gap-3 p-2.5 cursor-pointer rounded-xl hover:bg-amber-500/20 hover:text-amber-200 transition-colors"
+                >
+                  <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400">
+                    <Flame className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-xs flex items-center justify-between">
+                      <span>Leads Quentes</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">{hotCount}</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate">Alta prioridade, visitas e projetos</div>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="bg-white/10 my-1.5" />
+
+                <DropdownMenuItem 
+                  onClick={() => handlePrintSalesReport("all")} 
+                  className="flex items-center gap-3 p-2.5 cursor-pointer rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <div className="p-2 rounded-lg bg-white/5 text-primary">
+                    <Printer className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-xs flex items-center justify-between">
+                      <span>Todos os Negócios</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-muted-foreground font-bold">{sales.length}</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate">Pipeline geral e todas as etapas</div>
+                  </div>
+                </DropdownMenuItem>
+
+                {activeFilter !== "all" && (
+                  <>
+                    <DropdownMenuSeparator className="bg-white/10 my-1.5" />
+                    <DropdownMenuItem 
+                      onClick={() => handlePrintSalesReport("current")} 
+                      className="flex items-center gap-3 p-2.5 cursor-pointer rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                    >
+                      <div className="p-2 rounded-lg bg-primary/20 text-primary">
+                        <SlidersHorizontal className="h-4 w-4" />
                       </div>
-                      <div className="text-[11px] opacity-80 truncate">Imprimir lista exibida agora</div>
-                    </div>
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-xs flex items-center justify-between">
+                          <span>Filtro Atual da Tela</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-bold">{filteredSales.length}</span>
+                        </div>
+                        <div className="text-[11px] opacity-80 truncate">Imprimir lista exibida agora</div>
+                      </div>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <MagicButton onClick={handleNewSale} className="gap-2 h-11 px-6 shadow-xl shadow-primary/20 hover:scale-105 transition-transform duration-300 rounded-2xl w-full sm:w-auto font-bold text-xs">
-            <Plus className="h-4 w-4" />
-            <span>Nova Venda</span>
-          </MagicButton>
-        </div>
-      </div>
+            <MagicButton onClick={handleNewSale} className="gap-2 h-11 px-6 shadow-xl shadow-primary/20 hover:scale-105 transition-transform duration-300 rounded-2xl w-full sm:w-auto font-bold text-xs">
+              <Plus className="h-4 w-4" />
+              <span>Nova Venda</span>
+            </MagicButton>
+          </div>
+        }
+      />
 
       <Tabs defaultValue="dashboard" className="space-y-6 w-full">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

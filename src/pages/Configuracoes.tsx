@@ -11,6 +11,8 @@ import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EquipeTab } from "@/components/configuracoes/EquipeTab";
 import { TaxasTab } from "@/components/configuracoes/TaxasTab";
+import { ModuleHeader } from "@/components/ui/ModuleHeader";
+import { AnimatedPrecisionGears } from "@/components/ui/SectorArt";
 
 const Configuracoes = () => {
     const { settings, loading, updateSettings } = useCompanySettings();
@@ -73,15 +75,13 @@ const Configuracoes = () => {
 
     return (
         <div className="flex flex-col gap-8 animate-in fade-in duration-700">
-            <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-2">
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-3 mb-1">
-                         <div className="h-8 w-1 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
-                         <h1 className="text-4xl font-['Cinzel'] font-bold text-luxury tracking-wider shimmer-gold uppercase">Configurações</h1>
-                    </div>
-                    <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-[10px] opacity-60">Perfil da Empresa & Identidade Visual</p>
-                </div>
-            </header>
+            <ModuleHeader
+                badge="SYS.CONFIG // EMPRESA & PARÂMETROS"
+                title="Configurações &"
+                highlight="Identidade"
+                subtitle="Dados institucionais, equipe fabril, capacidade produtiva, taxas da maquininha e chave de IA."
+                art={<AnimatedPrecisionGears size="md" className="w-20 h-16" />}
+            />
 
             <Tabs defaultValue="empresa" className="space-y-8">
                 <TabsList className="bg-white/5 border border-white/10 p-1.5 rounded-2xl h-14 w-full sm:w-auto inline-flex gap-2 backdrop-blur-xl">

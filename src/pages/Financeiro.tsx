@@ -33,6 +33,8 @@ import AssetsTab from "@/components/financeiro/AssetsTab";
 import ServiceExpensesTab from "@/components/financeiro/ServiceExpensesTab";
 import NotaFiscalTab from "@/components/financeiro/NotaFiscalTab";
 import PartialPaymentDialog from "@/components/financeiro/PartialPaymentDialog";
+import { ModuleHeader } from "@/components/ui/ModuleHeader";
+import { AnimatedBankBuilding } from "@/components/ui/SectorArt";
 
 // Cache em memória de alta velocidade (Stale-While-Revalidate) para abertura instantânea (0ms) ao voltar para a tela
 const financeMemoryCache: {
@@ -2044,67 +2046,59 @@ const Financeiro = () => {
       activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "bg-emerald-950/10" :
       activeTab === 'conciliacao' && selectedAccount === 'recarga_pay' ? "bg-orange-950/10" : ""
     )}>
-      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-2">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="tech-hud-pill text-primary border-primary/25 bg-primary/10">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-              FIN.ENGINE // v2.6
-            </span>
-            <span className="text-[10px] font-mono font-semibold text-emerald-400 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
-              {transactions.length} Lançamentos Sincronizados
-            </span>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight text-white flex items-center gap-3">
-            Cockpit <span className="shimmer-gold">Financeiro & DRE</span>
-          </h1>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-          <Button
-            variant="ghost"
-            className="h-11 px-5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition-all group w-full sm:w-auto shadow-[0_0_20px_rgba(245,158,11,0.15)]"
-            onClick={() => {
-              window.dispatchEvent(
-                new CustomEvent("open-bjl-partner-ai", {
-                  detail: {
-                    prompt: "Sócio, faça um raio-x completo do nosso financeiro deste mês: quanto entrou, quanto saiu, qual nosso saldo e quais contas vencem nos próximos 7 dias?",
-                  },
-                })
-              );
-            }}
-          >
-            <Sparkles className="mr-2 h-4 w-4 text-amber-400 group-hover:text-black transition-colors" />
-            <span className="font-display font-black text-xs uppercase tracking-wider">Consultar Sócio IA</span>
-          </Button>
-          <Button 
-            variant="ghost" 
-            className="h-11 px-6 rounded-2xl executive-card border-metallic hover:bg-primary/10 hover:text-primary transition-all group overflow-hidden relative w-full sm:w-auto"
-            onClick={handleNewTransaction}
-          >
-            <Plus className="mr-2.5 h-4 w-4 text-primary group-hover:scale-125 transition-transform" />
-             <span className="font-display font-bold text-xs uppercase tracking-wider">Novo Lançamento</span>
-          </Button>
-          <Button 
-            variant="ghost" 
-            className="h-11 px-6 rounded-2xl executive-card border-metallic hover:bg-emerald-500/10 hover:text-emerald-400 transition-all group overflow-hidden relative w-full sm:w-auto"
-            onClick={handleNewTransfer}
-          >
-            <TrendingUp className="mr-2.5 h-4 w-4 text-emerald-400 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
-            <span className="font-display font-bold text-xs uppercase tracking-wider">Transferência</span>
-          </Button>
-        </div>
-      </header>
+      <ModuleHeader
+        badge="FIN.ENGINE // BANCO & DRE"
+        statusLabel={`${transactions.length} Lançamentos Sincronizados`}
+        title="Cockpit"
+        highlight="Financeiro & DRE"
+        subtitle="Tesouraria, fluxo de caixa, conciliação bancária, DRE real e controle de recebimentos por Ordem de Serviço."
+        art={<AnimatedBankBuilding size="md" className="w-20 h-16" />}
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              className="h-11 px-5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition-all group w-full sm:w-auto shadow-[0_0_20px_rgba(245,158,11,0.15)]"
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent("open-bjl-partner-ai", {
+                    detail: {
+                      prompt: "Sócio, faça um raio-x completo do nosso financeiro deste mês: quanto entrou, quanto saiu, qual nosso saldo e quais contas vencem nos próximos 7 dias?",
+                    },
+                  })
+                );
+              }}
+            >
+              <Sparkles className="mr-2 h-4 w-4 text-amber-400 group-hover:text-black transition-colors" />
+              <span className="font-display font-black text-xs uppercase tracking-wider">Consultar Sócio IA</span>
+            </Button>
+            <Button
+              variant="ghost"
+              className="h-11 px-6 rounded-2xl executive-card border-metallic hover:bg-primary/10 hover:text-primary transition-all group overflow-hidden relative w-full sm:w-auto"
+              onClick={handleNewTransaction}
+            >
+              <Plus className="mr-2.5 h-4 w-4 text-primary group-hover:scale-125 transition-transform" />
+              <span className="font-display font-bold text-xs uppercase tracking-wider">Novo Lançamento</span>
+            </Button>
+            <Button
+              variant="ghost"
+              className="h-11 px-6 rounded-2xl executive-card border-metallic hover:bg-emerald-500/10 hover:text-emerald-400 transition-all group overflow-hidden relative w-full sm:w-auto"
+              onClick={handleNewTransfer}
+            >
+              <TrendingUp className="mr-2.5 h-4 w-4 text-emerald-400 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
+              <span className="font-display font-bold text-xs uppercase tracking-wider">Transferência</span>
+            </Button>
+          </>
+        }
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
         <div className="overflow-x-auto webkit-overflow-scrolling-touch hide-scrollbar pb-1 max-w-full">
           <TabsList className={cn(
-            "h-12 w-max min-w-full lg:min-w-0 p-1.5 executive-card rounded-2xl border border-white/[0.07] bg-[#090d16]/90 shadow-xl transition-colors duration-300 gap-1",
-            activeTab === 'conciliacao' && (selectedAccount === 'itau' || selectedAccount === 'banco_itau') ? "border-blue-500/30" :
-            activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "border-purple-500/30" :
-            activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "border-emerald-500/30" :
-            activeTab === 'conciliacao' && selectedAccount === 'recarga_pay' ? "border-orange-500/30" : ""
+            "h-12 w-max min-w-full lg:min-w-0 p-1.5 glass-panel-pro rounded-2xl shadow-xl transition-colors duration-300 gap-1",
+            activeTab === 'conciliacao' && (selectedAccount === 'itau' || selectedAccount === 'banco_itau') ? "border-blue-500/40" :
+            activeTab === 'conciliacao' && selectedAccount === 'nubank' ? "border-purple-500/40" :
+            activeTab === 'conciliacao' && selectedAccount === 'dinheiro' ? "border-emerald-500/40" :
+            activeTab === 'conciliacao' && selectedAccount === 'recarga_pay' ? "border-orange-500/40" : ""
           )}>
             <TabsTrigger value="dashboard" className="rounded-xl px-4 sm:px-5 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all duration-200">
               <TrendingUp className="mr-2 h-3.5 w-3.5" />
@@ -2167,7 +2161,7 @@ const Financeiro = () => {
 
         <TabsContent value="lancamentos" className="space-y-4">
           {/* Unified Executive Command Bar */}
-          <Card className="executive-card border border-white/[0.07] shadow-2xl rounded-2xl overflow-hidden bg-[#0a0f18]">
+          <Card className="executive-card border-metallic shadow-2xl rounded-2xl overflow-hidden">
             <CardContent className="p-4 sm:p-5 space-y-4">
               {/* Row 1: Smart Filters */}
               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-9 gap-3">

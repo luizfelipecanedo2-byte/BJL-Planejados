@@ -50,17 +50,22 @@ const LandingPage = () => {
         e.preventDefault();
         setSubmitting(true);
         try {
-            // Insert into 'sales' table as a new lead
+            // Insert into 'sales' table as a new lead in the initial funnel stage ('prospecto')
             const { error } = await supabase
                 .from('sales')
                 .insert([{
                     client_name: formData.name,
                     client_phone: formData.phone,
                     client_email: formData.email,
-                    product: 'Interesse via Site',
-                    status: 'lead',
-                    notes: `Mensagem: ${formData.message}`,
-                    total_value: 0
+                    product: formData.message ? `Site: ${formData.message.slice(0, 60)}` : 'Interesse via Site',
+                    quantity: 1,
+                    unit_price: 0,
+                    total_value: 0,
+                    status: 'prospecto',
+                    channel: 'cliente',
+                    contact_date: new Date().toISOString().split('T')[0],
+                    temperature: 'quente',
+                    notes: formData.message ? `Mensagem enviada pelo site: ${formData.message}` : 'Solicitação de consultoria enviada pela Landing Page.'
                 }]);
 
             if (error) throw error;
@@ -333,7 +338,7 @@ const LandingPage = () => {
                 <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/20 rounded-full blur-[160px]" />
                 <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-primary/10 rounded-full blur-[160px]" />
 
-                <div className="relative z-10 glass-card rounded-[3rem] border border-white/10 p-10 lg:p-20 grid grid-cols-1 lg:grid-cols-2 gap-20 luxury-shadow">
+                <div className="relative z-10 landing-glass-card rounded-[3rem] p-10 lg:p-20 grid grid-cols-1 lg:grid-cols-2 gap-20 luxury-shadow">
                     <div className="space-y-12">
                         <div className="space-y-4">
                             <h2 className="text-4xl lg:text-6xl font-black tracking-tighter">Vamos projetar seu <br /> <span className="shimmer-gold">próximo sonho?</span></h2>

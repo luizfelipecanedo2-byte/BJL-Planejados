@@ -766,7 +766,7 @@ export const FloatingSawdustBackground: React.FC = () => {
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
       {/* Textura de Veios de Madeira Nobre */}
       <svg
-        className="absolute inset-0 w-full h-full opacity-[0.08]"
+        className="absolute inset-0 w-full h-full opacity-[0.05]"
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
@@ -790,22 +790,22 @@ export const FloatingSawdustBackground: React.FC = () => {
       </svg>
 
       {/* Marca d'água 1: Projeto 3D de Móvel Planejado no canto superior direito */}
-      <div className="absolute right-8 top-20 opacity-[0.11] hidden xl:block">
+      <div className="absolute right-8 top-20 opacity-[0.07] hidden xl:block">
         <AnimatedCabinet3D className="w-[260px] h-[260px]" />
       </div>
 
       {/* Marca d'água 2: Formão & Malho de Entalhe à esquerda */}
-      <div className="absolute left-64 bottom-12 opacity-[0.09] hidden lg:block">
+      <div className="absolute left-64 bottom-12 opacity-[0.06] hidden lg:block">
         <AnimatedHammerAndChisel className="w-[190px] h-[190px]" />
       </div>
 
       {/* Marca d'água 3: Plaina Manual & Maravalhas no centro-direita inferior */}
-      <div className="absolute right-20 bottom-16 opacity-[0.10] hidden xl:block">
+      <div className="absolute right-20 bottom-16 opacity-[0.06] hidden xl:block">
         <AnimatedWoodPlane className="w-[220px] h-[140px]" />
       </div>
 
       {/* Marca d'água 4: Pilha de Chapas MDF & Sargento no centro-esquerda superior */}
-      <div className="absolute left-72 top-24 opacity-[0.08] hidden 2xl:block">
+      <div className="absolute left-72 top-24 opacity-[0.05] hidden 2xl:block">
         <AnimatedMdfPlanksAndClamps className="w-[200px] h-[130px]" />
       </div>
 

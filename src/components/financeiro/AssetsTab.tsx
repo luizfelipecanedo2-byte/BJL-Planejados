@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Pencil, Package } from "lucide-react";
 import { Asset } from "@/types/asset";
+import { AnimatedMdfPlanksAndClamps } from "@/components/ui/WoodworkingArt";
 
 interface AssetsTabProps {
     assets: Asset[];
@@ -17,14 +18,14 @@ const AssetsTab = ({
 }: AssetsTabProps) => {
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20 p-6 rounded-2xl border border-border/50 shadow-sm transition-all hover:bg-muted/30">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 executive-card border-metallic p-6 rounded-3xl shadow-sm transition-all">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary/10 rounded-xl text-primary border border-primary/20 shadow-lg shadow-primary/5">
-                        <Package className="h-6 w-6" />
+                    <div className="p-2 bg-[#26160b]/70 rounded-2xl border border-amber-500/25 shadow-lg">
+                        <AnimatedMdfPlanksAndClamps size="sm" />
                     </div>
                     <div className="space-y-1">
-                        <h3 className="text-2xl font-black tracking-tight text-primary uppercase tracking-widest">Controle Patrimonial</h3>
-                        <p className="text-xs text-muted-foreground font-medium uppercase opacity-70">Gestão de Ativos e Depreciação</p>
+                        <h3 className="text-2xl font-display font-black tracking-tight text-primary uppercase">Controle Patrimonial</h3>
+                        <p className="text-xs text-muted-foreground font-medium uppercase opacity-80">Gestão de Máquinas, Ativos & Depreciação</p>
                     </div>
                 </div>
                 <Button onClick={handleNewAsset} size="lg" className="gap-2 shadow-xl shadow-primary/20 px-8 rounded-xl font-black uppercase tracking-widest text-xs transition-transform hover:scale-105">
@@ -33,7 +34,7 @@ const AssetsTab = ({
                 </Button>
             </div>
 
-            <Card className="rounded-2xl border-none shadow-2xl overflow-hidden bg-card/40 backdrop-blur-md">
+            <Card className="rounded-3xl executive-card border-metallic shadow-2xl overflow-hidden">
                 <CardContent className="p-0">
                     <div className="overflow-x-auto min-h-[400px]">
                         <Table>

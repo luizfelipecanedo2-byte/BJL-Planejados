@@ -54,12 +54,12 @@ export default function Login() {
                     </div>
                     
                     <div className="text-center space-y-2">
-                        <h1 className="text-2xl sm:text-5xl font-black tracking-tighter text-luxury shimmer-gold leading-none">
+                        <h1 className="text-2xl sm:text-4xl font-display font-black tracking-tight shimmer-gold leading-none uppercase">
                             BJL PLANEJADOS
                         </h1>
                         <div className="flex items-center justify-center gap-2">
                            <div className="h-0.5 w-8 bg-primary/40 rounded-full" />
-                           <p className="text-[10px] uppercase font-black tracking-[0.4em] text-primary/60">Edição de Luxo</p>
+                           <p className="text-[10px] font-mono uppercase font-black tracking-[0.35em] text-amber-200/75">Oficina & Gestão</p>
                            <div className="h-0.5 w-8 bg-primary/40 rounded-full" />
                         </div>
                     </div>
@@ -118,8 +118,8 @@ export default function Login() {
                     </form>
 
                     <div className="mt-8 text-center">
-                        <p className="text-[9px] font-bold text-muted-foreground/30 uppercase tracking-[0.3em] text-luxury">
-                            BJL Planejados &copy; {new Date().getFullYear()} • Powered by Lovable
+                        <p className="text-[9px] font-mono font-bold text-amber-200/40 uppercase tracking-[0.3em]">
+                            BJL Móveis Planejados &copy; {new Date().getFullYear()} • BJL.OS
                         </p>
                     </div>
                 </CardContent>

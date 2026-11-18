@@ -27,6 +27,8 @@ import {
 import { format, addMonths, subMonths, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { playClickSound, playHoverSound } from "@/lib/audio";
+import { ModuleHeader } from "@/components/ui/ModuleHeader";
+import { AnimatedWorkshopCalendar } from "@/components/ui/SectorArt";
 
 interface CalendarEvent {
     id: string;
@@ -59,8 +61,9 @@ export default function Agenda() {
     const month = currentDate.getMonth();
 
     // Calculate month parameters
-    const firstDayOfMonth = new Date(year, month, 1);
+    const firstDayOfMonth = new Date(year, month, 1, 0, 0, 0, 0);
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const lastDayOfMonthEnd = new Date(year, month, daysInMonth, 23, 59, 59, 999);
     const startOffset = firstDayOfMonth.getDay(); // 0: Sunday, 1: Monday, etc.
 
     // Date range for filtering database queries
@@ -132,7 +135,7 @@ export default function Agenda() {
                 (sales || []).forEach((sale: any) => {
                     // Visita / Contato
                     const contactDate = parseDateStr(sale.contact_date);
-                    if (contactDate && contactDate >= firstDayOfMonth && contactDate <= new Date(year, month, daysInMonth)) {
+                    if (contactDate && contactDate >= firstDayOfMonth && contactDate <= lastDayOfMonthEnd) {
                         allEvents.push({
                             id: `${sale.id}-contact`,
                             type: "visit",
@@ -147,7 +150,7 @@ export default function Agenda() {
 
                     // Fechamento esperado
                     const closeDate = parseDateStr(sale.expected_close_date);
-                    if (closeDate && closeDate >= firstDayOfMonth && closeDate <= new Date(year, month, daysInMonth)) {
+                    if (closeDate && closeDate >= firstDayOfMonth && closeDate <= lastDayOfMonthEnd) {
                         allEvents.push({
                             id: `${sale.id}-close`,
                             type: "visit",
@@ -165,7 +168,7 @@ export default function Agenda() {
                 (budgets || []).forEach((b: any) => {
                     // Budgets can be mapped by created_at (timestamp) or production_date (string)
                     const budgetDate = parseDateStr(b.production_date) || (b.created_at ? new Date(b.created_at) : null);
-                    if (budgetDate && budgetDate >= firstDayOfMonth && budgetDate <= new Date(year, month, daysInMonth)) {
+                    if (budgetDate && budgetDate >= firstDayOfMonth && budgetDate <= lastDayOfMonthEnd) {
                         allEvents.push({
                             id: b.id,
                             type: "budget",
@@ -320,51 +323,50 @@ export default function Agenda() {
     return (
         <div className="space-y-6">
             {/* Header section */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-black tracking-tight text-luxury shimmer-gold uppercase">
-                        Agenda Geral
-                    </h1>
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest">
-                        Cronograma unificado de finanças, tarefas, clientes, orçamentos e pedidos.
-                    </p>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={prevMonth}
-                        onMouseEnter={playHoverSound}
-                        className="rounded-xl border-white/10 hover:bg-white/5"
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    
-                    <span className="text-sm font-black uppercase tracking-wider text-white px-4 min-w-[150px] text-center">
-                        {format(currentDate, "MMMM yyyy", { locale: ptBR })}
-                    </span>
-                    
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={nextMonth}
-                        onMouseEnter={playHoverSound}
-                        className="rounded-xl border-white/10 hover:bg-white/5"
-                    >
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
+            <ModuleHeader
+                badge="CALENDAR.ENGINE // CRONOGRAMA"
+                statusLabel={`${events.length} Eventos no Mês`}
+                title="Agenda"
+                highlight="Executiva"
+                subtitle="Cronograma unificado de finanças, tarefas fabris, visitas técnicas, orçamentos e entregas."
+                art={<AnimatedWorkshopCalendar size="md" className="w-20 h-16" />}
+                actions={
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={prevMonth}
+                            onMouseEnter={playHoverSound}
+                            className="rounded-xl border-white/10 hover:bg-white/5"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        
+                        <span className="text-sm font-black uppercase tracking-wider text-foreground px-4 min-w-[150px] text-center">
+                            {format(currentDate, "MMMM yyyy", { locale: ptBR })}
+                        </span>
+                        
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={nextMonth}
+                            onMouseEnter={playHoverSound}
+                            className="rounded-xl border-white/10 hover:bg-white/5"
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
 
-                    <Button
-                        variant="outline"
-                        onClick={setToday}
-                        onMouseEnter={playHoverSound}
-                        className="ml-2 rounded-xl border-white/10 hover:bg-white/5 font-bold uppercase text-[10px] tracking-wider"
-                    >
-                        Hoje
-                    </Button>
-                </div>
-            </div>
+                        <Button
+                            variant="outline"
+                            onClick={setToday}
+                            onMouseEnter={playHoverSound}
+                            className="ml-2 rounded-xl border-white/10 hover:bg-white/5 font-bold uppercase text-[10px] tracking-wider"
+                        >
+                            Hoje
+                        </Button>
+                    </div>
+                }
+            />
 
             {/* Main view container */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

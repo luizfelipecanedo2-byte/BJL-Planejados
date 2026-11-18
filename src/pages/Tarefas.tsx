@@ -20,6 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSales } from "@/hooks/useSales";
 import { useCollaborators } from "@/hooks/useCollaborators";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { ModuleHeader } from "@/components/ui/ModuleHeader";
+import { AnimatedWorkshopChecklist } from "@/components/ui/SectorArt";
 
 interface Task {
     id: string;
@@ -1035,82 +1037,102 @@ const Tarefas = () => {
     const criticalPendingTasksCount = tasks.filter(t => t.priority === 'high' && t.status === 'pending').length;
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-700">
+        <div className="space-y-6 animate-in fade-in duration-700">
             {/* Header Section */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                <div>
-                    <h2 className="text-5xl font-['Cinzel'] font-bold text-luxury tracking-wider shimmer-gold uppercase leading-none">Gestão de Operações</h2>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground mt-2 opacity-60">Operação & Planejamento Estratégico</p>
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-3">
-                    <Tabs value={activeView} onValueChange={setActiveView} className="bg-white/5 border border-white/10 p-1 rounded-2xl h-12 shadow-inner max-w-full overflow-hidden flex w-full md:w-auto">
-                        <TabsList className="bg-transparent h-full flex overflow-x-auto gap-0.5 custom-scrollbar max-w-full py-1">
-                            {getRollingTabs().map(tab => (
-                                <TabsTrigger 
-                                    key={tab.value}
-                                    value={tab.value} 
-                                    className="px-4 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all shrink-0"
+            <ModuleHeader
+                compact
+                badge="OPS.ENGINE // CHÃO DE FÁBRICA"
+                statusLabel={`${totalTodayTasks} Atividades Hoje`}
+                title="Gestão de"
+                highlight="Operações"
+                subtitle="Cronograma diário e semanal de corte, montagem, instalação e produtividade da equipe."
+                art={<AnimatedWorkshopChecklist size="md" className="w-16 h-14" />}
+                actions={
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <Tabs value={activeView} onValueChange={setActiveView} className="glass-panel-pro p-1 rounded-2xl h-11 shadow-inner max-w-full overflow-hidden flex w-full md:w-auto">
+                            <TabsList className="bg-transparent h-full flex overflow-x-auto gap-0.5 custom-scrollbar max-w-full py-1">
+                                {getRollingTabs().map(tab => (
+                                    <TabsTrigger 
+                                        key={tab.value}
+                                        value={tab.value} 
+                                        className="px-3.5 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all shrink-0"
+                                    >
+                                        {tab.label}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </Tabs>
+
+                        <Button 
+                            onClick={handlePrintDailyTasks}
+                            className="h-11 px-4 bg-white/5 hover:bg-white/15 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 gap-2"
+                        >
+                            <Printer className="h-4 w-4 text-primary" />
+                            Imprimir
+                        </Button>
+
+                        {userRole === 'admin' && (
+                            <>
+                                <Button 
+                                    onClick={handleClearAllTasks}
+                                    className="h-11 px-4 bg-rose-600/10 hover:bg-rose-600 border border-rose-500/20 hover:border-rose-500 text-rose-400 hover:text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 gap-2"
                                 >
-                                    {tab.label}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </Tabs>
+                                    <Trash2 className="h-4 w-4 text-rose-400 group-hover:text-white" />
+                                    Limpar Painel
+                                </Button>
 
-                    <Button 
-                        onClick={handlePrintDailyTasks}
-                        className="h-12 px-6 bg-white/5 hover:bg-white/15 border border-white/10 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 gap-2"
-                    >
-                        <Printer className="h-4 w-4 text-primary" />
-                        Imprimir
-                    </Button>
+                                <Button 
+                                    onClick={() => {
+                                        setPlannerStep(1);
+                                        setPlannerFocusProjects([]);
+                                        setPlannerTasks([]);
+                                        setIsPlannerOpen(true);
+                                    }}
+                                    className="h-11 px-5 bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 gap-2 border border-amber-400/20"
+                                >
+                                    <CalendarRange className="h-4 w-4" />
+                                    Planejar Semana
+                                </Button>
 
-                    {userRole === 'admin' && (
-                        <>
-                            <Button 
-                                onClick={handleClearAllTasks}
-                                className="h-12 px-6 bg-rose-600/10 hover:bg-rose-600 border border-rose-500/20 hover:border-rose-500 text-rose-400 hover:text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 gap-2"
-                            >
-                                <Trash2 className="h-4 w-4 text-rose-400 group-hover:text-white" />
-                                Limpar Painel
-                            </Button>
-
-                            <Button 
-                                onClick={() => {
-                                    setPlannerStep(1);
-                                    setPlannerFocusProjects([]);
-                                    setPlannerTasks([]);
-                                    setIsPlannerOpen(true);
-                                }}
-                                className="h-12 px-6 bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 gap-2 border border-amber-400/20"
-                            >
-                                <CalendarRange className="h-4 w-4" />
-                                Planejar Semana
-                            </Button>
-
-                            <Dialog open={isDialogOpen} onOpenChange={(open) => {
-                                if (!open) {
-                                    resetForm();
-                                } else {
-                                    // Sincroniza a data inicial com base na aba ativa ao abrir
-                                    const now = new Date();
-                                    if (activeView.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                                        setNewDueDate(activeView);
-                                    } else if (activeView === 'amanha') {
-                                        setNewDueDate(format(addDays(now, 1), "yyyy-MM-dd"));
-                                    } else {
-                                        setNewDueDate(format(now, "yyyy-MM-dd"));
-                                    }
-                                }
-                                setIsDialogOpen(open);
-                            }}>
-                            <DialogTrigger asChild>
-                                <Button className="h-12 px-8 bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all hover:scale-105 active:scale-95 gap-2">
+                                <Button
+                                    onClick={() => {
+                                        const now = new Date();
+                                        if (activeView.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                                            setNewDueDate(activeView);
+                                        } else if (activeView === 'amanha') {
+                                            setNewDueDate(format(addDays(now, 1), "yyyy-MM-dd"));
+                                        } else {
+                                            setNewDueDate(format(now, "yyyy-MM-dd"));
+                                        }
+                                        setIsDialogOpen(true);
+                                    }}
+                                    className="h-11 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all hover:scale-105 active:scale-95 gap-2"
+                                >
                                     <Plus className="h-4 w-4" />
                                     Nova Tarefa
                                 </Button>
-                            </DialogTrigger>
+                            </>
+                        )}
+                    </div>
+                }
+            />
+
+            {userRole === 'admin' && (
+                <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                    if (!open) {
+                        resetForm();
+                    } else {
+                        const now = new Date();
+                        if (activeView.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                            setNewDueDate(activeView);
+                        } else if (activeView === 'amanha') {
+                            setNewDueDate(format(addDays(now, 1), "yyyy-MM-dd"));
+                        } else {
+                            setNewDueDate(format(now, "yyyy-MM-dd"));
+                        }
+                    }
+                    setIsDialogOpen(open);
+                }}>
                             <DialogContent className="glass-card border-white/10 text-white max-w-lg rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
                                 <div className="bg-primary p-8 text-primary-foreground">
                                     <DialogHeader>
@@ -1238,14 +1260,11 @@ const Tarefas = () => {
                                 </form>
                             </DialogContent>
                         </Dialog>
-                        </>
                     )}
-                </div>
-            </div>
 
             {/* Tarefas HUD */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
                             <ListTodo className="h-32 w-32" />
@@ -1263,7 +1282,7 @@ const Tarefas = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
                             <CalendarIcon className="h-32 w-32" />
@@ -1278,7 +1297,7 @@ const Tarefas = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-emerald-500">
                             <CalendarRange className="h-32 w-32" />
@@ -1297,7 +1316,7 @@ const Tarefas = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-rose-500">
                             <AlertCircle className="h-32 w-32" />

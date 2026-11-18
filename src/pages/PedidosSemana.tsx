@@ -20,6 +20,8 @@ import { MagicButton } from "@/components/ui/magic-button";
 import { cn } from "@/lib/utils";
 import WeeklyOrderPrintView from "@/components/crm/WeeklyOrderPrintView";
 import { useUserRole } from "@/hooks/useUserRole";
+import { ModuleHeader } from "@/components/ui/ModuleHeader";
+import { AnimatedDeliveryTruck } from "@/components/ui/SectorArt";
 
 const PedidosSemana = () => {
     const { isAdmin } = useUserRole();
@@ -325,8 +327,9 @@ const PedidosSemana = () => {
                 <CardHeader className="pb-4 border-b border-white/5 bg-white/5">
                     <CardTitle className={cn("text-[10px] font-black uppercase tracking-[0.3em]", colorClass)}>{title}</CardTitle>
                 </CardHeader>
-                <CardContent className="p-6">
-                    <div className="space-y-3">
+                <CardContent className="p-4 sm:p-6">
+                    <div className="overflow-x-auto custom-scrollbar">
+                        <div className="space-y-3 min-w-[720px]">
                         {/* Header mimic */}
                         <div className="grid grid-cols-12 gap-4 px-6 py-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50">
                             <div className="col-span-1">Ação</div>
@@ -450,6 +453,7 @@ const PedidosSemana = () => {
                                 </div>
                             );
                         })}
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -458,50 +462,54 @@ const PedidosSemana = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                   <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-500 to-amber-700 text-glow">Pedidos da Semana</h2>
-                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Monitoramento de Compras e Suprimentos</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Button 
-                        onClick={() => syncStockWithOrders(false)} 
-                        variant="outline"
-                        className="gap-2 h-11 px-5 border-blue-500/20 bg-blue-500/5 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-blue-500 hover:text-white group transition-all"
-                    >
-                        <TrendingUp className="h-4 w-4 group-hover:scale-110 transition-transform text-blue-400" />
-                        Sincronizar
-                    </Button>
-                    <Button 
-                        onClick={() => {
-                            if (window.confirm("Isso apagará os pedidos pendentes atuais e criará uma lista nova baseada no estoque contado. Deseja continuar?")) {
-                                syncStockWithOrders(true);
-                            }
-                        }} 
-                        variant="outline"
-                        className="gap-2 h-11 px-5 border-orange-500/20 bg-orange-500/5 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-orange-600 hover:text-white group transition-all"
-                    >
-                        <Trash2 className="h-4 w-4 group-hover:scale-110 transition-transform text-orange-400" />
-                        Reiniciar p/ Sexta
-                    </Button>
-                    <Button 
-                        onClick={() => setIsPrintOpen(true)} 
-                        variant="outline"
-                        className="gap-2 h-11 px-5 border-white/10 bg-white/5 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-primary hover:text-primary-foreground group transition-all"
-                    >
-                        <Printer className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                        Relatório PDF
-                    </Button>
-                    <MagicButton onClick={handleNewOrder} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
-                        <Plus className="h-4 w-4" />
-                        Novo Pedido
-                    </MagicButton>
-                </div>
-            </div>
+            <ModuleHeader
+                badge="SUPPLY.ENGINE // COMPRAS & LOGÍSTICA"
+                statusLabel={`${totalOrders} Pedidos na Semana`}
+                title="Pedidos da"
+                highlight="Semana"
+                subtitle="Compras programadas para CHM Morais / CED, BRUTA e fornecedores sob medida com sincronização do estoque."
+                art={<AnimatedDeliveryTruck size="md" className="w-24 h-16" />}
+                actions={
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <Button 
+                            onClick={() => syncStockWithOrders(false)} 
+                            variant="outline"
+                            className="gap-2 h-11 px-4 border-blue-500/20 bg-blue-500/5 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-blue-500 hover:text-white group transition-all"
+                        >
+                            <TrendingUp className="h-4 w-4 group-hover:scale-110 transition-transform text-blue-400" />
+                            Sincronizar
+                        </Button>
+                        <Button 
+                            onClick={() => {
+                                if (window.confirm("Isso apagará os pedidos pendentes atuais e criará uma lista nova baseada no estoque contado. Deseja continuar?")) {
+                                    syncStockWithOrders(true);
+                                }
+                            }} 
+                            variant="outline"
+                            className="gap-2 h-11 px-4 border-orange-500/20 bg-orange-500/5 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-orange-600 hover:text-white group transition-all"
+                        >
+                            <Trash2 className="h-4 w-4 group-hover:scale-110 transition-transform text-orange-400" />
+                            Reiniciar p/ Sexta
+                        </Button>
+                        <Button 
+                            onClick={() => setIsPrintOpen(true)} 
+                            variant="outline"
+                            className="gap-2 h-11 px-4 border-white/10 bg-white/5 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-primary hover:text-primary-foreground group transition-all"
+                        >
+                            <Printer className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                            Relatório PDF
+                        </Button>
+                        <MagicButton onClick={handleNewOrder} className="gap-1.5 h-11 px-5 shadow-xl shadow-primary/20">
+                            <Plus className="h-4 w-4" />
+                            Novo Pedido
+                        </MagicButton>
+                    </div>
+                }
+            />
 
             {/* WEEKLY ORDERS HUD */}
             <div className={cn("grid gap-4", isAdmin ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1")}>
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card tilt-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
                             <Plus className="h-32 w-32" />
@@ -517,7 +525,7 @@ const PedidosSemana = () => {
                 </Card>
 
                 {isAdmin && (
-                    <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                    <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card tilt-card">
                         <CardContent className="p-6 flex items-center justify-between relative">
                             <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
                                  <TrendingUp className="h-32 w-32" />
@@ -533,7 +541,7 @@ const PedidosSemana = () => {
                 )}
 
                 {isAdmin && (
-                    <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card tilt-card border-beam-card">
+                    <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card tilt-card">
                         <CardContent className="p-6 flex items-center justify-between relative">
                             <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-blue-500">
                                  <TrendingUp className="h-32 w-32" />

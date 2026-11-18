@@ -15,6 +15,8 @@ import { MagicButton } from "@/components/ui/magic-button";
 import ClientTimeline from "@/components/crm/ClientTimeline";
 import ClientFilesDialog from "@/components/crm/ClientFilesDialog";
 import { EquipeTab } from "@/components/configuracoes/EquipeTab";
+import { ModuleHeader } from "@/components/ui/ModuleHeader";
+import { AnimatedHomeProject, AnimatedDeliveryTruck, AnimatedCraftsmanWorkshop } from "@/components/ui/SectorArt";
 
 const Clientes = () => {
     const [clients, setClients] = useState<Client[]>([]);
@@ -210,31 +212,30 @@ const Clientes = () => {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                        <span className="tech-hud-pill text-primary border-primary/25 bg-primary/10">
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-                            PEOPLE.HUB // v2.6
-                        </span>
-                        <span className="text-[10px] font-mono font-semibold text-emerald-400 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                            {clients.length} Registros Ativos
-                        </span>
-                    </div>
-                    <h2 className="text-3xl md:text-4xl font-display font-black tracking-tight text-white">
-                        Clientes, Fornecedores & <span className="shimmer-gold">Equipe</span>
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                        Base unificada de relacionamento, obras mapeadas por GPS, parceiros homologados e colaboradores da fábrica.
-                    </p>
-                </div>
-                {activeTab !== "colaborador" && (
-                    <MagicButton onClick={handleNewClient} className="gap-2 h-11 px-6 rounded-2xl shadow-xl shadow-primary/20 font-display font-bold text-xs">
-                        <UserPlus className="h-4 w-4" />
-                        Novo Registro
-                    </MagicButton>
-                )}
-            </div>
+            <ModuleHeader
+                badge="PEOPLE.HUB // CLIENTES & EQUIPE"
+                statusLabel={`${clients.length} Registros Ativos`}
+                title="Clientes, Fornecedores &"
+                highlight="Equipe"
+                subtitle="Base unificada de relacionamento, obras mapeadas por GPS, parceiros homologados e colaboradores da fábrica."
+                art={
+                    activeTab === "fornecedor" ? (
+                        <AnimatedDeliveryTruck size="md" className="w-24 h-16" />
+                    ) : activeTab === "colaborador" ? (
+                        <AnimatedCraftsmanWorkshop size="md" className="w-20 h-16" />
+                    ) : (
+                        <AnimatedHomeProject size="md" className="w-20 h-16" />
+                    )
+                }
+                actions={
+                    activeTab !== "colaborador" ? (
+                        <MagicButton onClick={handleNewClient} className="gap-2 h-11 px-6 rounded-2xl shadow-xl shadow-primary/20 font-display font-bold text-xs">
+                            <UserPlus className="h-4 w-4" />
+                            Novo Registro
+                        </MagicButton>
+                    ) : undefined
+                }
+            />
 
             {/* Bento KPI Strip */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">

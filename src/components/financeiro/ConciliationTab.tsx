@@ -8,6 +8,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ItauConciliationModal from "./ItauConciliationModal";
+import { AnimatedBankVaultCard } from "@/components/ui/SectorArt";
 
 interface ConciliationTabProps {
     selectedAccount: string;
@@ -71,11 +72,16 @@ const ConciliationTab = ({
                 )} />
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
-                    <div className="flex flex-col gap-1 text-center sm:text-left">
-                        <h3 className="text-2xl font-black tracking-tighter text-white uppercase tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Conciliação Bancária</h3>
-                        <div className="flex items-center gap-2 justify-center sm:justify-start">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest leading-none">Monitoramento em Tempo Real</p>
+                    <div className="flex items-center gap-4 text-center sm:text-left">
+                        <div className="hidden md:flex shrink-0">
+                            <AnimatedBankVaultCard account={selectedAccount} />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <h3 className="text-2xl font-black tracking-tighter text-white uppercase tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Conciliação Bancária</h3>
+                            <div className="flex items-center gap-2 justify-center sm:justify-start">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-none">Monitoramento em Tempo Real</p>
+                            </div>
                         </div>
                     </div>
 

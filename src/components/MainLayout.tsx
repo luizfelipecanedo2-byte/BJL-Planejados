@@ -120,20 +120,6 @@ const MainLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const [uiSoundsEnabled, setUiSoundsEnabled] = useState<boolean>(() => {
-        return localStorage.getItem("ui_sounds") !== "false";
-    });
-
-    const toggleUiSounds = () => {
-        setUiSoundsEnabled(prev => {
-            const next = !prev;
-            localStorage.setItem("ui_sounds", String(next));
-            toast.success(next ? "Efeitos sonoros ativados" : "Efeitos sonoros desativados", { duration: 1500 });
-            if (next) setTimeout(playClickSound, 50);
-            return next;
-        });
-    };
-
     const toggleSidebarCollapse = () => {
         setIsSidebarCollapsed(prev => {
             const next = !prev;
@@ -914,7 +900,7 @@ const MainLayout = () => {
                                 <div className="flex justify-between items-center pb-4 border-b border-white/5">
                                     <div className="flex items-center gap-2">
                                         <Palette className="h-5 w-5 text-primary" />
-                                        <h3 className="font-black text-sm uppercase tracking-wider text-white">Customizador de Tema</h3>
+                                        <h3 className="font-black text-sm uppercase tracking-wider text-foreground">Customizador de Tema</h3>
                                     </div>
                                     <Button
                                         variant="ghost"
@@ -930,7 +916,7 @@ const MainLayout = () => {
                                     <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Selecione uma Paleta de Cores</p>
                                     
                                     <div className="grid grid-cols-1 gap-3">
-                                        {/* Classic Obsidian Card */}
+                                        {/* Oficina Madeira Nobre Card */}
                                         <button
                                             onClick={() => {
                                                 playClickSound();
@@ -940,16 +926,16 @@ const MainLayout = () => {
                                             className={cn(
                                                 "w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group",
                                                 currentTheme === "theme-gold" 
-                                                    ? "bg-amber-500/10 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.15)]" 
+                                                    ? "bg-amber-500/15 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.18)]" 
                                                     : "bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/10"
                                             )}
                                         >
                                             <div className="space-y-1">
-                                                <span className="font-bold text-xs text-white block group-hover:text-primary transition-colors">Classic Obsidian</span>
-                                                <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Escuro de Luxo & Ouro</span>
+                                                <span className="font-bold text-xs text-foreground block group-hover:text-primary transition-colors">Oficina Madeira Nobre</span>
+                                                <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Nogueira, Imbuia & Latão</span>
                                             </div>
                                             <div className="flex items-center gap-1">
-                                                <div className="w-3.5 h-3.5 rounded-full bg-[#111111] border border-white/10" />
+                                                <div className="w-3.5 h-3.5 rounded-full bg-[#4e311a] border border-amber-400/40" />
                                                 <div className="w-3.5 h-3.5 rounded-full bg-amber-500" />
                                             </div>
                                         </button>
@@ -969,7 +955,7 @@ const MainLayout = () => {
                                             )}
                                         >
                                             <div className="space-y-1">
-                                                <span className="font-bold text-xs text-white block group-hover:text-primary transition-colors">Nordic Frost</span>
+                                                <span className="font-bold text-xs text-foreground block group-hover:text-primary transition-colors">Nordic Frost</span>
                                                 <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Claro Gelado & Esmeralda</span>
                                             </div>
                                             <div className="flex items-center gap-1">
@@ -993,7 +979,7 @@ const MainLayout = () => {
                                             )}
                                         >
                                             <div className="space-y-1">
-                                                <span className="font-bold text-xs text-white block group-hover:text-primary transition-colors">Midnight Navy</span>
+                                                <span className="font-bold text-xs text-foreground block group-hover:text-primary transition-colors">Midnight Navy</span>
                                                 <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Azul Escuro & Safira</span>
                                             </div>
                                             <div className="flex items-center gap-1">
@@ -1017,7 +1003,7 @@ const MainLayout = () => {
                                             )}
                                         >
                                             <div className="space-y-1">
-                                                <span className="font-bold text-xs text-white block group-hover:text-primary transition-colors">Cyberpunk Neo</span>
+                                                <span className="font-bold text-xs text-foreground block group-hover:text-primary transition-colors">Cyberpunk Neo</span>
                                                 <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Púrpura Profundo & Ametista</span>
                                             </div>
                                             <div className="flex items-center gap-1">
@@ -1035,16 +1021,16 @@ const MainLayout = () => {
                                                 <span className="text-[9px] text-muted-foreground block">Clicks e toques digitais</span>
                                             </div>
                                             <button
-                                                onClick={toggleUiSounds}
+                                                onClick={toggleSounds}
                                                 className={cn(
                                                     "w-12 h-6 rounded-full p-1 transition-all duration-300 relative border border-white/10",
-                                                    uiSoundsEnabled ? "bg-primary" : "bg-white/5"
+                                                    soundsEnabled ? "bg-primary" : "bg-white/5"
                                                 )}
                                             >
                                                 <motion.div
                                                     layout
                                                     className="w-3.5 h-3.5 rounded-full bg-white shadow-md"
-                                                    style={{ float: uiSoundsEnabled ? "right" : "left" }}
+                                                    style={{ float: soundsEnabled ? "right" : "left" }}
                                                 />
                                             </button>
                                         </div>

@@ -52,6 +52,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { AnimatedInvoiceStamp } from "@/components/ui/SectorArt";
 
 interface Invoice {
     id: string;
@@ -1377,7 +1378,10 @@ export default function NotaFiscalTab() {
             {/* BENTO TELEMETRY HEADER */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="executive-card border-metallic p-5 rounded-2xl relative overflow-hidden">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="absolute -right-2 -bottom-2 opacity-20 pointer-events-none">
+                        <AnimatedInvoiceStamp size="md" />
+                    </div>
+                    <div className="flex items-center justify-between mb-2 relative z-10">
                         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                             Volume Faturado (NF)
                         </span>
@@ -1385,10 +1389,10 @@ export default function NotaFiscalTab() {
                             <Receipt className="h-4 w-4" />
                         </div>
                     </div>
-                    <h3 className="text-2xl font-display font-black text-primary font-tech tabular-nums">
+                    <h3 className="text-2xl font-display font-black text-primary font-tech tabular-nums relative z-10">
                         {formatCurrency(totalAuthorizedAmount)}
                     </h3>
-                    <p className="text-[10px] text-muted-foreground/70 mt-1">
+                    <p className="text-[10px] text-muted-foreground/70 mt-1 relative z-10">
                         Total em notas autorizadas
                     </p>
                 </div>

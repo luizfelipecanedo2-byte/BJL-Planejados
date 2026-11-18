@@ -17,6 +17,8 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import CapacityTab from "@/components/crm/CapacityTab";
 import OSVisualGalleryDialog from "@/components/crm/OSVisualGalleryDialog";
 import SparklineChart from "@/components/ui/SparklineChart";
+import { ModuleHeader } from "@/components/ui/ModuleHeader";
+import { AnimatedPanelSaw } from "@/components/ui/SectorArt";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -862,38 +864,36 @@ const OrdemServico = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                   <div className="flex items-center gap-2 mb-1.5">
-                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">
-                           <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                           PROD.ENGINE // v3.0
-                       </span>
-                       <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">• Controle Industrial em Tempo Real</span>
-                   </div>
-                   <h2 className="text-4xl font-black tracking-tighter shimmer-gold">Ordens de Serviço</h2>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={fetchOrders}
-                        disabled={isLoading}
-                        className="gap-1.5 h-10 border-white/10 bg-white/[0.03] hover:bg-white/[0.07] font-black uppercase tracking-widest text-[10px] rounded-xl"
-                    >
-                        <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
-                        Atualizar
-                    </Button>
-                    <MagicButton onClick={handleNewOrder} className="gap-1.5 h-10 px-5 shadow-xl shadow-primary/20">
-                        <Plus className="h-4 w-4" />
-                        Nova OS
-                    </MagicButton>
-                </div>
-            </div>
+            <ModuleHeader
+                badge="PROD.ENGINE // ESQUADREJADEIRA"
+                statusLabel={`${inProgress} OS em Produção`}
+                title="Ordens de"
+                highlight="Serviço"
+                subtitle="Linha de corte, fitagem, montagem de caixas, instalação e controle de margem fabril em tempo real."
+                art={<AnimatedPanelSaw size="md" className="w-20 h-16" />}
+                actions={
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={fetchOrders}
+                            disabled={isLoading}
+                            className="gap-1.5 h-10 border-white/10 bg-white/[0.03] hover:bg-white/[0.07] font-black uppercase tracking-widest text-[10px] rounded-xl"
+                        >
+                            <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
+                            Atualizar
+                        </Button>
+                        <MagicButton onClick={handleNewOrder} className="gap-1.5 h-10 px-5 shadow-xl shadow-primary/20">
+                            <Plus className="h-4 w-4" />
+                            Nova OS
+                        </MagicButton>
+                    </div>
+                }
+            />
 
             {/* OS HUD */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-blue-500">
                             <Settings2 className="h-32 w-32" />
@@ -911,7 +911,7 @@ const OrdemServico = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-primary">
                             <RefreshCw className="h-32 w-32" />
@@ -930,7 +930,7 @@ const OrdemServico = () => {
                 </Card>
 
                 {isAdmin && (
-                    <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                    <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card">
                         <CardContent className="p-6 flex items-center justify-between relative">
                             <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-amber-500">
                                 <DollarSign className="h-32 w-32" />
@@ -948,7 +948,7 @@ const OrdemServico = () => {
                     </Card>
                 )}
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-emerald-500">
                             <CheckCircle className="h-32 w-32" />
@@ -966,7 +966,7 @@ const OrdemServico = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-orange-500">
                             <ClipboardList className="h-32 w-32" />
@@ -987,7 +987,7 @@ const OrdemServico = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border border-white/10 backdrop-blur-2xl bg-card/40 shadow-xl overflow-hidden group spotlight-card">
+                <Card className="executive-card border-metallic shadow-xl overflow-hidden group spotlight-card">
                     <CardContent className="p-6 flex items-center justify-between relative">
                         <div className="absolute -right-4 -bottom-4 opacity-[0.05] group-hover:scale-150 transition-transform duration-500 text-rose-500">
                             <AlertCircle className="h-32 w-32" />
@@ -1008,7 +1008,7 @@ const OrdemServico = () => {
 
             {/* Radar de Prejuízo & Margem */}
             {isAdmin && (
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-950 to-black border border-white/10 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="p-5 rounded-3xl executive-card border-metallic shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <div className={cn(
                             "p-3 rounded-xl border flex items-center justify-center shrink-0",

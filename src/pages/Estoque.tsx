@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MdfOffcutsManager } from "@/components/estoque/MdfOffcutsManager";
 import { useUserRole } from "@/hooks/useUserRole";
+import { ModuleHeader } from "@/components/ui/ModuleHeader";
+import { AnimatedLumberRack, AnimatedOffcutsPuzzle } from "@/components/ui/SectorArt";
 
 const Estoque = () => {
     const { isAdmin } = useUserRole();
@@ -211,48 +213,47 @@ const Estoque = () => {
     return (
         <div className="space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                       <div className="flex items-center gap-2">
-                           <span className="tech-hud-pill text-primary border-primary/25 bg-primary/10">
-                               <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                               STOCK.ENGINE // v2.6
-                           </span>
-                           <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground/70">
-                               Almoxarifado & Insumos
-                           </span>
-                       </div>
-                       <h2 className="text-3xl md:text-4xl font-display font-extrabold tracking-tight text-foreground">
-                           Controle de <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-400 to-amber-600 text-glow">Estoque</span>
-                       </h2>
-                    </div>
+                <ModuleHeader
+                    badge={activeTab === "insumos" ? "STOCK.ENGINE // ALMOXARIFADO" : "STOCK.ENGINE // RETALHOS MDF"}
+                    statusLabel={activeTab === "insumos" ? `${totalItems} Itens Catalogados` : "Aproveitamento de Chapas"}
+                    title="Controle de"
+                    highlight="Estoque"
+                    subtitle="Gestão de chapas de MDF, ferragens, fitas de borda, sobras reutilizáveis e alertas de reposição."
+                    art={
+                        activeTab === "insumos" ? (
+                            <AnimatedLumberRack size="md" className="w-20 h-16" />
+                        ) : (
+                            <AnimatedOffcutsPuzzle size="md" className="w-20 h-16" />
+                        )
+                    }
+                    actions={
+                        <div className="flex flex-wrap items-center gap-3">
+                            <TabsList className="glass-panel-pro p-1 rounded-2xl h-11">
+                                <TabsTrigger 
+                                    value="insumos" 
+                                    className="rounded-xl px-4 font-bold text-xs gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+                                >
+                                    <Package className="h-4 w-4" />
+                                    Insumos & Ferragens
+                                </TabsTrigger>
+                                <TabsTrigger 
+                                    value="retalhos" 
+                                    className="rounded-xl px-4 font-bold text-xs gap-2 data-[state=active]:bg-amber-500 data-[state=active]:text-black transition-all"
+                                >
+                                    <Layers className="h-4 w-4" />
+                                    Sobras & Retalhos MDF
+                                </TabsTrigger>
+                            </TabsList>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                        <TabsList className="bg-white/[0.03] border border-white/10 p-1 rounded-2xl h-11 backdrop-blur-xl">
-                            <TabsTrigger 
-                                value="insumos" 
-                                className="rounded-xl px-4 font-bold text-xs gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
-                            >
-                                <Package className="h-4 w-4" />
-                                Insumos & Ferragens
-                            </TabsTrigger>
-                            <TabsTrigger 
-                                value="retalhos" 
-                                className="rounded-xl px-4 font-bold text-xs gap-2 data-[state=active]:bg-amber-500 data-[state=active]:text-black transition-all"
-                            >
-                                <Layers className="h-4 w-4" />
-                                Sobras & Retalhos MDF
-                            </TabsTrigger>
-                        </TabsList>
-
-                        {activeTab === "insumos" && (
-                            <MagicButton onClick={handleNewProduct} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
-                                <Plus className="h-4 w-4" />
-                                Novo Insumo
-                            </MagicButton>
-                        )}
-                    </div>
-                </div>
+                            {activeTab === "insumos" && (
+                                <MagicButton onClick={handleNewProduct} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
+                                    <Plus className="h-4 w-4" />
+                                    Novo Insumo
+                                </MagicButton>
+                            )}
+                        </div>
+                    }
+                />
 
                 {/* ABA 1: INSUMOS & FERRAGENS */}
                 <TabsContent value="insumos" className="space-y-6 mt-0">

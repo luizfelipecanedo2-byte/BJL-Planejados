@@ -223,7 +223,7 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
-  /* Iluminação Quente de Marcenaria & Madeira Marrom (Imbuia / Nogueira) */
+  /* Iluminação por Tema (Oficina Madeira no tema principal, e superfícies próprias nos outros temas) */
   body::before {
     content: "";
     @apply fixed inset-0 z-[-2] pointer-events-none;
@@ -232,6 +232,24 @@
       radial-gradient(circle at 85% 25%, rgba(146, 64, 14, 0.22) 0%, transparent 50%),
       radial-gradient(circle at 15% 80%, rgba(120, 53, 15, 0.25) 0%, transparent 55%),
       linear-gradient(145deg, #352112 0%, #27180c 50%, #3a2313 100%);
+  }
+
+  .theme-emerald body::before {
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(16, 185, 129, 0.12), transparent 70%),
+      linear-gradient(145deg, #f8fafc 0%, #f1f5f9 50%, #ecfdf5 100%);
+  }
+
+  .theme-sapphire body::before {
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59, 130, 246, 0.2), transparent 70%),
+      linear-gradient(145deg, #070d1b 0%, #0b1326 50%, #091121 100%);
+  }
+
+  .theme-amethyst body::before {
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(168, 85, 247, 0.2), transparent 70%),
+      linear-gradient(145deg, #0b0414 0%, #120620 50%, #090212 100%);
   }
 
   /* Custom Luxury Scrollbar */
@@ -248,6 +266,13 @@
 }
 
 @layer utilities {
+  /* Vitrine Editorial Escura (Landing Page Pública) */
+  .landing-glass-card {
+    background: linear-gradient(160deg, rgba(20, 20, 24, 0.9) 0%, rgba(10, 10, 12, 0.96) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 24px 60px -15px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
   .glass-card {
     background: 
       radial-gradient(circle at 90% 10%, rgba(245, 158, 11, 0.14) 0%, transparent 45%),
@@ -259,6 +284,33 @@
       0 16px 36px -12px rgba(20, 10, 4, 0.72),
       inset 0 0 0 3px rgba(42, 24, 12, 0.35),
       inset 0 1px 0 rgba(254, 243, 199, 0.28);
+  }
+
+  .theme-sapphire .glass-card,
+  .theme-sapphire .executive-card,
+  .theme-sapphire .glass-panel-pro,
+  .theme-sapphire .cyber-glass {
+    background: linear-gradient(160deg, rgba(17, 27, 52, 0.92) 0%, rgba(11, 18, 36, 0.96) 100%);
+    border-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 18px 42px -15px rgba(2, 6, 23, 0.85), inset 0 1px 0 rgba(147, 197, 253, 0.16);
+  }
+
+  .theme-amethyst .glass-card,
+  .theme-amethyst .executive-card,
+  .theme-amethyst .glass-panel-pro,
+  .theme-amethyst .cyber-glass {
+    background: linear-gradient(160deg, rgba(32, 14, 56, 0.92) 0%, rgba(18, 7, 34, 0.96) 100%);
+    border-color: rgba(168, 85, 247, 0.3);
+    box-shadow: 0 18px 42px -15px rgba(8, 2, 18, 0.85), inset 0 1px 0 rgba(216, 180, 254, 0.16);
+  }
+
+  .theme-emerald .glass-card,
+  .theme-emerald .executive-card,
+  .theme-emerald .glass-panel-pro,
+  .theme-emerald .cyber-glass {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.98) 100%);
+    border-color: rgba(16, 185, 129, 0.25);
+    box-shadow: 0 12px 32px -10px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   }
 
   .luxury-shadow {
@@ -779,5 +831,68 @@
       transparent 1px,
       transparent 8px
     );
+  }
+
+  /* Animações das Ilustrações por Setor (Banco, Prancheta, Caminhão, Serra, Engrenagens) */
+  @keyframes coinFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+  }
+  .animate-coin-float {
+    animation: coinFloat 2.6s ease-in-out infinite;
+  }
+
+  @keyframes vaultDial {
+    0%, 100% { transform: rotate(0deg); }
+    40% { transform: rotate(45deg); }
+    70% { transform: rotate(-20deg); }
+  }
+  .animate-vault-dial {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: vaultDial 5s ease-in-out infinite;
+  }
+
+  @keyframes truckRide {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-2px); }
+  }
+  .animate-truck-ride {
+    animation: truckRide 1.4s ease-in-out infinite;
+  }
+
+  @keyframes pencilSketch {
+    0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+    50% { transform: translate(7px, -4px) rotate(4deg); }
+  }
+  .animate-pencil-sketch {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: pencilSketch 2.4s ease-in-out infinite;
+  }
+
+  @keyframes gearSpinSlow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .animate-gear-spin {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: gearSpinSlow 14s linear infinite;
+  }
+  .animate-gear-spin-reverse {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: gearSpinSlow 10s linear infinite reverse;
+  }
+
+  @keyframes checkPop {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+  .animate-check-pop {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: checkPop 2.4s ease-in-out infinite;
   }
 }
