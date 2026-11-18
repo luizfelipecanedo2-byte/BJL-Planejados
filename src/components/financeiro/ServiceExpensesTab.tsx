@@ -39,30 +39,42 @@ const ServiceExpensesTab = ({
 }: ServiceExpensesTabProps) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [marginFilter, setMarginFilter] = useState<'all' | 'healthy' | 'warning' | 'danger'>('all');
+    const [paymentFilter, setPaymentFilter] = useState<'all' | 'pending_payment' | 'paid_off'>('all');
     const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
 
     const toggleExpand = (id: string) => {
         setExpandedIds(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
-    // Radar Metrics (Cálculo de margem e estouro de materiais)
+    // Radar Metrics (Cálculo de margem, estouro de materiais e recebimentos)
     const radarMetrics = useMemo(() => {
         let healthy = 0;
         let warning = 0;
         let danger = 0;
         let totalMaterials = 0;
+        let withPendingPayment = 0;
+        let fullyPaid = 0;
 
         serviceExpenses.forEach(e => {
             totalMaterials += e.spentValue;
-            if (e.serviceValue > 0) {
+            const isEstoque = e.clientName.includes("ESTOQUE");
+            if (!isEstoque && e.serviceValue > 0) {
                 const ratio = (e.spentValue / e.serviceValue) * 100;
                 if (ratio <= 40) healthy++;
                 else if (ratio <= 55) warning++;
                 else danger++;
+
+                const received = e.receivedValue || 0;
+                const pending = e.pendingReceivable !== undefined ? e.pendingReceivable : Math.max(0, e.serviceValue - received);
+                if (pending > 0.01) {
+                    withPendingPayment++;
+                } else {
+                    fullyPaid++;
+                }
             }
         });
 
-        return { healthy, warning, danger, totalMaterials };
+        return { healthy, warning, danger, totalMaterials, withPendingPayment, fullyPaid };
     }, [serviceExpenses]);
 
     const filteredExpenses = useMemo(() => {
@@ -74,26 +86,46 @@ const ServiceExpensesTab = ({
                     e.clientName.toLowerCase().includes(term) ||
                     e.environment.toLowerCase().includes(term) ||
                     (e.autoItems && e.autoItems.some(item => item.description.toLowerCase().includes(term))) ||
-                    (e.items && e.items.some(item => item.description.toLowerCase().includes(term)));
+                    (e.items && e.items.some(item => item.description.toLowerCase().includes(term))) ||
+                    (e.incomeItems && e.incomeItems.some(item => item.description.toLowerCase().includes(term)));
                 if (!matches) return false;
             }
 
             // Filtro pelo Radar de Margem
             if (marginFilter !== 'all') {
-                if (e.serviceValue <= 0) return false;
+                if (e.serviceValue <= 0 || e.clientName.includes("ESTOQUE")) return false;
                 const ratio = (e.spentValue / e.serviceValue) * 100;
                 if (marginFilter === 'healthy' && ratio > 40) return false;
                 if (marginFilter === 'warning' && (ratio <= 40 || ratio > 55)) return false;
                 if (marginFilter === 'danger' && ratio <= 55) return false;
             }
 
+            // Filtro por Status de Pagamento do Cliente
+            if (paymentFilter !== 'all') {
+                if (e.serviceValue <= 0 || e.clientName.includes("ESTOQUE")) return false;
+                const received = e.receivedValue || 0;
+                const pending = e.pendingReceivable !== undefined ? e.pendingReceivable : Math.max(0, e.serviceValue - received);
+                if (paymentFilter === 'pending_payment' && pending <= 0.01) return false;
+                if (paymentFilter === 'paid_off' && pending > 0.01) return false;
+            }
+
             return true;
         });
-    }, [serviceExpenses, searchTerm, marginFilter]);
+    }, [serviceExpenses, searchTerm, marginFilter, paymentFilter]);
 
     const totalRevenue = useMemo(() => serviceExpenses.reduce((acc, e) => acc + e.serviceValue, 0), [serviceExpenses]);
     const totalCosts = useMemo(() => serviceExpenses.reduce((acc, e) => acc + e.spentValue, 0), [serviceExpenses]);
+    const totalReceived = useMemo(() => serviceExpenses.reduce((acc, e) => acc + (e.receivedValue || 0), 0), [serviceExpenses]);
+    const totalPendingReceivable = useMemo(() => serviceExpenses.reduce((acc, e) => {
+        if (e.clientName.includes("ESTOQUE")) return acc;
+        const rec = e.receivedValue || 0;
+        const pend = e.pendingReceivable !== undefined ? e.pendingReceivable : Math.max(0, e.serviceValue - rec);
+        return acc + pend;
+    }, 0), [serviceExpenses]);
     const totalGrossProfit = totalRevenue - totalCosts;
+    const avgMarginPct = totalRevenue > 0 ? ((totalGrossProfit / totalRevenue) * 100).toFixed(1) : "0.0";
+    const avgCostPct = totalRevenue > 0 ? ((totalCosts / totalRevenue) * 100).toFixed(1) : "0.0";
+    const receivedPct = totalRevenue > 0 ? ((totalReceived / totalRevenue) * 100).toFixed(1) : "0.0";
 
     return (
         <div className="space-y-6">
@@ -167,7 +199,7 @@ const ServiceExpensesTab = ({
                     <div className="h-10 w-px bg-slate-800 hidden sm:block" />
 
                     {/* Botões interativos de filtro rápido do Radar */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <button
                             type="button"
                             onClick={() => setMarginFilter(marginFilter === 'healthy' ? 'all' : 'healthy')}
@@ -210,11 +242,41 @@ const ServiceExpensesTab = ({
                             <span className="text-sm font-black">{radarMetrics.danger}</span>
                         </button>
 
-                        {marginFilter !== 'all' && (
+                        <div className="h-8 w-px bg-slate-800 hidden sm:block mx-1" />
+
+                        <button
+                            type="button"
+                            onClick={() => setPaymentFilter(paymentFilter === 'pending_payment' ? 'all' : 'pending_payment')}
+                            className={cn(
+                                "flex flex-col items-center rounded-xl px-3 py-2 transition-all border text-left cursor-pointer",
+                                paymentFilter === 'pending_payment' ? "bg-cyan-500 text-black border-cyan-300 font-bold scale-105 shadow-md shadow-cyan-500/20" :
+                                "bg-cyan-500/10 hover:bg-cyan-500/20 border-cyan-500/30 text-cyan-300"
+                            )}
+                            title="Filtrar projetos onde o cliente ainda tem saldo a pagar"
+                        >
+                            <span className="text-[9px] font-bold uppercase tracking-wider">💰 Falta Receber</span>
+                            <span className="text-sm font-black">{radarMetrics.withPendingPayment}</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setPaymentFilter(paymentFilter === 'paid_off' ? 'all' : 'paid_off')}
+                            className={cn(
+                                "flex flex-col items-center rounded-xl px-3 py-2 transition-all border text-left cursor-pointer",
+                                paymentFilter === 'paid_off' ? "bg-teal-500 text-black border-teal-300 font-bold scale-105 shadow-md shadow-teal-500/20" :
+                                "bg-teal-500/10 hover:bg-teal-500/20 border-teal-500/30 text-teal-300"
+                            )}
+                            title="Filtrar projetos 100% quitados pelo cliente"
+                        >
+                            <span className="text-[9px] font-bold uppercase tracking-wider">✓ Quitados</span>
+                            <span className="text-sm font-black">{radarMetrics.fullyPaid}</span>
+                        </button>
+
+                        {(marginFilter !== 'all' || paymentFilter !== 'all') && (
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setMarginFilter('all')}
+                                onClick={() => { setMarginFilter('all'); setPaymentFilter('all'); }}
                                 className="text-[10px] uppercase font-bold text-slate-400 hover:text-white h-9 px-2"
                             >
                                 Limpar
@@ -224,23 +286,33 @@ const ServiceExpensesTab = ({
                 </div>
             </div>
 
-            {/* KPI Cards Next-Gen com Sparklines */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* KPI Cards Next-Gen com Métricas Reais de Contrato, Recebimento e Margem */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <NextGenKpiCard
-                    title="Receita Total"
+                    title="Contratos & OS (Total)"
                     value={formatCurrency(totalRevenue)}
-                    change="+18.4%"
+                    change={`${receivedPct}% Pago`}
                     isPositive={true}
-                    sparklineData={[35, 42, 40, 58, 62, 75, 88]}
-                    subtitle="Faturamento bruto dos projetos"
+                    sparklineData={[35, 42, 48, 58, 65, 75, 88]}
+                    subtitle={`Já recebido: ${formatCurrency(totalReceived)}`}
                     variant="emerald"
+                />
+
+                <NextGenKpiCard
+                    title="Falta Receber (Clientes)"
+                    value={formatCurrency(totalPendingReceivable)}
+                    change={`${radarMetrics.withPendingPayment} OS em aberto`}
+                    isPositive={totalPendingReceivable === 0}
+                    sparklineData={[60, 55, 50, 48, 42, 38, 35]}
+                    subtitle={`Quitados: ${radarMetrics.fullyPaid} projetos`}
+                    variant="default"
                 />
 
                 <NextGenKpiCard
                     title="Custos de Produção & Rateios"
                     value={formatCurrency(totalCosts)}
-                    change="-4.2%"
-                    isPositive={true}
+                    change={`${avgCostPct}% da Receita`}
+                    isPositive={Number(avgCostPct) <= 45}
                     sparklineData={[48, 45, 52, 40, 38, 35, 30]}
                     subtitle="Insumos, fretes e notas rateadas"
                     variant="rose"
@@ -249,11 +321,11 @@ const ServiceExpensesTab = ({
                 <NextGenKpiCard
                     title="Lucro Bruto Operacional"
                     value={formatCurrency(totalGrossProfit)}
-                    change={totalGrossProfit >= 0 ? "+24.1%" : "-12.0%"}
+                    change={`${avgMarginPct}% Margem`}
                     isPositive={totalGrossProfit >= 0}
                     sparklineData={[15, 20, 22, 28, 34, 45, 55]}
-                    subtitle="Resultado operacional dos serviços"
-                    variant="default"
+                    subtitle="Resultado após materiais e rateios"
+                    variant="emerald"
                 />
             </div>
 
@@ -274,18 +346,25 @@ const ServiceExpensesTab = ({
                     )}
                 </div>
 
-                {marginFilter !== 'all' && (
-                    <div className="flex items-center gap-2">
+                {(marginFilter !== 'all' || paymentFilter !== 'all') && (
+                    <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[10px] uppercase font-bold text-muted-foreground">Filtro ativo:</span>
-                        <Badge className={cn(
-                            "text-[10px] font-bold uppercase",
-                            marginFilter === 'healthy' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
-                            marginFilter === 'warning' ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
-                            "bg-rose-500/20 text-rose-400 border-rose-500/30"
-                        )}>
-                            {marginFilter === 'healthy' ? 'Margem Saudável' : marginFilter === 'warning' ? 'Margem Atenção' : 'Risco de Prejuízo'}
-                        </Badge>
-                        <Button variant="ghost" size="sm" onClick={() => setMarginFilter('all')} className="text-xs h-6 px-1">
+                        {marginFilter !== 'all' && (
+                            <Badge className={cn(
+                                "text-[10px] font-bold uppercase",
+                                marginFilter === 'healthy' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
+                                marginFilter === 'warning' ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
+                                "bg-rose-500/20 text-rose-400 border-rose-500/30"
+                            )}>
+                                {marginFilter === 'healthy' ? 'Margem Saudável' : marginFilter === 'warning' ? 'Margem Atenção' : 'Risco de Prejuízo'}
+                            </Badge>
+                        )}
+                        {paymentFilter !== 'all' && (
+                            <Badge className="text-[10px] font-bold uppercase bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+                                {paymentFilter === 'pending_payment' ? 'Falta Receber do Cliente' : '100% Quitado'}
+                            </Badge>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => { setMarginFilter('all'); setPaymentFilter('all'); }} className="text-xs h-6 px-1">
                             ✕
                         </Button>
                     </div>
@@ -297,9 +376,9 @@ const ServiceExpensesTab = ({
                 {filteredExpenses.length === 0 ? (
                     <div className="text-center py-14 bg-muted/20 rounded-2xl border-2 border-dashed text-muted-foreground italic text-xs space-y-2">
                         <Package className="h-8 w-8 mx-auto text-muted-foreground/40" />
-                        <p>{searchTerm || marginFilter !== 'all' ? "Nenhum projeto encontrado para o filtro selecionado." : "Nenhum gasto ou rateio por serviço cadastrado."}</p>
-                        {marginFilter !== 'all' && (
-                            <Button variant="link" size="sm" onClick={() => setMarginFilter('all')} className="text-xs text-primary">
+                        <p>{searchTerm || marginFilter !== 'all' || paymentFilter !== 'all' ? "Nenhum projeto encontrado para o filtro selecionado." : "Nenhum gasto ou rateio por serviço cadastrado."}</p>
+                        {(marginFilter !== 'all' || paymentFilter !== 'all') && (
+                            <Button variant="link" size="sm" onClick={() => { setMarginFilter('all'); setPaymentFilter('all'); }} className="text-xs text-primary">
                                 Ver todos os projetos
                             </Button>
                         )}
@@ -311,8 +390,18 @@ const ServiceExpensesTab = ({
                         const isExpanded = !!expandedIds[expense.id];
                         const autoItemsCount = expense.autoItems?.length || 0;
                         const manualItemsCount = expense.items?.length || 0;
-                        const totalItemsCount = autoItemsCount + manualItemsCount;
+                        const incomeItemsCount = expense.incomeItems?.length || 0;
                         const isEstoque = expense.clientName.includes("ESTOQUE");
+
+                        // Cálculo de Recebimento do Cliente nesta OS
+                        const receivedVal = expense.receivedValue || 0;
+                        const pendingVal = expense.pendingReceivable !== undefined
+                            ? expense.pendingReceivable
+                            : Math.max(0, expense.serviceValue - receivedVal);
+                        const paymentRatio = expense.serviceValue > 0
+                            ? Math.min(100, (receivedVal / expense.serviceValue) * 100)
+                            : 0;
+                        const isFullyPaid = expense.serviceValue > 0 && pendingVal <= 0.01;
 
                         // Cálculo do Radar de Margem individual
                         const costRatio = expense.serviceValue > 0 ? (expense.spentValue / expense.serviceValue) * 100 : 0;
@@ -329,18 +418,18 @@ const ServiceExpensesTab = ({
                                     "border-border/60 hover:border-primary/40"
                                 )}
                             >
-                                <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div className="flex items-start gap-4 flex-1">
+                                <div className="p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-5">
+                                    <div className="flex items-start gap-4 flex-1 min-w-0">
                                         <div 
                                             className={cn(
-                                                "w-2.5 h-16 rounded-full shrink-0 mt-1",
+                                                "w-2.5 h-20 rounded-full shrink-0 mt-1",
                                                 isEstoque ? "bg-amber-500" :
                                                 marginStatus === 'danger' ? "bg-rose-500 animate-pulse shadow-lg shadow-rose-500/50" :
                                                 marginStatus === 'warning' ? "bg-amber-500" : 
                                                 "bg-emerald-500"
                                             )} 
                                         />
-                                        <div className="space-y-1.5 flex-1 min-w-0">
+                                        <div className="space-y-2 flex-1 min-w-0">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <h3 className="font-black text-base uppercase tracking-tight text-foreground truncate">
                                                     {expense.clientName}
@@ -365,6 +454,22 @@ const ServiceExpensesTab = ({
                                                     </Badge>
                                                 )}
 
+                                                {/* Badge de Status de Pagamento do Cliente */}
+                                                {!isEstoque && expense.serviceValue > 0 && (
+                                                    <Badge variant="outline" className={cn(
+                                                        "text-[9px] font-black uppercase tracking-wider",
+                                                        isFullyPaid ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
+                                                        receivedVal > 0 ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/30" :
+                                                        "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                                    )}>
+                                                        {isFullyPaid
+                                                            ? '✓ Cliente Quitou 100%'
+                                                            : receivedVal > 0
+                                                                ? `Pago: ${paymentRatio.toFixed(0)}% • Falta ${formatCurrency(pendingVal)}`
+                                                                : `A Receber: ${formatCurrency(pendingVal)}`}
+                                                    </Badge>
+                                                )}
+
                                                 {autoItemsCount > 0 && (
                                                     <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-[9px] font-bold">
                                                         {autoItemsCount} {autoItemsCount === 1 ? 'Rateio/NF' : 'Rateios/NFs'}
@@ -381,30 +486,55 @@ const ServiceExpensesTab = ({
                                                 {expense.environment}
                                             </p>
 
-                                            {/* Termômetro visual de consumo de margem na OS */}
+                                            {/* Duplo Termômetro Visual: 1. Consumo de Insumos | 2. Recebimento do Cliente */}
                                             {!isEstoque && expense.serviceValue > 0 && (
-                                                <div className="pt-1 space-y-1 max-w-sm">
-                                                    <div className="flex items-center justify-between text-[10px]">
-                                                        <span className="text-muted-foreground font-medium">Consumo de Insumos:</span>
-                                                        <span className={cn(
-                                                            "font-black font-mono",
-                                                            marginStatus === 'danger' ? "text-rose-400" :
-                                                            marginStatus === 'warning' ? "text-amber-400" :
-                                                            "text-emerald-400"
-                                                        )}>
-                                                            {costRatio.toFixed(1)}% do contrato
-                                                        </span>
+                                                <div className="pt-1 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+                                                    {/* Termômetro 1: Consumo de Insumos */}
+                                                    <div className="space-y-1 bg-white/[0.02] p-2.5 rounded-xl border border-white/[0.05]">
+                                                        <div className="flex items-center justify-between text-[10px]">
+                                                            <span className="text-muted-foreground font-semibold">Consumo de Insumos:</span>
+                                                            <span className={cn(
+                                                                "font-black font-mono",
+                                                                marginStatus === 'danger' ? "text-rose-400" :
+                                                                marginStatus === 'warning' ? "text-amber-400" :
+                                                                "text-emerald-400"
+                                                            )}>
+                                                                {costRatio.toFixed(1)}% do contrato
+                                                            </span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden flex border border-white/5">
+                                                            <div
+                                                                className={cn(
+                                                                    "h-full transition-all duration-500 rounded-full",
+                                                                    marginStatus === 'danger' ? "bg-rose-500" :
+                                                                    marginStatus === 'warning' ? "bg-amber-500" :
+                                                                    "bg-emerald-500"
+                                                                )}
+                                                                style={{ width: `${Math.min(costRatio, 100)}%` }}
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden flex border border-white/5">
-                                                        <div
-                                                            className={cn(
-                                                                "h-full transition-all duration-500 rounded-full",
-                                                                marginStatus === 'danger' ? "bg-rose-500" :
-                                                                marginStatus === 'warning' ? "bg-amber-500" :
-                                                                "bg-emerald-500"
-                                                            )}
-                                                            style={{ width: `${Math.min(costRatio, 100)}%` }}
-                                                        />
+
+                                                    {/* Termômetro 2: Quanto o Cliente Já Pagou vs Falta */}
+                                                    <div className="space-y-1 bg-white/[0.02] p-2.5 rounded-xl border border-white/[0.05]">
+                                                        <div className="flex items-center justify-between text-[10px]">
+                                                            <span className="text-muted-foreground font-semibold">Pago pelo Cliente:</span>
+                                                            <span className={cn(
+                                                                "font-black font-mono",
+                                                                isFullyPaid ? "text-emerald-400" : receivedVal > 0 ? "text-cyan-400" : "text-amber-400"
+                                                            )}>
+                                                                {formatCurrency(receivedVal)} ({paymentRatio.toFixed(0)}%)
+                                                            </span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden flex border border-white/5">
+                                                            <div
+                                                                className={cn(
+                                                                    "h-full transition-all duration-500 rounded-full",
+                                                                    isFullyPaid ? "bg-emerald-400" : "bg-gradient-to-r from-cyan-500 to-emerald-400"
+                                                                )}
+                                                                style={{ width: `${Math.min(paymentRatio, 100)}%` }}
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             )}
@@ -412,14 +542,24 @@ const ServiceExpensesTab = ({
                                     </div>
 
                                     {/* Métricas do Projeto */}
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-center border-t md:border-t-0 md:border-l border-border/50 pt-3 md:pt-0 md:pl-6">
+                                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 items-center border-t xl:border-t-0 xl:border-l border-border/50 pt-3 xl:pt-0 xl:pl-6">
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Receita</span>
-                                            <span className="font-bold text-sm text-emerald-600">{formatCurrency(expense.serviceValue)}</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Contrato</span>
+                                            <span className="font-bold text-sm text-emerald-500">{formatCurrency(expense.serviceValue)}</span>
                                         </div>
 
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Valor Gasto</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400/90">Já Recebido</span>
+                                            <span className="font-bold text-sm text-cyan-400">{formatCurrency(receivedVal)}</span>
+                                            {!isEstoque && pendingVal > 0.01 && (
+                                                <span className="text-[9px] font-mono font-bold text-amber-400">
+                                                    Falta: {formatCurrency(pendingVal)}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Gasto Obra</span>
                                             <span className="font-bold text-sm text-rose-500">{formatCurrency(expense.spentValue)}</span>
                                         </div>
 
@@ -430,7 +570,7 @@ const ServiceExpensesTab = ({
                                             </span>
                                         </div>
 
-                                        <div className="flex items-center justify-between sm:justify-end gap-3">
+                                        <div className="col-span-2 sm:col-span-1 flex items-center justify-between sm:justify-end gap-2">
                                             <Badge variant="outline" className={cn(
                                                 "font-black text-[10px] px-2.5 py-1 rounded-lg shrink-0",
                                                 isEstoque ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
@@ -476,9 +616,70 @@ const ServiceExpensesTab = ({
                                     </div>
                                 </div>
 
-                                {/* Lista Detalhada de Itens e Rateios */}
+                                {/* Lista Detalhada de Recebimentos, Itens e Rateios */}
                                 {isExpanded && (
-                                    <div className="border-t border-border/50 bg-muted/10 p-5 space-y-4 animate-in fade-in duration-200">
+                                    <div className="border-t border-border/50 bg-muted/10 p-5 space-y-5 animate-in fade-in duration-200">
+                                        {/* Resumo e Parcelas de Recebimento do Cliente */}
+                                        {!isEstoque && (
+                                            <div className="space-y-2.5">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
+                                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                                        Pagamentos e Parcelas do Cliente ({incomeItemsCount})
+                                                    </h4>
+                                                    <div className="flex items-center gap-3 text-[11px] font-mono">
+                                                        <span className="text-emerald-400 font-bold">Já Pago: {formatCurrency(receivedVal)}</span>
+                                                        <span className="text-white/20">•</span>
+                                                        <span className={cn("font-bold", pendingVal > 0.01 ? "text-amber-400" : "text-emerald-400")}>
+                                                            Falta Receber: {formatCurrency(pendingVal)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {expense.incomeItems && expense.incomeItems.length > 0 ? (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                        {expense.incomeItems.map((inc, idx) => (
+                                                            <div
+                                                                key={inc.id || idx}
+                                                                className={cn(
+                                                                    "bg-background/80 border p-2.5 rounded-xl flex items-center justify-between text-xs",
+                                                                    inc.status === 'paid' ? "border-emerald-500/25" : "border-amber-500/25"
+                                                                )}
+                                                            >
+                                                                <div className="min-w-0 pr-2">
+                                                                    <p className="font-bold text-foreground truncate">{inc.description}</p>
+                                                                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
+                                                                        <span className={cn(
+                                                                            "px-1.5 py-0.2 rounded font-bold uppercase text-[9px]",
+                                                                            inc.status === 'paid' ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"
+                                                                        )}>
+                                                                            {inc.status === 'paid' ? 'Pago' : 'Pendente'}
+                                                                        </span>
+                                                                        {inc.dueDate && (
+                                                                            <span>Venc: {new Date(inc.dueDate).toLocaleDateString('pt-BR')}</span>
+                                                                        )}
+                                                                        {inc.paymentMethod && (
+                                                                            <span>• {inc.paymentMethod}</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <span className={cn(
+                                                                    "font-mono font-black shrink-0",
+                                                                    inc.status === 'paid' ? "text-emerald-400" : "text-amber-400"
+                                                                )}>
+                                                                    {formatCurrency(inc.amount)}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-background/50 border border-dashed border-white/10 p-3 rounded-xl text-xs text-muted-foreground">
+                                                        Nenhuma parcela de receita vinculada diretamente a esta OS ainda. Dica: ao criar ou editar uma Receita em <strong>Lançamentos</strong>, selecione esta OS no campo <em>Ordem de Serviço</em> para acompanhar os pagamentos automaticamente aqui.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
                                         {/* Rateios automáticos de notas / extratos Itaú */}
                                         {expense.autoItems && expense.autoItems.length > 0 && (
                                             <div className="space-y-2">
@@ -527,7 +728,7 @@ const ServiceExpensesTab = ({
 
                                         {(!expense.autoItems || expense.autoItems.length === 0) && (!expense.items || expense.items.length === 0) && (
                                             <p className="text-xs text-muted-foreground italic text-center py-2">
-                                                Nenhum item discriminado para este serviço.
+                                                Nenhum insumo ou despesa discriminada para este serviço.
                                             </p>
                                         )}
                                     </div>

@@ -1139,6 +1139,33 @@ const DRETab = ({
                                         </div>
                                     </div>
                                 </div>
+
+                                <div className="border-t border-border/40 pt-5 space-y-3">
+                                    <h5 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                        <BarChart3 className="h-4 w-4 text-primary" /> Cascata Anual de Formação do Resultado (Waterfall DRE)
+                                    </h5>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                        {[
+                                            { label: "1. Receita Bruta", val: safeDreData.grossRevenue, pct: 100, color: "bg-emerald-500", text: "text-emerald-500" },
+                                            { label: "2. (-) CPV / Materiais", val: safeDreData.cpv, pct: safeDreData.grossRevenue > 0 ? (safeDreData.cpv / safeDreData.grossRevenue) * 100 : 0, color: "bg-rose-500", text: "text-rose-500" },
+                                            { label: "3. (=) Lucro Bruto", val: safeDreData.grossProfit, pct: safeDreData.grossMargin, color: "bg-cyan-500", text: "text-cyan-400" },
+                                            { label: "4. (=) Lucro Líquido", val: safeDreData.netResult, pct: safeDreData.netMargin, color: safeDreData.netResult >= 0 ? "bg-emerald-400" : "bg-rose-500", text: safeDreData.netResult >= 0 ? "text-emerald-400" : "text-rose-400" },
+                                        ].map((step, sIdx) => (
+                                            <div key={sIdx} className="p-3 rounded-xl bg-muted/20 border border-border/40 space-y-2">
+                                                <div className="flex items-center justify-between text-[10px] font-black uppercase text-muted-foreground">
+                                                    <span>{step.label}</span>
+                                                    <span>{step.pct.toFixed(1)}%</span>
+                                                </div>
+                                                <div className={cn("text-sm font-black font-mono", step.text)}>
+                                                    {formatCurrency(step.val)}
+                                                </div>
+                                                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                                    <div className={cn("h-full rounded-full", step.color)} style={{ width: `${Math.min(100, Math.max(4, Math.abs(step.pct)))}%` }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             <>

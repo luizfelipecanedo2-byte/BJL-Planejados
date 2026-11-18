@@ -200,11 +200,16 @@ const Financeiro = () => {
           description: a.description || ""
         }));
 
+        const rawType = String(t.type || '').toLowerCase().trim();
+        const normalizedType = (rawType === 'receita' || rawType === 'income') ? 'income' : 'expense';
+        const rawStatus = String(t.status || '').toLowerCase().trim();
+        const normalizedStatus = (rawStatus === 'pago' || rawStatus === 'paid') ? 'paid' : 'pending';
+
         return {
           id: t.id,
           description: t.description,
           amount: Number(t.amount),
-          type: t.type as any,
+          type: normalizedType as any,
           category: t.category || "Sem Categoria",
           subcategory: t.subcategory || "",
           service: t.service,
@@ -214,7 +219,7 @@ const Financeiro = () => {
           competenceDate: parseDate(t.competence_date) || new Date(),
           dueDate: parseDate(t.due_date) || new Date(),
           paymentDate: parseDate(t.payment_date),
-          status: t.status as any,
+          status: normalizedStatus as any,
           invoiceNumber: t.invoice_number,
           orderService: t.order_service,
           boletoUrl: t.boleto_url,
@@ -338,6 +343,16 @@ const Financeiro = () => {
 
     // Guardar os IDs de alocações que foram atreladas a alguma OS
     const claimedAllocationIds = new Set<string>();
+    const claimedIncomeTxIds = new Set<string>();
+
+    // Contar quantas OS cada cliente tem para saber se o vínculo por nome do cliente é único
+    const osCountByClient = new Map<string, number>();
+    serviceOrders.forEach(os => {
+      const cClean = norm(os.client);
+      if (cClean && cClean !== 'não informado') {
+        osCountByClient.set(cClean, (osCountByClient.get(cClean) || 0) + 1);
+      }
+    });
 
     const mappedProjects: ServiceExpense[] = serviceOrders.map(os => {
       const ticketClean = norm(os.ticketNumber);
@@ -380,7 +395,79 @@ const Financeiro = () => {
       });
       const manualCost = manualExpenses.reduce((acc, e) => acc + e.spentValue, 0);
 
-      const revenue = (os.amount && os.amount > 0) ? os.amount : manualExpenses.reduce((acc, e) => acc + e.serviceValue, 0);
+      // Receitas (parcelas pagas e pendentes do cliente) vinculadas a esta OS
+      const osTargetToken = Array.from(ticketClean.matchAll(/\bos[-\s#]*(\d+(?:-\d+)?)\b/gi)).map(m => m[1].replace(/^0+(?=\d)/, ""))[0] || (ticketClean.match(/\d+/)?.[0]?.replace(/^0+(?=\d)/, "") || "");
+      const osIncomeTransactions = transactions.filter(t => {
+        if (t.type !== 'income') return false;
+        if (t.category === 'Transferência' || t.category === 'Empréstimos e Financiamentos') return false;
+        if (claimedIncomeTxIds.has(t.id)) return false;
+
+        const txOsText = norm(`${t.orderService || ''} ${t.service || ''} ${t.description || ''}`);
+        const txOsTokens = Array.from(txOsText.matchAll(/\bos[-\s#]*(\d+(?:-\d+)?)\b/gi)).map(m => m[1].replace(/^0+(?=\d)/, ""));
+
+        if (txOsTokens.length > 0 && osTargetToken) {
+          return txOsTokens.includes(osTargetToken);
+        }
+
+        if (ticketClean && ticketClean !== 's/n') {
+          if (
+            (t.orderService && norm(t.orderService).includes(ticketClean)) ||
+            (t.service && norm(t.service).includes(ticketClean)) ||
+            (t.description && norm(t.description).includes(ticketClean))
+          ) {
+            return true;
+          }
+        }
+
+        // Se a transação tem outra OS explícita, não vincula pelo nome do cliente
+        if (txOsTokens.length > 0) return false;
+
+        const contactClean = norm(t.contact);
+        const matchesClient = clientClean && clientClean !== 'não informado' && (
+          contactClean === clientClean ||
+          (t.description && norm(t.description).includes(`- ${clientClean}`))
+        );
+
+        if (matchesClient) {
+          // Se o cliente tem mais de uma OS, checar se o ambiente/ação consta na descrição ou se é a OS mais recente
+          if ((osCountByClient.get(clientClean) || 0) > 1 && actionClean) {
+            if (txOsText.includes(actionClean)) return true;
+          }
+          return true;
+        }
+        return false;
+      });
+
+      osIncomeTransactions.forEach(t => claimedIncomeTxIds.add(t.id));
+
+      const receivedValue = osIncomeTransactions
+        .filter(t => t.status === 'paid')
+        .reduce((acc, t) => acc + Number(t.amount), 0);
+
+      const pendingLaunchedValue = osIncomeTransactions
+        .filter(t => t.status === 'pending')
+        .reduce((acc, t) => acc + Number(t.amount), 0);
+
+      const baseRevenue = (os.amount && os.amount > 0)
+        ? os.amount
+        : manualExpenses.reduce((acc, e) => acc + e.serviceValue, 0);
+
+      const revenue = baseRevenue > 0 ? baseRevenue : (receivedValue + pendingLaunchedValue);
+      const pendingReceivable = revenue > 0
+        ? Math.max(0, revenue - receivedValue)
+        : pendingLaunchedValue;
+
+      const incomeItems = [...osIncomeTransactions]
+        .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+        .map(t => ({
+          id: t.id,
+          description: t.description,
+          amount: Number(t.amount),
+          status: t.status,
+          dueDate: t.dueDate,
+          paymentDate: t.paymentDate,
+          paymentMethod: t.paymentMethod
+        }));
 
       let items: any[] = [];
       manualExpenses.forEach(e => {
@@ -442,6 +529,9 @@ const Financeiro = () => {
         environment: os.action || "Geral",
         serviceValue: revenue,
         spentValue: allocCost + manualCost + directTxCost,
+        receivedValue,
+        pendingReceivable,
+        incomeItems,
         items: items,
         autoItems: [...autoItems, ...directItems],
         createdAt: os.openDate
@@ -459,7 +549,28 @@ const Financeiro = () => {
                (ticketClean && ticketClean !== "s/n" && seClient.startsWith(ticketClean));
       });
       if (!matchesOS) {
-        mappedProjects.push(se);
+        const seIncomes = transactions.filter(t => {
+          if (t.type !== 'income' || t.category === 'Transferência' || t.category === 'Empréstimos e Financiamentos') return false;
+          if (claimedIncomeTxIds.has(t.id)) return false;
+          return seClient && norm(t.contact) === seClient;
+        });
+        seIncomes.forEach(t => claimedIncomeTxIds.add(t.id));
+        const recVal = seIncomes.filter(t => t.status === 'paid').reduce((acc, t) => acc + Number(t.amount), 0);
+        const pendVal = se.serviceValue > 0 ? Math.max(0, se.serviceValue - recVal) : seIncomes.filter(t => t.status === 'pending').reduce((acc, t) => acc + Number(t.amount), 0);
+        mappedProjects.push({
+          ...se,
+          receivedValue: recVal,
+          pendingReceivable: pendVal,
+          incomeItems: seIncomes.map(t => ({
+            id: t.id,
+            description: t.description,
+            amount: Number(t.amount),
+            status: t.status,
+            dueDate: t.dueDate,
+            paymentDate: t.paymentDate,
+            paymentMethod: t.paymentMethod
+          }))
+        });
       }
     });
 

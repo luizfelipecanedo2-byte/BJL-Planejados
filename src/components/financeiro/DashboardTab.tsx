@@ -24,6 +24,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { toast } from "sonner";
+import { classifyTransactionForDRE, standardizeDRESubcategory } from "@/types/finance";
 
 interface DashboardTabProps {
     selectedYear: string;
@@ -111,37 +112,59 @@ const DashboardTab = ({
         return "Boa noite";
     }, []);
 
-    // Suggestion 1: Fluxo de Caixa Diário (Próximos 15 dias)
-    const dailyFlowData = useMemo(() => {
+    const [forecastDays, setForecastDays] = useState<15 | 30>(30);
+    const [abcMode, setAbcMode] = useState<'suppliers' | 'subcategories'>('suppliers');
+
+    // 1. Projeção de Liquidez e Fôlego de Caixa (15 ou 30 dias com Linha de Saldo Projetado)
+    const { dailyFlowData, minProjectedBalance, minBalanceDate, finalProjectedBalance } = useMemo(() => {
         const data = [];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        for (let i = 0; i < 15; i++) {
+        let runningBalance = currentSummary.saldoAtual || 0;
+        let minBal = runningBalance;
+        let minDateStr = today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+        for (let i = 0; i < forecastDays; i++) {
             const currentDate = new Date(today);
             currentDate.setDate(today.getDate() + i);
             const displayDate = currentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
             const dayTrans = transactions.filter(t => {
-                if (!t.dueDate) return false;
+                if (!t.dueDate || t.category === 'Transferência') return false;
+                // Para projeção de fôlego de caixa futuro, considera títulos pendentes (ou pagos no próprio dia de hoje)
+                if (i > 0 && t.status === 'paid') return false;
                 const tDate = new Date(t.dueDate);
                 tDate.setHours(0, 0, 0, 0);
-                return tDate.getTime() === currentDate.getTime() && t.category !== 'Transferência';
+                return tDate.getTime() === currentDate.getTime();
             });
 
-            const income = dayTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-            const expense = dayTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+            const income = dayTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount || 0), 0);
+            const expense = dayTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount || 0), 0);
+            runningBalance += (income - expense);
+
+            if (runningBalance < minBal) {
+                minBal = runningBalance;
+                minDateStr = displayDate;
+            }
 
             data.push({
                 name: displayDate,
                 Entradas: income,
                 Saídas: expense,
+                "Saldo Projetado": Number(runningBalance.toFixed(2)),
             });
         }
-        return data;
-    }, [transactions]);
 
-    // Suggestion 3: Evolução do Ticket Médio (pega as vendas fechadas do CRM)
+        return {
+            dailyFlowData: data,
+            minProjectedBalance: minBal,
+            minBalanceDate: minDateStr,
+            finalProjectedBalance: runningBalance,
+        };
+    }, [transactions, forecastDays, currentSummary.saldoAtual]);
+
+    // 2. Evolução do Ticket Médio (pega as vendas fechadas do CRM ou faturamento por contrato)
     const ticketMedioData = useMemo(() => {
         const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const year = parseInt(selectedYear);
@@ -159,30 +182,69 @@ const DashboardTab = ({
                 return date.getFullYear() === year && date.getMonth() === index;
             });
 
-            // Consider closed sales
             const closedSales = monthlySales.filter(s => s.status === "fechado" || s.status === "pos_venda");
-            const total = closedSales.reduce((sum, s) => sum + (s.totalValue || 0), 0);
-            const count = closedSales.length;
-            const ticket = count > 0 ? total / count : 0;
+            if (closedSales.length > 0) {
+                const total = closedSales.reduce((sum, s) => sum + (s.totalValue || 0), 0);
+                return {
+                    name: month,
+                    "Ticket Médio": Number((total / closedSales.length).toFixed(2)),
+                };
+            }
+
+            // Fallback real pelas receitas lançadas no mês caso a venda tenha sido lançada direto no financeiro
+            const monthlyIncomeTx = transactions.filter(t => {
+                if (t.type !== 'income' || t.category === 'Transferência' || t.category === 'Empréstimos e Financiamentos') return false;
+                const d = new Date(t.dueDate);
+                return d.getFullYear() === year && d.getMonth() === index;
+            });
+            const txTotal = monthlyIncomeTx.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+            const ticket = monthlyIncomeTx.length > 0 ? txTotal / monthlyIncomeTx.length : 0;
 
             return {
                 name: month,
-                "Ticket Médio": ticket,
+                "Ticket Médio": Number(ticket.toFixed(2)),
             };
         });
-    }, [sales, selectedYear]);
+    }, [sales, transactions, selectedYear]);
 
-    // 1. Margem de Lucro % Mensal (Bruta e Líquida)
+    // 3. Margem de Lucro % Mensal REAL (Bruta e Líquida baseadas na classificação oficial da DRE)
     const marginChartData = useMemo(() => {
         const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        return months.map((month, idx) => {
-            const monthInfo = chartData[idx] || { Receita: 0, Despesas: 0 };
-            const receita = monthInfo.Receita || 0;
-            const despesas = monthInfo.Despesas || 0;
+        const year = parseInt(selectedYear);
 
-            const custosMateriais = despesas * 0.55; 
-            const margemBruta = receita > 0 ? Math.max(0, Math.min(100, ((receita - custosMateriais) / receita) * 100)) : 0;
-            const margemLiquida = receita > 0 ? Math.max(-50, Math.min(100, ((receita - despesas) / receita) * 100)) : 0;
+        return months.map((month, idx) => {
+            const monthTx = transactions.filter(t => {
+                const d = new Date(t.dueDate);
+                return d.getFullYear() === year && d.getMonth() === idx;
+            });
+
+            let receitaBruta = 0;
+            let impostos = 0;
+            let cpv = 0;
+            let outrasDespesas = 0;
+            let receitasFin = 0;
+
+            monthTx.forEach(t => {
+                const grp = classifyTransactionForDRE(t);
+                const amt = Number(t.amount || 0);
+                if (grp === 'transferencias') return;
+                if (grp === 'receita_bruta') receitaBruta += amt;
+                else if (grp === 'receitas_financeiras') receitasFin += amt;
+                else if (grp === 'deducoes_impostos') impostos += amt;
+                else if (grp === 'custos_producao') cpv += amt;
+                else outrasDespesas += amt;
+            });
+
+            const receitaLiquida = Math.max(0, receitaBruta - impostos);
+            const lucroBruto = receitaLiquida - cpv;
+            const lucroLiquido = lucroBruto - outrasDespesas + receitasFin;
+
+            const margemBruta = receitaLiquida > 0
+                ? Math.max(-100, Math.min(100, (lucroBruto / receitaLiquida) * 100))
+                : 0;
+            const margemLiquida = receitaBruta > 0
+                ? Math.max(-100, Math.min(100, (lucroLiquido / receitaBruta) * 100))
+                : 0;
 
             return {
                 name: month,
@@ -191,73 +253,174 @@ const DashboardTab = ({
                 "Meta Margem": 35
             };
         });
-    }, [chartData]);
+    }, [transactions, selectedYear]);
 
-    // 2. Custos Fixos vs Custos Variáveis
-    const fixedVsVariableData = useMemo(() => {
+    // 4. Custos Fixos vs Custos Variáveis REAIS (baseados nas categorias oficiais da marcenaria)
+    const { fixedVsVariableData, totalFixosYear, totalVariaveisYear } = useMemo(() => {
         const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        return months.map((month, idx) => {
-            const monthInfo = chartData[idx] || { Despesas: 0 };
-            const despesas = monthInfo.Despesas || 0;
-            const fixos = despesas * 0.4;
-            const variaveis = despesas * 0.6;
+        const year = parseInt(selectedYear);
+        let sumFixos = 0;
+        let sumVariaveis = 0;
+
+        const data = months.map((month, idx) => {
+            const monthTx = transactions.filter(t => {
+                const d = new Date(t.dueDate);
+                return t.type === 'expense' && d.getFullYear() === year && d.getMonth() === idx;
+            });
+
+            let fixos = 0;
+            let variaveis = 0;
+
+            monthTx.forEach(t => {
+                const grp = classifyTransactionForDRE(t);
+                if (grp === 'transferencias') return;
+                const amt = Number(t.amount || 0);
+                // Custos Variáveis: Materiais/Obras (CPV), Comissões/RT/Vendas e Impostos sobre Vendas
+                if (grp === 'custos_producao' || grp === 'despesas_vendas' || grp === 'deducoes_impostos') {
+                    variaveis += amt;
+                } else {
+                    // Custos Fixos / Estrutura: Galpão/Operacional, Pessoal Fixo, Maquinário e Despesas Financeiras
+                    fixos += amt;
+                }
+            });
+
+            sumFixos += fixos;
+            sumVariaveis += variaveis;
+
             return {
                 name: month,
                 "Custos Fixos": parseFloat(fixos.toFixed(2)),
                 "Custos Variáveis": parseFloat(variaveis.toFixed(2)),
             };
         });
-    }, [chartData]);
 
-    // 3. Distribuição por Meio de Pagamento
+        return {
+            fixedVsVariableData: data,
+            totalFixosYear: sumFixos,
+            totalVariaveisYear: sumVariaveis,
+        };
+    }, [transactions, selectedYear]);
+
+    // 5. Distribuição REAL por Meio de Pagamento no período selecionado
     const paymentMethodData = useMemo(() => {
+        const isAnual = selectedDashMonth === 'anual';
+        const currentMonth = !isAnual ? Number(selectedDashMonth) : -1;
+        const year = parseInt(selectedYear);
+
         const methodMap: Record<string, number> = {
             "PIX": 0,
-            "Boleto / Asaas": 0,
-            "Cartão de Crédito": 0,
-            "Transferência / TED": 0,
-            "Dinheiro / Cheque": 0,
+            "Boleto": 0,
+            "Cartão": 0,
+            "Dinheiro": 0,
+            "Transferência / Outros": 0,
         };
 
         transactions.forEach((t: any) => {
-            if (t.type === 'income') {
-                const cat = (t.paymentMethod || t.account || '').toLowerCase();
-                if (cat.includes('pix')) methodMap["PIX"] += t.amount;
-                else if (cat.includes('boleto') || cat.includes('asaas')) methodMap["Boleto / Asaas"] += t.amount;
-                else if (cat.includes('cartao') || cat.includes('crédito') || cat.includes('credito')) methodMap["Cartão de Crédito"] += t.amount;
-                else if (cat.includes('dinheiro')) methodMap["Dinheiro / Cheque"] += t.amount;
-                else methodMap["Transferência / TED"] += t.amount;
-            }
+            if (t.type !== 'income' || t.category === 'Transferência' || t.category === 'Empréstimos e Financiamentos') return;
+            const d = new Date(t.dueDate);
+            if (d.getFullYear() !== year || (!isAnual && d.getMonth() !== currentMonth)) return;
+
+            const cat = (t.paymentMethod || t.financialInstitution || '').toLowerCase();
+            const amt = Number(t.amount || 0);
+            if (cat.includes('pix')) methodMap["PIX"] += amt;
+            else if (cat.includes('boleto') || cat.includes('asaas')) methodMap["Boleto"] += amt;
+            else if (cat.includes('cart') || cat.includes('crédito') || cat.includes('credito')) methodMap["Cartão"] += amt;
+            else if (cat.includes('dinheiro')) methodMap["Dinheiro"] += amt;
+            else methodMap["Transferência / Outros"] += amt;
         });
 
-        const total = Object.values(methodMap).reduce((a, b) => a + b, 0);
-        if (total === 0) {
-            methodMap["PIX"] = 45000;
-            methodMap["Boleto / Asaas"] = 35000;
-            methodMap["Cartão de Crédito"] = 20000;
-            methodMap["Transferência / TED"] = 12000;
-        }
+        return Object.entries(methodMap)
+            .map(([name, value]) => ({ name, value }))
+            .filter(item => item.value > 0)
+            .sort((a, b) => b.value - a.value);
+    }, [transactions, selectedYear, selectedDashMonth]);
 
-        return Object.entries(methodMap).map(([name, value]) => ({ name, value }));
-    }, [transactions]);
+    // 6. Curva ABC de Fornecedores & Insumos (Para onde está indo o dinheiro no período)
+    const abcAnalysisData = useMemo(() => {
+        const isAnual = selectedDashMonth === 'anual';
+        const currentMonth = !isAnual ? Number(selectedDashMonth) : -1;
+        const year = parseInt(selectedYear);
 
-    // 4. Ponto de Equilíbrio (Break-Even Point)
-    const breakEvenMetrics = useMemo(() => {
-        const totalDespesas = currentSummary.gastosMes || 1;
-        const custosFixos = totalDespesas * 0.45;
-        const margemContribucaoRatio = 0.40;
-        const breakEvenGoal = custosFixos / margemContribucaoRatio;
-        const receitaAtual = currentSummary.receitaBrutaMes;
-        const progress = Math.min(100, Math.round((receitaAtual / (breakEvenGoal || 1)) * 100));
+        const periodExpenses = transactions.filter((t: any) => {
+            if (t.type !== 'expense' || t.category === 'Transferência') return false;
+            const d = new Date(t.dueDate);
+            return d.getFullYear() === year && (isAnual || d.getMonth() === currentMonth);
+        });
 
-        return {
-            breakEvenGoal,
-            custosFixos,
-            receitaAtual,
-            progress,
-            reached: receitaAtual >= breakEvenGoal
-        };
-    }, [currentSummary]);
+        const totalExpense = periodExpenses.reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+        const grouped: Record<string, number> = {};
+
+        periodExpenses.forEach((t: any) => {
+            let key = "";
+            if (abcMode === 'suppliers') {
+                key = (t.contact || "").trim() || (t.subcategory || "").trim() || t.category || "Diversos";
+            } else {
+                key = (t.subcategory || "").trim() || t.category || "Outros Insumos";
+            }
+            grouped[key] = (grouped[key] || 0) + Number(t.amount || 0);
+        });
+
+        let cumulativePct = 0;
+        return Object.entries(grouped)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 6)
+            .map((item) => {
+                const pct = totalExpense > 0 ? (item.value / totalExpense) * 100 : 0;
+                cumulativePct += pct;
+                const abcClass = cumulativePct <= 70 ? 'A' : cumulativePct <= 90 ? 'B' : 'C';
+                return {
+                    ...item,
+                    pct,
+                    abcClass,
+                };
+            });
+    }, [transactions, selectedYear, selectedDashMonth, abcMode]);
+
+    // 7. Cascata de Resultado (Waterfall DRE do Período Selecionado)
+    const waterfallPeriodData = useMemo(() => {
+        const isAnual = selectedDashMonth === 'anual';
+        const currentMonth = !isAnual ? Number(selectedDashMonth) : -1;
+        const year = parseInt(selectedYear);
+
+        const periodTx = transactions.filter((t: any) => {
+            const d = new Date(t.dueDate);
+            return d.getFullYear() === year && (isAnual || d.getMonth() === currentMonth);
+        });
+
+        let receitaBruta = 0;
+        let impostos = 0;
+        let cpv = 0;
+        let pessoal = 0;
+        let operacional = 0;
+        let outrosCustos = 0; // vendas + maquinário + financeiro
+
+        periodTx.forEach((t: any) => {
+            const grp = classifyTransactionForDRE(t);
+            const amt = Number(t.amount || 0);
+            if (grp === 'transferencias') return;
+            if (grp === 'receita_bruta' || grp === 'receitas_financeiras') receitaBruta += amt;
+            else if (grp === 'deducoes_impostos') impostos += amt;
+            else if (grp === 'custos_producao') cpv += amt;
+            else if (grp === 'despesas_pessoal') pessoal += amt;
+            else if (grp === 'despesas_operacionais') operacional += amt;
+            else outrosCustos += amt;
+        });
+
+        const lucroBruto = receitaBruta - impostos - cpv;
+        const lucroLiquido = lucroBruto - pessoal - operacional - outrosCustos;
+        const baseRef = Math.max(receitaBruta, cpv + pessoal + operacional + outrosCustos, 1);
+
+        return [
+            { label: "(+) Receita Bruta", value: receitaBruta, pct: 100, type: "income" as const },
+            { label: "(-) Materiais & Obras (CPV)", value: cpv, pct: (cpv / baseRef) * 100, type: "expense" as const },
+            { label: "(=) Margem Bruta Obra", value: lucroBruto, pct: (lucroBruto / baseRef) * 100, type: "subtotal" as const },
+            { label: "(-) Equipe & Pró-Labore", value: pessoal, pct: (pessoal / baseRef) * 100, type: "expense" as const },
+            { label: "(-) Galpão & Operacional", value: operacional, pct: (operacional / baseRef) * 100, type: "expense" as const },
+            { label: "(-) Vendas, Máquinas & Impostos", value: outrosCustos + impostos, pct: ((outrosCustos + impostos) / baseRef) * 100, type: "expense" as const },
+            { label: "(=) Lucro Líquido no Bolso", value: lucroLiquido, pct: (lucroLiquido / baseRef) * 100, type: "result" as const },
+        ];
+    }, [transactions, selectedYear, selectedDashMonth]);
 
     // Suggestion 5: Termômetro de Meta
     const [goal, setGoal] = useState(() => {
@@ -300,11 +463,14 @@ const DashboardTab = ({
         );
     };
 
-    // Preparation for "Evolução Caixa Inicial" (Horizontal Bars)
+    // Preparation for "Evolução Caixa Mensal" (Horizontal Bars com escala real)
     const initialCashData = chartData.map(d => ({
         name: d.name,
-        value: d.Saldo // Simplification for demo
+        value: d.Saldo
     }));
+    const maxAbsInitialCash = useMemo(() => {
+        return Math.max(...initialCashData.map(d => Math.abs(d.value || 0)), 1);
+    }, [initialCashData]);
 
     const COLORS = ['#14b8a6', '#f97316', '#06b6d4', '#8b5cf6', '#ec4899', '#eab308'];
 
@@ -560,7 +726,7 @@ const DashboardTab = ({
                                 <div className="flex-1 h-2 bg-white/[0.04] rounded-full overflow-hidden">
                                     <div
                                         className={cn("h-full rounded-full", item.value >= 0 ? "bg-emerald-400" : "bg-rose-500")}
-                                        style={{ width: `${Math.min(100, (Math.abs(item.value) / 10000) * 100)}%` }}
+                                        style={{ width: `${Math.min(100, (Math.abs(item.value) / maxAbsInitialCash) * 100)}%` }}
                                     />
                                 </div>
                                 <span className="text-[10px] font-mono font-bold text-white w-20 text-right tabular-nums">{formatCurrency(item.value)}</span>
@@ -641,38 +807,92 @@ const DashboardTab = ({
                 </div>
             </div>
 
-            {/* NOVO BLOCO: FLUXO DE CAIXA DIÁRIO, TICKET MÉDIO E TERMÔMETRO DE META */}
+            {/* PROJEÇÃO DE SALDO 30 DIAS (FÔLEGO DE CAIXA), TICKET MÉDIO E TERMÔMETRO DE META */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                {/* 1. FLUXO DE CAIXA DIÁRIO (Próximos 15 dias) */}
+                {/* 1. PROJEÇÃO DE SALDO E FÔLEGO DE CAIXA (15 OU 30 DIAS) */}
                 <Card className="lg:col-span-6 glass-card p-4 rounded-2xl overflow-hidden flex flex-col justify-between">
                     <div>
-                        <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest mb-4">
-                            Fluxo de Caixa Diário (Próximos 15 dias)
-                        </h3>
-                        <div className="h-[250px] w-full">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <div>
+                                <h3 className="text-xs font-black uppercase text-white border-l-2 border-primary pl-2 tracking-widest">
+                                    Projeção de Saldo & Fôlego de Caixa ({forecastDays} dias)
+                                </h3>
+                                <p className="text-[10px] text-muted-foreground pl-2.5 mt-0.5">
+                                    Partindo do caixa atual ({formatCurrency(currentSummary.saldoAtual)}) + vencimentos futuros
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-xl border border-white/10">
+                                <button
+                                    type="button"
+                                    onClick={() => setForecastDays(15)}
+                                    className={cn(
+                                        "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all",
+                                        forecastDays === 15 ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-white"
+                                    )}
+                                >
+                                    15 Dias
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setForecastDays(30)}
+                                    className={cn(
+                                        "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all",
+                                        forecastDays === 30 ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-white"
+                                    )}
+                                >
+                                    30 Dias
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Pílulas de Alerta de Fôlego de Caixa */}
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className={cn(
+                                "p-2.5 rounded-xl border text-[10px] flex items-center justify-between",
+                                minProjectedBalance < 0
+                                    ? "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                                    : "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                            )}>
+                                <span className="font-bold uppercase tracking-wider">
+                                    {minProjectedBalance < 0 ? `⚠️ Vale de Caixa (${minBalanceDate}):` : `Menor Saldo (${minBalanceDate}):`}
+                                </span>
+                                <span className="font-mono font-black">{formatCurrency(minProjectedBalance)}</span>
+                            </div>
+                            <div className="p-2.5 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 text-[10px] flex items-center justify-between">
+                                <span className="font-bold uppercase tracking-wider">Final ({forecastDays}d):</span>
+                                <span className="font-mono font-black">{formatCurrency(finalProjectedBalance)}</span>
+                            </div>
+                        </div>
+
+                        <div className="h-[220px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={dailyFlowData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <ComposedChart data={dailyFlowData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
-                                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#555' }} />
-                                    <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#555' }} />
+                                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#666' }} />
+                                    <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#666' }} />
                                     <Tooltip
                                         contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
                                         formatter={(val: number) => formatCurrency(val)}
                                     />
-                                    <Bar dataKey="Entradas" fill="#14b8a6" radius={[4, 4, 0, 0]} />
-                                    <Bar dataKey="Saídas" fill="#f97316" radius={[4, 4, 0, 0]} />
-                                </BarChart>
+                                    <Bar dataKey="Entradas" fill="#14b8a6" radius={[4, 4, 0, 0]} maxBarSize={18} />
+                                    <Bar dataKey="Saídas" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={18} />
+                                    <Line type="monotone" dataKey="Saldo Projetado" stroke="#38bdf8" strokeWidth={2.5} dot={false} />
+                                </ComposedChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
-                    <div className="flex gap-4 mt-2 justify-center">
+                    <div className="flex flex-wrap gap-4 mt-2 justify-center">
                         <div className="flex items-center gap-1.5">
-                            <div className="w-2.5 h-2.5 bg-primary rounded-full" /> 
+                            <div className="w-2.5 h-2.5 bg-teal-400 rounded-full" /> 
                             <span className="text-[10px] font-black uppercase text-muted-foreground">Entradas</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <div className="w-2.5 h-2.5 bg-orange-500 rounded-full" /> 
                             <span className="text-[10px] font-black uppercase text-muted-foreground">Saídas</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-1 bg-sky-400 rounded-full" /> 
+                            <span className="text-[10px] font-black uppercase text-sky-400">Linha de Saldo Projetado</span>
                         </div>
                     </div>
                 </Card>
@@ -705,7 +925,7 @@ const DashboardTab = ({
                         </div>
                     </div>
                     <div className="text-center text-[10px] font-black uppercase text-muted-foreground mt-2">
-                        Média de Valor por Venda Realizada
+                        Média de Valor por Venda / Recebimento
                     </div>
                 </Card>
 
@@ -793,6 +1013,161 @@ const DashboardTab = ({
                             ) : (
                                 <div className="text-center text-[10px] font-black text-emerald-500 uppercase py-1 bg-emerald-500/10 rounded-lg">
                                     Meta Superada! 🎉
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </Card>
+            </div>
+
+            {/* NOVOS GRÁFICOS ESTRATÉGICOS: CASCATA DRE DO PERÍODO & CURVA ABC DE FORNECEDORES/INSUMOS */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* Cascata DRE (Para onde vai cada real faturado) */}
+                <Card className="lg:col-span-6 glass-card p-5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 className="text-xs font-black uppercase text-white border-l-2 border-emerald-400 pl-2 tracking-widest">
+                                    Cascata de Resultado (Raio-X do Período)
+                                </h3>
+                                <p className="text-[10px] text-muted-foreground pl-2.5 mt-0.5">
+                                    De onde vem o faturamento e quanto cada estrutura consome até o lucro líquido
+                                </p>
+                            </div>
+                            <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 uppercase">
+                                Waterfall DRE
+                            </span>
+                        </div>
+
+                        <div className="space-y-2.5 mt-3">
+                            {waterfallPeriodData.map((row, idx) => {
+                                const isPositive = row.value >= 0;
+                                const barColor =
+                                    row.type === 'income' ? "bg-emerald-500" :
+                                    row.type === 'subtotal' ? "bg-cyan-500" :
+                                    row.type === 'result' ? (isPositive ? "bg-emerald-400" : "bg-rose-500") :
+                                    "bg-rose-500/80";
+
+                                return (
+                                    <div
+                                        key={idx}
+                                        className={cn(
+                                            "p-2.5 rounded-xl border transition-all",
+                                            row.type === 'result'
+                                                ? (isPositive ? "bg-emerald-500/10 border-emerald-500/30" : "bg-rose-500/10 border-rose-500/30")
+                                                : row.type === 'subtotal'
+                                                    ? "bg-cyan-500/5 border-cyan-500/20"
+                                                    : "bg-white/[0.02] border-white/[0.05]"
+                                        )}
+                                    >
+                                        <div className="flex items-center justify-between text-xs mb-1.5">
+                                            <span className={cn(
+                                                "font-bold uppercase tracking-tight text-[11px]",
+                                                row.type === 'result' || row.type === 'subtotal' ? "text-white font-black" : "text-muted-foreground"
+                                            )}>
+                                                {row.label}
+                                            </span>
+                                            <div className="flex items-center gap-2 font-mono">
+                                                <span className={cn(
+                                                    "font-black text-xs",
+                                                    row.type === 'income' ? "text-emerald-400" :
+                                                    row.type === 'subtotal' ? "text-cyan-400" :
+                                                    row.type === 'result' ? (isPositive ? "text-emerald-400" : "text-rose-400") :
+                                                    "text-rose-400"
+                                                )}>
+                                                    {formatCurrency(row.value)}
+                                                </span>
+                                                <span className="text-[9px] text-muted-foreground w-11 text-right">
+                                                    ({Math.abs(row.pct).toFixed(0)}%)
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                            <div
+                                                className={cn("h-full rounded-full transition-all duration-700", barColor)}
+                                                style={{ width: `${Math.min(100, Math.max(2, Math.abs(row.pct)))}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Curva ABC de Fornecedores e Insumos */}
+                <Card className="lg:col-span-6 glass-card p-5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                            <div>
+                                <h3 className="text-xs font-black uppercase text-white border-l-2 border-amber-500 pl-2 tracking-widest">
+                                    Curva ABC • Maiores Gastos do Período
+                                </h3>
+                                <p className="text-[10px] text-muted-foreground pl-2.5 mt-0.5">
+                                    Identifique quem mais consome caixa para negociar prazos e descontos
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-xl border border-white/10">
+                                <button
+                                    type="button"
+                                    onClick={() => setAbcMode('suppliers')}
+                                    className={cn(
+                                        "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all",
+                                        abcMode === 'suppliers' ? "bg-amber-500 text-black shadow" : "text-muted-foreground hover:text-white"
+                                    )}
+                                >
+                                    Fornecedores
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setAbcMode('subcategories')}
+                                    className={cn(
+                                        "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all",
+                                        abcMode === 'subcategories' ? "bg-amber-500 text-black shadow" : "text-muted-foreground hover:text-white"
+                                    )}
+                                >
+                                    Insumos / Contas
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 mt-3">
+                            {abcAnalysisData.map((item, idx) => (
+                                <div key={idx} className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-amber-500/30 transition-all">
+                                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className={cn(
+                                                "px-1.5 py-0.5 rounded text-[9px] font-mono font-black shrink-0",
+                                                item.abcClass === 'A' ? "bg-rose-500/20 text-rose-400 border border-rose-500/30" :
+                                                item.abcClass === 'B' ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+                                                "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                            )}>
+                                                Curva {item.abcClass}
+                                            </span>
+                                            <span className="text-xs font-bold text-white truncate uppercase" title={item.name}>
+                                                {item.name}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 font-mono shrink-0">
+                                            <span className="text-xs font-black text-amber-400">{formatCurrency(item.value)}</span>
+                                            <span className="text-[10px] text-muted-foreground w-11 text-right">({item.pct.toFixed(1)}%)</span>
+                                        </div>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                        <div
+                                            className={cn(
+                                                "h-full rounded-full transition-all duration-700",
+                                                item.abcClass === 'A' ? "bg-gradient-to-r from-rose-500 to-amber-500" :
+                                                item.abcClass === 'B' ? "bg-amber-500" : "bg-teal-500"
+                                            )}
+                                            style={{ width: `${Math.min(100, (item.value / (abcAnalysisData[0]?.value || 1)) * 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                            {abcAnalysisData.length === 0 && (
+                                <div className="py-12 text-center text-xs text-muted-foreground uppercase font-mono tracking-widest opacity-50">
+                                    Nenhuma despesa registrada neste período.
                                 </div>
                             )}
                         </div>
@@ -893,13 +1268,23 @@ const DashboardTab = ({
                 </PremiumCard>
             </div>
 
-            {/* STRATEGIC BI CHARTS SECTION (NOVO) */}
+            {/* STRATEGIC BI CHARTS SECTION (100% DADOS REAIS DA MARCENARIA) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* 1. Margem de Lucro Bruta vs Líquida (%) */}
+                {/* 1. Margem de Lucro Bruta vs Líquida (%) REAL */}
                 <PremiumCard className="border-none p-4 rounded-2xl shadow-xl lg:col-span-2" animate={false}>
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xs font-black uppercase text-white border-l-2 border-amber-500 pl-2 tracking-widest">Evolução de Margem de Lucro (%)</h3>
-                        <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 uppercase">Meta: 35%</span>
+                    <div className="flex flex-wrap justify-between items-center gap-2 mb-6">
+                        <div>
+                            <h3 className="text-xs font-black uppercase text-white border-l-2 border-amber-500 pl-2 tracking-widest">
+                                Evolução Real de Margem Bruta vs. Líquida (%)
+                            </h3>
+                            <p className="text-[10px] text-muted-foreground pl-2.5 mt-0.5">
+                                Calculado diretamente das receitas, custos de MDF/insumos (CPV) e despesas fixas
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] font-bold">
+                            <span className="flex items-center gap-1 text-amber-400"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"/> Margem Bruta</span>
+                            <span className="flex items-center gap-1 text-emerald-400"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"/> Margem Líquida</span>
+                        </div>
                     </div>
                     <div className="h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -918,41 +1303,81 @@ const DashboardTab = ({
                     </div>
                 </PremiumCard>
 
-                {/* 2. Meios de Pagamento (Donut) */}
-                <Card className="glass-card p-4 rounded-2xl flex flex-col">
-                    <h3 className="text-xs font-black uppercase text-white border-l-2 border-cyan-400 pl-2 tracking-widest mb-6">Meios de Pagamento</h3>
-                    <div className="h-[250px] w-full flex-1">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={paymentMethodData}
-                                    cx="50%" cy="50%"
-                                    innerRadius={55}
-                                    outerRadius={75}
-                                    paddingAngle={4}
-                                    dataKey="value"
-                                >
-                                    {paymentMethodData.map((entry, index) => (
-                                        <Cell key={`pay-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
-                                    formatter={(value: number) => formatCurrency(value)}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
+                {/* 2. Meios de Pagamento (Donut + Legenda com valores reais) */}
+                <Card className="glass-card p-4 rounded-2xl flex flex-col justify-between">
+                    <h3 className="text-xs font-black uppercase text-white border-l-2 border-cyan-400 pl-2 tracking-widest mb-2">
+                        Recebimentos por Meio de Pagamento
+                    </h3>
+                    {paymentMethodData.length > 0 ? (
+                        <>
+                            <div className="h-[175px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={paymentMethodData}
+                                            cx="50%" cy="50%"
+                                            innerRadius={45}
+                                            outerRadius={68}
+                                            paddingAngle={4}
+                                            dataKey="value"
+                                        >
+                                            {paymentMethodData.map((entry, index) => (
+                                                <Cell key={`pay-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
+                                            formatter={(value: number) => formatCurrency(value)}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="space-y-1.5 mt-2 pt-2 border-t border-white/10">
+                                {paymentMethodData.map((pm, idx) => {
+                                    const totalPm = paymentMethodData.reduce((acc, i) => acc + i.value, 0) || 1;
+                                    const pct = ((pm.value / totalPm) * 100).toFixed(0);
+                                    return (
+                                        <div key={pm.name} className="flex items-center justify-between text-[10px]">
+                                            <span className="flex items-center gap-1.5 text-muted-foreground font-bold">
+                                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                                                {pm.name}
+                                            </span>
+                                            <span className="font-mono font-black text-white">
+                                                {formatCurrency(pm.value)} <span className="text-muted-foreground font-normal">({pct}%)</span>
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center text-[10px] font-mono uppercase text-muted-foreground opacity-40">
+                            Sem recebimentos no período
+                        </div>
+                    )}
                 </Card>
             </div>
 
-            {/* 3. Custos Fixos vs Custos Variáveis */}
+            {/* 3. Custos Fixos vs Custos Variáveis REAIS */}
             <PremiumCard className="border-none p-4 rounded-2xl shadow-xl" animate={false}>
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xs font-black uppercase text-white border-l-2 border-purple-500 pl-2 tracking-widest">Composição de Custos (Fixos vs Variáveis)</h3>
-                    <div className="flex items-center gap-4 text-[10px] font-bold">
-                        <span className="flex items-center gap-1.5 text-purple-400"><span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"/> Fixos (Estrutura)</span>
-                        <span className="flex items-center gap-1.5 text-cyan-400"><span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"/> Variáveis (Projetos/MDF)</span>
+                <div className="flex flex-wrap justify-between items-center gap-2 mb-6">
+                    <div>
+                        <h3 className="text-xs font-black uppercase text-white border-l-2 border-purple-500 pl-2 tracking-widest">
+                            Composição Real de Custos (Fixos vs Variáveis • {selectedYear})
+                        </h3>
+                        <p className="text-[10px] text-muted-foreground pl-2.5 mt-0.5">
+                            Fixos (Aluguel, Pessoal, Galpão, Máquinas) vs. Variáveis (MDF, Ferragens, Terceiros, Impostos e Comissões)
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4 text-[10px] font-bold">
+                        <span className="flex items-center gap-1.5 text-purple-400">
+                            <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"/>
+                            Fixos: {formatCurrency(totalFixosYear)} ({((totalFixosYear / Math.max(totalFixosYear + totalVariaveisYear, 1)) * 100).toFixed(0)}%)
+                        </span>
+                        <span className="flex items-center gap-1.5 text-cyan-400">
+                            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"/>
+                            Variáveis: {formatCurrency(totalVariaveisYear)} ({((totalVariaveisYear / Math.max(totalFixosYear + totalVariaveisYear, 1)) * 100).toFixed(0)}%)
+                        </span>
                     </div>
                 </div>
                 <div className="h-[220px] w-full">
