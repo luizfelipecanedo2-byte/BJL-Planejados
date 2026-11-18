@@ -1037,7 +1037,7 @@ const Tarefas = () => {
     const criticalPendingTasksCount = tasks.filter(t => t.priority === 'high' && t.status === 'pending').length;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-700">
+        <div className="space-y-6 pb-24 animate-in fade-in duration-700">
             {/* Header Section */}
             <ModuleHeader
                 compact
@@ -1049,20 +1049,6 @@ const Tarefas = () => {
                 art={<AnimatedWorkshopChecklist size="md" className="w-16 h-14" />}
                 actions={
                     <div className="flex flex-wrap items-center gap-2.5">
-                        <Tabs value={activeView} onValueChange={setActiveView} className="glass-panel-pro p-1 rounded-2xl h-11 shadow-inner max-w-full overflow-hidden flex w-full md:w-auto">
-                            <TabsList className="bg-transparent h-full flex overflow-x-auto gap-0.5 custom-scrollbar max-w-full py-1">
-                                {getRollingTabs().map(tab => (
-                                    <TabsTrigger 
-                                        key={tab.value}
-                                        value={tab.value} 
-                                        className="px-3.5 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all shrink-0"
-                                    >
-                                        {tab.label}
-                                    </TabsTrigger>
-                                ))}
-                            </TabsList>
-                        </Tabs>
-
                         <Button 
                             onClick={handlePrintDailyTasks}
                             className="h-11 px-4 bg-white/5 hover:bg-white/15 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 gap-2"
@@ -1114,6 +1100,21 @@ const Tarefas = () => {
                             </>
                         )}
                     </div>
+                }
+                bottomBar={
+                    <Tabs value={activeView} onValueChange={setActiveView} className="glass-panel-pro p-1 rounded-2xl h-11 shadow-inner w-full overflow-hidden flex">
+                        <TabsList className="bg-transparent h-full w-full flex justify-start overflow-x-auto gap-0.5 custom-scrollbar py-0.5">
+                            {getRollingTabs().map(tab => (
+                                <TabsTrigger 
+                                    key={tab.value}
+                                    value={tab.value} 
+                                    className="px-3.5 h-full rounded-xl data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest transition-all shrink-0"
+                                >
+                                    {tab.label}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </Tabs>
                 }
             />
 

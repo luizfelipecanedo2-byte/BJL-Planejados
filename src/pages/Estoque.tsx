@@ -227,8 +227,8 @@ const Estoque = () => {
                         )
                     }
                     actions={
-                        <div className="flex flex-wrap items-center gap-3">
-                            <TabsList className="glass-panel-pro p-1 rounded-2xl h-11">
+                        <div className="flex flex-wrap items-center gap-3 max-w-full">
+                            <TabsList className="glass-panel-pro p-1 rounded-2xl h-11 max-w-full overflow-x-auto hide-scrollbar">
                                 <TabsTrigger 
                                     value="insumos" 
                                     className="rounded-xl px-4 font-bold text-xs gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
