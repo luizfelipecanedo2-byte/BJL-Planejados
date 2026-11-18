@@ -108,7 +108,7 @@ Você DEVE retornar a resposta EXATAMENTE no formato JSON especificado, combinan
   const prompt = `Analise este projeto de marcenaria de alto padrão. Identifique o tipo de ambiente, descreva sucintamente a sua lógica de cálculo de materiais no campo 'reasoning' (justificativa clara em português para o marceneiro), e liste cada material necessário mapeado com seu ID exato do catálogo e a quantidade correspondente. Estime também os dias necessários para produção.`;
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKey}`,
     {
       method: "POST",
       headers: {
@@ -417,7 +417,7 @@ export async function buildBJLBusinessSnapshot(forceRefresh = false): Promise<BJ
       .limit(120),
     supabase
       .from("service_orders")
-      .select("ticket_number, client, action, status, value, prediction_date")
+      .select("ticket_number, client, action, status, amount, forecast_date")
       .order("open_date", { ascending: false })
       .limit(80),
   ]);
@@ -602,12 +602,12 @@ export async function buildBJLBusinessSnapshot(forceRefresh = false): Promise<BJ
     productionSummary: {
       activeOSCount: activeOS.length,
       completedOSCount: completedOS.length,
-      recentActiveOS: activeOS.slice(0, 12).map((o) => ({
+      recentActiveOS: activeOS.slice(0, 12).map((o: any) => ({
         ticket: o.ticket_number || "OS",
         client: o.client || "Cliente",
         action: o.action || "Projeto",
         status: o.status || "Em Produção",
-        value: Number(o.value) || 0,
+        value: Number(o.amount ?? o.value) || 0,
       })),
     },
   };

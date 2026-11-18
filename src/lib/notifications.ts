@@ -62,7 +62,7 @@ export async function checkAndNotifyOverdueTasks() {
           title: `Tarefa Atrasada: ${task.title}`,
           message: `A tarefa "${task.title}" venceu em ${task.due_date}. Por favor, verifique o status.`,
           type: 'warning' as const,
-          link: '/tarefas',
+          link: '/admin/tarefas',
           read: false
         }));
 

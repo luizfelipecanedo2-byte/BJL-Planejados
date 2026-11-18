@@ -186,6 +186,10 @@ const App = () => {
               <Route path="/crm" element={<Navigate to="/admin" replace />} />
               <Route path="/clientes" element={<Navigate to="/admin/clientes" replace />} />
               <Route path="/financeiro" element={<Navigate to="/admin/financeiro" replace />} />
+              <Route path="/tarefas" element={<Navigate to="/admin/tarefas" replace />} />
+              <Route path="/estoque" element={<Navigate to="/admin/estoque" replace />} />
+              <Route path="/ordem-servico" element={<Navigate to="/admin/ordem-servico" replace />} />
+              <Route path="/agenda" element={<Navigate to="/admin/agenda" replace />} />
 
               <Route path="/admin" element={session ? <MainLayout /> : <Navigate to="/login" />}>
                 <Route index element={isAdmin ? <Index /> : <Navigate to="estoque" />} />
@@ -197,7 +201,7 @@ const App = () => {
                 <Route path="pedidos-semana" element={<PedidosSemana />} />
                 <Route path="tarefas" element={<Tarefas />} />
                 <Route path="agenda" element={isAdmin ? <Agenda /> : <Navigate to="estoque" />} />
-                <Route path="configuracoes" element={session ? <Configuracoes /> : <Navigate to="/estoque" />} />
+                <Route path="configuracoes" element={session ? <Configuracoes /> : <Navigate to="/admin/estoque" />} />
 
                 <Route path="*" element={<NotFound />} />
 

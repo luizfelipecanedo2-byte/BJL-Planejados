@@ -67,6 +67,11 @@ export function useNotifications() {
   useEffect(() => {
     fetchNotifications();
 
+    let currentUserId: string | null = null;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      currentUserId = user?.id || null;
+    });
+
     // Subscribe to new notifications
     const channel = supabase
       .channel('public:notifications')
@@ -76,6 +81,9 @@ export function useNotifications() {
         table: 'notifications' 
       }, (payload) => {
         const newNotification = payload.new as Notification;
+        if (currentUserId && newNotification.user_id && newNotification.user_id !== currentUserId) {
+          return;
+        }
         setNotifications(prev => [newNotification, ...prev].slice(0, 20));
         setUnreadCount(prev => prev + 1);
       })

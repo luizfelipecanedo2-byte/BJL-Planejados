@@ -50,13 +50,13 @@ export const ExecutiveMorningBriefing: React.FC = () => {
         .from("transactions")
         .select("amount, type, status")
         .eq("due_date", todayStr)
-        .eq("status", "pendente");
+        .in("status", ["pending", "pendente"]);
 
       let rec = 0;
       let pay = 0;
       (txs || []).forEach((t: any) => {
-        if (t.type === "receita") rec += Number(t.amount) || 0;
-        if (t.type === "despesa") pay += Number(t.amount) || 0;
+        if (t.type === "income" || t.type === "receita") rec += Number(t.amount) || 0;
+        if (t.type === "expense" || t.type === "despesa") pay += Number(t.amount) || 0;
       });
       setTodayReceivables(rec);
       setTodayPayables(pay);
