@@ -6,30 +6,30 @@
 
 @layer base {
   :root {
-    /* Deep Carbon Black Background */
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    /* Oficina Artesanal & Madeira Marrom Nobre (Nogueira / Imbuia / Freijó) */
+    --background: 25 48% 13%;
+    --foreground: 36 50% 97%;
 
-    /* Card Backgrounds - Elegant Anthracite */
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
+    /* Card Backgrounds - Madeira Marrom Tabaco / Carvalho */
+    --card: 26 45% 18%;
+    --card-foreground: 36 50% 97%;
 
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 25 46% 16%;
+    --popover-foreground: 36 50% 97%;
 
-    /* Champagne Gold - More refined and premium */
-    --primary: 38 92% 50%;
-    --primary-foreground: 0 0% 0%;
+    /* Champagne Gold / Âmbar Marcenaria */
+    --primary: 36 94% 52%;
+    --primary-foreground: 24 45% 8%;
 
-    /* Secondary - Muted Gold/Grey */
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    /* Secondary - Marrom Nogueira Médio */
+    --secondary: 26 40% 24%;
+    --secondary-foreground: 36 50% 97%;
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 26 38% 22%;
+    --muted-foreground: 33 35% 78%;
 
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 28 44% 25%;
+    --accent-foreground: 36 50% 97%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
@@ -41,24 +41,24 @@
     --warning: 47.9 95.8% 53.1%;
     --warning-foreground: 26 83.3% 14.1%;
 
-    /* Borders - Subtle Gold Tint */
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    /* Borders - Moldura de Madeira & Latão */
+    --border: 28 42% 28%;
+    --input: 26 42% 22%;
 
     /* Ring - Glowing Gold */
-    --ring: 38 92% 50%;
+    --ring: 36 94% 52%;
 
     --radius: 0.75rem;
 
-    /* Sidebar - Deep Black */
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 38 92% 50%;
+    /* Sidebar - Bancada Mogno / Imbuia Marrom */
+    --sidebar-background: 24 50% 11%;
+    --sidebar-foreground: 36 40% 96%;
+    --sidebar-primary: 36 94% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 38 92% 50%;
+    --sidebar-accent: 26 42% 20%;
+    --sidebar-accent-foreground: 36 40% 96%;
+    --sidebar-border: 28 40% 24%;
+    --sidebar-ring: 36 94% 52%;
 
     /* Kanban columns - Adapting to the luxury palette */
     --kanban-prospecto: 38 92% 50%;
@@ -74,43 +74,43 @@
 
   /* Dark mode enhancement */
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --primary: 38 92% 50%;
-    --primary-foreground: 0 0% 0%;
-    --border: 240 3.7% 15.9%;
-    --ring: 38 92% 50%;
+    --background: 25 48% 13%;
+    --foreground: 36 50% 97%;
+    --card: 26 45% 18%;
+    --card-foreground: 36 50% 97%;
+    --primary: 36 94% 52%;
+    --primary-foreground: 24 45% 8%;
+    --border: 28 42% 28%;
+    --ring: 36 94% 52%;
   }
 
   .theme-gold {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 38 92% 50%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 38 92% 50%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 38 92% 50%;
+    --background: 25 48% 13%;
+    --foreground: 36 50% 97%;
+    --card: 26 45% 18%;
+    --card-foreground: 36 50% 97%;
+    --popover: 25 46% 16%;
+    --popover-foreground: 36 50% 97%;
+    --primary: 36 94% 52%;
+    --primary-foreground: 24 45% 8%;
+    --secondary: 26 40% 24%;
+    --secondary-foreground: 36 50% 97%;
+    --muted: 26 38% 22%;
+    --muted-foreground: 33 35% 78%;
+    --accent: 28 44% 25%;
+    --accent-foreground: 36 50% 97%;
+    --border: 28 42% 28%;
+    --input: 26 42% 22%;
+    --ring: 36 94% 52%;
+    --sidebar-background: 24 50% 11%;
+    --sidebar-foreground: 36 40% 96%;
+    --sidebar-primary: 36 94% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 38 92% 50%;
-    --mesh-color-1: 38 92% 50%;
+    --sidebar-accent: 26 42% 20%;
+    --sidebar-accent-foreground: 36 40% 96%;
+    --sidebar-border: 28 40% 24%;
+    --sidebar-ring: 36 94% 52%;
+    --mesh-color-1: 36 94% 52%;
     --mesh-color-2: 25 95% 50%;
   }
 
@@ -223,13 +223,15 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
-  /* Interactive High-Tech Grid + Ambient Radial Glow (Hardware Accelerated, Zero Filter Overhead) */
+  /* Iluminação Quente de Marcenaria & Madeira Marrom (Imbuia / Nogueira) */
   body::before {
     content: "";
     @apply fixed inset-0 z-[-2] pointer-events-none;
-    background-image: 
-      radial-gradient(circle at 15% 50%, hsl(var(--primary) / 0.07) 0%, transparent 45%),
-      radial-gradient(circle at 85% 25%, hsl(var(--primary) / 0.04) 0%, transparent 45%);
+    background: 
+      radial-gradient(ellipse 85% 55% at 50% -10%, rgba(180, 83, 9, 0.28), transparent 70%),
+      radial-gradient(circle at 85% 25%, rgba(146, 64, 14, 0.22) 0%, transparent 50%),
+      radial-gradient(circle at 15% 80%, rgba(120, 53, 15, 0.25) 0%, transparent 55%),
+      linear-gradient(145deg, #352112 0%, #27180c 50%, #3a2313 100%);
   }
 
   /* Custom Luxury Scrollbar */
@@ -241,14 +243,22 @@
     @apply bg-transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-primary/10 rounded-full hover:bg-primary/30 transition-colors duration-200;
+    @apply bg-amber-600/30 rounded-full hover:bg-primary/60 transition-colors duration-200;
   }
 }
 
 @layer utilities {
   .glass-card {
-    @apply bg-[#0e0e14]/95 border border-border/40 shadow-xl;
-    background-image: linear-gradient(to bottom right, rgba(255, 255, 255, 0.04), transparent);
+    background: 
+      radial-gradient(circle at 90% 10%, rgba(245, 158, 11, 0.14) 0%, transparent 45%),
+      repeating-linear-gradient(115deg, rgba(251, 191, 36, 0.018) 0px, rgba(251, 191, 36, 0.018) 1px, transparent 1px, transparent 14px),
+      linear-gradient(165deg, rgba(108, 67, 36, 0.86) 0%, rgba(69, 43, 23, 0.94) 100%);
+    border: 1px solid rgba(217, 119, 6, 0.36);
+    border-radius: 1.5rem;
+    box-shadow: 
+      0 16px 36px -12px rgba(20, 10, 4, 0.72),
+      inset 0 0 0 3px rgba(42, 24, 12, 0.35),
+      inset 0 1px 0 rgba(254, 243, 199, 0.28);
   }
 
   .luxury-shadow {
@@ -510,19 +520,19 @@
     display: inline-block;
   }
 
-  /* Cyber Luxury Utility Classes */
+  /* Cyber Luxury Utility Classes - Brown Wood Edition */
   .cyber-glass {
-    background: rgba(12, 12, 18, 0.94);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+    background: linear-gradient(155deg, rgba(95, 58, 30, 0.9) 0%, rgba(58, 36, 19, 0.96) 100%);
+    border: 1px solid rgba(217, 119, 6, 0.32);
+    box-shadow: 0 12px 30px rgba(20, 10, 4, 0.65), inset 0 1px 1px rgba(251, 191, 36, 0.2);
   }
 
   .cyber-glass-hover {
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
   .cyber-glass-hover:hover {
-    border-color: hsl(var(--primary) / 0.4);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.12);
+    border-color: hsl(var(--primary) / 0.5);
+    box-shadow: 0 16px 36px rgba(20, 10, 4, 0.75), inset 0 1px 1px rgba(251, 191, 36, 0.28);
   }
 
   .laser-border {
@@ -535,7 +545,7 @@
   }
 
   .cyber-gradient-text {
-    background: linear-gradient(135deg, #FFFFFF 0%, #F59E0B 50%, #D97706 100%);
+    background: linear-gradient(135deg, #FFFBEB 0%, #F59E0B 50%, #D97706 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
@@ -548,16 +558,16 @@
     font-family: 'Space Grotesk', 'Outfit', sans-serif;
   }
 
-  /* Ultra-modern Pro Glassmorphism & High-Tech UI (Zero Blur Lag) */
+  /* Ultra-modern Pro Brown Wood Panel (Zero Blur Lag) */
   .glass-panel-pro {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.01) 100%), #0b0b10;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    background: linear-gradient(165deg, rgba(105, 65, 34, 0.9) 0%, rgba(64, 40, 21, 0.96) 100%);
+    border: 1px solid rgba(217, 119, 6, 0.34);
+    box-shadow: 0 12px 28px -10px rgba(20, 10, 4, 0.68), inset 0 1px 0 rgba(251, 191, 36, 0.22);
     transition: border-color 0.2s ease;
   }
 
   .glass-panel-pro:hover {
-    border-color: rgba(245, 158, 11, 0.28);
+    border-color: rgba(245, 158, 11, 0.5);
   }
 
   .metric-value {
@@ -573,26 +583,41 @@
     transition: background-color 0.15s ease, color 0.15s ease;
   }
 
-  /* Enterprise Executive Cockpit & Stealth Luxury Utilities */
+  /* Enterprise Executive Cockpit & Marchetaria Wood Utilities */
   .border-metallic {
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.035) 0%, transparent 100%);
-    box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.05) inset;
+    border: 1px solid rgba(217, 119, 6, 0.34);
+    background-image: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, transparent 100%);
+    box-shadow: 0 1px 0 0 rgba(251, 191, 36, 0.22) inset;
   }
 
   .border-metallic:hover {
-    border-color: rgba(245, 158, 11, 0.25);
+    border-color: rgba(245, 158, 11, 0.55);
   }
 
   .executive-card {
-    background: linear-gradient(180deg, rgba(22, 22, 30, 0.96) 0%, rgba(11, 11, 16, 0.98) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 14px 32px -12px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: border-color 0.2s ease;
+    background: 
+      radial-gradient(circle at 95% 10%, rgba(245, 158, 11, 0.18) 0%, transparent 48%),
+      repeating-linear-gradient(125deg, rgba(251, 191, 36, 0.022) 0px, rgba(251, 191, 36, 0.022) 1px, transparent 1px, transparent 16px),
+      linear-gradient(155deg, rgba(114, 72, 38, 0.92) 0%, rgba(78, 49, 26, 0.95) 55%, rgba(58, 36, 19, 0.98) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 1.5rem;
+    box-shadow: 
+      0 18px 42px -15px rgba(20, 9, 3, 0.82),
+      inset 0 0 0 4px rgba(38, 22, 11, 0.45),
+      inset 0 0 0 5px rgba(251, 191, 36, 0.14),
+      inset 0 1px 0 rgba(254, 243, 199, 0.32),
+      inset 0 -2px 0 rgba(120, 53, 15, 0.6);
+    transition: all 0.3s ease;
   }
 
   .executive-card:hover {
-    border-color: rgba(245, 158, 11, 0.28);
+    border-color: rgba(251, 191, 36, 0.65);
+    box-shadow: 
+      0 24px 52px -14px rgba(20, 9, 3, 0.88),
+      0 0 28px rgba(245, 158, 11, 0.18),
+      inset 0 0 0 4px rgba(38, 22, 11, 0.45),
+      inset 0 0 0 5px rgba(251, 191, 36, 0.28),
+      inset 0 1px 0 rgba(254, 243, 199, 0.42);
   }
 
   .pulse-badge {
@@ -606,8 +631,8 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
   }
 
   .tabular-nums {
@@ -620,8 +645,8 @@
   }
 
   .tech-hud-pill {
-    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest border border-white/10 bg-white/[0.04];
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest border border-amber-500/25 bg-amber-500/10;
+    box-shadow: inset 0 1px 0 rgba(251, 191, 36, 0.15);
   }
 
   @keyframes orbitSpin {
@@ -640,5 +665,119 @@
 
   .animate-orbit-reverse {
     animation: orbitSpinReverse 8s linear infinite;
+  }
+
+  /* Animações das Ferramentas e Móveis de Marcenaria */
+  @keyframes sawingMotion {
+    0%, 100% { transform: translate(0px, 0px) rotate(-3deg); }
+    45% { transform: translate(11px, 3px) rotate(1.5deg); }
+    55% { transform: translate(9px, 2px) rotate(0.5deg); }
+  }
+  .animate-sawing {
+    animation: sawingMotion 1.35s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  }
+
+  @keyframes sawdustBurst {
+    0%, 100% { transform: translate(0, 0) scale(0.85); opacity: 0.45; }
+    50% { transform: translate(7px, 5px) scale(1.15); opacity: 1; }
+  }
+  .animate-sawdust-burst {
+    animation: sawdustBurst 1.35s ease-in-out infinite;
+  }
+
+  @keyframes spinSaw {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .animate-spin-saw {
+    animation: spinSaw 9s linear infinite;
+  }
+  .animate-spin-saw-fast {
+    animation: spinSaw 1.8s linear infinite;
+  }
+
+  @keyframes drawerSlide {
+    0%, 100% { transform: translate(0px, 0px); }
+    50% { transform: translate(-4px, 2px); }
+  }
+  .animate-drawer-slide {
+    animation: drawerSlide 2.8s ease-in-out infinite;
+  }
+
+  @keyframes planingMotion {
+    0%, 100% { transform: translateX(-5px); }
+    50% { transform: translateX(7px); }
+  }
+  .animate-planing {
+    animation: planingMotion 2.2s ease-in-out infinite;
+  }
+
+  @keyframes malletTap {
+    0%, 100% { transform: rotate(0deg); }
+    40% { transform: rotate(12deg); }
+    55% { transform: rotate(-4deg); }
+  }
+  .animate-mallet-tap {
+    animation: malletTap 1.6s ease-in-out infinite;
+  }
+
+  @keyframes drillVibe {
+    0%, 100% { transform: translateX(0px); }
+    50% { transform: translateX(2.5px); }
+  }
+  .animate-drill-vibe {
+    animation: drillVibe 0.6s ease-in-out infinite;
+  }
+
+  @keyframes tapeExtend {
+    0%, 100% { transform: scaleX(1); }
+    50% { transform: scaleX(1.04); }
+  }
+  .animate-tape-extend {
+    transform-origin: 58px 75px;
+    animation: tapeExtend 2.5s ease-in-out infinite;
+  }
+
+  .sawdust-particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px 2px 9999px 4px;
+    background: radial-gradient(circle, #FBBF24 0%, #D97706 100%);
+    opacity: 0.22;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.45);
+  }
+
+  @keyframes floatSawdustSlow {
+    0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); opacity: 0.14; }
+    50% { transform: translateY(-28px) translateX(14px) rotate(140deg); opacity: 0.32; }
+  }
+  @keyframes floatSawdustMedium {
+    0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); opacity: 0.16; }
+    50% { transform: translateY(-38px) translateX(-18px) rotate(220deg); opacity: 0.36; }
+  }
+  .animate-float-slow { animation: floatSawdustSlow 7s ease-in-out infinite; }
+  .animate-float-medium { animation: floatSawdustMedium 5.5s ease-in-out infinite; }
+  .animate-float-fast { animation: floatSawdustSlow 4.2s ease-in-out infinite; }
+
+  .wood-ruler-top {
+    position: relative;
+  }
+  .wood-ruler-top::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 24px;
+    right: 24px;
+    height: 5px;
+    opacity: 0.3;
+    pointer-events: none;
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgba(251, 191, 36, 0.7) 0px,
+      rgba(251, 191, 36, 0.7) 1px,
+      transparent 1px,
+      transparent 8px
+    );
   }
 }

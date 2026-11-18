@@ -58,6 +58,19 @@ import { ExecutiveBIAnalytics } from "./ExecutiveBIAnalytics";
 import { ExecutiveMorningBriefing } from "./ExecutiveMorningBriefing";
 import { FelipeCommissionCard } from "./FelipeCommissionCard";
 import { parseDateOnly } from "@/services/commissionService";
+import {
+  AnimatedHandsaw,
+  SpinningSawBlade,
+  AnimatedCabinet3D,
+  AnimatedWoodPlane,
+  AnimatedHammerAndChisel,
+  AnimatedCordlessDrill,
+  AnimatedTapeMeasure,
+  AnimatedMdfPlanksAndClamps,
+  WoodCuttingProgressBar,
+  CarpentryWorkbenchScene,
+  MarcenariaBadge,
+} from "@/components/ui/WoodworkingArt";
 
 interface Task {
   id: string;
@@ -369,36 +382,40 @@ const Dashboard = ({ sales }: DashboardProps) => {
         {/* Centro de Comando Matinal */}
         <ExecutiveMorningBriefing />
 
-        {/* Executive Cockpit Header & Monthly Target Module */}
-        <div className="executive-card p-6 sm:p-8 rounded-[2.5rem] border-metallic relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+        {/* Executive Cockpit Header & Monthly Target Module - Estilo Oficina & Marcenaria Viva */}
+        <div className="executive-card p-6 sm:p-8 rounded-[2.5rem] border-metallic wood-ruler-top relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/15 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
           
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="pulse-badge text-primary border-primary/20 bg-primary/5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
-                  Executive Cockpit
-                </span>
-                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-                  BJL Enterprise • {titleSuffix}
-                </span>
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 relative z-10">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <MarcenariaBadge label="Oficina & Cockpit de Marcenaria" variant="saw" />
+                  <span className="text-[10px] font-mono text-amber-300/80 uppercase tracking-widest">
+                    • BJL Planejados • {titleSuffix}
+                  </span>
+                </div>
+                
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-2.5">
+                  {greeting}, <span className="shimmer-gold">{userName}</span>
+                </h2>
+                <p className="text-xs text-muted-foreground max-w-md leading-relaxed">
+                  Painel artesanal e executivo da marcenaria. Acompanhe o corte de metas, contratos sob medida, linha de produção e faturamento em tempo real.
+                </p>
               </div>
-              
-              <h2 className="text-2xl sm:text-4xl font-display font-black text-foreground tracking-tight flex items-center gap-2.5">
-                {greeting}, <span className="shimmer-gold">{userName}</span>
-              </h2>
-              <p className="text-xs text-muted-foreground max-w-lg leading-relaxed">
-                Painel gerencial de alta precisão comercial e desempenho fabril. Monitorando fluxo de receita, conversão e pipeline estratégico em tempo real.
-              </p>
+
+              {/* Ilustração Viva da Bancada de Marcenaria (Serrote cortando prancha + Serra Circular + Esquadro) */}
+              <div className="hidden sm:flex shrink-0">
+                <CarpentryWorkbenchScene />
+              </div>
             </div>
 
-            {/* Target Progress Module */}
-            <div className="w-full lg:w-[400px] bg-black/40 backdrop-blur-xl p-5 rounded-2xl border border-white/10 space-y-3 shrink-0 shadow-2xl">
+            {/* Target Progress Module com Serrote Cortando a Tábua da Meta! */}
+            <div className="w-full xl:w-[410px] bg-[#2b190d]/85 backdrop-blur-xl p-5 rounded-tl-3xl rounded-br-3xl rounded-tr-xl rounded-bl-xl border border-amber-500/35 space-y-3 shrink-0 shadow-2xl relative">
               <div className="flex justify-between items-center text-xs">
                 <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-amber-400" />
-                  <span className="font-bold text-white uppercase tracking-wider text-[10px]">Meta Mensal Corporativa</span>
+                  <SpinningSawBlade size="sm" className="w-4 h-4" />
+                  <span className="font-bold text-amber-100 uppercase tracking-wider text-[10px]">Corte da Meta Mensal</span>
                 </div>
                 {isEditingGoal ? (
                   <div className="flex items-center gap-1">
@@ -426,23 +443,23 @@ const Dashboard = ({ sales }: DashboardProps) => {
                 )}
               </div>
 
-              {/* High-Tech Metallic Progress Bar */}
-              <div className="w-full bg-white/5 h-3 rounded-full overflow-hidden relative border border-white/10 p-[1px]">
-                <div 
-                  className="bg-gradient-to-r from-amber-600 via-primary to-amber-300 h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(245,158,11,0.6)]" 
-                  style={{ width: `${progressBarWidth}%` }}
-                />
-              </div>
+              {/* Barra Tábua de Madeira com Serrote Animado Cortando */}
+              <WoodCuttingProgressBar
+                percent={progressBarWidth}
+                showSaw={true}
+                height="md"
+                colorVariant="wood"
+              />
 
               <div className="flex justify-between items-center text-[10px] font-mono tabular-nums">
                 <span className="text-emerald-400 font-bold">{formatCurrency(totalRevenue)}</span>
-                <span className="text-muted-foreground">Alvo: {formatCurrency(salesGoal)}</span>
+                <span className="text-amber-200/70">Meta: {formatCurrency(salesGoal)}</span>
               </div>
 
-              <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[9px] font-mono text-muted-foreground">
-                <span className="flex items-center gap-1 text-primary/80">
+              <div className="pt-2 border-t border-amber-500/15 flex items-center justify-between text-[9px] font-mono text-muted-foreground">
+                <span className="flex items-center gap-1 text-primary/90">
                   <Sparkles className="h-3 w-3 text-amber-400" />
-                  Ritmo: {projectedPercent}% estimado
+                  Ritmo de Corte: {projectedPercent}% estimado
                 </span>
                 <span>Projeção: <strong className="text-white">{formatCurrency(projectedRevenue)}</strong></span>
               </div>
@@ -450,28 +467,31 @@ const Dashboard = ({ sales }: DashboardProps) => {
           </div>
         </div>
 
-        {/* Bento Grid 2.0 */}
+        {/* Bento Grid 2.0 - Cada card com uma arte exclusiva de Marcenaria & Móveis Planejados */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-          {/* HERO CARD (Spans 2 columns on desktop) */}
-          <div className="md:col-span-2 lg:col-span-2 executive-card p-6 sm:p-7 rounded-[2.5rem] border-metallic flex flex-col justify-between relative overflow-hidden group">
+          {/* HERO CARD (Spans 2 columns on desktop) - Ilustração Móvel Planejado 3D */}
+          <div className="md:col-span-2 lg:col-span-2 executive-card p-6 sm:p-7 rounded-3xl border-metallic wood-ruler-top flex flex-col justify-between relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
+            <div className="absolute right-2 bottom-4 opacity-30 group-hover:opacity-55 transition-opacity pointer-events-none">
+              <AnimatedCabinet3D size="xl" />
+            </div>
             
             <div className="relative z-10 flex flex-col justify-between h-full space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 text-primary">
-                    <Target className="h-6 w-6" />
+                  <div className="p-2.5 rounded-2xl bg-primary/15 border border-primary/30 text-primary">
+                    <AnimatedCabinet3D size="sm" className="w-7 h-7" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Receita Faturada & Contratos</h3>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-amber-200/80">Receita Faturada & Móveis Contratados</h3>
                     <p className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 mt-0.5 font-mono">
                       <TrendingUp className="h-3 w-3" /> +18.2% vs período anterior
                     </p>
                   </div>
                 </div>
 
-                <div className="px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-mono text-[10px] font-bold shadow-inner">
-                  {numClosed} {numClosed === 1 ? 'Contrato Fechado' : 'Contratos Fechados'}
+                <div className="px-3.5 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-amber-200 font-mono text-[10px] font-bold shadow-inner">
+                  {numClosed} {numClosed === 1 ? 'Projeto Fechado' : 'Projetos Fechados'}
                 </div>
               </div>
 
@@ -480,7 +500,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
                   <AnimatedCounter value={totalRevenue} formatter={formatCurrency} />
                 </div>
                 <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-muted-foreground">
-                  <span>Pipeline Ativo: <strong className="text-amber-400 font-mono">{formatCurrency(pipelineValue)}</strong></span>
+                  <span>Pipeline Ativo: <strong className="text-amber-300 font-mono">{formatCurrency(pipelineValue)}</strong></span>
                   <span>•</span>
                   <span>Conversão: <strong className="text-emerald-400 font-mono">{conversionRate}%</strong></span>
                 </div>
@@ -502,14 +522,17 @@ const Dashboard = ({ sales }: DashboardProps) => {
             />
           </div>
 
-          {/* SATELLITE 1: Valor Total Orçado */}
-          <div className="executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col justify-between relative overflow-hidden group">
+          {/* SATELLITE 1: Valor Total Orçado - Ilustração Trena & Medição */}
+          <div className="executive-card p-6 rounded-3xl border-metallic flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute -right-2 bottom-6 opacity-25 group-hover:opacity-50 transition-opacity pointer-events-none">
+              <AnimatedTapeMeasure size="lg" />
+            </div>
             <div className="flex items-center justify-between relative z-10">
-              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                <DollarSign className="h-5 w-5" />
+              <div className="p-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
+                <AnimatedTapeMeasure size="sm" className="w-7 h-6" />
               </div>
-              <span className="text-[9px] font-bold font-mono px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-muted-foreground">
-                {numBudgets} propostas
+              <span className="text-[9px] font-bold font-mono px-2.5 py-1 rounded-full bg-amber-950/60 border border-amber-500/25 text-amber-200">
+                {numBudgets} medições/propostas
               </span>
             </div>
 
@@ -523,14 +546,17 @@ const Dashboard = ({ sales }: DashboardProps) => {
             <MiniSparkline color="#eab308" trend="up" />
           </div>
 
-          {/* SATELLITE 2: Ticket Médio Fechado */}
-          <div className="executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col justify-between relative overflow-hidden group">
+          {/* SATELLITE 2: Ticket Médio Fechado - Ilustração Plaina Manual & Acabamento */}
+          <div className="executive-card p-6 rounded-3xl border-metallic flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute -right-2 bottom-6 opacity-25 group-hover:opacity-50 transition-opacity pointer-events-none">
+              <AnimatedWoodPlane size="lg" />
+            </div>
             <div className="flex items-center justify-between relative z-10">
-              <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 text-primary">
-                <Receipt className="h-5 w-5" />
+              <div className="p-2.5 rounded-2xl bg-primary/15 border border-primary/30 text-primary">
+                <AnimatedWoodPlane size="sm" className="w-7 h-6" />
               </div>
-              <span className="text-[9px] font-bold font-mono px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                +9.1%
+              <span className="text-[9px] font-bold font-mono px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                Alto Padrão
               </span>
             </div>
 
@@ -544,13 +570,16 @@ const Dashboard = ({ sales }: DashboardProps) => {
             <MiniSparkline color="#f59e0b" trend="up" />
           </div>
 
-          {/* SATELLITE 3: Taxa de Conversão */}
-          <div className="executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col justify-between relative overflow-hidden group">
+          {/* SATELLITE 3: Taxa de Conversão - Ilustração Parafusadeira Profissional */}
+          <div className="executive-card p-6 rounded-3xl border-metallic flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute right-0 bottom-5 opacity-25 group-hover:opacity-50 transition-opacity pointer-events-none">
+              <AnimatedCordlessDrill size="md" />
+            </div>
             <div className="flex items-center justify-between relative z-10">
-              <div className="p-3 rounded-2xl bg-amber-400/10 border border-amber-400/20 text-amber-300">
-                <BarChart3 className="h-5 w-5" />
+              <div className="p-2.5 rounded-2xl bg-amber-400/15 border border-amber-400/30 text-amber-300">
+                <AnimatedCordlessDrill size="sm" className="w-7 h-6" />
               </div>
-              <span className="text-[9px] font-bold font-mono px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400">
+              <span className="text-[9px] font-bold font-mono px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300">
                 Meta: 25%
               </span>
             </div>
@@ -562,19 +591,22 @@ const Dashboard = ({ sales }: DashboardProps) => {
               </div>
             </div>
 
-            <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/10 mt-2">
+            <div className="w-full bg-black/30 h-2 rounded-full overflow-hidden border border-amber-500/20 mt-2">
               <div className="bg-amber-400 h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(conversionRate, 100)}%` }} />
             </div>
           </div>
 
-          {/* SATELLITE 4: Perdidos / Congelados */}
-          <div className="executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col justify-between relative overflow-hidden group">
+          {/* SATELLITE 4: Perdidos / Congelados - Ilustração Chapas MDF & Grampo Sargento */}
+          <div className="executive-card p-6 rounded-3xl border-metallic flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute -right-2 bottom-6 opacity-25 group-hover:opacity-50 transition-opacity pointer-events-none">
+              <AnimatedMdfPlanksAndClamps size="md" />
+            </div>
             <div className="flex items-center justify-between relative z-10">
-              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
-                <TrendingDown className="h-5 w-5" />
+              <div className="p-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400">
+                <AnimatedMdfPlanksAndClamps size="sm" className="w-7 h-6" />
               </div>
-              <span className="text-[9px] font-bold font-mono px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400">
-                {numLost} perdas
+              <span className="text-[9px] font-bold font-mono px-2.5 py-1 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300">
+                {numLost} represados
               </span>
             </div>
 
@@ -588,27 +620,39 @@ const Dashboard = ({ sales }: DashboardProps) => {
             <MiniSparkline color="#f43f5e" trend="down" />
           </div>
 
-          {/* SATELLITE 5: Tarefas Operacionais da Fábrica (Spans full width) */}
-          <div className="md:col-span-3 lg:col-span-4 executive-card p-6 rounded-[2.5rem] border-metallic flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden group">
-            <div className="flex items-center gap-3 relative z-10">
-              <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                <CheckSquare className="h-6 w-6" />
+          {/* SATELLITE 5: Tarefas Operacionais da Fábrica (Spans full width) com Formão, Malho, Parafusadeira e Serrote */}
+          <div className="md:col-span-3 lg:col-span-4 executive-card p-6 rounded-3xl border-metallic wood-ruler-top flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden group">
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="p-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/35 text-amber-400 flex items-center justify-center">
+                <AnimatedHammerAndChisel size="sm" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white tracking-tight">Operação Fabril & Produção</h4>
-                <p className="text-xs text-muted-foreground">
-                  <strong className="text-emerald-400 font-mono">{totalPendingTasks} tarefas</strong> ativas em linha de corte, montagem e expedição.
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm sm:text-base font-extrabold text-white tracking-tight">Oficina & Chão de Fábrica • Corte, Usinagem & Montagem</h4>
+                  <span className="text-[9px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/35 text-amber-200 hidden md:inline-block">
+                    Bancada Completa
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  <strong className="text-emerald-400 font-mono">{totalPendingTasks} tarefas</strong> ativas em plano de corte, fitagem, montagem de caixas e instalação.
                 </p>
               </div>
             </div>
 
-            <Link
-              to="/admin/tarefas"
-              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs font-semibold tracking-wider uppercase transition-all flex items-center gap-1.5 shrink-0 hover:scale-105 active:scale-95 shadow-lg"
-            >
-              <span>Ver Fábrica</span>
-              <ArrowRight className="h-3.5 w-3.5 text-primary" />
-            </Link>
+            <div className="flex items-center gap-3 relative z-10">
+              <div className="hidden lg:flex items-center gap-2 bg-[#26170b]/60 px-3 py-1.5 rounded-2xl border border-amber-500/25">
+                <AnimatedWoodPlane size="sm" />
+                <AnimatedCordlessDrill size="sm" />
+                <AnimatedHandsaw size="sm" animate={true} showSawdust={true} />
+              </div>
+              <Link
+                to="/admin/tarefas"
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600/40 to-amber-500/25 hover:from-amber-600/60 hover:to-amber-500/40 text-amber-100 border border-amber-400/40 text-xs font-bold tracking-wider uppercase transition-all flex items-center gap-1.5 shrink-0 hover:scale-105 active:scale-95 shadow-lg"
+              >
+                <span>Abrir Bancada Fabril</span>
+                <ArrowRight className="h-3.5 w-3.5 text-primary" />
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -837,7 +881,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
                   Próximas Tarefas
                 </h3>
               </div>
-              <Link to="/tarefas" className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary/80 flex items-center gap-2 transition-colors">
+              <Link to="/admin/tarefas" className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary/80 flex items-center gap-2 transition-colors">
                 Ver Todas <ArrowRight className="h-3 w-3" />
               </Link>
             </div>

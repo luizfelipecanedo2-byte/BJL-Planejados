@@ -57,6 +57,12 @@ import { Magnetic } from "./ui/Magnetic";
 import { playClickSound, playHoverSound, playTransitionSound } from "@/lib/audio";
 import { PWAInstallButton } from "./shared/PWAInstallButton";
 import { BJLPartnerChat } from "./ai/BJLPartnerChat";
+import {
+    AnimatedCabinet3D,
+    AnimatedTapeMeasure,
+    ToolRackWidget,
+    FloatingSawdustBackground,
+} from "./ui/WoodworkingArt";
 
 
 const MainLayout = () => {
@@ -261,6 +267,7 @@ const MainLayout = () => {
         <div className="h-[100dvh] h-dvh bg-background flex flex-col lg:flex-row overflow-hidden w-full relative">
             <CommandMenu />
             <div className="aurora-bg" />
+            <FloatingSawdustBackground />
 
             <aside className={cn(
                 "hidden lg:flex fixed lg:static top-6 bottom-6 left-6 z-50 executive-card border-metallic shadow-2xl flex-col transition-all duration-500 rounded-3xl m-4 lg:mr-0 lg:my-6 overflow-hidden",
@@ -409,6 +416,12 @@ const MainLayout = () => {
                     ))}
                 </nav>
 
+                {!isSidebarCollapsed && (
+                    <div className="mx-3 mb-2">
+                        <ToolRackWidget />
+                    </div>
+                )}
+
                 <div className={cn("border-t border-white/[0.06]", isSidebarCollapsed ? "p-2 flex justify-center" : "p-3")}>
                     <Magnetic range={30} strength={0.15} className="w-full">
                         <Button
@@ -451,8 +464,9 @@ const MainLayout = () => {
 
                         <div className="hidden lg:flex items-center gap-3">
                             <div className="flex items-center gap-2 text-xs font-semibold">
-                                <span className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-white/60 font-mono text-[10px]">
-                                    BJL.OS
+                                <AnimatedTapeMeasure size="sm" className="w-8 h-6" />
+                                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-400/30 text-amber-200 font-mono text-[10px]">
+                                    BJL•OFICINA
                                 </span>
                                 <span className="text-white/20">/</span>
                                 <span className="text-white font-display font-bold tracking-tight text-sm">{currentSectionName}</span>
@@ -460,12 +474,9 @@ const MainLayout = () => {
 
                             <div className="h-4 w-px bg-white/10 mx-1" />
 
-                            <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono font-semibold">
-                                <span className="relative flex h-1.5 w-1.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                                </span>
-                                <span>SYNC ONLINE • 14ms</span>
+                            <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-400/35 text-amber-200 text-[10px] font-mono font-semibold">
+                                <AnimatedCabinet3D size="sm" className="w-4 h-4" />
+                                <span>MARCENARIA ATIVA</span>
                             </div>
                         </div>
 
