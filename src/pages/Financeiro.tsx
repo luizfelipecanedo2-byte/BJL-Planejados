@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, AlertTriangle, Receipt, FileSearch, Package, Target, Printer, Clock, Sparkles } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Search, ChevronLeft, ChevronRight, Users, Calendar, AlertTriangle, Receipt, FileSearch, Package, Target, Printer, Clock, Sparkles, Upload } from "lucide-react";
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -2073,6 +2073,14 @@ const Financeiro = () => {
             </Button>
             <Button
               variant="ghost"
+              className="h-11 px-5 rounded-2xl executive-card border-metallic hover:bg-amber-500/15 hover:text-amber-300 transition-all group overflow-hidden relative w-full sm:w-auto border-amber-500/30 text-amber-300"
+              onClick={() => window.dispatchEvent(new CustomEvent("open-bjl-xml-import"))}
+            >
+              <Upload className="mr-2 h-4 w-4 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span className="font-display font-bold text-xs uppercase tracking-wider">Importar XML (NF-e)</span>
+            </Button>
+            <Button
+              variant="ghost"
               className="h-11 px-6 rounded-2xl executive-card border-metallic hover:bg-primary/10 hover:text-primary transition-all group overflow-hidden relative w-full sm:w-auto"
               onClick={handleNewTransaction}
             >
@@ -2353,6 +2361,14 @@ const Financeiro = () => {
                     <Printer size={14} className="mr-1.5 text-amber-400" />
                     Imprimir ({filteredTransactions.length})
                   </Button>
+                  <Button
+                    onClick={() => window.dispatchEvent(new CustomEvent("open-bjl-xml-import"))}
+                    variant="outline"
+                    className="rounded-xl px-3.5 font-black uppercase tracking-wider text-[10px] h-9 transition-all border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                  >
+                    <Upload size={14} className="mr-1.5 text-emerald-400" />
+                    Importar XML (30/60/90)
+                  </Button>
                   <Button onClick={handleNewTransaction} className="rounded-xl px-4 font-black uppercase tracking-wider text-[10px] h-9 shadow-lg shadow-primary/20"><Plus size={14} className="mr-1.5" /> Novo Fluxo</Button>
                 </div>
               </div>
@@ -2438,7 +2454,15 @@ const Financeiro = () => {
             />
           )}
         </TabsContent>
-        <TabsContent value="notas_fiscais">{activeTab === "notas_fiscais" && <NotaFiscalTab />}</TabsContent>
+        <TabsContent value="notas_fiscais" forceMount className={activeTab === "notas_fiscais" ? "block" : "hidden"}>
+          <NotaFiscalTab
+            onRefresh={() => {
+              fetchTransactions();
+              fetchTransactionAllocations();
+              fetchServiceExpenses();
+            }}
+          />
+        </TabsContent>
         <TabsContent value="patrimonio">{activeTab === "patrimonio" && <AssetsTab assets={assets} handleNewAsset={handleNewAsset} formatCurrency={formatCurrency} />}</TabsContent>
       </Tabs>
 
