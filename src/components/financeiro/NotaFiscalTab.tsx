@@ -104,6 +104,7 @@ interface ParsedXmlData {
     series: string;
     issueDate: string;
     emitterName: string;
+    emitterFantasyName: string;
     emitterCnpj: string;
     recipientName: string;
     recipientDoc: string;
@@ -190,6 +191,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
         direction: "entrada" as "entrada" | "saida",
         updateInventory: true,
         createExpenseTransaction: true,
+        supplierPreset: "ced" as "ced" | "bruta" | "outro",
         paymentCategoryType: "Boleto" as "Boleto" | "Cartao" | "Pix" | "Dinheiro",
         paymentMethod: "Boleto",
         financialInstitution: "Banco Itaú",
@@ -649,6 +651,129 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 paymentMethod: method,
             }))
         );
+    };
+
+    // Identifica automaticamente se a nota é da BRUTA (Cartão) ou CED / C&D (Boleto 30/60/90)
+    const detectSupplierProfile = (emitterName: string, fantasyName: string): "bruta" | "ced" | "outro" => {
+        const text = `${emitterName || ""} ${fantasyName || ""}`.toLowerCase();
+        if (text.includes("bruta")) return "bruta";
+        if (
+            text.includes("c h m morais") ||
+            text.includes("morais e cia") ||
+            text.includes("c&d") ||
+            text.includes("c & d") ||
+            /\bced\b/.test(text)
+        ) {
+            return "ced";
+        }
+        return "outro";
+    };
+
+    const handleSelectSupplierProfile = (profile: "ced" | "bruta" | "outro") => {
+        if (!parsedXml) return;
+        if (profile === "ced") {
+            const insts = buildInstallmentsFromPreset(
+                parsedXml.issueDate,
+                parsedXml.totalAmount,
+                "30_60_90",
+                "Boleto",
+                parsedXml.duplicates,
+                3,
+                30
+            );
+            setXmlInstallments(insts);
+            setXmlOptions((prev) => ({
+                ...prev,
+                supplierPreset: "ced",
+                paymentCategoryType: "Boleto",
+                paymentMethod: "Boleto",
+                financialInstitution: "Banco Itaú",
+                schedulePreset: "30_60_90",
+                customInstallmentCount: "3",
+                customIntervalDays: "30",
+            }));
+            toast.success("Perfil CED (C&D) aplicado: Boleto 30 / 60 / 90 dias no Banco Itaú!");
+        } else if (profile === "bruta") {
+            const cardMethod = xmlOptions.paymentMethod.startsWith("Cartão")
+                ? xmlOptions.paymentMethod
+                : "Cartão Nubank";
+            const insts = buildInstallmentsFromPreset(
+                parsedXml.issueDate,
+                parsedXml.totalAmount,
+                "30_60_90",
+                cardMethod,
+                parsedXml.duplicates,
+                3,
+                30
+            );
+            setXmlInstallments(insts);
+            setXmlOptions((prev) => ({
+                ...prev,
+                supplierPreset: "bruta",
+                paymentCategoryType: "Cartao",
+                paymentMethod: cardMethod,
+                financialInstitution: "Banco Itaú",
+                schedulePreset: "30_60_90",
+                customInstallmentCount: "3",
+                customIntervalDays: "30",
+            }));
+            toast.success(`Perfil BRUTA Madeiras aplicado: ${cardMethod} parcelado!`);
+        } else {
+            setXmlOptions((prev) => ({
+                ...prev,
+                supplierPreset: "outro",
+            }));
+        }
+    };
+
+    // Atalho especial para compras no Cartão (Bruta): coloca os vencimentos das parcelas todo dia 10 dos meses seguintes
+    const handleSetCardDueDay10 = (countOverride?: number) => {
+        if (!parsedXml) return;
+        const count = Math.max(1, countOverride || xmlInstallments.length || 1);
+        const baseDate = new Date(
+            (parsedXml.issueDate || new Date().toISOString().split("T")[0]) + "T12:00:00"
+        );
+        const safeBase = isNaN(baseDate.getTime()) ? new Date() : baseDate;
+        const total = parsedXml.totalAmount;
+        const basePart = Number((total / count).toFixed(2));
+        const method = xmlOptions.paymentMethod.startsWith("Cartão")
+            ? xmlOptions.paymentMethod
+            : "Cartão Nubank";
+
+        const nextInstallments: XmlInstallmentItem[] = Array.from({ length: count }, (_, idx) => {
+            const targetMonthDate = new Date(
+                safeBase.getFullYear(),
+                safeBase.getMonth() + idx + 1,
+                10,
+                12,
+                0,
+                0
+            );
+            const dueDateStr = format(targetMonthDate, "yyyy-MM-dd");
+            const daysDiff = Math.max(0, differenceInDays(targetMonthDate, safeBase));
+            const isLast = idx === count - 1;
+            const partAmount = isLast
+                ? Number((total - basePart * (count - 1)).toFixed(2))
+                : basePart;
+
+            return {
+                id: `inst-card10-${idx}-${Date.now()}`,
+                number: idx + 1,
+                daysOffset: daysDiff,
+                dueDate: dueDateStr,
+                amount: Math.max(0, partAmount).toFixed(2),
+                paymentMethod: method,
+                status: "pending",
+            };
+        });
+
+        setXmlInstallments(nextInstallments);
+        setXmlOptions((prev) => ({
+            ...prev,
+            paymentCategoryType: "Cartao",
+            paymentMethod: method,
+            customInstallmentCount: String(count),
+        }));
     };
 
     const handleUpdateInstallment = (
@@ -1310,6 +1435,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
 
                 const emit = xmlDoc.getElementsByTagName("emit")[0];
                 const emitterName = emit ? getTagText(emit, "xNome") : "Fornecedor XML";
+                const emitterFantasyName = emit ? getTagText(emit, "xFant") : "";
                 const emitterCnpj = emit ? getTagText(emit, "CNPJ") || getTagText(emit, "CPF") : "";
 
                 const dest = xmlDoc.getElementsByTagName("dest")[0];
@@ -1376,12 +1502,18 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 });
                 setXmlItemSplits(initialSplits);
 
-                // Gera por padrão os boletos 30 / 60 / 90 dias a partir da data de emissão da nota
+                // Detecta automaticamente se o XML é da BRUTA (Cartão) ou da CED / C&D (Boleto 30/60/90)
+                const detectedSupplier = detectSupplierProfile(emitterName, emitterFantasyName);
+                const initialPaymentCat = detectedSupplier === "bruta" ? "Cartao" : "Boleto";
+                const initialPaymentMethod =
+                    detectedSupplier === "bruta" ? "Cartão Nubank" : "Boleto";
+
+                // Gera por padrão os boletos/parcelas 30 / 60 / 90 dias a partir da data de emissão da nota
                 const defaultInstallments = buildInstallmentsFromPreset(
                     issueDate,
                     finalTotalAmount,
                     "30_60_90",
-                    "Boleto",
+                    initialPaymentMethod,
                     duplicates,
                     3,
                     30
@@ -1393,8 +1525,9 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     direction: "entrada",
                     updateInventory: true,
                     createExpenseTransaction: true,
-                    paymentCategoryType: "Boleto",
-                    paymentMethod: "Boleto",
+                    supplierPreset: detectedSupplier,
+                    paymentCategoryType: initialPaymentCat,
+                    paymentMethod: initialPaymentMethod,
                     financialInstitution: "Banco Itaú",
                     category: "Custo com Materiais e Obras",
                     subcategory: "Compra de MDF e Madeira",
@@ -1410,6 +1543,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     series,
                     issueDate,
                     emitterName,
+                    emitterFantasyName,
                     emitterCnpj,
                     recipientName,
                     recipientDoc,
@@ -1550,6 +1684,23 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                               .join(" / ")}]`
                         : "";
 
+                const supplierFriendlyTitle =
+                    xmlOptions.supplierPreset === "ced"
+                        ? `Compra de material na C&D (NF #${parsedXml.invoiceNumber})`
+                        : xmlOptions.supplierPreset === "bruta"
+                        ? `Compra de material na Bruta (NF #${parsedXml.invoiceNumber})`
+                        : `NF-e #${parsedXml.invoiceNumber} - ${partyName}`;
+
+                const supplierContactName =
+                    xmlOptions.supplierPreset === "ced" &&
+                    !partyName.toLowerCase().includes("c&d") &&
+                    !partyName.toLowerCase().includes("ced")
+                        ? `${partyName} (C&D)`
+                        : xmlOptions.supplierPreset === "bruta" &&
+                          !partyName.toLowerCase().includes("bruta")
+                        ? `BRUTA MADEIRAS LTDA`
+                        : partyName;
+
                 const transactionsPayload = xmlInstallments.map((inst, idx) => {
                     const instAmount = Math.max(
                         0,
@@ -1557,7 +1708,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     );
                     const parcelSuffix = totalInst > 1 ? ` (${idx + 1}/${totalInst})` : "";
                     return {
-                        description: `NF-e #${parsedXml.invoiceNumber} - ${partyName}${clientsShortTag}${parcelSuffix}`,
+                        description: `${supplierFriendlyTitle}${clientsShortTag}${parcelSuffix}`,
                         amount: instAmount,
                         type: xmlOptions.direction === "entrada" ? "expense" : "income",
                         category:
@@ -1570,7 +1721,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                                 : totalInst > 1
                                 ? "Parcela"
                                 : "Venda à Vista",
-                        contact: partyName,
+                        contact: supplierContactName,
                         financial_institution: xmlOptions.financialInstitution || "Banco Itaú",
                         payment_method: inst.paymentMethod || xmlOptions.paymentMethod || "Boleto",
                         competence_date: parsedXml.issueDate,
@@ -2995,6 +3146,59 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
 
                     {parsedXml && (
                         <div className="space-y-5 py-2">
+                            {/* SELETOR RÁPIDO DAS 2 EMPRESAS PRINCIPAIS: CED (BOLETO 30/60/90) vs BRUTA (CARTÃO) */}
+                            <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-primary/5 to-purple-500/10 border border-amber-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
+                                        <Building2 className="h-3.5 w-3.5" />
+                                        Fornecedor da Nota (Configuração Automática)
+                                    </span>
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Clique na empresa para já configurar <strong>CED no Boleto (30/60/90)</strong> ou <strong>Bruta no Cartão</strong>:
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSelectSupplierProfile("ced")}
+                                        className={cn(
+                                            "px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider border transition-all flex items-center gap-2",
+                                            xmlOptions.supplierPreset === "ced"
+                                                ? "bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/25"
+                                                : "bg-black/50 border-white/15 text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        <Receipt className="h-3.5 w-3.5" />
+                                        CED / C&D (Boleto 30/60/90)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSelectSupplierProfile("bruta")}
+                                        className={cn(
+                                            "px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider border transition-all flex items-center gap-2",
+                                            xmlOptions.supplierPreset === "bruta"
+                                                ? "bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-500/25"
+                                                : "bg-black/50 border-white/15 text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        <CreditCard className="h-3.5 w-3.5" />
+                                        Bruta Madeiras (Cartão)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSelectSupplierProfile("outro")}
+                                        className={cn(
+                                            "px-3 py-2 rounded-xl text-[11px] font-bold border transition-all",
+                                            xmlOptions.supplierPreset === "outro"
+                                                ? "bg-white/15 text-white border-white/30"
+                                                : "bg-black/40 border-white/10 text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Outro
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* CABEÇALHO RESUMO DA NOTA */}
                             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
                                 <div className="sm:col-span-2">
@@ -3647,41 +3851,86 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                                                 </button>
                                             </div>
 
-                                            <div className="flex flex-wrap items-center gap-1.5">
-                                                {(
-                                                    [
-                                                        { id: "30_60_90", label: "🔥 30 / 60 / 90 dias (3x)" },
-                                                        { id: "30_60", label: "30 / 60 dias (2x)" },
-                                                        { id: "30", label: "30 dias (1x)" },
-                                                        { id: "30_60_90_120", label: "30 / 60 / 90 / 120 (4x)" },
-                                                        { id: "28_56_84", label: "28 / 56 / 84 dias (3x)" },
-                                                        { id: "avista", label: "À Vista (1x)" },
-                                                        ...(parsedXml.duplicates.length > 0
-                                                            ? [
-                                                                  {
-                                                                      id: "xml_dup" as const,
-                                                                      label: `Duplicatas do XML (${parsedXml.duplicates.length}x)`,
-                                                                  },
-                                                              ]
-                                                            : []),
-                                                        { id: "custom", label: "⚙️ Outra Divisão (1x a 24x)" },
-                                                    ] as const
-                                                ).map((p) => (
-                                                    <button
-                                                        key={p.id}
-                                                        type="button"
-                                                        onClick={() => handleSelectSchedulePreset(p.id)}
-                                                        className={cn(
-                                                            "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
-                                                            xmlOptions.schedulePreset === p.id
-                                                                ? "bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/20"
-                                                                : "bg-black/40 border-white/10 text-muted-foreground hover:text-foreground hover:border-white/25"
-                                                        )}
-                                                    >
-                                                        {p.label}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                            {xmlOptions.paymentCategoryType === "Cartao" ? (
+                                                <div className="space-y-2">
+                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                        {[1, 2, 3, 4, 5, 6, 10, 12].map((n) => (
+                                                            <button
+                                                                key={`card-n-${n}`}
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    handleSelectSchedulePreset(
+                                                                        n === 1
+                                                                            ? "30"
+                                                                            : n === 2
+                                                                            ? "30_60"
+                                                                            : n === 3
+                                                                            ? "30_60_90"
+                                                                            : n === 4
+                                                                            ? "30_60_90_120"
+                                                                            : "custom",
+                                                                        String(n),
+                                                                        "30"
+                                                                    )
+                                                                }
+                                                                className={cn(
+                                                                    "px-3 py-1.5 rounded-xl text-xs font-black border transition-all",
+                                                                    xmlInstallments.length === n
+                                                                        ? "bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-500/20"
+                                                                        : "bg-black/40 border-white/10 text-muted-foreground hover:text-foreground hover:border-white/25"
+                                                                )}
+                                                            >
+                                                                💳 {n}x no Cartão
+                                                            </button>
+                                                        ))}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                handleSetCardDueDay10(xmlInstallments.length)
+                                                            }
+                                                            className="px-3 py-1.5 rounded-xl text-xs font-bold border border-amber-500/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 transition-all"
+                                                        >
+                                                            📅 Vencimento Fatura Todo Dia 10
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    {(
+                                                        [
+                                                            { id: "30_60_90", label: "🔥 30 / 60 / 90 dias (3x)" },
+                                                            { id: "30_60", label: "30 / 60 dias (2x)" },
+                                                            { id: "30", label: "30 dias (1x)" },
+                                                            { id: "30_60_90_120", label: "30 / 60 / 90 / 120 (4x)" },
+                                                            { id: "28_56_84", label: "28 / 56 / 84 dias (3x)" },
+                                                            { id: "avista", label: "À Vista (1x)" },
+                                                            ...(parsedXml.duplicates.length > 0
+                                                                ? [
+                                                                      {
+                                                                          id: "xml_dup" as const,
+                                                                          label: `Duplicatas do XML (${parsedXml.duplicates.length}x)`,
+                                                                      },
+                                                                  ]
+                                                                : []),
+                                                            { id: "custom", label: "⚙️ Outra Divisão (1x a 24x)" },
+                                                        ] as const
+                                                    ).map((p) => (
+                                                        <button
+                                                            key={p.id}
+                                                            type="button"
+                                                            onClick={() => handleSelectSchedulePreset(p.id)}
+                                                            className={cn(
+                                                                "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
+                                                                xmlOptions.schedulePreset === p.id
+                                                                    ? "bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/20"
+                                                                    : "bg-black/40 border-white/10 text-muted-foreground hover:text-foreground hover:border-white/25"
+                                                            )}
+                                                        >
+                                                            {p.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
 
                                             {xmlOptions.schedulePreset === "custom" && (
                                                 <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-black/40 border border-amber-500/30 mt-2">
