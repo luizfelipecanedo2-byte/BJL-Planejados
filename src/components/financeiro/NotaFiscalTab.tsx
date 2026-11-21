@@ -87,11 +87,15 @@ interface ParsedXmlItem {
     code: string;
     name: string;
     ncm: string;
+    csosn?: string;
     cfop: string;
     unit: string;
     quantity: number;
     unitPrice: number;
+    grossPrice?: number;
+    discount?: number;
     totalPrice: number;
+    clients?: string;
 }
 
 interface ParsedXmlDuplicate {
@@ -105,11 +109,27 @@ interface ParsedXmlSourceNote {
     invoiceNumber: string;
     series: string;
     issueDate: string;
+    natOp?: string;
+    protocol?: string;
     emitterName: string;
     emitterFantasyName: string;
     emitterCnpj: string;
+    emitterIe?: string;
+    emitterAddress?: string;
+    emitterNeighborhood?: string;
+    emitterCity?: string;
+    emitterUf?: string;
+    emitterCep?: string;
+    emitterPhone?: string;
     recipientName: string;
     recipientDoc: string;
+    recipientIe?: string;
+    recipientAddress?: string;
+    recipientNeighborhood?: string;
+    recipientCity?: string;
+    recipientUf?: string;
+    recipientCep?: string;
+    recipientPhone?: string;
     accessKey: string;
     productsTotal: number;
     freightAmount: number;
@@ -118,6 +138,67 @@ interface ParsedXmlSourceNote {
     totalAmount: number;
     itemsCount: number;
 }
+
+interface StoredXmlPayload {
+    direction: "entrada" | "saida";
+    series?: string;
+    natOp?: string;
+    protocol?: string;
+    accessKey?: string;
+    emitter?: {
+        name: string;
+        cnpj: string;
+        ie?: string;
+        address?: string;
+        neighborhood?: string;
+        city?: string;
+        uf?: string;
+        cep?: string;
+        phone?: string;
+    };
+    recipient?: {
+        name: string;
+        doc: string;
+        ie?: string;
+        address?: string;
+        neighborhood?: string;
+        city?: string;
+        uf?: string;
+        cep?: string;
+        phone?: string;
+    };
+    totals?: {
+        productsTotal: number;
+        discountAmount: number;
+        freightAmount: number;
+        otherAmount: number;
+        totalAmount: number;
+    };
+    duplicates?: ParsedXmlDuplicate[];
+    items: Array<{
+        code: string;
+        name: string;
+        ncm: string;
+        csosn?: string;
+        cfop: string;
+        unit: string;
+        quantity: number;
+        unitPrice: number;
+        grossPrice?: number;
+        discount?: number;
+        totalPrice: number;
+        clients?: string;
+    }>;
+}
+
+const parseStoredXmlPayload = (invoice: Invoice): StoredXmlPayload | null => {
+    if (!invoice?.asaas_status || !invoice.asaas_status.startsWith("XML_PAYLOAD:")) return null;
+    try {
+        return JSON.parse(invoice.asaas_status.slice("XML_PAYLOAD:".length)) as StoredXmlPayload;
+    } catch {
+        return null;
+    }
+};
 
 interface ParsedXmlData {
     accessKey: string;
@@ -236,6 +317,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
     const [xmlItemSplits, setXmlItemSplits] = useState<Record<string, XmlItemClientSplit[]>>({});
     const [xmlInstallments, setXmlInstallments] = useState<XmlInstallmentItem[]>([]);
     const [isImportingXml, setIsImportingXml] = useState(false);
+    const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
 
     // Modal de Configuração Multi-Provedor Fiscal (Asaas / Focus NFe / Notaas / Local)
     const [isConfigOpen, setIsConfigOpen] = useState(false);
@@ -943,6 +1025,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
     };
 
     const handleDivideXmlItem = (item: ParsedXmlItem) => {
+        const netUnit = item.quantity > 0 ? item.totalPrice / item.quantity : item.unitPrice;
         setXmlItemSplits((prev) => {
             const current = prev[item.id] || [
                 {
@@ -961,7 +1044,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     : Number((item.quantity / 2).toFixed(3));
                 const qty2 = Number((item.quantity - qty1).toFixed(3));
                 const amt1 = isIntQty
-                    ? Number((qty1 * item.unitPrice).toFixed(2))
+                    ? Number((qty1 * netUnit).toFixed(2))
                     : Number((item.totalPrice / 2).toFixed(2));
                 const amt2 = Number((item.totalPrice - amt1).toFixed(2));
 
@@ -1000,8 +1083,9 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
     };
 
     const handleItemSplitQtyChange = (item: ParsedXmlItem, splitId: string, newQtyStr: string) => {
+        const netUnit = item.quantity > 0 ? item.totalPrice / item.quantity : item.unitPrice;
         const qtyNum = Math.max(0, parseFloat(newQtyStr.replace(",", ".")) || 0);
-        const calcAmt = Number(Math.min(item.totalPrice, qtyNum * item.unitPrice).toFixed(2));
+        const calcAmt = Number(Math.min(item.totalPrice, qtyNum * netUnit).toFixed(2));
 
         setXmlItemSplits((prev) => {
             const list = prev[item.id] || [];
@@ -1033,10 +1117,11 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
     };
 
     const handleItemSplitAmountChange = (item: ParsedXmlItem, splitId: string, newAmtStr: string) => {
+        const netUnit = item.quantity > 0 ? item.totalPrice / item.quantity : item.unitPrice;
         const amtNum = Math.max(0, parseFloat(newAmtStr.replace(",", ".")) || 0);
         const calcQty =
-            item.unitPrice > 0
-                ? Number((amtNum / item.unitPrice).toFixed(2))
+            netUnit > 0
+                ? Number((amtNum / netUnit).toFixed(2))
                 : Number(item.quantity);
 
         setXmlItemSplits((prev) => {
@@ -1045,8 +1130,8 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 const otherIdx = list.findIndex((s) => s.id !== splitId);
                 const remAmt = Math.max(0, Number((item.totalPrice - amtNum).toFixed(2)));
                 const remQty =
-                    item.unitPrice > 0
-                        ? Math.max(0, Number((remAmt / item.unitPrice).toFixed(2)))
+                    netUnit > 0
+                        ? Math.max(0, Number((remAmt / netUnit).toFixed(2)))
                         : Math.max(0, Number((item.quantity - calcQty).toFixed(2)));
                 return {
                     ...prev,
@@ -1449,19 +1534,49 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     const ide = xmlDoc.getElementsByTagName("ide")[0];
                     const invoiceNumber = ide ? getTagText(ide, "nNF") : "";
                     const series = ide ? getTagText(ide, "serie") : "1";
+                    const natOp = ide ? getTagText(ide, "natOp") : "";
                     const rawIssueDate = ide ? getTagText(ide, "dhEmi") || getTagText(ide, "dEmi") : "";
                     const issueDate = rawIssueDate
                         ? rawIssueDate.substring(0, 10)
                         : new Date().toISOString().split("T")[0];
 
+                    const infProt = xmlDoc.getElementsByTagName("infProt")[0];
+                    const protocol = infProt ? getTagText(infProt, "nProt") : "";
+
                     const emit = xmlDoc.getElementsByTagName("emit")[0];
                     const emitterName = emit ? getTagText(emit, "xNome") : "Fornecedor XML";
                     const emitterFantasyName = emit ? getTagText(emit, "xFant") : "";
                     const emitterCnpj = emit ? getTagText(emit, "CNPJ") || getTagText(emit, "CPF") : "";
+                    const emitterIe = emit ? getTagText(emit, "IE") : "";
+                    const enderEmit = emit ? emit.getElementsByTagName("enderEmit")[0] : undefined;
+                    const emitterAddress = enderEmit
+                        ? `${getTagText(enderEmit, "xLgr")}${
+                              getTagText(enderEmit, "nro") ? `, ${getTagText(enderEmit, "nro")}` : ""
+                          }${
+                              getTagText(enderEmit, "xCpl") ? ` - ${getTagText(enderEmit, "xCpl")}` : ""
+                          }`.trim()
+                        : "";
+                    const emitterNeighborhood = enderEmit ? getTagText(enderEmit, "xBairro") : "";
+                    const emitterCity = enderEmit ? getTagText(enderEmit, "xMun") : "";
+                    const emitterUf = enderEmit ? getTagText(enderEmit, "UF") : "";
+                    const emitterCep = enderEmit ? getTagText(enderEmit, "CEP") : "";
+                    const emitterPhone = enderEmit ? getTagText(enderEmit, "fone") : "";
 
                     const dest = xmlDoc.getElementsByTagName("dest")[0];
                     const recipientName = dest ? getTagText(dest, "xNome") : "";
                     const recipientDoc = dest ? getTagText(dest, "CNPJ") || getTagText(dest, "CPF") : "";
+                    const recipientIe = dest ? getTagText(dest, "IE") : "";
+                    const enderDest = dest ? dest.getElementsByTagName("enderDest")[0] : undefined;
+                    const recipientAddress = enderDest
+                        ? `${getTagText(enderDest, "xLgr")}${
+                              getTagText(enderDest, "nro") ? `, ${getTagText(enderDest, "nro")}` : ""
+                          }`.trim()
+                        : "";
+                    const recipientNeighborhood = enderDest ? getTagText(enderDest, "xBairro") : "";
+                    const recipientCity = enderDest ? getTagText(enderDest, "xMun") : "";
+                    const recipientUf = enderDest ? getTagText(enderDest, "UF") : "";
+                    const recipientCep = enderDest ? getTagText(enderDest, "CEP") : "";
+                    const recipientPhone = enderDest ? getTagText(enderDest, "fone") : "";
 
                     const icmsTot = xmlDoc.getElementsByTagName("ICMSTot")[0];
                     const totalAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vNF") || "0") : 0;
@@ -1482,6 +1597,15 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     const detNodes = Array.from(xmlDoc.getElementsByTagName("det"));
                     const items: ParsedXmlItem[] = detNodes.map((det, idx) => {
                         const prod = det.getElementsByTagName("prod")[0];
+                        const imposto = det.getElementsByTagName("imposto")[0];
+                        const csosn = imposto
+                            ? getTagText(imposto, "CSOSN") || getTagText(imposto, "CST") || "102"
+                            : "102";
+                        const quantity = prod ? parseFloat(getTagText(prod, "qCom") || "1") : 1;
+                        const grossPrice = prod ? parseFloat(getTagText(prod, "vProd") || "0") : 0;
+                        const discount = prod ? parseFloat(getTagText(prod, "vDesc") || "0") : 0;
+                        const netTotal = Number(Math.max(0, grossPrice - discount).toFixed(2));
+                        const rawUnitPrice = prod ? parseFloat(getTagText(prod, "vUnCom") || "0") : 0;
                         return {
                             id: `${noteId}-item-${idx}`,
                             sourceNoteId: noteId,
@@ -1489,11 +1613,14 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                             code: prod ? getTagText(prod, "cProd") : String(idx + 1),
                             name: prod ? getTagText(prod, "xProd") : `Item NF-e #${idx + 1}`,
                             ncm: prod ? getTagText(prod, "NCM") : "",
+                            csosn,
                             cfop: prod ? getTagText(prod, "CFOP") : "",
                             unit: prod ? getTagText(prod, "uCom") : "UN",
-                            quantity: prod ? parseFloat(getTagText(prod, "qCom") || "1") : 1,
-                            unitPrice: prod ? parseFloat(getTagText(prod, "vUnCom") || "0") : 0,
-                            totalPrice: prod ? parseFloat(getTagText(prod, "vProd") || "0") : 0,
+                            quantity,
+                            unitPrice: rawUnitPrice > 0 ? rawUnitPrice : quantity > 0 ? netTotal / quantity : 0,
+                            grossPrice,
+                            discount,
+                            totalPrice: netTotal,
                         };
                     });
 
@@ -1521,11 +1648,27 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                         invoiceNumber: finalInvNum,
                         series,
                         issueDate,
+                        natOp,
+                        protocol,
                         emitterName,
                         emitterFantasyName,
                         emitterCnpj,
+                        emitterIe,
+                        emitterAddress,
+                        emitterNeighborhood,
+                        emitterCity,
+                        emitterUf,
+                        emitterCep,
+                        emitterPhone,
                         recipientName,
                         recipientDoc,
+                        recipientIe,
+                        recipientAddress,
+                        recipientNeighborhood,
+                        recipientCity,
+                        recipientUf,
+                        recipientCep,
+                        recipientPhone,
                         accessKey,
                         productsTotal: productsTotal || finalTotalAmount,
                         freightAmount,
@@ -1673,10 +1816,26 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
             const initialPaymentMethod =
                 detectedSupplier === "bruta" ? "Cartão Nubank" : "Boleto";
 
+            // Se for nota única no Boleto (ex: C&D) e o próprio XML já traz as duplicatas exatas (<dup>), usa elas por padrão!
+            const initialPreset:
+                | "avista"
+                | "30"
+                | "30_60"
+                | "30_60_90"
+                | "30_60_90_120"
+                | "28_56_84"
+                | "xml_dup"
+                | "custom" =
+                detectedSupplier !== "bruta" &&
+                merged.sourceNotes.length === 1 &&
+                merged.duplicates.length > 0
+                    ? "xml_dup"
+                    : "30_60_90";
+
             const defaultInstallments = buildInstallmentsFromPreset(
                 merged.issueDate,
                 merged.totalAmount,
-                "30_60_90",
+                initialPreset,
                 initialPaymentMethod,
                 merged.duplicates,
                 3,
@@ -1695,8 +1854,8 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 financialInstitution: "Banco Itaú",
                 category: "Custo com Materiais e Obras",
                 subcategory: "Compra de MDF e Madeira",
-                schedulePreset: "30_60_90",
-                customInstallmentCount: "3",
+                schedulePreset: initialPreset,
+                customInstallmentCount: String(defaultInstallments.length || 3),
                 customIntervalDays: "30",
                 bulkClientTarget: "",
             }));
@@ -1922,17 +2081,84 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                           },
                       ];
 
-            // Salva cada Nota Fiscal XML individualmente no histórico da tabela invoices
+            // Salva cada Nota Fiscal XML individualmente no histórico da tabela invoices COM TODOS OS ITENS SEPARADOS!
             const newInvoicesPayload = notesToRegister.map((sn) => {
                 const noteItems = parsedXml.items.filter(
                     (i) => !i.sourceNoteId || i.sourceNoteId === sn.id
                 );
-                const noteSummaryItems = (noteItems.length > 0 ? noteItems : parsedXml.items)
+                const effectiveItems = noteItems.length > 0 ? noteItems : parsedXml.items;
+                const noteSummaryItems = effectiveItems
                     .slice(0, 3)
                     .map((i) => `${i.quantity}x ${i.name}`)
                     .join(", ");
-                const totalItemsHere =
-                    noteItems.length > 0 ? noteItems.length : parsedXml.items.length;
+                const totalItemsHere = effectiveItems.length;
+
+                const storedPayload: StoredXmlPayload = {
+                    direction: xmlOptions.direction,
+                    series: sn.series || parsedXml.series,
+                    natOp: sn.natOp || "Venda de mercadoria adquirida ou recebida de terceiros",
+                    protocol: sn.protocol || "",
+                    accessKey: sn.accessKey || "",
+                    emitter: {
+                        name: sn.emitterName || partyName,
+                        cnpj: sn.emitterCnpj || parsedXml.emitterCnpj,
+                        ie: sn.emitterIe || "",
+                        address: sn.emitterAddress || "",
+                        neighborhood: sn.emitterNeighborhood || "",
+                        city: sn.emitterCity || "",
+                        uf: sn.emitterUf || "",
+                        cep: sn.emitterCep || "",
+                        phone: sn.emitterPhone || "",
+                    },
+                    recipient: {
+                        name: sn.recipientName || "BJL MOVEIS PLANEJADOS LTDA",
+                        doc: sn.recipientDoc || companySettings?.cnpj || "60.528.620/0001-20",
+                        ie: sn.recipientIe || "15469064",
+                        address: sn.recipientAddress || "Rua Maria Vitipo Raposo, 138",
+                        neighborhood: sn.recipientNeighborhood || "Barao de Macaubas",
+                        city: sn.recipientCity || "Sao Fidelis",
+                        uf: sn.recipientUf || "RJ",
+                        cep: sn.recipientCep || "28400-000",
+                        phone: sn.recipientPhone || companySettings?.phone || "(22) 99703-9852",
+                    },
+                    totals: {
+                        productsTotal: sn.productsTotal,
+                        discountAmount: sn.discountAmount,
+                        freightAmount: sn.freightAmount,
+                        otherAmount: sn.otherAmount,
+                        totalAmount: sn.totalAmount,
+                    },
+                    duplicates: xmlInstallments.map((inst, idx) => ({
+                        number: String(idx + 1).padStart(3, "0"),
+                        dueDate: inst.dueDate,
+                        amount: parseFloat(String(inst.amount).replace(",", ".")) || 0,
+                    })),
+                    items: effectiveItems.map((it) => {
+                        const splits = xmlItemSplits[it.id] || [];
+                        const clientsLabel = splits
+                            .map((sp) => {
+                                const c = (sp.client || "").trim();
+                                if (!c || c === "ESTOQUE") return "Estoque Geral";
+                                return splits.length > 1 ? `${c} (${sp.quantity} ${it.unit})` : c;
+                            })
+                            .filter(Boolean)
+                            .join(" / ");
+                        return {
+                            code: it.code,
+                            name: it.name,
+                            ncm: it.ncm,
+                            csosn: it.csosn || "102",
+                            cfop: it.cfop || "5102",
+                            unit: it.unit || "UN",
+                            quantity: it.quantity,
+                            unitPrice: it.unitPrice,
+                            grossPrice: it.grossPrice ?? it.totalPrice,
+                            discount: it.discount ?? 0,
+                            totalPrice: it.totalPrice,
+                            clients: clientsLabel || undefined,
+                        };
+                    }),
+                };
 
                 return {
                     issue_date: sn.issueDate || parsedXml.issueDate,
@@ -1953,6 +2179,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     status: "Autorizada" as const,
                     invoice_number: sn.invoiceNumber,
                     type: "NF-e" as const,
+                    asaas_status: `XML_PAYLOAD:${JSON.stringify(storedPayload)}`,
                 };
             });
 
@@ -2083,87 +2310,123 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
 
                 if (txErr) throw txErr;
 
-                // 3. Salva o rateio detalhado de cada item (de todas as notas somadas) para cada cliente
-                if (insertedTxs && insertedTxs.length > 0 && groups.length > 0) {
+                // 3. Salva o rateio SEPARADO ITEM POR ITEM (de todas as notas somadas) para cada cliente em transaction_allocations
+                if (insertedTxs && insertedTxs.length > 0 && parsedXml.items.length > 0) {
                     const totalLaunched = insertedTxs.reduce(
                         (acc: number, t: any) => acc + Number(t.amount || 0),
                         0
                     );
-                    const totalClientsEffective = groups.reduce(
-                        (acc, g) => acc + g.effectiveAmount,
+
+                    // Constrói lista plana com cada item/divisão separado (ex: 2x Divisor, 1x Thinner, 4x MDF Branco...)
+                    const flatItemAllocations: Array<{
+                        client: string;
+                        rawAmount: number;
+                        label: string;
+                    }> = [];
+
+                    for (const item of parsedXml.items) {
+                        const splits = xmlItemSplits[item.id] || [
+                            {
+                                id: `${item.id}-0`,
+                                client: "",
+                                quantity: String(item.quantity),
+                                amount: item.totalPrice.toFixed(2),
+                            },
+                        ];
+                        for (const sp of splits) {
+                            const amt = Math.max(
+                                0,
+                                parseFloat(String(sp.amount).replace(",", ".")) || 0
+                            );
+                            const qty = Math.max(
+                                0,
+                                parseFloat(String(sp.quantity).replace(",", ".")) || 0
+                            );
+                            if (amt <= 0) continue;
+                            const clientKey = (sp.client || "").trim() || "ESTOQUE";
+                            const nfBadge =
+                                notesToRegister.length > 1 && item.invoiceNumber
+                                    ? `[NF #${item.invoiceNumber}] `
+                                    : "";
+                            flatItemAllocations.push({
+                                client: clientKey,
+                                rawAmount: amt,
+                                label: `${nfBadge}${Number(qty.toFixed(2))} ${item.unit} × ${item.name}`,
+                            });
+                        }
+                    }
+
+                    const totalRawItems = flatItemAllocations.reduce(
+                        (acc, f) => acc + f.rawAmount,
                         0
                     );
 
-                    const targetClientTotals = groups.map((g, k) => {
-                        if (totalClientsEffective <= 0) return 0;
-                        if (k === groups.length - 1) {
-                            const prevSum = groups
-                                .slice(0, k)
-                                .reduce(
-                                    (acc, pg) =>
-                                        acc +
-                                        Number(
-                                            (
-                                                pg.effectiveAmount *
-                                                (totalLaunched / totalClientsEffective)
-                                            ).toFixed(2)
-                                        ),
-                                    0
-                                );
-                            return Number(Math.max(0, totalLaunched - prevSum).toFixed(2));
-                        }
-                        return Number(
-                            (g.effectiveAmount * (totalLaunched / totalClientsEffective)).toFixed(2)
-                        );
-                    });
-
-                    const accumulatedByClient = new Array(groups.length).fill(0);
-                    const allocationsToInsert: any[] = [];
-
-                    insertedTxs.forEach((tx: any, i: number) => {
-                        const txAmount = Number(tx.amount || 0);
-                        const isLastTx = i === insertedTxs.length - 1;
-                        let rowSum = 0;
-
-                        groups.forEach((g, k) => {
-                            const isLastClient = k === groups.length - 1;
-                            let allocAmount = 0;
-
-                            if (isLastTx) {
-                                allocAmount = Number(
-                                    Math.max(0, targetClientTotals[k] - accumulatedByClient[k]).toFixed(2)
-                                );
-                            } else if (isLastClient) {
-                                allocAmount = Number(Math.max(0, txAmount - rowSum).toFixed(2));
-                            } else {
-                                const ratio = totalLaunched > 0 ? txAmount / totalLaunched : 0;
-                                allocAmount = Number((targetClientTotals[k] * ratio).toFixed(2));
+                    if (flatItemAllocations.length > 0 && totalRawItems > 0) {
+                        let runningItemTarget = 0;
+                        const targetItemTotals = flatItemAllocations.map((f, k) => {
+                            if (k === flatItemAllocations.length - 1) {
+                                return Number(Math.max(0, totalLaunched - runningItemTarget).toFixed(2));
                             }
-
-                            rowSum += allocAmount;
-                            accumulatedByClient[k] = Number(
-                                (accumulatedByClient[k] + allocAmount).toFixed(2)
+                            const val = Number(
+                                (f.rawAmount * (totalLaunched / totalRawItems)).toFixed(2)
                             );
-
-                            if (allocAmount > 0) {
-                                const parcelTag =
-                                    insertedTxs.length > 1 ? ` [Parc. ${i + 1}/${insertedTxs.length}]` : "";
-                                allocationsToInsert.push({
-                                    transaction_id: tx.id,
-                                    client_name: g.client,
-                                    amount: allocAmount,
-                                    description: `🟢 ${g.itemsSummaryText}${parcelTag}`.trim(),
-                                });
-                            }
+                            runningItemTarget = Number((runningItemTarget + val).toFixed(2));
+                            return val;
                         });
-                    });
 
-                    if (allocationsToInsert.length > 0) {
-                        const { error: allocErr } = await supabase
-                            .from("transaction_allocations")
-                            .insert(allocationsToInsert);
-                        if (allocErr) {
-                            console.error("Erro ao salvar rateio por cliente do XML:", allocErr);
+                        const accumulatedByItem = new Array(flatItemAllocations.length).fill(0);
+                        const allocationsToInsert: any[] = [];
+
+                        insertedTxs.forEach((tx: any, i: number) => {
+                            const txAmount = Number(tx.amount || 0);
+                            const isLastTx = i === insertedTxs.length - 1;
+                            let rowSum = 0;
+
+                            flatItemAllocations.forEach((f, k) => {
+                                const isLastItem = k === flatItemAllocations.length - 1;
+                                let allocAmount = 0;
+
+                                if (isLastTx) {
+                                    allocAmount = Number(
+                                        Math.max(
+                                            0,
+                                            targetItemTotals[k] - accumulatedByItem[k]
+                                        ).toFixed(2)
+                                    );
+                                } else if (isLastItem) {
+                                    allocAmount = Number(Math.max(0, txAmount - rowSum).toFixed(2));
+                                } else {
+                                    const ratio = totalLaunched > 0 ? txAmount / totalLaunched : 0;
+                                    allocAmount = Number((targetItemTotals[k] * ratio).toFixed(2));
+                                }
+
+                                rowSum = Number((rowSum + allocAmount).toFixed(2));
+                                accumulatedByItem[k] = Number(
+                                    (accumulatedByItem[k] + allocAmount).toFixed(2)
+                                );
+
+                                if (allocAmount > 0) {
+                                    const parcelTag =
+                                        insertedTxs.length > 1
+                                            ? ` [Parc. ${i + 1}/${insertedTxs.length}]`
+                                            : "";
+                                    allocationsToInsert.push({
+                                        transaction_id: tx.id,
+                                        client_name: f.client,
+                                        amount: allocAmount,
+                                        description: `🟢 ${f.label}${parcelTag}`.trim(),
+                                    });
+                                }
+                            });
+                        });
+
+                        if (allocationsToInsert.length > 0) {
+                            const { error: allocErr } = await supabase
+                                .from("transaction_allocations")
+                                .insert(allocationsToInsert);
+                            if (allocErr) {
+                                console.error("Erro ao salvar rateio por cliente do XML:", allocErr);
+                            }
                         }
                     }
                 }
@@ -2286,7 +2549,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
         }
     };
 
-    // Gerador de DANFE Padrão SEFAZ Nacional (Idêntico ao modelo oficial A4 Retrato da BJL Moveis Planejados LTDA)
+    // Gerador de DANFE Padrão SEFAZ Nacional (Com ITENS SEPARADOS, DESCONTOS, DUPLICATAS e EMITENTE/DESTINATÁRIO reais!)
     const handlePrintDanfe = (invoice: Invoice) => {
         const printWin = window.open("", "_blank");
         if (!printWin) {
@@ -2294,74 +2557,272 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
             return;
         }
 
-        // Busca dados complementares do cliente no CRM caso existam
+        const storedXml = parseStoredXmlPayload(invoice);
+        const isXmlEntrada =
+            storedXml?.direction === "entrada" ||
+            (invoice.description || "").toUpperCase().includes("[XML ENTRADA");
+
+        const formatCpfCnpj = (v: string) => {
+            const d = (v || "").replace(/\D/g, "");
+            if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+            if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+            return v || "";
+        };
+
+        const fmtNum = (n: number, minDec = 2, maxDec = 2) =>
+            Number(n || 0).toLocaleString("pt-BR", {
+                minimumFractionDigits: minDec,
+                maximumFractionDigits: maxDec,
+            });
+
+        // Busca dados complementares do cliente/fornecedor no CRM caso não venha do XML
         const matchedClient = crmClients.find(
             (c) => (c.name || "").toLowerCase() === (invoice.client_name || "").toLowerCase()
         );
 
         const docFromDesc = invoice.description.match(/Doc:\s*([0-9.\-/]+)/)?.[1] || "";
         const clientDocRaw = docFromDesc || matchedClient?.cpf || matchedClient?.document || "";
-        const formatCpfCnpj = (v: string) => {
-            const d = v.replace(/\D/g, "");
-            if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-            if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
-            return v || "";
+
+        const bjlCompany = {
+            name: "BJL MOVEIS PLANEJADOS LTDA",
+            cnpj: formatCpfCnpj(companySettings?.cnpj || "60.528.620/0001-20"),
+            ie: "15469064",
+            address: "Rua Maria Vitipo Raposo, 138",
+            neighborhood: "Barao de Macaubas",
+            cep: "28400-000",
+            city: "Sao Fidelis",
+            uf: "RJ",
+            phone: companySettings?.phone || "(22) 99703-9852",
         };
 
-        const clientCpfCnpj = formatCpfCnpj(clientDocRaw);
-        const clientAddr = matchedClient?.address && !matchedClient.address.startsWith(",")
-            ? matchedClient.address
-            : "Centro";
-        const clientBairro = "Centro";
-        const clientCep = matchedClient?.zip_code || "28400-000";
-        const clientCity = matchedClient?.city || "Sao Fidelis";
-        const clientUf = matchedClient?.state || "RJ";
-        const clientPhone = matchedClient?.phone || "";
+        const otherParty = {
+            name: storedXml?.emitter?.name || invoice.client_name,
+            cnpj: formatCpfCnpj(storedXml?.emitter?.cnpj || clientDocRaw),
+            ie: storedXml?.emitter?.ie || "",
+            address:
+                storedXml?.emitter?.address ||
+                (matchedClient?.address && !matchedClient.address.startsWith(",")
+                    ? matchedClient.address
+                    : ""),
+            neighborhood: storedXml?.emitter?.neighborhood || "",
+            cep: storedXml?.emitter?.cep || matchedClient?.zip_code || "",
+            city: storedXml?.emitter?.city || matchedClient?.city || "",
+            uf: storedXml?.emitter?.uf || matchedClient?.state || "",
+            phone: storedXml?.emitter?.phone || matchedClient?.phone || "",
+        };
 
-        const companyName = "BJL MOVEIS PLANEJADOS LTDA";
-        const companyCnpj = companySettings?.cnpj || "60.528.620/0001-20";
-        const companyIe = "15469064";
-        const companyPhone = companySettings?.phone || "(22) 99703-9852";
+        // Para XML de ENTRADA (Compra), o Emitente é o Fornecedor (ex: C&D / Bruta) e o Destinatário é a BJL!
+        const emitterInfo = isXmlEntrada ? otherParty : bjlCompany;
+        const recipientInfo = isXmlEntrada
+            ? {
+                  name: storedXml?.recipient?.name || bjlCompany.name,
+                  cnpj: formatCpfCnpj(storedXml?.recipient?.doc || bjlCompany.cnpj),
+                  ie: storedXml?.recipient?.ie || bjlCompany.ie,
+                  address: storedXml?.recipient?.address || bjlCompany.address,
+                  neighborhood: storedXml?.recipient?.neighborhood || bjlCompany.neighborhood,
+                  cep: storedXml?.recipient?.cep || bjlCompany.cep,
+                  city: storedXml?.recipient?.city || bjlCompany.city,
+                  uf: storedXml?.recipient?.uf || bjlCompany.uf,
+                  phone: storedXml?.recipient?.phone || bjlCompany.phone,
+              }
+            : {
+                  name: storedXml?.recipient?.name || invoice.client_name,
+                  cnpj: formatCpfCnpj(storedXml?.recipient?.doc || clientDocRaw),
+                  ie: storedXml?.recipient?.ie || "",
+                  address:
+                      storedXml?.recipient?.address ||
+                      (matchedClient?.address && !matchedClient.address.startsWith(",")
+                          ? matchedClient.address
+                          : "Centro"),
+                  neighborhood: storedXml?.recipient?.neighborhood || "Centro",
+                  cep: storedXml?.recipient?.cep || matchedClient?.zip_code || "28400-000",
+                  city: storedXml?.recipient?.city || matchedClient?.city || "Sao Fidelis",
+                  uf: storedXml?.recipient?.uf || matchedClient?.state || "RJ",
+                  phone: storedXml?.recipient?.phone || matchedClient?.phone || "",
+              };
 
         const accessKey =
+            storedXml?.accessKey ||
             invoice.description.match(/Chave:\s*([0-9]{44})/)?.[1] ||
-            `332610${companyCnpj.replace(/\D/g, "").padEnd(14, "0")}55001${String(
+            `332610${bjlCompany.cnpj.replace(/\D/g, "").padEnd(14, "0")}55001${String(
                 invoice.invoice_number || "1"
             ).padStart(9, "0")}1300000210`;
         const sefazProt =
+            storedXml?.protocol ||
             invoice.description.match(/Prot SEFAZ:\s*([0-9]+)/)?.[1] ||
-            invoice.asaas_status?.match(/([0-9]{15})/)?.[1] ||
+            (!invoice.asaas_status?.startsWith("XML_PAYLOAD:")
+                ? invoice.asaas_status?.match(/([0-9]{15})/)?.[1]
+                : "") ||
             "333260001022548";
 
-        const qtyFromDesc = parseFloat(invoice.description.match(/Qtd:\s*([0-9.,]+)/)?.[1]?.replace(",", ".") || "1") || 1;
-        const unitFromDesc = parseFloat(invoice.description.match(/VUnit:\s*([0-9.,]+)/)?.[1]?.replace(",", ".") || "0");
-
-        const cleanDesc = invoice.description
-            .replace(/\|\s*Qtd:\s*[^|]+/g, "")
-            .replace(/\|\s*VUnit:\s*[^|]+/g, "")
-            .replace(/\|\s*Doc:\s*[^|]+/g, "")
-            .replace(/\|\s*NCM\s*[^|]+/g, "")
-            .replace(/\|\s*CFOP\s*[^|]+/g, "")
-            .replace(/\|\s*Chave:\s*[0-9]{44}/g, "")
-            .replace(/\|\s*Prot SEFAZ:\s*[0-9]+/g, "")
-            .trim();
+        const natOp =
+            storedXml?.natOp ||
+            (isXmlEntrada
+                ? "Venda de mercadoria adquirida ou recebida de terceiros"
+                : "Venda Dentro do Estado");
+        const danfeSeries = storedXml?.series || "1";
+        const danfeOpCode = isXmlEntrada ? "0" : "1";
 
         const issueDateFormatted = format(new Date(invoice.issue_date + "T12:00:00"), "dd/MM/yyyy");
-        const totalNumeric = Number(invoice.amount || 0);
-        const unitNumeric = unitFromDesc > 0 ? unitFromDesc : totalNumeric / qtyFromDesc;
-        const qtyFormatted = qtyFromDesc.toLocaleString("pt-BR", {
-            minimumFractionDigits: 3,
-            maximumFractionDigits: 3,
-        });
-        const unitFormatted = unitNumeric.toLocaleString("pt-BR", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        });
-        const valFormatted = totalNumeric.toLocaleString("pt-BR", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        });
-        const prodCode = `2000000000${String(invoice.invoice_number || "1").padStart(3, "0")}`;
+        const totalNumeric = Number(storedXml?.totals?.totalAmount ?? invoice.amount ?? 0);
+        const productsTotalNumeric = Number(storedXml?.totals?.productsTotal ?? totalNumeric);
+        const discountTotalNumeric = Number(storedXml?.totals?.discountAmount ?? 0);
+        const freightTotalNumeric = Number(storedXml?.totals?.freightAmount ?? 0);
+        const otherTotalNumeric = Number(storedXml?.totals?.otherAmount ?? 0);
+
+        // Monta as linhas SEPARADAS dos produtos!
+        let productRows: Array<{
+            code: string;
+            name: string;
+            clients?: string;
+            ncm: string;
+            csosn: string;
+            cfop: string;
+            unit: string;
+            quantity: number;
+            unitPrice: number;
+            grossPrice: number;
+            discount: number;
+            totalPrice: number;
+        }> = [];
+
+        if (storedXml?.items && storedXml.items.length > 0) {
+            productRows = storedXml.items.map((it, idx) => ({
+                code: it.code || String(idx + 1),
+                name: it.name,
+                clients: it.clients,
+                ncm: it.ncm || "94036000",
+                csosn: it.csosn || "102",
+                cfop: it.cfop || "5102",
+                unit: it.unit || "UN",
+                quantity: Number(it.quantity || 1),
+                unitPrice: Number(it.unitPrice || 0),
+                grossPrice: Number(it.grossPrice ?? it.totalPrice ?? 0),
+                discount: Number(it.discount ?? 0),
+                totalPrice: Number(it.totalPrice ?? 0),
+            }));
+        } else {
+            // Fallback inteligente para notas XML já importadas anteriormente (separa "2x Item A, 1x Item B, 1x Item C")
+            const cleanDesc = invoice.description
+                .replace(/^\[XML[^\]]*\]\s*/i, "")
+                .replace(/\|\s*Qtd:\s*[^|]+/g, "")
+                .replace(/\|\s*VUnit:\s*[^|]+/g, "")
+                .replace(/\|\s*Doc:\s*[^|]+/g, "")
+                .replace(/\|\s*NCM\s*[^|]+/g, "")
+                .replace(/\|\s*CFOP\s*[^|]+/g, "")
+                .replace(/\|\s*Clientes:\s*[^|]+/g, "")
+                .replace(/\|\s*Chave:\s*[0-9]{44}/g, "")
+                .replace(/\|\s*Prot SEFAZ:\s*[0-9]+/g, "")
+                .trim();
+
+            const multiItemMatch = cleanDesc
+                .split(/,\s*(?=\d+(?:[.,]\d+)?x\s)/i)
+                .map((p) => p.trim())
+                .filter(Boolean);
+
+            if (isXmlEntrada && multiItemMatch.length > 1) {
+                productRows = multiItemMatch.map((part, idx) => {
+                    const m = part.match(/^(\d+(?:[.,]\d+)?)x\s+(.*)$/i);
+                    const q = m ? parseFloat(m[1].replace(",", ".")) : 1;
+                    const nm = m ? m[2].replace(/\(\+\d+\s+itens\)/i, "").trim() : part;
+                    return {
+                        code: String(idx + 1).padStart(3, "0"),
+                        name: nm,
+                        ncm: "-",
+                        csosn: "102",
+                        cfop: "5102",
+                        unit: "UN",
+                        quantity: q,
+                        unitPrice: 0,
+                        grossPrice: 0,
+                        discount: 0,
+                        totalPrice: 0,
+                    };
+                });
+            } else {
+                const qtyFromDesc =
+                    parseFloat(
+                        invoice.description.match(/Qtd:\s*([0-9.,]+)/)?.[1]?.replace(",", ".") || "1"
+                    ) || 1;
+                const unitFromDesc = parseFloat(
+                    invoice.description.match(/VUnit:\s*([0-9.,]+)/)?.[1]?.replace(",", ".") || "0"
+                );
+                const unitNumeric = unitFromDesc > 0 ? unitFromDesc : totalNumeric / qtyFromDesc;
+                productRows = [
+                    {
+                        code: `2000000000${String(invoice.invoice_number || "1").padStart(3, "0")}`,
+                        name: cleanDesc || "Móveis Planejados",
+                        ncm: "94036000",
+                        csosn: "0102",
+                        cfop: "5102",
+                        unit: "UN",
+                        quantity: qtyFromDesc,
+                        unitPrice: unitNumeric,
+                        grossPrice: totalNumeric,
+                        discount: 0,
+                        totalPrice: totalNumeric,
+                    },
+                ];
+            }
+        }
+
+        const hasItemDiscounts = productRows.some((r) => r.discount > 0);
+        const productRowsHtml = productRows
+            .map(
+                (r) => `
+                <tr style="border-bottom: 1px solid #000;">
+                    <td class="center">${r.code}</td>
+                    <td style="text-transform: uppercase;">
+                        <strong>${r.name}</strong>
+                        ${
+                            r.clients
+                                ? `<div style="font-size:6.5px; color:#333; margin-top:1px;">DESTINO / CLIENTE: <strong>${r.clients}</strong></div>`
+                                : ""
+                        }
+                    </td>
+                    <td class="center">${r.ncm}</td>
+                    <td class="center">${r.csosn}</td>
+                    <td class="center">${r.cfop}</td>
+                    <td class="center">${r.unit}</td>
+                    <td class="num-right">${fmtNum(r.quantity, 4, 4)}</td>
+                    <td class="num-right">${r.unitPrice > 0 ? fmtNum(r.unitPrice, 4, 4) : "-"}</td>
+                    ${
+                        hasItemDiscounts
+                            ? `<td class="num-right">${r.grossPrice > 0 ? fmtNum(r.grossPrice) : "-"}</td>
+                               <td class="num-right">${r.discount > 0 ? fmtNum(r.discount) : "0,00"}</td>`
+                            : ""
+                    }
+                    <td class="num-right"><strong>${r.totalPrice > 0 ? fmtNum(r.totalPrice) : "-"}</strong></td>
+                    <td class="num-right">0,00</td>
+                    <td class="num-right">0,00</td>
+                    <td class="num-right">0,00</td>
+                </tr>`
+            )
+            .join("");
+
+        // Bloco FATURA / DUPLICATA (Boletos 30/60/90) igual ao modelo da C&D
+        const duplicatesList = storedXml?.duplicates || [];
+        const duplicatesHtml =
+            duplicatesList.length > 0
+                ? `<table class="tbl" style="margin-bottom: 2px;">
+                    <tr>
+                        ${duplicatesList
+                            .map((dup) => {
+                                const dueFormatted = dup.dueDate
+                                    ? format(new Date(dup.dueDate + "T12:00:00"), "dd/MM/yyyy")
+                                    : "-";
+                                return `<td style="padding: 3px 5px;">
+                                    <div style="display:flex; justify-content:space-between; font-size:7px;">
+                                        <span><strong>Número:</strong> ${dup.number}</span>
+                                        <span><strong>Vencimento:</strong> ${dueFormatted}</span>
+                                        <span><strong>Valor:</strong> R$ ${fmtNum(dup.amount)}</span>
+                                    </div>
+                                </td>`;
+                            })
+                            .join("")}
+                    </tr>
+                </table>`
+                : "";
 
         // Gera barras verticais determinísticas a partir dos 44 dígitos da Chave de Acesso (Code-128 visual)
         const barsHtml = accessKey
@@ -2379,7 +2840,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
         <html lang="pt-BR">
         <head>
             <meta charset="UTF-8" />
-            <title>Nota Fiscal ${invoice.client_name}.pdf</title>
+            <title>DANFE NF-e ${invoice.invoice_number} - ${emitterInfo.name}</title>
             <style>
                 @page { size: A4 portrait; margin: 7mm; }
                 * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; color: #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -2395,9 +2856,9 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 .center { text-align: center; }
                 .cut-line { border-bottom: 1px dashed #000; margin: 5px 0; height: 1px; }
                 .prod-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-                .prod-table th { border: 1px solid #000; font-size: 6.5px; font-weight: 700; padding: 2px; text-align: center; background: #fff; }
-                .prod-table td { border-left: 1px solid #000; border-right: 1px solid #000; padding: 3px 3px; font-size: 7.5px; vertical-align: top; }
-                .prod-box { border: 1px solid #000; min-height: 360px; display: flex; flex-direction: column; justify-content: space-between; }
+                .prod-table th { border: 1px solid #000; font-size: 6.2px; font-weight: 700; padding: 2px; text-align: center; background: #f5f5f5; }
+                .prod-table td { border-left: 1px solid #000; border-right: 1px solid #000; padding: 3px 3px; font-size: 7.2px; vertical-align: top; word-wrap: break-word; }
+                .prod-box { border: 1px solid #000; min-height: 320px; display: flex; flex-direction: column; justify-content: space-between; }
                 @media print {
                     body { padding: 0; }
                     .page { max-width: 100%; }
@@ -2410,12 +2871,12 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 <table class="tbl">
                     <tr>
                         <td colspan="2" style="width: 82%; height: 18px;">
-                            <span class="lbl">RECEBEMOS DE ${companyName} OS PRODUTOS E SERVIÇOS CONSTANTES NA NOTA FISCAL INDICADA AO LADO</span>
+                            <span class="lbl">RECEBEMOS DE ${emitterInfo.name} OS PRODUTOS E SERVIÇOS CONSTANTES NA NOTA FISCAL INDICADA AO LADO. Destinatário: ${recipientInfo.name} | Emissão: ${issueDateFormatted} | Valor: R$ ${fmtNum(totalNumeric)}</span>
                         </td>
                         <td rowspan="2" class="center" style="width: 18%; vertical-align: middle;">
                             <div style="font-size: 13px; font-weight: 700;">NF-e</div>
                             <div style="font-size: 11px; font-weight: 700; margin: 2px 0;">Nº ${invoice.invoice_number}</div>
-                            <div style="font-size: 9px; font-weight: 700;">Série 1</div>
+                            <div style="font-size: 9px; font-weight: 700;">Série ${danfeSeries}</div>
                         </td>
                     </tr>
                     <tr>
@@ -2433,17 +2894,20 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 <!-- 2. CABEÇALHO DO EMITENTE / DANFE / CHAVE DE ACESSO -->
                 <table class="tbl">
                     <tr>
-                        <td class="center" style="width: 14%; height: 92px; vertical-align: middle; padding: 4px;">
-                            <img src="${window.location.origin}/logo-danfe-bjl.png" alt="BJL Planejados" style="width: 78px; height: 78px; object-fit: contain; border-radius: 50%; background: #000; display: block; margin: 0 auto;" />
-                        </td>
-                        <td class="center" style="width: 24%; vertical-align: middle;">
-                            <div style="font-size: 9.5px; font-weight: 700;">${companyName}</div>
+                        ${
+                            !isXmlEntrada
+                                ? `<td class="center" style="width: 14%; height: 92px; vertical-align: middle; padding: 4px;">
+                                      <img src="${window.location.origin}/logo-danfe-bjl.png" alt="BJL Planejados" style="width: 78px; height: 78px; object-fit: contain; border-radius: 50%; background: #000; display: block; margin: 0 auto;" />
+                                   </td>`
+                                : ""
+                        }
+                        <td class="center" style="width: ${isXmlEntrada ? "38%" : "24%"}; height: 92px; vertical-align: middle;">
+                            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase;">${emitterInfo.name}</div>
                             <div style="font-size: 8px; margin-top: 4px;">
-                                Rua Maria Vitipo Raposo,<br/>
-                                138<br/>
-                                Barao de Macaubas -<br/>
-                                28400-000<br/>
-                                Sao Fidelis - RJ - Fone: ${companyPhone}
+                                ${emitterInfo.address ? `${emitterInfo.address}<br/>` : ""}
+                                ${emitterInfo.neighborhood ? `Bairro: ${emitterInfo.neighborhood}<br/>` : ""}
+                                ${emitterInfo.city ? `${emitterInfo.city}${emitterInfo.uf ? ` - ${emitterInfo.uf}` : ""}<br/>` : ""}
+                                ${emitterInfo.cep ? `CEP: ${emitterInfo.cep}` : ""} ${emitterInfo.phone ? `• Fone: ${emitterInfo.phone}` : ""}
                             </div>
                         </td>
                         <td class="center" style="width: 15%; vertical-align: middle;">
@@ -2455,11 +2919,11 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                                 <div style="text-align:left; font-size: 6.5px; line-height:1.2;">
                                     0 - ENTRADA<br/>1 - SAÍDA
                                 </div>
-                                <div style="border:1px solid #000; width:18px; height:16px; line-height:16px; font-weight:700; font-size:9px;">1</div>
+                                <div style="border:1px solid #000; width:18px; height:16px; line-height:16px; font-weight:700; font-size:9px;">${danfeOpCode}</div>
                             </div>
                             <div style="font-size: 8px; font-weight: 700;">
                                 Nº ${invoice.invoice_number}<br/>
-                                SÉRIE: 1<br/>
+                                SÉRIE: ${danfeSeries}<br/>
                                 <span style="font-size: 6.5px; font-weight:400;">PÁGINA 1 DE 1</span>
                             </div>
                         </td>
@@ -2488,7 +2952,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     <tr>
                         <td style="width: 53%;">
                             <span class="lbl">NATUREZA DA OPERAÇÃO</span>
-                            <span class="val">Venda Dentro do Estado</span>
+                            <span class="val">${natOp}</span>
                         </td>
                         <td style="width: 47%;">
                             <span class="lbl">PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
@@ -2501,7 +2965,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     <tr>
                         <td style="width: 33%;">
                             <span class="lbl">INSCRIÇÃO ESTADUAL</span>
-                            <span class="val">${companyIe}</span>
+                            <span class="val">${emitterInfo.ie || "&nbsp;"}</span>
                         </td>
                         <td style="width: 33%;">
                             <span class="lbl">INSCRIÇÃO ESTADUAL DO SUBST. TRIB.</span>
@@ -2509,7 +2973,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                         </td>
                         <td style="width: 34%;">
                             <span class="lbl">CNPJ</span>
-                            <span class="val">${companyCnpj}</span>
+                            <span class="val">${emitterInfo.cnpj || "&nbsp;"}</span>
                         </td>
                     </tr>
                 </table>
@@ -2520,11 +2984,11 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     <tr>
                         <td style="width: 60%;">
                             <span class="lbl">NOME/RAZÃO SOCIAL</span>
-                            <span class="val" style="text-transform: uppercase;">${invoice.client_name}</span>
+                            <span class="val" style="text-transform: uppercase;">${recipientInfo.name}</span>
                         </td>
                         <td style="width: 24%;">
                             <span class="lbl">CNPJ/CPF</span>
-                            <span class="val">${clientCpfCnpj}</span>
+                            <span class="val">${recipientInfo.cnpj || "&nbsp;"}</span>
                         </td>
                         <td style="width: 16%;">
                             <span class="lbl">DATA DE EMISSÃO</span>
@@ -2536,19 +3000,19 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     <tr>
                         <td style="width: 45%;">
                             <span class="lbl">ENDEREÇO</span>
-                            <span class="val">${clientAddr}</span>
+                            <span class="val">${recipientInfo.address || "&nbsp;"}</span>
                         </td>
                         <td style="width: 23%;">
                             <span class="lbl">BAIRRO/DISTRITO</span>
-                            <span class="val">${clientBairro}</span>
+                            <span class="val">${recipientInfo.neighborhood || "&nbsp;"}</span>
                         </td>
                         <td style="width: 16%;">
                             <span class="lbl">CEP</span>
-                            <span class="val">${clientCep}</span>
+                            <span class="val">${recipientInfo.cep || "&nbsp;"}</span>
                         </td>
                         <td style="width: 16%;">
                             <span class="lbl">DATA DE ENTR./SAÍDA</span>
-                            <span class="val">&nbsp;</span>
+                            <span class="val">${issueDateFormatted}</span>
                         </td>
                     </tr>
                 </table>
@@ -2556,19 +3020,19 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     <tr>
                         <td style="width: 31%;">
                             <span class="lbl">MUNICÍPIO</span>
-                            <span class="val">${clientCity}</span>
+                            <span class="val">${recipientInfo.city || "&nbsp;"}</span>
                         </td>
                         <td style="width: 18%;">
                             <span class="lbl">FONE/FAX</span>
-                            <span class="val">${clientPhone}</span>
+                            <span class="val">${recipientInfo.phone || "&nbsp;"}</span>
                         </td>
                         <td style="width: 11%;">
                             <span class="lbl">UF</span>
-                            <span class="val">${clientUf}</span>
+                            <span class="val">${recipientInfo.uf || "&nbsp;"}</span>
                         </td>
                         <td style="width: 24%;">
                             <span class="lbl">INSCRIÇÃO ESTADUAL</span>
-                            <span class="val">&nbsp;</span>
+                            <span class="val">${recipientInfo.ie || "&nbsp;"}</span>
                         </td>
                         <td style="width: 16%;">
                             <span class="lbl">HORA ENTR./SAÍDA</span>
@@ -2577,9 +3041,10 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     </tr>
                 </table>
 
-                <!-- 4. FATURA & CÁLCULO DO IMPOSTO -->
-                <div class="sec-title">FATURA</div>
-                <div class="sec-title" style="margin-top: 1px;">CALCULO DO IMPOSTO</div>
+                <!-- 4. FATURA / DUPLICATA & CÁLCULO DO IMPOSTO -->
+                <div class="sec-title">FATURA / DUPLICATA</div>
+                ${duplicatesHtml}
+                <div class="sec-title" style="margin-top: 2px;">CÁLCULO DO IMPOSTO</div>
                 <table class="tbl">
                     <tr>
                         <td><span class="lbl">BASE DE CALC. DO ICMS</span><span class="val num-right">0,00</span></td>
@@ -2590,105 +3055,55 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                         <td><span class="lbl">V. ICMS UF REMET.</span><span class="val num-right">0,00</span></td>
                         <td><span class="lbl">VALOR DO FCP</span><span class="val num-right">0,00</span></td>
                         <td><span class="lbl">VALOR DO PIS</span><span class="val num-right">0,00</span></td>
-                        <td style="width: 14%;"><span class="lbl">V. TOTAL DE PRODUTOS</span><span class="val num-right">${valFormatted}</span></td>
+                        <td style="width: 15%;"><span class="lbl">V. TOTAL DE PRODUTOS</span><span class="val num-right">${fmtNum(productsTotalNumeric)}</span></td>
                     </tr>
                     <tr>
-                        <td><span class="lbl">VALOR DO FRETE</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">VALOR DO FRETE</span><span class="val num-right">${fmtNum(freightTotalNumeric)}</span></td>
                         <td><span class="lbl">VALOR DO SEGURO</span><span class="val num-right">0,00</span></td>
-                        <td><span class="lbl">DESCONTO</span><span class="val num-right">0,00</span></td>
-                        <td><span class="lbl">OUTRAS DESP.</span><span class="val num-right">0,00</span></td>
+                        <td><span class="lbl">DESCONTO</span><span class="val num-right">${fmtNum(discountTotalNumeric)}</span></td>
+                        <td><span class="lbl">OUTRAS DESP.</span><span class="val num-right">${fmtNum(otherTotalNumeric)}</span></td>
                         <td><span class="lbl">VALOR DO IPI</span><span class="val num-right">0,00</span></td>
                         <td><span class="lbl">V. ICMS UF DEST.</span><span class="val num-right">0,00</span></td>
                         <td><span class="lbl">V. APROX. DO TRIBUTO</span><span class="val num-right">0,00</span></td>
                         <td><span class="lbl">VALOR DA COFINS</span><span class="val num-right">0,00</span></td>
-                        <td style="width: 14%;"><span class="lbl">V. TOTAL DA NOTA</span><span class="val num-right">${valFormatted}</span></td>
+                        <td style="width: 15%;"><span class="lbl">V. TOTAL DA NOTA</span><span class="val num-right">${fmtNum(totalNumeric)}</span></td>
                     </tr>
                 </table>
 
-                <!-- 5. TRANSPORTADOR / VOLUMES -->
-                <div class="sec-title">TRANSPORTADOR/VOLUMES TRANSPORTADOS</div>
-                <table class="tbl">
-                    <tr>
-                        <td style="width: 39%;"><span class="lbl">RAZÃO SOCIAL</span><span class="val">&nbsp;</span></td>
-                        <td style="width: 16%;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                    <span class="lbl">FRETE POR CONTA</span>
-                                    <span style="font-size:5.5px; display:block; line-height:1.1;">0 - Emitente<br/>1 - Destinatário<br/>2 - Terceiros</span>
-                                </div>
-                                <div style="border:1px solid #000; width:16px; height:15px; text-align:center; line-height:15px; font-weight:700;">1</div>
-                            </div>
-                        </td>
-                        <td style="width: 11%;"><span class="lbl">CÓDIGO ANTT</span><span class="val">&nbsp;</span></td>
-                        <td style="width: 12%;"><span class="lbl">PLACA</span><span class="val">&nbsp;</span></td>
-                        <td style="width: 6%;"><span class="lbl">UF</span><span class="val">&nbsp;</span></td>
-                        <td style="width: 16%;"><span class="lbl">CNPJ/CPF</span><span class="val">&nbsp;</span></td>
-                    </tr>
-                </table>
-                <table class="tbl" style="margin-top: -1px;">
-                    <tr>
-                        <td style="width: 39%;"><span class="lbl">ENDEREÇO</span><span class="val">&nbsp;</span></td>
-                        <td style="width: 27%;"><span class="lbl">MUNICÍPIO</span><span class="val">&nbsp;</span></td>
-                        <td style="width: 12%;"><span class="lbl">UF</span><span class="val">&nbsp;</span></td>
-                        <td style="width: 22%;"><span class="lbl">INSC. ESTADUAL</span><span class="val">&nbsp;</span></td>
-                    </tr>
-                </table>
-                <table class="tbl" style="margin-top: -1px;">
-                    <tr>
-                        <td style="width: 14%;"><span class="lbl">QUANTIDADE</span><span class="val">&nbsp;</span></td>
-                        <td style="width: 18%;"><span class="lbl">ESPÉCIE</span><span class="val">&nbsp;</span></td>
-                        <td style="width: 17%;"><span class="lbl">MARCA</span><span class="val">&nbsp;</span></td>
-                        <td style="width: 18%;"><span class="lbl">NUMERAÇÃO</span><span class="val">&nbsp;</span></td>
-                        <td style="width: 17%;"><span class="lbl">PESO BRUTO</span><span class="val">&nbsp;</span></td>
-                        <td style="width: 16%;"><span class="lbl">PESO LÍQUIDO</span><span class="val">&nbsp;</span></td>
-                    </tr>
-                </table>
-
-                <!-- 6. DADOS DO PRODUTO / SERVIÇO -->
-                <div class="sec-title">DADOS DO PRODUTO/SERVIÇO</div>
+                <!-- 5. DADOS DO PRODUTO / SERVIÇO (ITENS SEPARADOS!) -->
+                <div class="sec-title">DADOS DO PRODUTO/SERVIÇO (${productRows.length} ${productRows.length === 1 ? "ITEM" : "ITENS"})</div>
                 <div class="prod-box">
                     <table class="prod-table">
                         <thead>
                             <tr>
-                                <th style="width: 11%;">CÓDIGO</th>
-                                <th style="width: 32%;">DESCRIÇÃO DO PRODUTO/SERVIÇO</th>
-                                <th style="width: 7%;">NCM/SH</th>
-                                <th style="width: 4%;">CST</th>
-                                <th style="width: 4%;">CFOP</th>
+                                <th style="width: 7%;">CÓD.</th>
+                                <th style="width: ${hasItemDiscounts ? "30%" : "38%"};">DESCRIÇÃO DO PRODUTO/SERVIÇO</th>
+                                <th style="width: 8%;">NCM/SH</th>
+                                <th style="width: 4.5%;">CSOSN</th>
+                                <th style="width: 4.5%;">CFOP</th>
                                 <th style="width: 3.5%;">UN</th>
-                                <th style="width: 5.5%;">QTD.</th>
-                                <th style="width: 7%;">VLR.<br/>UNIT</th>
-                                <th style="width: 7%;">VLR.<br/>TOTAL</th>
-                                <th style="width: 4.5%;">BC<br/>ICMS</th>
-                                <th style="width: 4.5%;">VLR.<br/>ICMS</th>
-                                <th style="width: 4%;">VLR.<br/>IPI</th>
-                                <th style="width: 3%;">ALIQ.<br/>ICMS</th>
-                                <th style="width: 3%;">ALIQ.<br/>IPI</th>
+                                <th style="width: 6%;">QTD.</th>
+                                <th style="width: 7%;">VLR.<br/>UNIT.</th>
+                                ${
+                                    hasItemDiscounts
+                                        ? `<th style="width: 6.5%;">VLR.<br/>BRUTO</th>
+                                           <th style="width: 6%;">VLR.<br/>DESC.</th>`
+                                        : ""
+                                }
+                                <th style="width: 7.5%;">VLR.<br/>TOTAL</th>
+                                <th style="width: 3.5%;">BC<br/>ICMS</th>
+                                <th style="width: 3%;">VLR.<br/>ICMS</th>
+                                <th style="width: 3%;">VLR.<br/>IPI</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr style="border-bottom: 1px solid #000;">
-                                <td>${prodCode}</td>
-                                <td style="text-transform: uppercase;">${cleanDesc}</td>
-                                <td class="center">94036000</td>
-                                <td class="center">0102</td>
-                                <td class="center">5102</td>
-                                <td class="center">UN</td>
-                                <td class="num-right">${qtyFormatted}</td>
-                                <td class="num-right">${unitFormatted}</td>
-                                <td class="num-right">${valFormatted}</td>
-                                <td class="num-right">0,00</td>
-                                <td class="num-right">0,00</td>
-                                <td class="num-right">0,00</td>
-                                <td class="num-right">&nbsp;</td>
-                                <td class="num-right">0,00</td>
-                            </tr>
+                            ${productRowsHtml}
                         </tbody>
                     </table>
                     <div></div>
                 </div>
 
-                <!-- 7. CÁLCULO DO ISSQN -->
+                <!-- 6. CÁLCULO DO ISSQN -->
                 <div class="sec-title">CALCULO DO ISSQN</div>
                 <table class="tbl">
                     <tr>
@@ -2699,17 +3114,17 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     </tr>
                 </table>
 
-                <!-- 8. DADOS ADICIONAIS -->
+                <!-- 7. DADOS ADICIONAIS -->
                 <div class="sec-title">DADOS ADICIONAIS</div>
                 <table class="tbl">
                     <tr>
-                        <td style="width: 53%; height: 64px;">
+                        <td style="width: 53%; height: 56px;">
                             <span class="lbl">INFORMAÇÕES COMPLEMENTARES</span>
                             <div style="font-size: 7.5px; margin-top: 2px;">
                                 DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL. NAO GERA DIREITO A CREDITO FISCAL DE ICMS, ISS E IPI.
                             </div>
                         </td>
-                        <td style="width: 47%; height: 64px;">
+                        <td style="width: 47%; height: 56px;">
                             <span class="lbl">RESERVA AO FISCO</span>
                         </td>
                     </tr>
@@ -3077,17 +3492,54 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                                                     >
                                                         {invoice.status}
                                                     </span>
-                                                    {(invoice.asaas_status || invoice.description?.includes("Prot SEFAZ:")) && (
-                                                        <span className="text-[9px] font-tech text-emerald-400 font-bold">
-                                                            ✓ SEFAZ Prot:{" "}
-                                                            {invoice.description.match(/Prot SEFAZ:\s*([0-9]+)/)?.[1] ||
-                                                                "cStat 100"}
-                                                        </span>
-                                                    )}
+                                                    {(() => {
+                                                        const xmlMeta = parseStoredXmlPayload(invoice);
+                                                        if (xmlMeta && xmlMeta.items.length > 0) {
+                                                            return (
+                                                                <span className="text-[9px] font-tech text-emerald-400 font-bold">
+                                                                    ✓ {xmlMeta.items.length}{" "}
+                                                                    {xmlMeta.items.length === 1
+                                                                        ? "item"
+                                                                        : "itens"}{" "}
+                                                                    separados
+                                                                </span>
+                                                            );
+                                                        }
+                                                        if (
+                                                            (invoice.asaas_status &&
+                                                                !invoice.asaas_status.startsWith("XML_PAYLOAD:")) ||
+                                                            invoice.description?.includes("Prot SEFAZ:")
+                                                        ) {
+                                                            return (
+                                                                <span className="text-[9px] font-tech text-emerald-400 font-bold">
+                                                                    ✓ SEFAZ Prot:{" "}
+                                                                    {invoice.description.match(
+                                                                        /Prot SEFAZ:\s*([0-9]+)/
+                                                                    )?.[1] || "cStat 100"}
+                                                                </span>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-1">
+                                                    {(parseStoredXmlPayload(invoice) ||
+                                                        (invoice.description || "")
+                                                            .toUpperCase()
+                                                            .includes("[XML")) && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => setViewingInvoice(invoice)}
+                                                            className="h-8 px-2.5 rounded-xl text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/15 gap-1.5"
+                                                            title="Ver todos os itens separados desta nota"
+                                                        >
+                                                            <Layers className="h-3.5 w-3.5" />
+                                                            Ver Itens
+                                                        </Button>
+                                                    )}
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -3852,11 +4304,28 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                                                                 {item.name}
                                                             </span>
                                                         </div>
-                                                        <div className="text-[11px] font-tech text-muted-foreground mt-0.5">
-                                                            {item.quantity} {item.unit} × {formatCurrency(item.unitPrice)} ={" "}
-                                                            <strong className="text-primary font-black">
-                                                                {formatCurrency(item.totalPrice)}
-                                                            </strong>
+                                                        <div className="text-[11px] font-tech text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2">
+                                                            <span>
+                                                                {item.quantity} {item.unit} × {formatCurrency(item.unitPrice)}
+                                                            </span>
+                                                            {item.discount && item.discount > 0 ? (
+                                                                <>
+                                                                    <span className="text-amber-400">
+                                                                        (Desc: -{formatCurrency(item.discount)})
+                                                                    </span>
+                                                                    <span>=</span>
+                                                                    <strong className="text-primary font-black">
+                                                                        {formatCurrency(item.totalPrice)}
+                                                                    </strong>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <span>=</span>
+                                                                    <strong className="text-primary font-black">
+                                                                        {formatCurrency(item.totalPrice)}
+                                                                    </strong>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
 
@@ -4873,6 +5342,186 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                             Salvar Credenciais
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* MODAL 4: VISUALIZADOR DE ITENS SEPARADOS DA NOTA FISCAL */}
+            <Dialog open={Boolean(viewingInvoice)} onOpenChange={(o) => !o && setViewingInvoice(null)}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0c0c10] border border-white/15 shadow-2xl rounded-3xl text-foreground">
+                    {viewingInvoice &&
+                        (() => {
+                            const xmlMeta = parseStoredXmlPayload(viewingInvoice);
+                            const fallbackParts = !xmlMeta
+                                ? (viewingInvoice.description || "")
+                                      .replace(/^\[XML[^\]]*\]\s*/i, "")
+                                      .replace(/\|\s*Clientes:\s*[^|]+/g, "")
+                                      .replace(/\|\s*Chave:\s*[0-9]{44}/g, "")
+                                      .split(/,\s*(?=\d+(?:[.,]\d+)?x\s)/i)
+                                      .map((p) => p.trim())
+                                      .filter(Boolean)
+                                : [];
+
+                            return (
+                                <>
+                                    <DialogHeader>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="tech-hud-pill text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
+                                                <Layers className="h-3.5 w-3.5" />
+                                                ITENS SEPARADOS DA NF-e #{viewingInvoice.invoice_number}
+                                            </span>
+                                        </div>
+                                        <DialogTitle className="text-xl font-display font-black">
+                                            {viewingInvoice.client_name} — {formatCurrency(viewingInvoice.amount)}
+                                        </DialogTitle>
+                                        <DialogDescription className="text-xs text-muted-foreground">
+                                            Emissão:{" "}
+                                            {format(
+                                                new Date(viewingInvoice.issue_date + "T12:00:00"),
+                                                "dd/MM/yyyy"
+                                            )}
+                                            {xmlMeta?.totals?.discountAmount
+                                                ? ` • Produtos: ${formatCurrency(
+                                                      xmlMeta.totals.productsTotal
+                                                  )} • Desconto: -${formatCurrency(
+                                                      xmlMeta.totals.discountAmount
+                                                  )}`
+                                                : ""}
+                                        </DialogDescription>
+                                    </DialogHeader>
+
+                                    <div className="space-y-4 py-2">
+                                        {xmlMeta && xmlMeta.items.length > 0 ? (
+                                            <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/40">
+                                                <Table>
+                                                    <TableHeader className="bg-white/[0.03]">
+                                                        <TableRow className="border-b border-white/10">
+                                                            <TableHead className="text-[10px] font-black uppercase">
+                                                                Cód.
+                                                            </TableHead>
+                                                            <TableHead className="text-[10px] font-black uppercase">
+                                                                Produto / Cliente
+                                                            </TableHead>
+                                                            <TableHead className="text-[10px] font-black uppercase text-right">
+                                                                Qtd.
+                                                            </TableHead>
+                                                            <TableHead className="text-[10px] font-black uppercase text-right">
+                                                                Vlr. Unit.
+                                                            </TableHead>
+                                                            <TableHead className="text-[10px] font-black uppercase text-right">
+                                                                Desc.
+                                                            </TableHead>
+                                                            <TableHead className="text-[10px] font-black uppercase text-right">
+                                                                Total Líq.
+                                                            </TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {xmlMeta.items.map((it, idx) => (
+                                                            <TableRow
+                                                                key={idx}
+                                                                className="border-b border-white/[0.05]"
+                                                            >
+                                                                <TableCell className="font-tech text-[11px] text-primary">
+                                                                    #{it.code}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs">
+                                                                    <div className="font-bold text-foreground">
+                                                                        {it.name}
+                                                                    </div>
+                                                                    {it.clients && (
+                                                                        <div className="text-[10px] text-emerald-400 font-semibold mt-0.5">
+                                                                            👤 {it.clients}
+                                                                        </div>
+                                                                    )}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs font-tech text-right">
+                                                                    {it.quantity} {it.unit}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs font-tech text-right text-muted-foreground">
+                                                                    {formatCurrency(it.unitPrice)}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs font-tech text-right text-amber-400">
+                                                                    {it.discount && it.discount > 0
+                                                                        ? `-${formatCurrency(it.discount)}`
+                                                                        : "-"}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs font-tech font-black text-right text-primary">
+                                                                    {formatCurrency(it.totalPrice)}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        ) : (
+                                            <div className="rounded-2xl border border-white/10 bg-black/40 p-4 space-y-2">
+                                                <p className="text-[11px] text-amber-300 font-semibold">
+                                                    Nota importada anteriormente (itens identificados na descrição):
+                                                </p>
+                                                {fallbackParts.map((part, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs font-semibold"
+                                                    >
+                                                        {idx + 1}. {part}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {xmlMeta?.duplicates && xmlMeta.duplicates.length > 0 && (
+                                            <div className="p-3.5 rounded-2xl bg-primary/5 border border-primary/20 space-y-2">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                                    Boletos / Parcelas ({xmlMeta.duplicates.length}x)
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                    {xmlMeta.duplicates.map((dup, dIdx) => (
+                                                        <div
+                                                            key={dIdx}
+                                                            className="p-2.5 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between text-xs"
+                                                        >
+                                                            <div>
+                                                                <span className="font-tech font-bold text-primary block">
+                                                                    Parc. {dup.number}
+                                                                </span>
+                                                                <span className="text-[10px] text-muted-foreground">
+                                                                    {dup.dueDate
+                                                                        ? format(
+                                                                              new Date(dup.dueDate + "T12:00:00"),
+                                                                              "dd/MM/yyyy"
+                                                                          )
+                                                                        : "-"}
+                                                                </span>
+                                                            </div>
+                                                            <span className="font-tech font-black text-foreground">
+                                                                {formatCurrency(dup.amount)}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <DialogFooter className="gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => setViewingInvoice(null)}
+                                            className="rounded-xl text-xs"
+                                        >
+                                            Fechar
+                                        </Button>
+                                        <Button
+                                            onClick={() => handlePrintDanfe(viewingInvoice)}
+                                            className="rounded-xl bg-primary text-primary-foreground font-black uppercase tracking-wider text-xs px-5 gap-2"
+                                        >
+                                            <Printer className="h-4 w-4" />
+                                            Imprimir DANFE com Itens Separados
+                                        </Button>
+                                    </DialogFooter>
+                                </>
+                            );
+                        })()}
                 </DialogContent>
             </Dialog>
         </div>
