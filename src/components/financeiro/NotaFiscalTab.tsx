@@ -82,6 +82,8 @@ interface Invoice {
 
 interface ParsedXmlItem {
     id: string;
+    sourceNoteId?: string;
+    invoiceNumber?: string;
     code: string;
     name: string;
     ncm: string;
@@ -96,6 +98,25 @@ interface ParsedXmlDuplicate {
     number: string;
     dueDate: string;
     amount: number;
+}
+
+interface ParsedXmlSourceNote {
+    id: string;
+    invoiceNumber: string;
+    series: string;
+    issueDate: string;
+    emitterName: string;
+    emitterFantasyName: string;
+    emitterCnpj: string;
+    recipientName: string;
+    recipientDoc: string;
+    accessKey: string;
+    productsTotal: number;
+    freightAmount: number;
+    discountAmount: number;
+    otherAmount: number;
+    totalAmount: number;
+    itemsCount: number;
 }
 
 interface ParsedXmlData {
@@ -115,6 +136,7 @@ interface ParsedXmlData {
     totalAmount: number;
     items: ParsedXmlItem[];
     duplicates: ParsedXmlDuplicate[];
+    sourceNotes: ParsedXmlSourceNote[];
 }
 
 interface XmlItemClientSplit {
@@ -143,6 +165,7 @@ const FREE_TIER_LIMIT = 30; // Cota mensal gratuita de referência na Nuvem Fisc
 export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
     const { settings: companySettings } = useCompanySettings();
     const xmlInputRef = useRef<HTMLInputElement | null>(null);
+    const appendXmlInputRef = useRef<HTMLInputElement | null>(null);
     const certInputRef = useRef<HTMLInputElement | null>(null);
 
     const [searchTerm, setSearchTerm] = useState("");
@@ -1405,93 +1428,326 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
         }
     };
 
-    // Leitor Nativo de XML da SEFAZ (100% Gratuito) + Rateio por Item/Cliente + Gerador 30/60/90
-    const handleXmlFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    // Parser individual de um arquivo XML SEFAZ NF-e (permite importar 1 ou várias notas somadas nos mesmos boletos)
+    const parseSingleXmlFile = (file: File): Promise<ParsedXmlData | null> => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const xmlText = event.target?.result as string;
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const xmlText = event.target?.result as string;
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-
-                const getTagText = (parent: Element | Document, tag: string) => {
-                    const el = parent.getElementsByTagName(tag)[0];
-                    return el ? (el.textContent || "").trim() : "";
-                };
-
-                const infNFe = xmlDoc.getElementsByTagName("infNFe")[0];
-                const accessKey = infNFe?.getAttribute("Id")?.replace(/^NFe/, "") || "";
-
-                const ide = xmlDoc.getElementsByTagName("ide")[0];
-                const invoiceNumber = ide ? getTagText(ide, "nNF") : "";
-                const series = ide ? getTagText(ide, "serie") : "1";
-                const rawIssueDate = ide ? getTagText(ide, "dhEmi") || getTagText(ide, "dEmi") : "";
-                const issueDate = rawIssueDate
-                    ? rawIssueDate.substring(0, 10)
-                    : new Date().toISOString().split("T")[0];
-
-                const emit = xmlDoc.getElementsByTagName("emit")[0];
-                const emitterName = emit ? getTagText(emit, "xNome") : "Fornecedor XML";
-                const emitterFantasyName = emit ? getTagText(emit, "xFant") : "";
-                const emitterCnpj = emit ? getTagText(emit, "CNPJ") || getTagText(emit, "CPF") : "";
-
-                const dest = xmlDoc.getElementsByTagName("dest")[0];
-                const recipientName = dest ? getTagText(dest, "xNome") : "";
-                const recipientDoc = dest ? getTagText(dest, "CNPJ") || getTagText(dest, "CPF") : "";
-
-                const icmsTot = xmlDoc.getElementsByTagName("ICMSTot")[0];
-                const totalAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vNF") || "0") : 0;
-                const productsTotal = icmsTot ? parseFloat(getTagText(icmsTot, "vProd") || "0") : 0;
-                const freightAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vFrete") || "0") : 0;
-                const discountAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vDesc") || "0") : 0;
-                const ipiAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vIPI") || "0") : 0;
-                const stAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vST") || "0") : 0;
-                const outroAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vOutro") || "0") : 0;
-                const otherAmount = ipiAmount + stAmount + outroAmount;
-
-                const detNodes = Array.from(xmlDoc.getElementsByTagName("det"));
-                const items: ParsedXmlItem[] = detNodes.map((det, idx) => {
-                    const prod = det.getElementsByTagName("prod")[0];
-                    return {
-                        id: `xml-item-${idx}`,
-                        code: prod ? getTagText(prod, "cProd") : String(idx + 1),
-                        name: prod ? getTagText(prod, "xProd") : `Item NF-e #${idx + 1}`,
-                        ncm: prod ? getTagText(prod, "NCM") : "",
-                        cfop: prod ? getTagText(prod, "CFOP") : "",
-                        unit: prod ? getTagText(prod, "uCom") : "UN",
-                        quantity: prod ? parseFloat(getTagText(prod, "qCom") || "1") : 1,
-                        unitPrice: prod ? parseFloat(getTagText(prod, "vUnCom") || "0") : 0,
-                        totalPrice: prod ? parseFloat(getTagText(prod, "vProd") || "0") : 0,
+                    const getTagText = (parent: Element | Document, tag: string) => {
+                        const el = parent.getElementsByTagName(tag)[0];
+                        return el ? (el.textContent || "").trim() : "";
                     };
-                });
 
-                // Duplicatas / Boletos caso constem na tag <cobr><dup> do XML
-                const dupNodes = Array.from(xmlDoc.getElementsByTagName("dup"));
-                const duplicates: ParsedXmlDuplicate[] = dupNodes
-                    .map((dup, idx) => ({
-                        number: getTagText(dup, "nDup") || String(idx + 1),
-                        dueDate: getTagText(dup, "dVenc"),
-                        amount: parseFloat(getTagText(dup, "vDup") || "0"),
-                    }))
-                    .filter((d) => d.amount > 0);
+                    const infNFe = xmlDoc.getElementsByTagName("infNFe")[0];
+                    const accessKey = infNFe?.getAttribute("Id")?.replace(/^NFe/, "") || "";
 
-                if (!invoiceNumber && items.length === 0) {
-                    toast.error("O arquivo selecionado não parece ser um XML padrão SEFAZ NF-e.");
-                    return;
+                    const ide = xmlDoc.getElementsByTagName("ide")[0];
+                    const invoiceNumber = ide ? getTagText(ide, "nNF") : "";
+                    const series = ide ? getTagText(ide, "serie") : "1";
+                    const rawIssueDate = ide ? getTagText(ide, "dhEmi") || getTagText(ide, "dEmi") : "";
+                    const issueDate = rawIssueDate
+                        ? rawIssueDate.substring(0, 10)
+                        : new Date().toISOString().split("T")[0];
+
+                    const emit = xmlDoc.getElementsByTagName("emit")[0];
+                    const emitterName = emit ? getTagText(emit, "xNome") : "Fornecedor XML";
+                    const emitterFantasyName = emit ? getTagText(emit, "xFant") : "";
+                    const emitterCnpj = emit ? getTagText(emit, "CNPJ") || getTagText(emit, "CPF") : "";
+
+                    const dest = xmlDoc.getElementsByTagName("dest")[0];
+                    const recipientName = dest ? getTagText(dest, "xNome") : "";
+                    const recipientDoc = dest ? getTagText(dest, "CNPJ") || getTagText(dest, "CPF") : "";
+
+                    const icmsTot = xmlDoc.getElementsByTagName("ICMSTot")[0];
+                    const totalAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vNF") || "0") : 0;
+                    const productsTotal = icmsTot ? parseFloat(getTagText(icmsTot, "vProd") || "0") : 0;
+                    const freightAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vFrete") || "0") : 0;
+                    const discountAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vDesc") || "0") : 0;
+                    const ipiAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vIPI") || "0") : 0;
+                    const stAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vST") || "0") : 0;
+                    const outroAmount = icmsTot ? parseFloat(getTagText(icmsTot, "vOutro") || "0") : 0;
+                    const otherAmount = ipiAmount + stAmount + outroAmount;
+
+                    const finalInvNum =
+                        invoiceNumber || String(Math.floor(1000 + Math.random() * 9000));
+                    const noteId = `note-${finalInvNum}-${Date.now()}-${Math.random()
+                        .toString(36)
+                        .slice(2, 6)}`;
+
+                    const detNodes = Array.from(xmlDoc.getElementsByTagName("det"));
+                    const items: ParsedXmlItem[] = detNodes.map((det, idx) => {
+                        const prod = det.getElementsByTagName("prod")[0];
+                        return {
+                            id: `${noteId}-item-${idx}`,
+                            sourceNoteId: noteId,
+                            invoiceNumber: finalInvNum,
+                            code: prod ? getTagText(prod, "cProd") : String(idx + 1),
+                            name: prod ? getTagText(prod, "xProd") : `Item NF-e #${idx + 1}`,
+                            ncm: prod ? getTagText(prod, "NCM") : "",
+                            cfop: prod ? getTagText(prod, "CFOP") : "",
+                            unit: prod ? getTagText(prod, "uCom") : "UN",
+                            quantity: prod ? parseFloat(getTagText(prod, "qCom") || "1") : 1,
+                            unitPrice: prod ? parseFloat(getTagText(prod, "vUnCom") || "0") : 0,
+                            totalPrice: prod ? parseFloat(getTagText(prod, "vProd") || "0") : 0,
+                        };
+                    });
+
+                    const dupNodes = Array.from(xmlDoc.getElementsByTagName("dup"));
+                    const duplicates: ParsedXmlDuplicate[] = dupNodes
+                        .map((dup, idx) => ({
+                            number: getTagText(dup, "nDup") || String(idx + 1),
+                            dueDate: getTagText(dup, "dVenc"),
+                            amount: parseFloat(getTagText(dup, "vDup") || "0"),
+                        }))
+                        .filter((d) => d.amount > 0);
+
+                    if (!invoiceNumber && items.length === 0) {
+                        resolve(null);
+                        return;
+                    }
+
+                    const finalTotalAmount =
+                        totalAmount > 0
+                            ? totalAmount
+                            : items.reduce((acc, it) => acc + it.totalPrice, 0);
+
+                    const sourceNote: ParsedXmlSourceNote = {
+                        id: noteId,
+                        invoiceNumber: finalInvNum,
+                        series,
+                        issueDate,
+                        emitterName,
+                        emitterFantasyName,
+                        emitterCnpj,
+                        recipientName,
+                        recipientDoc,
+                        accessKey,
+                        productsTotal: productsTotal || finalTotalAmount,
+                        freightAmount,
+                        discountAmount,
+                        otherAmount,
+                        totalAmount: finalTotalAmount,
+                        itemsCount: items.length,
+                    };
+
+                    resolve({
+                        accessKey,
+                        invoiceNumber: finalInvNum,
+                        series,
+                        issueDate,
+                        emitterName,
+                        emitterFantasyName,
+                        emitterCnpj,
+                        recipientName,
+                        recipientDoc,
+                        productsTotal: productsTotal || finalTotalAmount,
+                        freightAmount,
+                        discountAmount,
+                        otherAmount,
+                        totalAmount: finalTotalAmount,
+                        items,
+                        duplicates,
+                        sourceNotes: [sourceNote],
+                    });
+                } catch (err) {
+                    console.error("Erro ao ler XML:", err);
+                    resolve(null);
                 }
+            };
+            reader.onerror = () => resolve(null);
+            reader.readAsText(file);
+        });
+    };
 
-                const finalTotalAmount =
-                    totalAmount > 0
-                        ? totalAmount
-                        : items.reduce((acc, it) => acc + it.totalPrice, 0);
+    const mergeParsedXmlNotes = (
+        base: ParsedXmlData | null,
+        incomingList: ParsedXmlData[]
+    ): { merged: ParsedXmlData; newlyAddedNotes: ParsedXmlSourceNote[]; newlyAddedItems: ParsedXmlItem[] } => {
+        const allNotes: ParsedXmlSourceNote[] = base ? [...base.sourceNotes] : [];
+        const allItems: ParsedXmlItem[] = base ? [...base.items] : [];
+        const allDuplicates: ParsedXmlDuplicate[] = base ? [...base.duplicates] : [];
+        const newlyAddedNotes: ParsedXmlSourceNote[] = [];
+        const newlyAddedItems: ParsedXmlItem[] = [];
 
-                // Inicializa 1 linha de alocação de cliente para cada item do XML
-                const initialSplits: Record<string, XmlItemClientSplit[]> = {};
-                items.forEach((it) => {
-                    initialSplits[it.id] = [
+        for (const inc of incomingList) {
+            for (const sn of inc.sourceNotes) {
+                const alreadyExists = allNotes.some(
+                    (existing) =>
+                        (sn.accessKey && existing.accessKey === sn.accessKey) ||
+                        (sn.invoiceNumber &&
+                            existing.invoiceNumber === sn.invoiceNumber &&
+                            Math.abs(existing.totalAmount - sn.totalAmount) < 0.01)
+                );
+                if (alreadyExists) continue;
+                allNotes.push(sn);
+                newlyAddedNotes.push(sn);
+                const noteItems = inc.items.filter((i) => i.sourceNoteId === sn.id);
+                allItems.push(...noteItems);
+                newlyAddedItems.push(...noteItems);
+            }
+            if (inc.duplicates.length > 0) {
+                allDuplicates.push(...inc.duplicates);
+            }
+        }
+
+        const primaryNote = allNotes[0];
+        const totalAmount = Number(
+            allNotes.reduce((acc, n) => acc + Number(n.totalAmount || 0), 0).toFixed(2)
+        );
+        const productsTotal = Number(
+            allNotes.reduce((acc, n) => acc + Number(n.productsTotal || 0), 0).toFixed(2)
+        );
+        const freightAmount = Number(
+            allNotes.reduce((acc, n) => acc + Number(n.freightAmount || 0), 0).toFixed(2)
+        );
+        const discountAmount = Number(
+            allNotes.reduce((acc, n) => acc + Number(n.discountAmount || 0), 0).toFixed(2)
+        );
+        const otherAmount = Number(
+            allNotes.reduce((acc, n) => acc + Number(n.otherAmount || 0), 0).toFixed(2)
+        );
+
+        const merged: ParsedXmlData = {
+            accessKey: allNotes.map((n) => n.accessKey).filter(Boolean).join(" | "),
+            invoiceNumber: allNotes.map((n) => n.invoiceNumber).join(" + "),
+            series: primaryNote?.series || "1",
+            issueDate: base?.issueDate || primaryNote?.issueDate || new Date().toISOString().split("T")[0],
+            emitterName: primaryNote?.emitterName || "Fornecedor XML",
+            emitterFantasyName: primaryNote?.emitterFantasyName || "",
+            emitterCnpj: primaryNote?.emitterCnpj || "",
+            recipientName: primaryNote?.recipientName || "",
+            recipientDoc: primaryNote?.recipientDoc || "",
+            productsTotal,
+            freightAmount,
+            discountAmount,
+            otherAmount,
+            totalAmount,
+            items: allItems,
+            duplicates: allDuplicates,
+            sourceNotes: allNotes,
+        };
+
+        return { merged, newlyAddedNotes, newlyAddedItems };
+    };
+
+    // Leitor Nativo de XML da SEFAZ (Suporta 1 ou VÁRIAS notas somadas nos mesmos boletos 30/60/90!)
+    const handleXmlFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        try {
+            const parsedResults = (await Promise.all(files.map(parseSingleXmlFile))).filter(
+                Boolean
+            ) as ParsedXmlData[];
+
+            if (parsedResults.length === 0) {
+                toast.error("Os arquivos selecionados não parecem ser XML padrão SEFAZ NF-e.");
+                return;
+            }
+
+            const { merged } = mergeParsedXmlNotes(null, parsedResults);
+
+            const initialSplits: Record<string, XmlItemClientSplit[]> = {};
+            merged.items.forEach((it) => {
+                initialSplits[it.id] = [
+                    {
+                        id: `${it.id}-0`,
+                        client: "",
+                        quantity: String(it.quantity),
+                        amount: it.totalPrice.toFixed(2),
+                    },
+                ];
+            });
+            setXmlItemSplits(initialSplits);
+
+            const detectedSupplier = detectSupplierProfile(
+                merged.emitterName,
+                merged.emitterFantasyName
+            );
+            const initialPaymentCat = detectedSupplier === "bruta" ? "Cartao" : "Boleto";
+            const initialPaymentMethod =
+                detectedSupplier === "bruta" ? "Cartão Nubank" : "Boleto";
+
+            const defaultInstallments = buildInstallmentsFromPreset(
+                merged.issueDate,
+                merged.totalAmount,
+                "30_60_90",
+                initialPaymentMethod,
+                merged.duplicates,
+                3,
+                30
+            );
+            setXmlInstallments(defaultInstallments);
+
+            setXmlOptions((prev) => ({
+                ...prev,
+                direction: "entrada",
+                updateInventory: true,
+                createExpenseTransaction: true,
+                supplierPreset: detectedSupplier,
+                paymentCategoryType: initialPaymentCat,
+                paymentMethod: initialPaymentMethod,
+                financialInstitution: "Banco Itaú",
+                category: "Custo com Materiais e Obras",
+                subcategory: "Compra de MDF e Madeira",
+                schedulePreset: "30_60_90",
+                customInstallmentCount: "3",
+                customIntervalDays: "30",
+                bulkClientTarget: "",
+            }));
+
+            setParsedXml(merged);
+            setIsXmlDialogOpen(true);
+
+            if (merged.sourceNotes.length > 1) {
+                toast.success(
+                    `${merged.sourceNotes.length} notas somadas (${formatCurrency(
+                        merged.totalAmount
+                    )}) e divididas nos mesmos boletos!`
+                );
+            }
+        } catch (err) {
+            console.error("Erro ao ler XML:", err);
+            toast.error("Não foi possível interpretar o arquivo XML.");
+        } finally {
+            if (xmlInputRef.current) xmlInputRef.current.value = "";
+        }
+    };
+
+    // Adiciona +1 (ou mais) notas XML para SOMAR o valor nos mesmos Boletos 3x sem perder o rateio já preenchido!
+    const handleAppendXmlFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0 || !parsedXml) return;
+
+        try {
+            const parsedResults = (await Promise.all(files.map(parseSingleXmlFile))).filter(
+                Boolean
+            ) as ParsedXmlData[];
+
+            if (parsedResults.length === 0) {
+                toast.error("O arquivo selecionado não parece ser um XML padrão SEFAZ NF-e.");
+                return;
+            }
+
+            const { merged, newlyAddedNotes, newlyAddedItems } = mergeParsedXmlNotes(
+                parsedXml,
+                parsedResults
+            );
+
+            if (newlyAddedNotes.length === 0) {
+                toast.info("Esta nota fiscal XML já está incluída nesta soma.");
+                return;
+            }
+
+            setXmlItemSplits((prev) => {
+                const next = { ...prev };
+                newlyAddedItems.forEach((it) => {
+                    next[it.id] = [
                         {
                             id: `${it.id}-0`,
                             client: "",
@@ -1500,70 +1756,114 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                         },
                     ];
                 });
-                setXmlItemSplits(initialSplits);
+                return next;
+            });
 
-                // Detecta automaticamente se o XML é da BRUTA (Cartão) ou da CED / C&D (Boleto 30/60/90)
-                const detectedSupplier = detectSupplierProfile(emitterName, emitterFantasyName);
-                const initialPaymentCat = detectedSupplier === "bruta" ? "Cartao" : "Boleto";
-                const initialPaymentMethod =
-                    detectedSupplier === "bruta" ? "Cartão Nubank" : "Boleto";
+            setParsedXml(merged);
 
-                // Gera por padrão os boletos/parcelas 30 / 60 / 90 dias a partir da data de emissão da nota
-                const defaultInstallments = buildInstallmentsFromPreset(
-                    issueDate,
-                    finalTotalAmount,
-                    "30_60_90",
-                    initialPaymentMethod,
-                    duplicates,
-                    3,
-                    30
-                );
-                setXmlInstallments(defaultInstallments);
+            // Recalcula os boletos/parcelas mantendo a mesma quantidade de parcelas e prazos sobre o NOVO TOTAL SOMADO!
+            const count = Math.max(1, xmlInstallments.length);
+            const basePart = Number((merged.totalAmount / count).toFixed(2));
+            setXmlInstallments((prev) =>
+                prev.map((inst, idx) => ({
+                    ...inst,
+                    amount: (idx === count - 1
+                        ? Number((merged.totalAmount - basePart * (count - 1)).toFixed(2))
+                        : basePart
+                    ).toFixed(2),
+                }))
+            );
 
-                setXmlOptions((prev) => ({
-                    ...prev,
-                    direction: "entrada",
-                    updateInventory: true,
-                    createExpenseTransaction: true,
-                    supplierPreset: detectedSupplier,
-                    paymentCategoryType: initialPaymentCat,
-                    paymentMethod: initialPaymentMethod,
-                    financialInstitution: "Banco Itaú",
-                    category: "Custo com Materiais e Obras",
-                    subcategory: "Compra de MDF e Madeira",
-                    schedulePreset: "30_60_90",
-                    customInstallmentCount: "3",
-                    customIntervalDays: "30",
-                    bulkClientTarget: "",
-                }));
+            toast.success(
+                `+${newlyAddedNotes.length} nota somada (NF #${newlyAddedNotes
+                    .map((n) => n.invoiceNumber)
+                    .join(", #")})! Total somado: ${formatCurrency(
+                    merged.totalAmount
+                )} — Boletos recalculados!`
+            );
+        } catch (err) {
+            console.error("Erro ao somar XML:", err);
+            toast.error("Não foi possível somar o arquivo XML.");
+        } finally {
+            if (appendXmlInputRef.current) appendXmlInputRef.current.value = "";
+        }
+    };
 
-                setParsedXml({
-                    accessKey,
-                    invoiceNumber: invoiceNumber || String(Math.floor(1000 + Math.random() * 9000)),
-                    series,
-                    issueDate,
-                    emitterName,
-                    emitterFantasyName,
-                    emitterCnpj,
-                    recipientName,
-                    recipientDoc,
-                    productsTotal: productsTotal || finalTotalAmount,
-                    freightAmount,
-                    discountAmount,
-                    otherAmount,
-                    totalAmount: finalTotalAmount,
-                    items,
-                    duplicates,
-                });
-                setIsXmlDialogOpen(true);
-            } catch (err) {
-                console.error("Erro ao ler XML:", err);
-                toast.error("Não foi possível interpretar o arquivo XML.");
-            } finally {
-                if (xmlInputRef.current) xmlInputRef.current.value = "";
-            }
+    const handleRemoveSourceNote = (noteId: string) => {
+        if (!parsedXml || parsedXml.sourceNotes.length <= 1) return;
+        const remainingNotes = parsedXml.sourceNotes.filter((n) => n.id !== noteId);
+        const remainingItems = parsedXml.items.filter((it) => it.sourceNoteId !== noteId);
+
+        const totalAmount = Number(
+            remainingNotes.reduce((acc, n) => acc + Number(n.totalAmount || 0), 0).toFixed(2)
+        );
+        const productsTotal = Number(
+            remainingNotes.reduce((acc, n) => acc + Number(n.productsTotal || 0), 0).toFixed(2)
+        );
+        const freightAmount = Number(
+            remainingNotes.reduce((acc, n) => acc + Number(n.freightAmount || 0), 0).toFixed(2)
+        );
+        const discountAmount = Number(
+            remainingNotes.reduce((acc, n) => acc + Number(n.discountAmount || 0), 0).toFixed(2)
+        );
+        const otherAmount = Number(
+            remainingNotes.reduce((acc, n) => acc + Number(n.otherAmount || 0), 0).toFixed(2)
+        );
+
+        const updatedParsed: ParsedXmlData = {
+            ...parsedXml,
+            accessKey: remainingNotes.map((n) => n.accessKey).filter(Boolean).join(" | "),
+            invoiceNumber: remainingNotes.map((n) => n.invoiceNumber).join(" + "),
+            productsTotal,
+            freightAmount,
+            discountAmount,
+            otherAmount,
+            totalAmount,
+            items: remainingItems,
+            sourceNotes: remainingNotes,
         };
-        reader.readAsText(file);
+
+        setParsedXml(updatedParsed);
+        setXmlItemSplits((prev) => {
+            const next: Record<string, XmlItemClientSplit[]> = {};
+            remainingItems.forEach((it) => {
+                if (prev[it.id]) next[it.id] = prev[it.id];
+            });
+            return next;
+        });
+
+        const count = Math.max(1, xmlInstallments.length);
+        const basePart = Number((totalAmount / count).toFixed(2));
+        setXmlInstallments((prev) =>
+            prev.map((inst, idx) => ({
+                ...inst,
+                amount: (idx === count - 1
+                    ? Number((totalAmount - basePart * (count - 1)).toFixed(2))
+                    : basePart
+                ).toFixed(2),
+            }))
+        );
+    };
+
+    const handleUseNoteDateAsBase = (newIssueDate: string) => {
+        if (!parsedXml || !newIssueDate) return;
+        setParsedXml((prev) => (prev ? { ...prev, issueDate: newIssueDate } : prev));
+        const updatedInst = buildInstallmentsFromPreset(
+            newIssueDate,
+            parsedXml.totalAmount,
+            xmlOptions.schedulePreset,
+            xmlOptions.paymentMethod,
+            parsedXml.duplicates,
+            parseInt(xmlOptions.customInstallmentCount, 10) || xmlInstallments.length || 3,
+            parseInt(xmlOptions.customIntervalDays, 10) || 30
+        );
+        setXmlInstallments(updatedInst);
+        toast.info(
+            `Datas dos boletos recalculadas a partir de ${format(
+                new Date(newIssueDate + "T12:00:00"),
+                "dd/MM/yyyy"
+            )}!`
+        );
     };
 
     const handleConfirmXmlImport = async () => {
@@ -1579,7 +1879,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 const proceed = window.confirm(
                     `A soma das parcelas/boletos (${formatCurrency(
                         xmlInstallmentsTotal
-                    )}) está diferente do valor total da nota (${formatCurrency(
+                    )}) está diferente do valor total das notas (${formatCurrency(
                         parsedXml.totalAmount
                     )}). Deseja continuar mesmo assim?`
                 );
@@ -1594,34 +1894,72 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     ? parsedXml.emitterName
                     : parsedXml.recipientName || "Cliente NF-e";
 
-            const summaryItems = parsedXml.items
-                .slice(0, 3)
-                .map((i) => `${i.quantity}x ${i.name}`)
-                .join(", ");
-
             const clientNamesInNote = xmlClientAllocationSummary.groups
                 .map((g) => (g.client === "ESTOQUE" ? "Estoque Geral" : g.client))
                 .join(" | ");
 
-            const newInvoice = {
-                issue_date: parsedXml.issueDate,
-                client_name: partyName,
-                description: `[XML ${xmlOptions.direction.toUpperCase()}] ${summaryItems}${
-                    parsedXml.items.length > 3 ? ` (+${parsedXml.items.length - 3} itens)` : ""
-                }${clientNamesInNote ? ` | Clientes: ${clientNamesInNote}` : ""}${
-                    parsedXml.accessKey ? ` | Chave: ${parsedXml.accessKey}` : ""
-                }`,
-                amount: parsedXml.totalAmount,
-                status: "Autorizada" as const,
-                invoice_number: parsedXml.invoiceNumber,
-                type: "NF-e" as const,
-            };
+            const notesToRegister =
+                parsedXml.sourceNotes && parsedXml.sourceNotes.length > 0
+                    ? parsedXml.sourceNotes
+                    : [
+                          {
+                              id: "single",
+                              invoiceNumber: parsedXml.invoiceNumber,
+                              series: parsedXml.series,
+                              issueDate: parsedXml.issueDate,
+                              emitterName: parsedXml.emitterName,
+                              emitterFantasyName: parsedXml.emitterFantasyName,
+                              emitterCnpj: parsedXml.emitterCnpj,
+                              recipientName: parsedXml.recipientName,
+                              recipientDoc: parsedXml.recipientDoc,
+                              accessKey: parsedXml.accessKey,
+                              productsTotal: parsedXml.productsTotal,
+                              freightAmount: parsedXml.freightAmount,
+                              discountAmount: parsedXml.discountAmount,
+                              otherAmount: parsedXml.otherAmount,
+                              totalAmount: parsedXml.totalAmount,
+                              itemsCount: parsedXml.items.length,
+                          },
+                      ];
 
-            const { data: insertedInvoice, error: invErr } = await supabase
+            // Salva cada Nota Fiscal XML individualmente no histórico da tabela invoices
+            const newInvoicesPayload = notesToRegister.map((sn) => {
+                const noteItems = parsedXml.items.filter(
+                    (i) => !i.sourceNoteId || i.sourceNoteId === sn.id
+                );
+                const noteSummaryItems = (noteItems.length > 0 ? noteItems : parsedXml.items)
+                    .slice(0, 3)
+                    .map((i) => `${i.quantity}x ${i.name}`)
+                    .join(", ");
+                const totalItemsHere =
+                    noteItems.length > 0 ? noteItems.length : parsedXml.items.length;
+
+                return {
+                    issue_date: sn.issueDate || parsedXml.issueDate,
+                    client_name:
+                        xmlOptions.direction === "entrada"
+                            ? sn.emitterName || partyName
+                            : sn.recipientName || partyName,
+                    description: `[XML ${xmlOptions.direction.toUpperCase()}${
+                        notesToRegister.length > 1
+                            ? ` • SOMADA COM ${notesToRegister.length} NOTAS`
+                            : ""
+                    }] ${noteSummaryItems}${
+                        totalItemsHere > 3 ? ` (+${totalItemsHere - 3} itens)` : ""
+                    }${clientNamesInNote ? ` | Clientes: ${clientNamesInNote}` : ""}${
+                        sn.accessKey ? ` | Chave: ${sn.accessKey}` : ""
+                    }`,
+                    amount: sn.totalAmount,
+                    status: "Autorizada" as const,
+                    invoice_number: sn.invoiceNumber,
+                    type: "NF-e" as const,
+                };
+            });
+
+            const { data: insertedInvoices, error: invErr } = await supabase
                 .from("invoices")
-                .insert([newInvoice])
-                .select()
-                .single();
+                .insert(newInvoicesPayload)
+                .select();
 
             if (invErr) throw invErr;
 
@@ -1658,12 +1996,11 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 }
             }
 
-            // 2. Se marcou lançar no Financeiro (Boletos 30/60/90, Cartão ou À Vista + Rateio por Cliente/Item)
+            // 2. Se marcou lançar no Financeiro (Boletos 30/60/90 somados, Cartão ou À Vista + Rateio por Cliente/Item)
             if (xmlOptions.createExpenseTransaction && xmlInstallments.length > 0) {
                 const totalInst = xmlInstallments.length;
                 const groups = xmlClientAllocationSummary.groups;
 
-                // Se 100% da nota foi destinada a 1 única OS, preenche order_service e service direto na transação também
                 let singleOsTicket: string | null = null;
                 let singleServiceLabel: string | null = null;
                 if (groups.length === 1 && groups[0].client !== "ESTOQUE") {
@@ -1684,12 +2021,17 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                               .join(" / ")}]`
                         : "";
 
+                const nfLabel =
+                    notesToRegister.length > 1
+                        ? `NFs #${notesToRegister.map((n) => n.invoiceNumber).join(" + #")}`
+                        : `NF #${parsedXml.invoiceNumber}`;
+
                 const supplierFriendlyTitle =
                     xmlOptions.supplierPreset === "ced"
-                        ? `Compra de material na C&D (NF #${parsedXml.invoiceNumber})`
+                        ? `Compra de material na C&D (${nfLabel})`
                         : xmlOptions.supplierPreset === "bruta"
-                        ? `Compra de material na Bruta (NF #${parsedXml.invoiceNumber})`
-                        : `NF-e #${parsedXml.invoiceNumber} - ${partyName}`;
+                        ? `Compra de material na Bruta (${nfLabel})`
+                        : `${nfLabel} - ${partyName}`;
 
                 const supplierContactName =
                     xmlOptions.supplierPreset === "ced" &&
@@ -1741,7 +2083,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
 
                 if (txErr) throw txErr;
 
-                // 3. Salva o rateio detalhado de cada item para cada cliente em transaction_allocations
+                // 3. Salva o rateio detalhado de cada item (de todas as notas somadas) para cada cliente
                 if (insertedTxs && insertedTxs.length > 0 && groups.length > 0) {
                     const totalLaunched = insertedTxs.reduce(
                         (acc: number, t: any) => acc + Number(t.amount || 0),
@@ -1752,7 +2094,6 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                         0
                     );
 
-                    // Ajusta o total de cada cliente caso o usuário tenha editado o valor total das parcelas
                     const targetClientTotals = groups.map((g, k) => {
                         if (totalClientsEffective <= 0) return 0;
                         if (k === groups.length - 1) {
@@ -1828,8 +2169,8 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 }
             }
 
-            if (insertedInvoice) {
-                setInvoices((prev) => [insertedInvoice, ...prev]);
+            if (insertedInvoices && insertedInvoices.length > 0) {
+                setInvoices((prev) => [...insertedInvoices, ...prev]);
             } else {
                 await fetchInvoices();
             }
@@ -1839,9 +2180,13 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
             }
 
             toast.success(
-                `NF-e #${parsedXml.invoiceNumber} importada! ${
+                `${
+                    notesToRegister.length > 1
+                        ? `${notesToRegister.length} Notas (${parsedXml.invoiceNumber}) somadas e importadas!`
+                        : `NF-e #${parsedXml.invoiceNumber} importada!`
+                } ${
                     xmlOptions.createExpenseTransaction
-                        ? `${xmlInstallments.length} lançamento(s) (${xmlOptions.paymentMethod}) e rateio de ${xmlClientAllocationSummary.groups.length} cliente(s)/destino(s) criados no Financeiro!`
+                        ? `${xmlInstallments.length} lançamento(s) (${xmlOptions.paymentMethod}) e rateio de ${xmlClientAllocationSummary.groups.length} cliente(s) criados no Financeiro!`
                         : ""
                 }`
             );
@@ -2426,13 +2771,22 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Hidden file input for XML import */}
+            {/* Hidden file inputs for XML import (suporta selecionar 1 ou várias notas XML somadas!) */}
             <input
                 ref={xmlInputRef}
                 type="file"
+                multiple
                 accept=".xml,text/xml"
                 className="hidden"
                 onChange={handleXmlFileChange}
+            />
+            <input
+                ref={appendXmlInputRef}
+                type="file"
+                multiple
+                accept=".xml,text/xml"
+                className="hidden"
+                onChange={handleAppendXmlFiles}
             />
 
             {/* BENTO TELEMETRY HEADER */}
@@ -3199,6 +3553,96 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                                 </div>
                             </div>
 
+                            {/* BARRA PARA SOMAR 2 OU MAIS NOTAS XML NOS MESMOS BOLETOS 3x */}
+                            <div className="p-3.5 rounded-2xl bg-sky-500/10 border border-sky-500/30 space-y-2.5">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                    <div>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-sky-400 flex items-center gap-1.5">
+                                            <Layers className="h-3.5 w-3.5" />
+                                            {parsedXml.sourceNotes.length > 1
+                                                ? `${parsedXml.sourceNotes.length} Notas Fiscais Somadas nos mesmos Boletos!`
+                                                : "Veio 2 Notas (ou mais) com os Boletos somados em 3x?"}
+                                        </span>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            {parsedXml.sourceNotes.length > 1
+                                                ? "O valor das notas abaixo já foi somado e dividido automaticamente nas parcelas/boletos."
+                                                : "Puxe o 2º arquivo XML aqui para somar o valor das duas notas e dividir tudo nos mesmos 3 boletos."}
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => appendXmlInputRef.current?.click()}
+                                        className="h-9 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-black uppercase tracking-wider text-[11px] px-4 shrink-0 shadow-lg shadow-sky-500/20"
+                                    >
+                                        <Plus className="h-4 w-4 mr-1.5" />
+                                        Somar +1 Nota (XML)
+                                    </Button>
+                                </div>
+
+                                {parsedXml.sourceNotes.length > 1 && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                                        {parsedXml.sourceNotes.map((sn, snIdx) => (
+                                            <div
+                                                key={sn.id}
+                                                className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/50 border border-sky-500/25"
+                                            >
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-tech text-[10px] font-black">
+                                                            Nota {snIdx + 1} • NF #{sn.invoiceNumber}
+                                                        </span>
+                                                        <span className="text-[10px] text-muted-foreground font-tech">
+                                                            ({sn.itemsCount} itens)
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-[11px] font-tech text-muted-foreground mt-0.5 flex items-center gap-2">
+                                                        <span>
+                                                            Emissão:{" "}
+                                                            <strong className="text-foreground">
+                                                                {format(
+                                                                    new Date(sn.issueDate + "T12:00:00"),
+                                                                    "dd/MM/yyyy"
+                                                                )}
+                                                            </strong>
+                                                        </span>
+                                                        <span>•</span>
+                                                        <strong className="text-primary">
+                                                            {formatCurrency(sn.totalAmount)}
+                                                        </strong>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleUseNoteDateAsBase(sn.issueDate)}
+                                                        className={cn(
+                                                            "px-2 py-1 rounded-lg text-[10px] font-bold border transition-all",
+                                                            parsedXml.issueDate === sn.issueDate
+                                                                ? "bg-amber-500/20 border-amber-400/50 text-amber-300"
+                                                                : "bg-white/[0.04] border-white/10 text-muted-foreground hover:text-foreground"
+                                                        )}
+                                                        title="Usar a data desta nota como base do 30/60/90"
+                                                    >
+                                                        {parsedXml.issueDate === sn.issueDate
+                                                            ? "✓ Data Base"
+                                                            : "Usar Data"}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveSourceNote(sn.id)}
+                                                        className="p-1 rounded-lg text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
+                                                        title="Remover esta nota da soma"
+                                                    >
+                                                        <X className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                             {/* CABEÇALHO RESUMO DA NOTA */}
                             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
                                 <div className="sm:col-span-2">
@@ -3209,12 +3653,15 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                                         {parsedXml.emitterName}
                                     </span>
                                     <span className="text-[10px] font-tech text-muted-foreground">
-                                        CNPJ/CPF: {parsedXml.emitterCnpj || "Não informado"} • Série {parsedXml.series}
+                                        CNPJ/CPF: {parsedXml.emitterCnpj || "Não informado"} •{" "}
+                                        {parsedXml.sourceNotes.length > 1
+                                            ? `NFs #${parsedXml.invoiceNumber}`
+                                            : `Série ${parsedXml.series}`}
                                     </span>
                                 </div>
                                 <div>
                                     <span className="text-[9px] font-black uppercase tracking-widest text-amber-400 block mb-1">
-                                        Data de Emissão da Nota
+                                        Data Base (30 / 60 / 90)
                                     </span>
                                     <Input
                                         type="date"
@@ -3242,7 +3689,9 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                                 </div>
                                 <div>
                                     <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">
-                                        Valor Total da Nota
+                                        {parsedXml.sourceNotes.length > 1
+                                            ? `Total Somado (${parsedXml.sourceNotes.length} Notas)`
+                                            : "Valor Total da Nota"}
                                     </span>
                                     <span className="text-lg font-tech font-black text-primary block">
                                         {formatCurrency(parsedXml.totalAmount)}
@@ -3391,6 +3840,11 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                                                     <div className="min-w-0 flex-1">
                                                         <div className="flex items-center gap-2 flex-wrap">
+                                                            {parsedXml.sourceNotes.length > 1 && item.invoiceNumber && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-tech text-[9px] font-black">
+                                                                    NF #{item.invoiceNumber}
+                                                                </span>
+                                                            )}
                                                             <span className="px-1.5 py-0.5 rounded bg-primary/15 text-primary font-tech text-[10px] font-bold">
                                                                 #{item.code}
                                                             </span>
