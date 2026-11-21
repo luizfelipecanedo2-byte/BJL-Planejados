@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { ServiceOrder, ServiceStatus } from "@/types/serviceOrder";
+import { useState, useMemo } from "react";
+import { ServiceOrder, ServiceStatus, DEFAULT_OS_STAGES, OS_STAGE_COLORS, OSStageConfig } from "@/types/serviceOrder";
 import { Card, CardContent } from "@/components/ui/card";
-import { Phone, Calendar, ClipboardList, MessageSquare, Camera, Ruler, MapPin, Navigation, Trash2 } from "lucide-react";
+import { Phone, Calendar, ClipboardList, MessageSquare, Camera, Ruler, MapPin, Navigation, Trash2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WhatsAppQuickDialog } from "./WhatsAppQuickDialog";
 
@@ -12,56 +12,50 @@ interface OSKanbanBoardProps {
   onDelete?: (id: string) => void;
   onOpenGallery?: (order: ServiceOrder) => void;
   isAdmin?: boolean;
+  stages?: OSStageConfig[];
+  getStageBorderClass?: (status: ServiceStatus) => string;
+  getStageBgClass?: (status: ServiceStatus) => string;
+  onOpenManageStages?: () => void;
 }
 
-const statusOrder: ServiceStatus[] = [
-  "A Definir",
-  "Plano de corte",
-  "Pronto para produção",
-  "Corte da caixa",
-  "Fita",
-  "Montagem das caixas",
-  "Corte das portas + Tamponados",
-  "Colocação dos tamponados",
-  "Embalagem",
-  "Pronto para entrega",
-  "Instalação",
-  "Entregue e Finalizado"
-];
-
-const columnColors: Record<ServiceStatus, string> = {
-  "A Definir": "border-t-slate-500",
-  "Plano de corte": "border-t-slate-600",
-  "Pronto para produção": "border-t-blue-500",
-  "Corte da caixa": "border-t-orange-500",
-  "Fita": "border-t-amber-500",
-  "Montagem das caixas": "border-t-yellow-600",
-  "Corte das portas + Tamponados": "border-t-indigo-500",
-  "Colocação dos tamponados": "border-t-purple-500",
-  "Embalagem": "border-t-pink-500",
-  "Pronto para entrega": "border-t-cyan-500",
-  "Instalação": "border-t-emerald-400",
-  "Entregue e Finalizado": "border-t-emerald-600",
-};
-
-const dotColors: Record<ServiceStatus, string> = {
-  "A Definir": "bg-slate-500",
-  "Plano de corte": "bg-slate-600",
-  "Pronto para produção": "bg-blue-500",
-  "Corte da caixa": "bg-orange-500",
-  "Fita": "bg-amber-500",
-  "Montagem das caixas": "bg-yellow-600",
-  "Corte das portas + Tamponados": "bg-indigo-500",
-  "Colocação dos tamponados": "bg-purple-500",
-  "Embalagem": "bg-pink-500",
-  "Pronto para entrega": "bg-cyan-500",
-  "Instalação": "bg-emerald-400",
-  "Entregue e Finalizado": "bg-emerald-600",
-};
-
-const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onDelete, onOpenGallery, isAdmin = true }: OSKanbanBoardProps) => {
+const OSKanbanBoard = ({
+  orders,
+  onStatusChange,
+  onEdit,
+  onDelete,
+  onOpenGallery,
+  isAdmin = true,
+  stages,
+  getStageBorderClass,
+  getStageBgClass,
+  onOpenManageStages,
+}: OSKanbanBoardProps) => {
   const [whatsAppOrder, setWhatsAppOrder] = useState<ServiceOrder | null>(null);
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
+
+  const activeStages = useMemo(() => {
+    const base: OSStageConfig[] = stages && stages.length > 0 ? [...stages] : [...DEFAULT_OS_STAGES];
+    for (const order of orders) {
+      if (!order.status) continue;
+      const exists = base.some((s) => s.name.toLowerCase() === order.status.toLowerCase());
+      if (!exists) {
+        const finishedIdx = base.findIndex((s) => s.name === "Entregue e Finalizado");
+        const insertPos = finishedIdx !== -1 ? finishedIdx : base.length;
+        base.splice(insertPos, 0, { name: order.status, color: "violet", isDefault: false });
+      }
+    }
+    return base;
+  }, [stages, orders]);
+
+  const resolveBorderClass = (stage: OSStageConfig) => {
+    if (getStageBorderClass) return getStageBorderClass(stage.name);
+    return OS_STAGE_COLORS[stage.color]?.borderTop || "border-t-teal-500";
+  };
+
+  const resolveDotClass = (stage: OSStageConfig) => {
+    if (getStageBgClass) return getStageBgClass(stage.name);
+    return OS_STAGE_COLORS[stage.color]?.bg || "bg-teal-500";
+  };
 
   const handleDragStart = (e: React.DragEvent, orderId: string) => {
     e.dataTransfer.setData("orderId", orderId);
@@ -85,8 +79,9 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onDelete, onOpenGallery
 
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 animate-fade-in custom-scrollbar">
-      {statusOrder.map((status) => {
-        const columnOrders = orders.filter((o) => o.status === status);
+      {activeStages.map((stage) => {
+        const status = stage.name;
+        const columnOrders = orders.filter((o) => (o.status || "").toLowerCase() === status.toLowerCase());
         const totalValue = columnOrders.reduce(
           (sum, o) => sum + (o.amount || 0),
           0
@@ -96,8 +91,8 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onDelete, onOpenGallery
           <div
             key={status}
             className={cn(
-              "flex-shrink-0 w-72 bg-white/5 backdrop-blur-xl rounded-[2rem] border border-white/10 flex flex-col h-[calc(100vh-320px)] shadow-2xl relative overflow-hidden group/column",
-              columnColors[status]
+              "flex-shrink-0 w-72 bg-white/5 backdrop-blur-xl rounded-[2rem] border border-white/10 border-t-4 flex flex-col h-[calc(100vh-320px)] shadow-2xl relative overflow-hidden group/column",
+              resolveBorderClass(stage)
             )}
             onDrop={(e) => handleDrop(e, status)}
             onDragOver={handleDragOver}
@@ -106,11 +101,16 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onDelete, onOpenGallery
             
             <div className="p-4 border-b border-white/5 relative z-10">
               <div className="flex items-center gap-2 mb-2">
-                <div className={cn("w-2.5 h-2.5 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]", dotColors[status])} />
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-white/90 truncate max-w-[160px]" title={status}>
+                <div className={cn("w-2.5 h-2.5 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)] shrink-0", resolveDotClass(stage))} />
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-white/90 truncate max-w-[140px]" title={status}>
                   {status}
                 </h3>
-                <span className="ml-auto text-[10px] bg-white/10 text-white/60 rounded-full px-2.5 py-0.5 font-black">
+                {!stage.isDefault && (
+                  <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 shrink-0">
+                    Extra
+                  </span>
+                )}
+                <span className="ml-auto text-[10px] bg-white/10 text-white/60 rounded-full px-2.5 py-0.5 font-black shrink-0">
                   {columnOrders.length}
                 </span>
               </div>
@@ -293,6 +293,26 @@ const OSKanbanBoard = ({ orders, onStatusChange, onEdit, onDelete, onOpenGallery
           </div>
         );
       })}
+
+      {onOpenManageStages && (
+        <button
+          type="button"
+          onClick={onOpenManageStages}
+          className="flex-shrink-0 w-60 h-[calc(100vh-320px)] rounded-[2rem] border-2 border-dashed border-white/15 hover:border-primary/50 bg-white/[0.02] hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-3 p-6 text-center group"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/30 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Plus className="h-6 w-6" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-black uppercase tracking-widest text-white group-hover:text-primary transition-colors">
+              Nova Etapa
+            </p>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Mantenha as etapas padrão e adicione novas colunas quando precisar
+            </p>
+          </div>
+        </button>
+      )}
 
       <WhatsAppQuickDialog
         open={isWhatsAppOpen}

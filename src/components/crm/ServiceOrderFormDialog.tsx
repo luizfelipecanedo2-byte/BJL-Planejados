@@ -3,7 +3,7 @@ import { Check, ChevronsUpDown, File, Upload, X, ExternalLink, Loader2, Clipboar
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { Client } from "@/types/client";
-import { ServiceOrder, ServiceType, ServiceStatus, parseOSAttachment, serializeOSAttachment, OSAttachmentItem } from "@/types/serviceOrder";
+import { ServiceOrder, ServiceType, ServiceStatus, DEFAULT_OS_STAGES, OS_STAGE_COLORS, CUSTOM_STAGE_COLOR_OPTIONS, OSStageConfig, OSStageColorKey, parseOSAttachment, serializeOSAttachment, OSAttachmentItem } from "@/types/serviceOrder";
 import { toast } from "sonner";
 import {
     Dialog,
@@ -49,6 +49,12 @@ interface ServiceOrderFormDialogProps {
     onUpdate?: (id: string, updates: Partial<ServiceOrder>) => void;
     editingOrder?: ServiceOrder | null;
     isAdmin?: boolean;
+    stages?: OSStageConfig[];
+    onAddStage?: (
+        name: string,
+        color: OSStageColorKey,
+        insertAfter?: string
+    ) => Promise<string | null>;
 }
 
 const ServiceOrderFormDialog = ({
@@ -58,6 +64,8 @@ const ServiceOrderFormDialog = ({
     onUpdate,
     editingOrder,
     isAdmin = true,
+    stages,
+    onAddStage,
 }: ServiceOrderFormDialogProps) => {
     const [form, setForm] = useState({
         ticketNumber: "",
@@ -81,6 +89,47 @@ const ServiceOrderFormDialog = ({
     const [clients, setClients] = useState<Client[]>([]);
     const [openClientSelect, setOpenClientSelect] = useState(false);
     const [profiles, setProfiles] = useState<any[]>([]);
+    const [showInlineNewStage, setShowInlineNewStage] = useState(false);
+    const [inlineStageName, setInlineStageName] = useState("");
+    const [inlineStageColor, setInlineStageColor] = useState<OSStageColorKey>("teal");
+    const [inlineStageAfter, setInlineStageAfter] = useState<string>("Pronto para entrega");
+    const [isCreatingStage, setIsCreatingStage] = useState(false);
+
+    const availableStages: OSStageConfig[] = (() => {
+        const base = stages && stages.length > 0 ? [...stages] : [...DEFAULT_OS_STAGES];
+        if (
+            form.status &&
+            !base.some((s) => s.name.toLowerCase() === form.status.toLowerCase())
+        ) {
+            const finishedIdx = base.findIndex((s) => s.name === "Entregue e Finalizado");
+            const insertPos = finishedIdx !== -1 ? finishedIdx : base.length;
+            base.splice(insertPos, 0, {
+                name: form.status,
+                color: "violet",
+                isDefault: false,
+            });
+        }
+        return base;
+    })();
+
+    const handleCreateInlineStage = async () => {
+        if (!onAddStage || !inlineStageName.trim() || isCreatingStage) return;
+        setIsCreatingStage(true);
+        try {
+            const created = await onAddStage(
+                inlineStageName,
+                inlineStageColor,
+                inlineStageAfter
+            );
+            if (created) {
+                handleDateChange("status", created);
+                setInlineStageName("");
+                setShowInlineNewStage(false);
+            }
+        } finally {
+            setIsCreatingStage(false);
+        }
+    };
 
     useEffect(() => {
         const fetchProfiles = async () => {
@@ -194,6 +243,8 @@ const ServiceOrderFormDialog = ({
         };
 
         if (open) {
+            setShowInlineNewStage(false);
+            setInlineStageName("");
             initializeForm();
         }
     }, [editingOrder, open]);
@@ -504,29 +555,161 @@ const ServiceOrderFormDialog = ({
                                     </Select>
                                 </div>
                                 <div>
-                                    <Label htmlFor="status">Status</Label>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <Label htmlFor="status">Status / Etapa</Label>
+                                        {onAddStage && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowInlineNewStage((prev) => !prev)}
+                                                className="text-[11px] font-bold text-primary hover:underline flex items-center gap-0.5"
+                                            >
+                                                <Plus className="h-3 w-3" />
+                                                {showInlineNewStage ? "Fechar" : "Nova etapa"}
+                                            </button>
+                                        )}
+                                    </div>
                                     <Select
                                         value={form.status}
-                                        onValueChange={(v) => handleDateChange("status", v as ServiceStatus)}
+                                        onValueChange={(v) => {
+                                            if (v === "__add_new_stage__") {
+                                                setShowInlineNewStage(true);
+                                                return;
+                                            }
+                                            handleDateChange("status", v as ServiceStatus);
+                                        }}
                                     >
                                         <SelectTrigger>
-                                            <SelectValue />
+                                            <SelectValue>{form.status}</SelectValue>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Plano de corte">Plano de corte</SelectItem>
-                                            <SelectItem value="Pronto para produção">Pronto para produção</SelectItem>
-                                            <SelectItem value="Corte da caixa">Corte da caixa</SelectItem>
-                                            <SelectItem value="Fita">Fita</SelectItem>
-                                            <SelectItem value="Montagem das caixas">Montagem das caixas</SelectItem>
-                                            <SelectItem value="Corte das portas + Tamponados">Corte das portas + Tamponados</SelectItem>
-                                            <SelectItem value="Colocação dos tamponados">Colocação dos tamponados</SelectItem>
-                                            <SelectItem value="Embalagem">Embalagem</SelectItem>
-                                            <SelectItem value="Pronto para entrega">Pronto para entrega</SelectItem>
-                                            <SelectItem value="Instalação">Instalação</SelectItem>
-                                            <SelectItem value="Entregue e Finalizado">Entregue e Finalizado</SelectItem>
+                                            {availableStages.map((stage) => {
+                                                const dotBg = OS_STAGE_COLORS[stage.color]?.bg || "bg-teal-500";
+                                                return (
+                                                    <SelectItem key={stage.name} value={stage.name}>
+                                                        <span className="inline-flex items-center gap-2">
+                                                            <span className={cn("w-2 h-2 rounded-full inline-block shrink-0", dotBg)} />
+                                                            <span>{stage.name}</span>
+                                                            {!stage.isDefault && (
+                                                                <span className="text-[9px] uppercase font-bold text-primary ml-1">
+                                                                    (Extra)
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    </SelectItem>
+                                                );
+                                            })}
+                                            {onAddStage && (
+                                                <SelectItem
+                                                    value="__add_new_stage__"
+                                                    className="text-primary font-bold border-t border-white/10 mt-1"
+                                                >
+                                                    + Adicionar nova etapa...
+                                                </SelectItem>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                {showInlineNewStage && onAddStage && (
+                                    <div className="col-span-2 p-3 rounded-xl bg-primary/5 border border-primary/25 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[11px] font-black uppercase tracking-wider text-primary flex items-center gap-1">
+                                                <Plus className="h-3.5 w-3.5" />
+                                                Criar Nova Etapa Personalizada
+                                            </span>
+                                            <span className="text-[10px] text-muted-foreground">
+                                                As etapas padrão continuam intactas
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                            <div>
+                                                <Label className="text-[10px] uppercase font-bold text-muted-foreground">
+                                                    Nome da nova etapa
+                                                </Label>
+                                                <Input
+                                                    value={inlineStageName}
+                                                    onChange={(e) => setInlineStageName(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") {
+                                                            e.preventDefault();
+                                                            handleCreateInlineStage();
+                                                        }
+                                                    }}
+                                                    placeholder="Ex: Vidraçaria, Pintura / Laca..."
+                                                    maxLength={60}
+                                                    className="h-8 text-xs mt-1"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label className="text-[10px] uppercase font-bold text-muted-foreground">
+                                                    Inserir depois de
+                                                </Label>
+                                                <Select
+                                                    value={inlineStageAfter}
+                                                    onValueChange={setInlineStageAfter}
+                                                >
+                                                    <SelectTrigger className="h-8 text-xs mt-1">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {availableStages
+                                                            .filter((s) => s.name !== "Entregue e Finalizado")
+                                                            .map((s) => (
+                                                                <SelectItem key={s.name} value={s.name}>
+                                                                    Após: {s.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-[10px] font-bold uppercase text-muted-foreground mr-1">
+                                                    Cor:
+                                                </span>
+                                                {CUSTOM_STAGE_COLOR_OPTIONS.map((colorKey) => {
+                                                    const spec = OS_STAGE_COLORS[colorKey];
+                                                    return (
+                                                        <button
+                                                            key={colorKey}
+                                                            type="button"
+                                                            title={spec.label}
+                                                            onClick={() => setInlineStageColor(colorKey)}
+                                                            className={cn(
+                                                                "w-5 h-5 rounded-full border-2 transition-all",
+                                                                spec.bg,
+                                                                inlineStageColor === colorKey
+                                                                    ? "border-white scale-110 ring-1 ring-primary"
+                                                                    : "border-transparent opacity-70 hover:opacity-100"
+                                                            )}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 ml-auto">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setShowInlineNewStage(false)}
+                                                    className="h-7 text-xs px-2.5"
+                                                >
+                                                    Cancelar
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    disabled={!inlineStageName.trim() || isCreatingStage}
+                                                    onClick={handleCreateInlineStage}
+                                                    className="h-7 text-xs px-3 font-bold gap-1"
+                                                >
+                                                    <Plus className="h-3.5 w-3.5" />
+                                                    Criar e Selecionar
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="col-span-2">
                                     <Label htmlFor="action">Ação</Label>
                                     <Input

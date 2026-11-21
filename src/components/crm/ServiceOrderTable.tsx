@@ -1,5 +1,5 @@
 
-import { ServiceOrder } from "@/types/serviceOrder";
+import { ServiceOrder, ServiceStatus } from "@/types/serviceOrder";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -23,9 +23,10 @@ interface ServiceOrderTableProps {
     onDelete: (id: string) => void;
     isAdmin?: boolean;
     onOpenGallery?: (order: ServiceOrder) => void;
+    getStatusColor?: (status: ServiceStatus) => string;
 }
 
-const ServiceOrderTable = ({ orders, onEdit, onDelete, isAdmin = false, onOpenGallery }: ServiceOrderTableProps) => {
+const ServiceOrderTable = ({ orders, onEdit, onDelete, isAdmin = false, onOpenGallery, getStatusColor }: ServiceOrderTableProps) => {
     const getStatusDisplay = (order: ServiceOrder) => {
         if (order.status === "Entregue e Finalizado") {
             return <Badge variant="secondary" className="bg-emerald-500 text-white hover:bg-emerald-600">Entregue e Finalizado</Badge>;
@@ -34,7 +35,7 @@ const ServiceOrderTable = ({ orders, onEdit, onDelete, isAdmin = false, onOpenGa
         const daysOpen = differenceInDays(new Date(), new Date(order.openDate));
         return (
             <div className="flex flex-col gap-1">
-                <Badge className="bg-amber-500 hover:bg-amber-600 whitespace-nowrap">
+                <Badge className={cn(getStatusColor ? getStatusColor(order.status) : "bg-amber-500 hover:bg-amber-600", "text-white whitespace-nowrap")}>
                     {order.status}
                 </Badge>
                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">

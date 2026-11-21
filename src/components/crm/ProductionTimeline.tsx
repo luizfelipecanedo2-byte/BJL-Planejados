@@ -20,9 +20,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 interface ProductionTimelineProps {
     orders: ServiceOrder[];
     onEdit: (order: ServiceOrder) => void;
+    getStatusColor?: (status: ServiceStatus) => string;
 }
 
-const ProductionTimeline = ({ orders, onEdit }: ProductionTimelineProps) => {
+const ProductionTimeline = ({ orders, onEdit, getStatusColor: customGetStatusColor }: ProductionTimelineProps) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     
     // Configurações do Timeline
@@ -39,8 +40,9 @@ const ProductionTimeline = ({ orders, onEdit }: ProductionTimelineProps) => {
     }, [orders]);
 
     const getStatusColor = (status: ServiceStatus) => {
+        if (customGetStatusColor) return customGetStatusColor(status);
         switch (status) {
-            case "Plano de corte": return "bg-slate-500";
+            case "Plano de corte": return "bg-slate-600";
             case "Pronto para produção": return "bg-blue-500";
             case "Corte da caixa": return "bg-orange-500";
             case "Fita": return "bg-amber-500";
@@ -50,7 +52,7 @@ const ProductionTimeline = ({ orders, onEdit }: ProductionTimelineProps) => {
             case "Embalagem": return "bg-pink-500";
             case "Pronto para entrega": return "bg-cyan-500";
             case "Instalação": return "bg-emerald-400";
-            default: return "bg-slate-400";
+            default: return "bg-teal-500";
         }
     };
 

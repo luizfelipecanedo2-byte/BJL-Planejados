@@ -2,13 +2,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import ServiceOrderTable from "@/components/crm/ServiceOrderTable";
 import ServiceOrderFormDialog from "@/components/crm/ServiceOrderFormDialog";
-import { ServiceOrder, ServiceStatus } from "@/types/serviceOrder";
+import { ServiceOrder, ServiceStatus, OSStageConfig, OS_STAGE_COLORS } from "@/types/serviceOrder";
 import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import ProductionTimeline from "@/components/crm/ProductionTimeline";
 import OSKanbanBoard from "@/components/crm/OSKanbanBoard";
+import ManageOSStagesDialog from "@/components/crm/ManageOSStagesDialog";
+import { useOSStages } from "@/hooks/useOSStages";
 import { Button } from "@/components/ui/button";
 import { MagicButton } from "@/components/ui/magic-button";
-import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play, KanbanSquare, ClipboardList, Clock, TrendingUp, AlertTriangle, ShieldCheck, Camera, Ruler, Trash2 } from "lucide-react";
+import { Plus, Loader2, RefreshCw, DollarSign, CheckCircle, Hammer, Settings2, CalendarDays, AlertCircle, ChevronUp, ChevronDown, MessageSquare, Play, KanbanSquare, ClipboardList, Clock, TrendingUp, AlertTriangle, ShieldCheck, Camera, Ruler, Trash2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -71,6 +73,29 @@ const OrdemServico = () => {
     const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
     const [selectedGalleryOrder, setSelectedGalleryOrder] = useState<ServiceOrder | null>(null);
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+    const [isManageStagesOpen, setIsManageStagesOpen] = useState(false);
+    const [stageTargetOrder, setStageTargetOrder] = useState<ServiceOrder | null>(null);
+
+    const existingOrderStatuses = useMemo(
+        () => orders.map((o) => o.status).filter(Boolean),
+        [orders]
+    );
+
+    const {
+        allStages,
+        productionStages,
+        customStages,
+        addCustomStage,
+        removeCustomStage,
+        getStageBgClass,
+        getStageBorderClass,
+        getStageProgress,
+    } = useOSStages(existingOrderStatuses);
+
+    const handleOpenManageStages = (targetOrder?: ServiceOrder) => {
+        setStageTargetOrder(targetOrder || null);
+        setIsManageStagesOpen(true);
+    };
 
     useEffect(() => { osMemoryCache.orders = orders; }, [orders]);
     useEffect(() => { osMemoryCache.tasks = tasks; }, [tasks]);
@@ -738,22 +763,10 @@ const OrdemServico = () => {
         toast.info("WhatsApp iniciado.");
     };
 
-    const inProgressStatuses: ServiceStatus[] = [
-        "Plano de corte",
-        "Pronto para produção",
-        "Corte da caixa",
-        "Fita",
-        "Montagem das caixas",
-        "Corte das portas + Tamponados",
-        "Colocação dos tamponados",
-        "Embalagem",
-        "Pronto para entrega",
-        "Instalação",
-        "Entregue e Finalizado"
-    ];
-    const inProgress = orders.filter(o => inProgressStatuses.includes(o.status)).length;
+    const isInProductionQueue = (status: ServiceStatus) => status !== "A Definir";
+    const inProgress = orders.filter(o => isInProductionQueue(o.status)).length;
     const defining = orders.filter(o => o.status === "A Definir").length;
-    const totalValueActive = orders.filter(o => inProgressStatuses.includes(o.status)).reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    const totalValueActive = orders.filter(o => isInProductionQueue(o.status)).reduce((acc, curr) => acc + (curr.amount || 0), 0);
     const getDaysRemaining = (forecastDate: Date) => {
         const today = new Date();
         today.setHours(0,0,0,0);
@@ -803,7 +816,7 @@ const OrdemServico = () => {
     }).length;
     
     const productionQueue = orders
-        .filter(o => inProgressStatuses.includes(o.status))
+        .filter(o => isInProductionQueue(o.status))
         .sort((a, b) => {
             const aIsFinished = a.status === "Entregue e Finalizado";
             const bIsFinished = b.status === "Entregue e Finalizado";
@@ -815,45 +828,14 @@ const OrdemServico = () => {
         });
 
     const defineList = orders.filter(o => o.status === "A Definir");
-    const activeOrders = orders.filter(o => inProgressStatuses.includes(o.status));
+    const activeOrders = orders.filter(o => isInProductionQueue(o.status));
     const totalMaterialsCost = orders.reduce((sum, o) => sum + (o.spentCost || 0), 0);
     const dangerOrdersCount = orders.filter(o => o.marginStatus === 'danger').length;
     const warningOrdersCount = orders.filter(o => o.marginStatus === 'warning').length;
     const healthyOrdersCount = orders.filter(o => o.marginStatus === 'healthy' && (o.spentCost || 0) > 0).length;
 
-    const getStatusProgress = (status: ServiceStatus) => {
-        switch (status) {
-            case "Plano de corte": return 5;
-            case "Pronto para produção": return 15;
-            case "Corte da caixa": return 25;
-            case "Fita": return 35;
-            case "Montagem das caixas": return 45;
-            case "Corte das portas + Tamponados": return 55;
-            case "Colocação dos tamponados": return 65;
-            case "Embalagem": return 75;
-            case "Pronto para entrega": return 85;
-            case "Instalação": return 95;
-            case "Entregue e Finalizado": return 100;
-            default: return 0;
-        }
-    };
-
-    const getStatusColor = (status: ServiceStatus) => {
-        switch (status) {
-            case "Plano de corte": return "bg-slate-500";
-            case "Pronto para produção": return "bg-blue-500";
-            case "Corte da caixa": return "bg-orange-500";
-            case "Fita": return "bg-amber-500";
-            case "Montagem das caixas": return "bg-yellow-600";
-            case "Corte das portas + Tamponados": return "bg-indigo-500";
-            case "Colocação dos tamponados": return "bg-purple-500";
-            case "Embalagem": return "bg-pink-500";
-            case "Pronto para entrega": return "bg-cyan-500";
-            case "Instalação": return "bg-emerald-400";
-            case "Entregue e Finalizado": return "bg-emerald-600";
-            default: return "bg-slate-400";
-        }
-    };
+    const getStatusProgress = getStageProgress;
+    const getStatusColor = getStageBgClass;
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
@@ -872,7 +854,7 @@ const OrdemServico = () => {
                 subtitle="Linha de corte, fitagem, montagem de caixas, instalação e controle de margem fabril em tempo real."
                 art={<AnimatedPanelSaw size="md" className="w-20 h-16" />}
                 actions={
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <Button
                             variant="outline"
                             size="sm"
@@ -882,6 +864,16 @@ const OrdemServico = () => {
                         >
                             <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
                             Atualizar
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenManageStages()}
+                            className="gap-1.5 h-10 border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary font-black uppercase tracking-widest text-[10px] rounded-xl"
+                            title="Manter etapas padrão e adicionar etapas personalizadas"
+                        >
+                            <Layers className="h-3.5 w-3.5" />
+                            Etapas {customStages.length > 0 ? `(+${customStages.length})` : "(+)"}
                         </Button>
                         <MagicButton onClick={handleNewOrder} className="gap-1.5 h-10 px-5 shadow-xl shadow-primary/20">
                             <Plus className="h-4 w-4" />
@@ -1192,6 +1184,8 @@ const OrdemServico = () => {
                                         getStatusColor={getStatusColor}
                                         getStatusProgress={getStatusProgress}
                                         onOpenGallery={handleOpenGallery}
+                                        stages={productionStages}
+                                        onOpenManageStages={handleOpenManageStages}
                                     />
                                 ))}
                                 {productionQueue.length === 0 && (
@@ -1226,6 +1220,7 @@ const OrdemServico = () => {
                                     onDelete={handleDeleteOrder}
                                     isAdmin={isAdmin}
                                     onOpenGallery={handleOpenGallery}
+                                    getStatusColor={getStatusColor}
                                 />
                             )}
                         </CardContent>
@@ -1236,6 +1231,7 @@ const OrdemServico = () => {
                     <ProductionTimeline 
                         orders={orders}
                         onEdit={handleEditOrder}
+                        getStatusColor={getStatusColor}
                     />
                 </TabsContent>
 
@@ -1247,6 +1243,10 @@ const OrdemServico = () => {
                         onDelete={handleDeleteOrder}
                         onOpenGallery={handleOpenGallery}
                         isAdmin={isAdmin}
+                        stages={allStages}
+                        getStageBorderClass={getStageBorderClass}
+                        getStageBgClass={getStageBgClass}
+                        onOpenManageStages={() => handleOpenManageStages()}
                     />
                 </TabsContent>
 
@@ -1265,6 +1265,8 @@ const OrdemServico = () => {
                 onUpdate={handleUpdate}
                 editingOrder={editingOrder}
                 isAdmin={isAdmin}
+                stages={allStages}
+                onAddStage={addCustomStage}
             />
 
             <OSVisualGalleryDialog
@@ -1272,6 +1274,23 @@ const OrdemServico = () => {
                 onOpenChange={setIsGalleryOpen}
                 order={selectedGalleryOrder}
                 onUpdateOrder={handleUpdateGalleryAttachments}
+            />
+
+            <ManageOSStagesDialog
+                open={isManageStagesOpen}
+                onOpenChange={(open) => {
+                    setIsManageStagesOpen(open);
+                    if (!open) setStageTargetOrder(null);
+                }}
+                allStages={allStages}
+                customStages={customStages}
+                orders={orders}
+                targetOrder={stageTargetOrder}
+                onAddStage={addCustomStage}
+                onRemoveStage={removeCustomStage}
+                onApplyStageToOrder={(orderId, stageName) =>
+                    handleUpdate(orderId, { status: stageName })
+                }
             />
 
             {/* Floating Action Button for Mobile */}
@@ -1299,6 +1318,8 @@ interface SortableItemProps {
     getStatusColor: (status: any) => string;
     getStatusProgress: (status: any) => number;
     onOpenGallery?: (order: ServiceOrder) => void;
+    stages: OSStageConfig[];
+    onOpenManageStages?: (targetOrder?: ServiceOrder) => void;
 }
 
 const SortableServiceOrderCard = ({
@@ -1311,7 +1332,9 @@ const SortableServiceOrderCard = ({
     onUpdate,
     getStatusColor,
     getStatusProgress,
-    onOpenGallery }: SortableItemProps) => {
+    onOpenGallery,
+    stages,
+    onOpenManageStages }: SortableItemProps) => {
   const [showEnv, setShowEnv] = React.useState(false);
 
     const {
@@ -1458,24 +1481,43 @@ const SortableServiceOrderCard = ({
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                    <Select value={order.status} onValueChange={(val) => onUpdate(order.id, { status: val as any })}>
-                                        <SelectTrigger className={cn("h-6 border-none shadow-none text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full w-auto gap-1", getStatusColor(order.status), "text-white")}>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-slate-900 border-white/10 text-[10px] uppercase font-bold">
-                                            <SelectItem value="Plano de corte">Plano de corte</SelectItem>
-                                            <SelectItem value="Pronto para produção">Pronto para produção</SelectItem>
-                                            <SelectItem value="Corte da caixa">Corte da caixa</SelectItem>
-                                            <SelectItem value="Fita">Fita</SelectItem>
-                                            <SelectItem value="Montagem das caixas">Montagem das caixas</SelectItem>
-                                            <SelectItem value="Corte das portas + Tamponados">Corte das portas + Tamponados</SelectItem>
-                                            <SelectItem value="Colocação dos tamponados">Colocação dos tamponados</SelectItem>
-                                            <SelectItem value="Embalagem">Embalagem</SelectItem>
-                                            <SelectItem value="Pronto para entrega">Pronto para entrega</SelectItem>
-                                            <SelectItem value="Instalação">Instalação</SelectItem>
-                                            <SelectItem value="Entregue e Finalizado">Entregue e Finalizado</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <div onClick={(e) => e.stopPropagation()}>
+                                        <Select
+                                            value={order.status}
+                                            onValueChange={(val) => {
+                                                if (val === "__add_new_stage__") {
+                                                    if (onOpenManageStages) onOpenManageStages(order);
+                                                    return;
+                                                }
+                                                onUpdate(order.id, { status: val as ServiceStatus });
+                                            }}
+                                        >
+                                            <SelectTrigger className={cn("h-6 border-none shadow-none text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full w-auto gap-1", getStatusColor(order.status), "text-white")}>
+                                                <SelectValue>{order.status}</SelectValue>
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-slate-900 border-white/10 text-[10px] uppercase font-bold">
+                                                {stages.map((stage) => {
+                                                    const dotBg = OS_STAGE_COLORS[stage.color]?.bg || "bg-teal-500";
+                                                    return (
+                                                        <SelectItem key={stage.name} value={stage.name}>
+                                                            <span className="inline-flex items-center gap-1.5">
+                                                                <span className={cn("w-2 h-2 rounded-full inline-block shrink-0", dotBg)} />
+                                                                <span>{stage.name}</span>
+                                                            </span>
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                                {onOpenManageStages && (
+                                                    <SelectItem
+                                                        value="__add_new_stage__"
+                                                        className="text-primary font-black border-t border-white/10 mt-1"
+                                                    >
+                                                        + Adicionar nova etapa...
+                                                    </SelectItem>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                     
                                     <span className={cn("text-[8px] font-black uppercase tracking-wider", isUrgent ? "text-rose-500" : "text-slate-400")}>
                                         Prioridade: {order.priorityLevel || 'normal'}
