@@ -3,7 +3,8 @@ import { Check, ChevronsUpDown, File, Upload, X, ExternalLink, Loader2, Clipboar
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { Client } from "@/types/client";
-import { ServiceOrder, ServiceType, ServiceStatus, DEFAULT_OS_STAGES, OS_STAGE_COLORS, CUSTOM_STAGE_COLOR_OPTIONS, OSStageConfig, OSStageColorKey, parseOSAttachment, serializeOSAttachment, OSAttachmentItem } from "@/types/serviceOrder";
+import { ServiceOrder, ServiceType, ServiceStatus, OS_STAGE_COLORS, CUSTOM_STAGE_COLOR_OPTIONS, OSStageConfig, OSStageColorKey, parseOSAttachment, serializeOSAttachment, OSAttachmentItem } from "@/types/serviceOrder";
+import { buildOrderedOSStages } from "@/hooks/useOSStages";
 import { toast } from "sonner";
 import {
     Dialog,
@@ -49,12 +50,15 @@ interface ServiceOrderFormDialogProps {
     onUpdate?: (id: string, updates: Partial<ServiceOrder>) => void;
     editingOrder?: ServiceOrder | null;
     isAdmin?: boolean;
-    stages?: OSStageConfig[];
-    onAddStage?: (
+    orderCustomStages?: OSStageConfig[];
+    onAddStageForOrder?: (
+        orderId: string,
         name: string,
         color: OSStageColorKey,
-        insertAfter?: string
+        insertAfter?: string,
+        currentStatus?: ServiceStatus
     ) => Promise<string | null>;
+    onRemoveStageForOrder?: (orderId: string, name: string) => Promise<boolean>;
 }
 
 const ServiceOrderFormDialog = ({
@@ -64,8 +68,9 @@ const ServiceOrderFormDialog = ({
     onUpdate,
     editingOrder,
     isAdmin = true,
-    stages,
-    onAddStage,
+    orderCustomStages,
+    onAddStageForOrder,
+    onRemoveStageForOrder,
 }: ServiceOrderFormDialogProps) => {
     const [form, setForm] = useState({
         ticketNumber: "",
@@ -89,46 +94,119 @@ const ServiceOrderFormDialog = ({
     const [clients, setClients] = useState<Client[]>([]);
     const [openClientSelect, setOpenClientSelect] = useState(false);
     const [profiles, setProfiles] = useState<any[]>([]);
+    const [draftCustomStages, setDraftCustomStages] = useState<OSStageConfig[]>([]);
     const [showInlineNewStage, setShowInlineNewStage] = useState(false);
     const [inlineStageName, setInlineStageName] = useState("");
     const [inlineStageColor, setInlineStageColor] = useState<OSStageColorKey>("teal");
     const [inlineStageAfter, setInlineStageAfter] = useState<string>("Pronto para entrega");
+    const [selectAfterCreate, setSelectAfterCreate] = useState(true);
     const [isCreatingStage, setIsCreatingStage] = useState(false);
 
-    const availableStages: OSStageConfig[] = (() => {
-        const base = stages && stages.length > 0 ? [...stages] : [...DEFAULT_OS_STAGES];
-        if (
-            form.status &&
-            !base.some((s) => s.name.toLowerCase() === form.status.toLowerCase())
-        ) {
-            const finishedIdx = base.findIndex((s) => s.name === "Entregue e Finalizado");
-            const insertPos = finishedIdx !== -1 ? finishedIdx : base.length;
-            base.splice(insertPos, 0, {
-                name: form.status,
-                color: "violet",
-                isDefault: false,
-            });
+    useEffect(() => {
+        if (editingOrder && orderCustomStages) {
+            setDraftCustomStages(orderCustomStages);
         }
-        return base;
-    })();
+    }, [editingOrder, orderCustomStages]);
+
+    const availableStages: OSStageConfig[] = buildOrderedOSStages(
+        draftCustomStages,
+        form.status ? [form.status] : []
+    );
 
     const handleCreateInlineStage = async () => {
-        if (!onAddStage || !inlineStageName.trim() || isCreatingStage) return;
-        setIsCreatingStage(true);
-        try {
-            const created = await onAddStage(
-                inlineStageName,
-                inlineStageColor,
-                inlineStageAfter
-            );
-            if (created) {
-                handleDateChange("status", created);
-                setInlineStageName("");
-                setShowInlineNewStage(false);
+        const trimmed = inlineStageName.trim();
+        if (!trimmed || isCreatingStage) return;
+
+        if (editingOrder && onAddStageForOrder) {
+            setIsCreatingStage(true);
+            try {
+                const created = await onAddStageForOrder(
+                    editingOrder.id,
+                    trimmed,
+                    inlineStageColor,
+                    inlineStageAfter,
+                    form.status
+                );
+                if (created) {
+                    setDraftCustomStages((prev) =>
+                        prev.some((s) => s.name.toLowerCase() === created.toLowerCase())
+                            ? prev
+                            : [
+                                  ...prev,
+                                  {
+                                      name: created,
+                                      color: inlineStageColor,
+                                      isDefault: false,
+                                      insertAfter: inlineStageAfter,
+                                  },
+                              ]
+                    );
+                    if (selectAfterCreate) {
+                        handleDateChange("status", created);
+                    }
+                    setInlineStageName("");
+                    setShowInlineNewStage(false);
+                }
+            } finally {
+                setIsCreatingStage(false);
             }
-        } finally {
-            setIsCreatingStage(false);
+            return;
         }
+
+        // Nova OS (ainda sem ID no banco): guarda na própria OS até salvar
+        if (
+            availableStages.some(
+                (s) => s.name.toLowerCase() === trimmed.toLowerCase()
+            )
+        ) {
+            toast.error(`A etapa "${trimmed}" já existe nesta OS.`);
+            return;
+        }
+
+        const newStage: OSStageConfig = {
+            name: trimmed,
+            color: inlineStageColor,
+            isDefault: false,
+            insertAfter:
+                inlineStageAfter && inlineStageAfter !== "Entregue e Finalizado"
+                    ? inlineStageAfter
+                    : undefined,
+        };
+        setDraftCustomStages((prev) => [...prev, newStage]);
+        if (selectAfterCreate) {
+            handleDateChange("status", trimmed);
+        }
+        setInlineStageName("");
+        setShowInlineNewStage(false);
+        toast.success(`Etapa "${trimmed}" adicionada só para esta OS!`);
+    };
+
+    const handleRemoveInlineStage = async (stageName: string) => {
+        const isCurrent =
+            (form.status || "").toLowerCase() === stageName.toLowerCase();
+
+        if (editingOrder && onRemoveStageForOrder) {
+            const removed = await onRemoveStageForOrder(editingOrder.id, stageName);
+            if (removed) {
+                setDraftCustomStages((prev) =>
+                    prev.filter(
+                        (s) => s.name.toLowerCase() !== stageName.toLowerCase()
+                    )
+                );
+                if (isCurrent) {
+                    handleDateChange("status", "Plano de corte");
+                }
+            }
+            return;
+        }
+
+        setDraftCustomStages((prev) =>
+            prev.filter((s) => s.name.toLowerCase() !== stageName.toLowerCase())
+        );
+        if (isCurrent) {
+            handleDateChange("status", "Plano de corte");
+        }
+        toast.success(`Etapa "${stageName}" removida desta OS.`);
     };
 
     useEffect(() => {
@@ -245,6 +323,8 @@ const ServiceOrderFormDialog = ({
         if (open) {
             setShowInlineNewStage(false);
             setInlineStageName("");
+            setSelectAfterCreate(true);
+            setDraftCustomStages(editingOrder ? (orderCustomStages || []) : []);
             initializeForm();
         }
     }, [editingOrder, open]);
@@ -419,6 +499,7 @@ const ServiceOrderFormDialog = ({
             amount: form.amount,
             daysEstimated: form.daysEstimated || 1,
             tasks: form.tasks,
+            customStages: draftCustomStages,
             laborLogs: form.laborLogs.map(l => {
                 const dateObj = l.date ? new Date(l.date) : new Date();
                 return {
@@ -557,16 +638,15 @@ const ServiceOrderFormDialog = ({
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
                                         <Label htmlFor="status">Status / Etapa</Label>
-                                        {onAddStage && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowInlineNewStage((prev) => !prev)}
-                                                className="text-[11px] font-bold text-primary hover:underline flex items-center gap-0.5"
-                                            >
-                                                <Plus className="h-3 w-3" />
-                                                {showInlineNewStage ? "Fechar" : "Nova etapa"}
-                                            </button>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowInlineNewStage((prev) => !prev)}
+                                            className="text-[11px] font-bold text-primary hover:underline flex items-center gap-0.5"
+                                            title="Adicionar etapa exclusiva somente nesta OS"
+                                        >
+                                            <Plus className="h-3 w-3" />
+                                            {showInlineNewStage ? "Fechar" : "Etapa só desta OS"}
+                                        </button>
                                     </div>
                                     <Select
                                         value={form.status}
@@ -591,33 +671,58 @@ const ServiceOrderFormDialog = ({
                                                             <span>{stage.name}</span>
                                                             {!stage.isDefault && (
                                                                 <span className="text-[9px] uppercase font-bold text-primary ml-1">
-                                                                    (Extra)
+                                                                    (Só desta OS)
                                                                 </span>
                                                             )}
                                                         </span>
                                                     </SelectItem>
                                                 );
                                             })}
-                                            {onAddStage && (
-                                                <SelectItem
-                                                    value="__add_new_stage__"
-                                                    className="text-primary font-bold border-t border-white/10 mt-1"
-                                                >
-                                                    + Adicionar nova etapa...
-                                                </SelectItem>
-                                            )}
+                                            <SelectItem
+                                                value="__add_new_stage__"
+                                                className="text-primary font-bold border-t border-white/10 mt-1"
+                                            >
+                                                + Adicionar etapa só nesta OS...
+                                            </SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                {showInlineNewStage && onAddStage && (
+                                {draftCustomStages.length > 0 && (
+                                    <div className="col-span-2 flex items-center gap-1.5 flex-wrap px-2.5 py-2 rounded-xl bg-white/[0.02] border border-white/10">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">
+                                            Extras só desta OS:
+                                        </span>
+                                        {draftCustomStages.map((st) => {
+                                            const dotBg = OS_STAGE_COLORS[st.color]?.bg || "bg-teal-500";
+                                            return (
+                                                <span
+                                                    key={st.name}
+                                                    className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-white"
+                                                >
+                                                    <span className={cn("w-2 h-2 rounded-full", dotBg)} />
+                                                    <span>{st.name}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveInlineStage(st.name)}
+                                                        className="text-white/60 hover:text-rose-400 transition-colors ml-0.5"
+                                                        title={`Remover etapa extra "${st.name}" desta OS`}
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                {showInlineNewStage && (
                                     <div className="col-span-2 p-3 rounded-xl bg-primary/5 border border-primary/25 space-y-3">
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center justify-between gap-2 flex-wrap">
                                             <span className="text-[11px] font-black uppercase tracking-wider text-primary flex items-center gap-1">
                                                 <Plus className="h-3.5 w-3.5" />
-                                                Criar Nova Etapa Personalizada
+                                                Nova Etapa Exclusiva desta OS
                                             </span>
                                             <span className="text-[10px] text-muted-foreground">
-                                                As etapas padrão continuam intactas
+                                                Não aparece nas outras OS
                                             </span>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -686,27 +791,36 @@ const ServiceOrderFormDialog = ({
                                                     );
                                                 })}
                                             </div>
-                                            <div className="flex items-center gap-1.5 ml-auto">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => setShowInlineNewStage(false)}
-                                                    className="h-7 text-xs px-2.5"
-                                                >
-                                                    Cancelar
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    disabled={!inlineStageName.trim() || isCreatingStage}
-                                                    onClick={handleCreateInlineStage}
-                                                    className="h-7 text-xs px-3 font-bold gap-1"
-                                                >
-                                                    <Plus className="h-3.5 w-3.5" />
-                                                    Criar e Selecionar
-                                                </Button>
-                                            </div>
+                                            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-white/80 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectAfterCreate}
+                                                    onChange={(e) => setSelectAfterCreate(e.target.checked)}
+                                                    className="rounded border-white/20"
+                                                />
+                                                Selecionar agora
+                                            </label>
+                                        </div>
+                                        <div className="flex items-center justify-end gap-1.5">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setShowInlineNewStage(false)}
+                                                className="h-7 text-xs px-2.5"
+                                            >
+                                                Cancelar
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                disabled={!inlineStageName.trim() || isCreatingStage}
+                                                onClick={handleCreateInlineStage}
+                                                className="h-7 text-xs px-3 font-bold gap-1"
+                                            >
+                                                <Plus className="h-3.5 w-3.5" />
+                                                Adicionar só nesta OS
+                                            </Button>
                                         </div>
                                     </div>
                                 )}

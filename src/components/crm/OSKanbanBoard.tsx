@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { ServiceOrder, ServiceStatus, DEFAULT_OS_STAGES, OS_STAGE_COLORS, OSStageConfig } from "@/types/serviceOrder";
 import { Card, CardContent } from "@/components/ui/card";
-import { Phone, Calendar, ClipboardList, MessageSquare, Camera, Ruler, MapPin, Navigation, Trash2, Plus } from "lucide-react";
+import { Phone, Calendar, ClipboardList, MessageSquare, Camera, Ruler, MapPin, Navigation, Trash2, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WhatsAppQuickDialog } from "./WhatsAppQuickDialog";
 
@@ -13,9 +13,10 @@ interface OSKanbanBoardProps {
   onOpenGallery?: (order: ServiceOrder) => void;
   isAdmin?: boolean;
   stages?: OSStageConfig[];
-  getStageBorderClass?: (status: ServiceStatus) => string;
-  getStageBgClass?: (status: ServiceStatus) => string;
-  onOpenManageStages?: () => void;
+  getStageBorderClass?: (status: ServiceStatus, orderId?: string) => string;
+  getStageBgClass?: (status: ServiceStatus, orderId?: string) => string;
+  getCustomStagesCount?: (orderId: string) => number;
+  onManageOrderStages?: (order: ServiceOrder) => void;
 }
 
 const OSKanbanBoard = ({
@@ -28,7 +29,8 @@ const OSKanbanBoard = ({
   stages,
   getStageBorderClass,
   getStageBgClass,
-  onOpenManageStages,
+  getCustomStagesCount,
+  onManageOrderStages,
 }: OSKanbanBoardProps) => {
   const [whatsAppOrder, setWhatsAppOrder] = useState<ServiceOrder | null>(null);
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
@@ -229,24 +231,49 @@ const OSKanbanBoard = ({
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-white/5">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (onOpenGallery) onOpenGallery(order);
-                          }}
-                          className={cn(
-                            "p-1.5 rounded-lg border transition-all flex items-center gap-1.5 text-[9px] font-black",
-                            (order.attachments?.length || 0) > 0
-                              ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.25)]"
-                              : "bg-white/5 hover:bg-white/10 text-white/50 border-white/5"
-                          )}
-                          title="Abrir Galeria Visual e Medidas do Local"
-                        >
-                          <Camera className="h-3 w-3 text-amber-400" />
-                          <span>{(order.attachments?.length || 0) > 0 ? `${order.attachments?.length} fotos/medidas` : '+ Medidas'}</span>
-                        </button>
+                      <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-white/5 flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onOpenGallery) onOpenGallery(order);
+                            }}
+                            className={cn(
+                              "p-1.5 rounded-lg border transition-all flex items-center gap-1 text-[9px] font-black",
+                              (order.attachments?.length || 0) > 0
+                                ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.25)]"
+                                : "bg-white/5 hover:bg-white/10 text-white/50 border-white/5"
+                            )}
+                            title="Abrir Galeria Visual e Medidas do Local"
+                          >
+                            <Camera className="h-3 w-3 text-amber-400" />
+                            <span>{(order.attachments?.length || 0) > 0 ? `${order.attachments?.length}` : '+ Fotos'}</span>
+                          </button>
+
+                          {onManageOrderStages && (() => {
+                            const extraCount = getCustomStagesCount ? getCustomStagesCount(order.id) : 0;
+                            return (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onManageOrderStages(order);
+                                }}
+                                className={cn(
+                                  "p-1.5 rounded-lg border transition-all flex items-center gap-1 text-[9px] font-black",
+                                  extraCount > 0
+                                    ? "bg-primary/15 hover:bg-primary/25 text-primary border-primary/40"
+                                    : "bg-white/5 hover:bg-primary/15 text-white/60 hover:text-primary border-white/10"
+                                )}
+                                title={`Adicionar ou gerenciar etapas exclusivas de ${order.client}`}
+                              >
+                                <Layers className="h-3 w-3" />
+                                <span>{extraCount > 0 ? `+${extraCount} etapa${extraCount > 1 ? 's' : ''}` : '+ Etapa'}</span>
+                              </button>
+                            );
+                          })()}
+                        </div>
 
                         <div className="flex items-center gap-1 ml-auto">
                           {order.clientPhone && (
@@ -293,26 +320,6 @@ const OSKanbanBoard = ({
           </div>
         );
       })}
-
-      {onOpenManageStages && (
-        <button
-          type="button"
-          onClick={onOpenManageStages}
-          className="flex-shrink-0 w-60 h-[calc(100vh-320px)] rounded-[2rem] border-2 border-dashed border-white/15 hover:border-primary/50 bg-white/[0.02] hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-3 p-6 text-center group"
-        >
-          <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/30 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Plus className="h-6 w-6" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-black uppercase tracking-widest text-white group-hover:text-primary transition-colors">
-              Nova Etapa
-            </p>
-            <p className="text-[10px] text-muted-foreground leading-relaxed">
-              Mantenha as etapas padrão e adicione novas colunas quando precisar
-            </p>
-          </div>
-        </button>
-      )}
 
       <WhatsAppQuickDialog
         open={isWhatsAppOpen}

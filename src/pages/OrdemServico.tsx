@@ -76,21 +76,25 @@ const OrdemServico = () => {
     const [isManageStagesOpen, setIsManageStagesOpen] = useState(false);
     const [stageTargetOrder, setStageTargetOrder] = useState<ServiceOrder | null>(null);
 
-    const existingOrderStatuses = useMemo(
-        () => orders.map((o) => o.status).filter(Boolean),
-        [orders]
-    );
-
     const {
-        allStages,
-        productionStages,
-        customStages,
-        addCustomStage,
-        removeCustomStage,
+        totalCustomStagesCount,
+        getCustomStagesForOrder,
+        getStagesForOrder,
+        getProductionStagesForOrder,
+        addCustomStageForOrder,
+        removeCustomStageForOrder,
+        setCustomStagesForOrder,
+        clearCustomStagesForOrder,
         getStageBgClass,
         getStageBorderClass,
         getStageProgress,
-    } = useOSStages(existingOrderStatuses);
+        buildKanbanStages,
+    } = useOSStages();
+
+    const kanbanStages = useMemo(
+        () => buildKanbanStages(orders),
+        [orders, buildKanbanStages]
+    );
 
     const handleOpenManageStages = (targetOrder?: ServiceOrder) => {
         setStageTargetOrder(targetOrder || null);
@@ -398,6 +402,7 @@ const OrdemServico = () => {
 
             if (error) throw error;
 
+            clearCustomStagesForOrder(id);
             setOrders(prev => prev.filter(order => order.id !== id));
             toast.success("Ordem de Serviço apagada com sucesso!");
         } catch (error) {
@@ -494,6 +499,10 @@ const OrdemServico = () => {
                         insertedTasksList = insertedTasks;
                         setTasks(prev => [...insertedTasks, ...prev]);
                     }
+                }
+
+                if (orderData.customStages && orderData.customStages.length > 0) {
+                    await setCustomStagesForOrder(insertedOrder.id, orderData.customStages);
                 }
 
                 const createdOrder: ServiceOrder = {
@@ -870,10 +879,10 @@ const OrdemServico = () => {
                             size="sm"
                             onClick={() => handleOpenManageStages()}
                             className="gap-1.5 h-10 border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary font-black uppercase tracking-widest text-[10px] rounded-xl"
-                            title="Manter etapas padrão e adicionar etapas personalizadas"
+                            title="Adicionar ou gerenciar etapas individuais por Ordem de Serviço"
                         >
                             <Layers className="h-3.5 w-3.5" />
-                            Etapas {customStages.length > 0 ? `(+${customStages.length})` : "(+)"}
+                            Etapas por OS {totalCustomStagesCount > 0 ? `(${totalCustomStagesCount})` : ""}
                         </Button>
                         <MagicButton onClick={handleNewOrder} className="gap-1.5 h-10 px-5 shadow-xl shadow-primary/20">
                             <Plus className="h-4 w-4" />
@@ -1184,7 +1193,8 @@ const OrdemServico = () => {
                                         getStatusColor={getStatusColor}
                                         getStatusProgress={getStatusProgress}
                                         onOpenGallery={handleOpenGallery}
-                                        stages={productionStages}
+                                        stages={getProductionStagesForOrder(order.id, order.status)}
+                                        customStagesCount={getCustomStagesForOrder(order.id).length}
                                         onOpenManageStages={handleOpenManageStages}
                                     />
                                 ))}
@@ -1243,10 +1253,11 @@ const OrdemServico = () => {
                         onDelete={handleDeleteOrder}
                         onOpenGallery={handleOpenGallery}
                         isAdmin={isAdmin}
-                        stages={allStages}
+                        stages={kanbanStages}
                         getStageBorderClass={getStageBorderClass}
                         getStageBgClass={getStageBgClass}
-                        onOpenManageStages={() => handleOpenManageStages()}
+                        getCustomStagesCount={(orderId) => getCustomStagesForOrder(orderId).length}
+                        onManageOrderStages={(order) => handleOpenManageStages(order)}
                     />
                 </TabsContent>
 
@@ -1265,8 +1276,9 @@ const OrdemServico = () => {
                 onUpdate={handleUpdate}
                 editingOrder={editingOrder}
                 isAdmin={isAdmin}
-                stages={allStages}
-                onAddStage={addCustomStage}
+                orderCustomStages={editingOrder ? getCustomStagesForOrder(editingOrder.id) : []}
+                onAddStageForOrder={addCustomStageForOrder}
+                onRemoveStageForOrder={removeCustomStageForOrder}
             />
 
             <OSVisualGalleryDialog
@@ -1282,12 +1294,12 @@ const OrdemServico = () => {
                     setIsManageStagesOpen(open);
                     if (!open) setStageTargetOrder(null);
                 }}
-                allStages={allStages}
-                customStages={customStages}
                 orders={orders}
                 targetOrder={stageTargetOrder}
-                onAddStage={addCustomStage}
-                onRemoveStage={removeCustomStage}
+                getStagesForOrder={getStagesForOrder}
+                getCustomStagesForOrder={getCustomStagesForOrder}
+                onAddStageForOrder={addCustomStageForOrder}
+                onRemoveStageForOrder={removeCustomStageForOrder}
                 onApplyStageToOrder={(orderId, stageName) =>
                     handleUpdate(orderId, { status: stageName })
                 }
@@ -1315,10 +1327,11 @@ interface SortableItemProps {
     onDelete?: (id: string) => void;
     onNotify: (order: ServiceOrder) => void;
     onUpdate: (id: string, updates: Partial<ServiceOrder>) => void;
-    getStatusColor: (status: any) => string;
-    getStatusProgress: (status: any) => number;
+    getStatusColor: (status: any, orderId?: string) => string;
+    getStatusProgress: (status: any, orderId?: string) => number;
     onOpenGallery?: (order: ServiceOrder) => void;
     stages: OSStageConfig[];
+    customStagesCount?: number;
     onOpenManageStages?: (targetOrder?: ServiceOrder) => void;
 }
 
@@ -1334,6 +1347,7 @@ const SortableServiceOrderCard = ({
     getStatusProgress,
     onOpenGallery,
     stages,
+    customStagesCount = 0,
     onOpenManageStages }: SortableItemProps) => {
   const [showEnv, setShowEnv] = React.useState(false);
 
@@ -1461,8 +1475,8 @@ const SortableServiceOrderCard = ({
                 {/* Background Progress Fill */}
                 {order.status !== "Entregue e Finalizado" && (
                     <div 
-                        className={cn("absolute inset-0 transition-all duration-1000 opacity-[0.08] pointer-events-none", getStatusColor(order.status))}
-                        style={{ width: `${getStatusProgress(order.status)}%` }}
+                        className={cn("absolute inset-0 transition-all duration-1000 opacity-[0.08] pointer-events-none", getStatusColor(order.status, order.id))}
+                        style={{ width: `${getStatusProgress(order.status, order.id)}%` }}
                     />
                 )}
 
@@ -1481,7 +1495,7 @@ const SortableServiceOrderCard = ({
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                    <div onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                         <Select
                                             value={order.status}
                                             onValueChange={(val) => {
@@ -1492,7 +1506,7 @@ const SortableServiceOrderCard = ({
                                                 onUpdate(order.id, { status: val as ServiceStatus });
                                             }}
                                         >
-                                            <SelectTrigger className={cn("h-6 border-none shadow-none text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full w-auto gap-1", getStatusColor(order.status), "text-white")}>
+                                            <SelectTrigger className={cn("h-6 border-none shadow-none text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full w-auto gap-1", getStatusColor(order.status, order.id), "text-white")}>
                                                 <SelectValue>{order.status}</SelectValue>
                                             </SelectTrigger>
                                             <SelectContent className="bg-slate-900 border-white/10 text-[10px] uppercase font-bold">
@@ -1503,6 +1517,11 @@ const SortableServiceOrderCard = ({
                                                             <span className="inline-flex items-center gap-1.5">
                                                                 <span className={cn("w-2 h-2 rounded-full inline-block shrink-0", dotBg)} />
                                                                 <span>{stage.name}</span>
+                                                                {!stage.isDefault && (
+                                                                    <span className="text-[8px] font-black text-primary ml-1">
+                                                                        (SÓ DESTA OS)
+                                                                    </span>
+                                                                )}
                                                             </span>
                                                         </SelectItem>
                                                     );
@@ -1512,11 +1531,35 @@ const SortableServiceOrderCard = ({
                                                         value="__add_new_stage__"
                                                         className="text-primary font-black border-t border-white/10 mt-1"
                                                     >
-                                                        + Adicionar nova etapa...
+                                                        + Adicionar etapa só nesta OS...
                                                     </SelectItem>
                                                 )}
                                             </SelectContent>
                                         </Select>
+
+                                        {onOpenManageStages && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onOpenManageStages(order);
+                                                }}
+                                                className={cn(
+                                                    "h-6 px-2 rounded-full text-[9px] font-black uppercase tracking-wider border transition-all flex items-center gap-1",
+                                                    customStagesCount > 0
+                                                        ? "bg-primary/20 text-primary border-primary/40 hover:bg-primary/30"
+                                                        : "bg-white/5 text-white/60 border-white/10 hover:text-primary hover:border-primary/40 hover:bg-primary/10"
+                                                )}
+                                                title={`Adicionar ou gerenciar etapas exclusivas de ${order.client}`}
+                                            >
+                                                <Plus className="h-2.5 w-2.5" />
+                                                <span>
+                                                    {customStagesCount > 0
+                                                        ? `${customStagesCount} extra${customStagesCount > 1 ? "s" : ""}`
+                                                        : "Etapa"}
+                                                </span>
+                                            </button>
+                                        )}
                                     </div>
                                     
                                     <span className={cn("text-[8px] font-black uppercase tracking-wider", isUrgent ? "text-rose-500" : "text-slate-400")}>
@@ -1546,7 +1589,7 @@ const SortableServiceOrderCard = ({
                                 
                                 {/* Stepper Visual Industrial de 5 Estágios da Fábrica */}
                                 {(() => {
-                                    const progress = getStatusProgress(order.status);
+                                    const progress = getStatusProgress(order.status, order.id);
                                     const stages = [
                                         { label: "1. Corte", threshold: 25 },
                                         { label: "2. Fita", threshold: 35 },

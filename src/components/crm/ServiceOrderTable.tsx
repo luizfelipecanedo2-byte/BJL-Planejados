@@ -23,7 +23,7 @@ interface ServiceOrderTableProps {
     onDelete: (id: string) => void;
     isAdmin?: boolean;
     onOpenGallery?: (order: ServiceOrder) => void;
-    getStatusColor?: (status: ServiceStatus) => string;
+    getStatusColor?: (status: ServiceStatus, orderId?: string) => string;
 }
 
 const ServiceOrderTable = ({ orders, onEdit, onDelete, isAdmin = false, onOpenGallery, getStatusColor }: ServiceOrderTableProps) => {
@@ -35,7 +35,7 @@ const ServiceOrderTable = ({ orders, onEdit, onDelete, isAdmin = false, onOpenGa
         const daysOpen = differenceInDays(new Date(), new Date(order.openDate));
         return (
             <div className="flex flex-col gap-1">
-                <Badge className={cn(getStatusColor ? getStatusColor(order.status) : "bg-amber-500 hover:bg-amber-600", "text-white whitespace-nowrap")}>
+                <Badge className={cn(getStatusColor ? getStatusColor(order.status, order.id) : "bg-amber-500 hover:bg-amber-600", "text-white whitespace-nowrap")}>
                     {order.status}
                 </Badge>
                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">

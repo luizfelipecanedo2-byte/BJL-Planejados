@@ -20,7 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 interface ProductionTimelineProps {
     orders: ServiceOrder[];
     onEdit: (order: ServiceOrder) => void;
-    getStatusColor?: (status: ServiceStatus) => string;
+    getStatusColor?: (status: ServiceStatus, orderId?: string) => string;
 }
 
 const ProductionTimeline = ({ orders, onEdit, getStatusColor: customGetStatusColor }: ProductionTimelineProps) => {
@@ -39,8 +39,8 @@ const ProductionTimeline = ({ orders, onEdit, getStatusColor: customGetStatusCol
             .sort((a, b) => a.forecastDate.getTime() - b.forecastDate.getTime());
     }, [orders]);
 
-    const getStatusColor = (status: ServiceStatus) => {
-        if (customGetStatusColor) return customGetStatusColor(status);
+    const getStatusColor = (status: ServiceStatus, orderId?: string) => {
+        if (customGetStatusColor) return customGetStatusColor(status, orderId);
         switch (status) {
             case "Plano de corte": return "bg-slate-600";
             case "Pronto para produção": return "bg-blue-500";
@@ -183,7 +183,7 @@ const ProductionTimeline = ({ orders, onEdit, getStatusColor: customGetStatusCol
                                                 {order.client}
                                             </h4>
                                             <div className="flex items-center gap-2">
-                                                <span className={cn("inline-block w-2 h-2 rounded-full", getStatusColor(order.status))} />
+                                                <span className={cn("inline-block w-2 h-2 rounded-full", getStatusColor(order.status, order.id))} />
                                                 <span className="text-[9px] font-bold text-slate-500 uppercase truncate">
                                                     {order.status}
                                                 </span>
@@ -198,7 +198,7 @@ const ProductionTimeline = ({ orders, onEdit, getStatusColor: customGetStatusCol
                                                         <div 
                                                             className={cn(
                                                                 "absolute h-10 top-1/2 -translate-y-1/2 rounded-2xl flex items-center px-4 cursor-pointer transition-all hover:scale-[1.02] shadow-lg group/bar overflow-hidden",
-                                                                getStatusColor(order.status),
+                                                                getStatusColor(order.status, order.id),
                                                                 isOverdue && !isSameDay(new Date(), order.forecastDate) ? "ring-2 ring-rose-500 ring-offset-2 ring-offset-slate-950" : ""
                                                             )}
                                                             style={{ 

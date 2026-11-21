@@ -131,6 +131,7 @@ export interface ServiceOrder {
     costRatio?: number;
     marginStatus?: 'healthy' | 'warning' | 'danger';
     materialsDetails?: Array<{ description: string; amount: number; date?: string; invoice?: string }>;
+    customStages?: OSStageConfig[];
 }
 
 export interface OSAttachmentItem {
