@@ -223,6 +223,7 @@ const MainLayout = () => {
 
     const allMenuItems = [
         { icon: TrendingUp, label: "CRM Comercial", path: "/admin", roles: ['admin'], emoji: "📊", group: "COMERCIAL & IA" },
+        { icon: Ruler, label: "Medição Tablet IA", path: "/admin/medicao", roles: ['admin', 'colaborador'], emoji: "📐", group: "COMERCIAL & IA" },
         { icon: Calculator, label: "Orçamentos IA", path: "/admin/orcamento", roles: ['admin'], emoji: "💰", group: "COMERCIAL & IA" },
         { icon: Users, label: "Clientes & Equipe", path: "/admin/clientes", roles: ['admin'], emoji: "👥", group: "COMERCIAL & IA" },
         { icon: ClipboardList, label: "Ordens de Serviço", path: "/admin/ordem-servico", roles: ['admin', 'colaborador'], emoji: "📋", group: "OPERAÇÃO FABRIL" },
@@ -672,8 +673,8 @@ const MainLayout = () => {
                 </main>
             </div>
 
-            {/* Mobile Bottom Navigation - 5 botões táteis e espaçados */}
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-white/10 grid grid-cols-5 h-[72px] px-1 shadow-2xl safe-area-bottom backdrop-blur-xl bg-background/90">
+            {/* Mobile / Tablet Bottom Navigation - 6 botões táteis e espaçados */}
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-white/10 grid grid-cols-6 h-[72px] px-1 shadow-2xl safe-area-bottom backdrop-blur-xl bg-background/90">
                 <Link
                     to="/admin"
                     onClick={playClickSound}
@@ -688,6 +689,19 @@ const MainLayout = () => {
                     <span className="text-[10px] text-center font-bold tracking-tight truncate w-full">CRM</span>
                 </Link>
 
+                <Link
+                    to="/admin/medicao"
+                    onClick={playClickSound}
+                    className={cn(
+                        "flex flex-col items-center justify-center h-full space-y-1 transition-all",
+                        location.pathname === "/admin/medicao"
+                            ? "text-primary font-bold"
+                            : "text-muted-foreground hover:text-foreground active:scale-95"
+                    )}
+                >
+                    <Ruler className={cn("h-5 w-5", location.pathname === "/admin/medicao" ? "scale-110 drop-shadow-[0_0_8px_rgba(var(--primary),0.5)]" : "")} />
+                    <span className="text-[10px] text-center font-bold tracking-tight truncate w-full">Medição</span>
+                </Link>
                 <Link
                     to="/admin/orcamento"
                     onClick={playClickSound}
@@ -1066,6 +1080,13 @@ const MainLayout = () => {
                         <span className="text-[9px] font-mono opacity-75 ml-0.5">⌘J</span>
                     </button>
                 )}
+                <Link
+                    to="/admin/medicao"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all hover:scale-105"
+                >
+                    <Ruler className="h-3.5 w-3.5" />
+                    <span>Medição</span>
+                </Link>
                 <Link
                     to="/admin/orcamento"
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-semibold transition-all hover:scale-105"

@@ -1135,5 +1135,610 @@ Extraia todos os dados da nota fiscal (da imagem, PDF ou texto fornecido) e reto
   return JSON.parse(textContent) as ExtractedDanfeData;
 }
 
+export interface SmartDimensionLine {
+  id: string;
+  kind: "line" | "pin";
+  label: string;
+  value: string;
+  unit: "cm" | "mm" | "m";
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  color: "amber" | "cyan" | "emerald" | "rose" | "violet";
+  category?: "main" | "opening" | "electrical" | "hydraulic" | "structure";
+  notes?: string;
+  required?: boolean;
+}
+
+export interface SmartRoomChecklistItem {
+  id: string;
+  label: string;
+  hint: string;
+  checked: boolean;
+  value?: string;
+}
+
+export interface WallPhotoAIAnalysis {
+  wallSummary: string;
+  detectedElements: string[];
+  lines: SmartDimensionLine[];
+  checklist: SmartRoomChecklistItem[];
+  carpentryAlerts: string[];
+}
+
+export function getSmartDefaultLinesForRoom(
+  roomType: string,
+  wallName: string,
+  measurementMode: "orcamento" | "final"
+): WallPhotoAIAnalysis {
+  const norm = (roomType || "").toLowerCase();
+  const isFinal = measurementMode === "final";
+  const nowId = () => `ln-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+  const baseLines: SmartDimensionLine[] = [
+    {
+      id: nowId(),
+      kind: "line",
+      label: "Largura Total",
+      value: "",
+      unit: "cm",
+      x1: 10,
+      y1: 20,
+      x2: 90,
+      y2: 20,
+      color: "amber",
+      category: "main",
+      notes: "Medida livre de parede a parede",
+      required: true,
+    },
+    {
+      id: nowId(),
+      kind: "line",
+      label: "Pé-Direito (Altura)",
+      value: "",
+      unit: "cm",
+      x1: 50,
+      y1: 14,
+      x2: 50,
+      y2: 88,
+      color: "amber",
+      category: "main",
+      notes: "Do piso acabado até o teto/gesso",
+      required: true,
+    },
+  ];
+
+  const checklist: SmartRoomChecklistItem[] = [
+    {
+      id: `chk-${nowId()}`,
+      label: "Largura total da parede",
+      hint: "Meça embaixo (rodapé) e no meio da parede",
+      checked: false,
+    },
+    {
+      id: `chk-${nowId()}`,
+      label: isFinal ? "Pé-direito esquerdo e direito (desnível)" : "Pé-direito (altura piso ao teto)",
+      hint: isFinal ? "Conferir se o gesso/piso tem queda para ajuste de tamponamento" : "Altura total disponível para o móvel",
+      checked: false,
+    },
+  ];
+
+  const alerts: string[] = [];
+
+  if (norm.includes("cozinha") || norm.includes("gourmet") || norm.includes("lavanderia")) {
+    baseLines.push(
+      {
+        id: nowId(),
+        kind: "line",
+        label: "Altura Bancada / Pedra",
+        value: "",
+        unit: "cm",
+        x1: 24,
+        y1: 58,
+        x2: 24,
+        y2: 88,
+        color: "cyan",
+        category: "structure",
+        notes: "Altura do piso até a parte inferior/superior da pedra",
+        required: true,
+      },
+      {
+        id: nowId(),
+        kind: "pin",
+        label: "Água / Esgoto Pia",
+        value: "",
+        unit: "cm",
+        x1: 42,
+        y1: 72,
+        x2: 42,
+        y2: 72,
+        color: "cyan",
+        category: "hydraulic",
+        notes: "Distância da parede lateral / altura do chão",
+        required: isFinal,
+      },
+      {
+        id: nowId(),
+        kind: "pin",
+        label: "Tomada Bancada / Eletros",
+        value: "",
+        unit: "cm",
+        x1: 68,
+        y1: 52,
+        x2: 68,
+        y2: 52,
+        color: "emerald",
+        category: "electrical",
+        notes: "Distância lateral e altura do piso",
+        required: isFinal,
+      }
+    );
+    checklist.push(
+      {
+        id: `chk-${nowId()}`,
+        label: "Posição do ponto de água, esgoto e gás",
+        hint: "Distância do canto até o centro do cano de esgoto e registros",
+        checked: false,
+      },
+      {
+        id: `chk-${nowId()}`,
+        label: "Vão da geladeira, fogão/cooktop e micro-ondas",
+        hint: "Confirmar largura, altura e tomada 20A da torre quente",
+        checked: false,
+      },
+      {
+        id: `chk-${nowId()}`,
+        label: "Altura e profundidade da pedra / rodabanca",
+        hint: "Verificar se tem saia de granito e altura do rodapé/soleira",
+        checked: false,
+      }
+    );
+    alerts.push(
+      "Confirme se o cliente já tem o modelo da geladeira, lava-louças e forno/micro-ondas para dimensionar os nichos.",
+      "Em Medida Final: meça a distância exata do canto até o eixo do esgoto da cuba."
+    );
+  } else if (norm.includes("banheiro") || norm.includes("lavabo")) {
+    baseLines.push(
+      {
+        id: nowId(),
+        kind: "line",
+        label: "Largura Bancada / Vanitório",
+        value: "",
+        unit: "cm",
+        x1: 22,
+        y1: 60,
+        x2: 78,
+        y2: 60,
+        color: "cyan",
+        category: "main",
+        notes: "Vão livre entre parede e box/vaso",
+        required: true,
+      },
+      {
+        id: nowId(),
+        kind: "line",
+        label: "Altura da Bancada ao Piso",
+        value: "",
+        unit: "cm",
+        x1: 30,
+        y1: 58,
+        x2: 30,
+        y2: 88,
+        color: "amber",
+        category: "structure",
+        required: true,
+      },
+      {
+        id: nowId(),
+        kind: "pin",
+        label: "Sifão / Engate Água",
+        value: "",
+        unit: "cm",
+        x1: 50,
+        y1: 74,
+        x2: 50,
+        y2: 74,
+        color: "cyan",
+        category: "hydraulic",
+        notes: "Para recorte de gaveta em U ao redor do sifão",
+        required: isFinal,
+      }
+    );
+    checklist.push(
+      {
+        id: `chk-${nowId()}`,
+        label: "Altura e profundidade embaixo da pedra/cuba",
+        hint: "Verificar até onde desce o bojo da cuba esculpida ou de embutir",
+        checked: false,
+      },
+      {
+        id: `chk-${nowId()}`,
+        label: "Posição do sifão e registros (recorte de gaveta)",
+        hint: "Essencial para saber se a 1ª gaveta precisa de recorte em U",
+        checked: false,
+      }
+    );
+    alerts.push("Meça a profundidade da saia da pedra e a altura do bojo da cuba por baixo.");
+  } else if (norm.includes("sala") || norm.includes("painel") || norm.includes("tv")) {
+    baseLines.push(
+      {
+        id: nowId(),
+        kind: "pin",
+        label: "Tomadas & Passa-Fios TV",
+        value: "",
+        unit: "cm",
+        x1: 52,
+        y1: 55,
+        x2: 52,
+        y2: 55,
+        color: "emerald",
+        category: "electrical",
+        notes: "Altura das tomadas da TV e do rack",
+        required: true,
+      },
+      {
+        id: nowId(),
+        kind: "line",
+        label: "Recuo Porta / Passagem",
+        value: "",
+        unit: "cm",
+        x1: 10,
+        y1: 68,
+        x2: 25,
+        y2: 68,
+        color: "cyan",
+        category: "opening",
+        notes: "Espaço livre até a guarnição da porta",
+        required: isFinal,
+      }
+    );
+    checklist.push(
+      {
+        id: `chk-${nowId()}`,
+        label: "Tamanho da TV do cliente (polegadas / largura x altura)",
+        hint: "Ex: TV 65\", 75\" ou 85\" para centralizar no painel e ripados",
+        checked: false,
+      },
+      {
+        id: `chk-${nowId()}`,
+        label: "Posição das tomadas baixas (rack) e altas (atrás da TV)",
+        hint: "Para esconder toda a fiação dentro do rack suspenso",
+        checked: false,
+      }
+    );
+    alerts.push("Confirme quantas polegadas terá a TV do cliente e se há porta próxima limitando a profundidade do rack.");
+  } else {
+    // Quarto / Closet / Dormitório / Escritório (padrão igual ao mockup!)
+    baseLines.push(
+      {
+        id: nowId(),
+        kind: "line",
+        label: "Boneca da Porta",
+        value: "",
+        unit: "cm",
+        x1: 10,
+        y1: 65,
+        x2: 24,
+        y2: 65,
+        color: "amber",
+        category: "opening",
+        notes: "Profundidade livre descontando a guarnição/alisar",
+        required: true,
+      },
+      {
+        id: nowId(),
+        kind: "line",
+        label: "Janela (Larg. x Alt.)",
+        value: "",
+        unit: "cm",
+        x1: 78,
+        y1: 32,
+        x2: 78,
+        y2: 64,
+        color: "cyan",
+        category: "opening",
+        notes: "Largura x Altura incluindo guarnição/pedra",
+        required: false,
+      },
+      {
+        id: nowId(),
+        kind: "line",
+        label: "Peitoril da Janela",
+        value: "",
+        unit: "cm",
+        x1: 82,
+        y1: 66,
+        x2: 82,
+        y2: 88,
+        color: "cyan",
+        category: "opening",
+        notes: "Altura do piso até a base da janela",
+        required: false,
+      },
+      {
+        id: nowId(),
+        kind: "pin",
+        label: "Interruptor / Tomada",
+        value: "",
+        unit: "cm",
+        x1: 30,
+        y1: 58,
+        x2: 30,
+        y2: 58,
+        color: "emerald",
+        category: "electrical",
+        notes: "Distância da porta/canto e altura do chão",
+        required: isFinal,
+      },
+      {
+        id: nowId(),
+        kind: "pin",
+        label: "Ponto Ar-Condicionado",
+        value: "",
+        unit: "cm",
+        x1: 62,
+        y1: 28,
+        x2: 62,
+        y2: 28,
+        color: "cyan",
+        category: "electrical",
+        notes: "Altura do chão e distância lateral",
+        required: false,
+      }
+    );
+    checklist.push(
+      {
+        id: `chk-${nowId()}`,
+        label: "Profundidade livre da boneca da porta",
+        hint: "Guarda-roupa padrão precisa de ~60–65 cm livres sem bater no alisar",
+        checked: false,
+      },
+      {
+        id: `chk-${nowId()}`,
+        label: "Profundidade e altura do cortineiro / sanca de gesso",
+        hint: "Evita que o maleiro superior bata no rebaixo de gesso",
+        checked: false,
+      },
+      {
+        id: `chk-${nowId()}`,
+        label: "Posição do interruptor ao lado da porta e tomadas",
+        hint: "Verificar se o armário vai cobrir o interruptor (realocar para lateral)",
+        checked: false,
+      }
+    );
+    alerts.push(
+      "Verifique a boneca da porta: se tiver menos de 60 cm, planeje lateral chanfrada, nicho ou porta de giro mais recuada.",
+      "Confira se há cortineiro no gesso para descontar no fechamento superior do guarda-roupa."
+    );
+  }
+
+  if (isFinal) {
+    checklist.push({
+      id: `chk-${nowId()}`,
+      label: "Conferência de esquadro nos cantos (90°) e rodapé",
+      hint: "Medida Final Executiva: anotar se a parede abre ou fecha no fundo",
+      checked: false,
+    });
+  }
+
+  return {
+    wallSummary: `${roomType} • ${wallName} (${isFinal ? "Medida Final Executiva" : "Medida para Orçamento"})`,
+    detectedElements: ["Largura da Parede", "Pé-Direito", "Pontos Elétricos", "Aberturas"],
+    lines: baseLines,
+    checklist,
+    carpentryAlerts: alerts,
+  };
+}
+
+/**
+ * Analisa a foto real de uma parede/ambiente tirada no Tablet com Gemini 2.5 Flash Vision
+ * e retorna as linhas de cota posicionadas nas coordenadas (0-100%) dos elementos visíveis na foto.
+ */
+export async function analyzeWallPhotoForMeasurement(params: {
+  base64DataUrl: string;
+  roomType: string;
+  wallName: string;
+  measurementMode: "orcamento" | "final";
+  architectNotes?: string;
+}): Promise<WallPhotoAIAnalysis> {
+  const { base64DataUrl, roomType, wallName, measurementMode, architectNotes } = params;
+  const fallback = getSmartDefaultLinesForRoom(roomType, wallName, measurementMode);
+
+  const match = base64DataUrl?.match(/^data:(image\/[a-zA-Z0-9.+/-]+);base64,(.+)$/);
+  if (!match) {
+    return fallback;
+  }
+
+  // 1. Tenta via Edge Function gemini-proxy no Supabase
+  try {
+    const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke("gemini-proxy", {
+      body: {
+        action: "analyze-wall-measurement",
+        payload: { base64DataUrl, roomType, wallName, measurementMode, architectNotes },
+      },
+    });
+
+    if (!edgeErr && edgeRes?.data && Array.isArray(edgeRes.data.lines)) {
+      return edgeRes.data as WallPhotoAIAnalysis;
+    }
+  } catch (fnErr) {
+    console.warn("Edge Function indisponível para analyze-wall-measurement, tentando chave local:", fnErr);
+  }
+
+  // 2. Fallback: chave configurada localmente ou em api_settings
+  let activeKey = (
+    localStorage.getItem("bjl_gemini_api_key") ||
+    import.meta.env.VITE_GEMINI_API_KEY ||
+    ""
+  ).trim();
+
+  if (!activeKey) {
+    try {
+      const { data } = await supabase
+        .from("api_settings")
+        .select("key_value")
+        .eq("key_name", "gemini_api_key")
+        .maybeSingle();
+      if (data?.key_value) {
+        activeKey = data.key_value.trim();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!activeKey) {
+    return fallback;
+  }
+
+  const mimeType = match[1];
+  const base64Data = match[2];
+  const modeLabel =
+    measurementMode === "final"
+      ? "MEDIDA FINAL EXECUTIVA (para fabricação/plano de corte — exige máxima precisão de bonecas, tomadas, pontos hidráulicos, cortineiro, vigas e desnível)"
+      : "MEDIDA PARA ORÇAMENTO (levantamento comercial rápido na casa do cliente)";
+
+  const prompt = `Você é um Engenheiro Mestre de Medição Técnica de Marcenaria de Alto Padrão da BJL Planejados.
+Analise esta foto real tirada no tablet dentro da casa do cliente.
+Contexto:
+- Ambiente: "${roomType}"
+- Parede: "${wallName}"
+- Tipo de Medição: ${modeLabel}
+${architectNotes ? `- Observações / Projeto do Arquiteto: ${architectNotes}` : ""}
+
+Sua tarefa é identificar visualmente na foto onde estão a parede principal, piso, teto/gesso, portas (e boneca da porta), janelas (e peitoril), tomadas/interruptores, pontos de água/esgoto/gás, ar-condicionado, pedras/bancadas, nichos ou vigas/pilares, e posicionar LINHAS DE COTA ("line") e PINOS DE PONTO ("pin") em coordenadas percentuais (0 a 100) exatamente sobre os elementos visíveis na imagem!
+
+Regras para as coordenadas (0 a 100):
+- x=0 é a borda esquerda da foto, x=100 é a borda direita.
+- y=0 é o topo da foto, y=100 é a base da foto.
+- Para "kind": "line", forneça (x1, y1) e (x2, y2) marcando o início e o fim da linha de medida na foto (ex: Largura Total da parede de x1=12, y1=22 até x2=88, y2=22; Pé-Direito de x1=50, y1=12 até x2=50, y2=88; Boneca da porta do canto até a guarnição; Janela; Peitoril; Altura de Bancada).
+- Para "kind": "pin", forneça (x1, y1) com x2=x1 e y2=y1 exatamente em cima de cada tomada, interruptor, ponto de água/esgoto, gás ou ar-condicionado visível na foto.
+- Deixe o campo "value" como string vazia "" para o marceneiro digitar o valor medido na trena.
+- Escolha "color" entre: "amber" (medidas principais/boneca), "cyan" (janelas/hidráulica/ar/gesso), "emerald" (tomadas/interruptores), "rose" (vigas/pilares/alertas), "violet" (detalhes).
+
+Retorne EXATAMENTE um JSON com:
+{
+  "wallSummary": "Resumo curto do que foi identificado na parede",
+  "detectedElements": ["Lista de elementos visíveis na foto"],
+  "lines": [
+    {
+      "id": "ln-1",
+      "kind": "line",
+      "label": "Nome curto da medida (ex: Largura Total, Pé-Direito, Boneca Esq., Janela, Peitoril, Tomada 1)",
+      "value": "",
+      "unit": "cm",
+      "x1": 12,
+      "y1": 20,
+      "x2": 88,
+      "y2": 20,
+      "color": "amber",
+      "category": "main",
+      "notes": "Dica curta do que medir ali",
+      "required": true
+    }
+  ],
+  "checklist": [
+    {
+      "id": "chk-1",
+      "label": "Item obrigatório de conferência para este ambiente",
+      "hint": "Explicação prática para não esquecer",
+      "checked": false
+    }
+  ],
+  "carpentryAlerts": [
+    "Alerta técnico importante observado na foto (ex: interruptor próximo à porta, cortineiro de gesso, etc.)"
+  ]
+}`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                { inlineData: { mimeType, data: base64Data } },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.2,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      return fallback;
+    }
+
+    const result = await response.json();
+    const textContent = result?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+    const parsed = JSON.parse(textContent);
+
+    const clamp = (n: any, def: number) => {
+      const v = Number(n);
+      if (isNaN(v)) return def;
+      return Math.max(4, Math.min(96, Math.round(v)));
+    };
+
+    const validColors = new Set(["amber", "cyan", "emerald", "rose", "violet"]);
+
+    const lines: SmartDimensionLine[] = Array.isArray(parsed.lines) && parsed.lines.length > 0
+      ? parsed.lines.map((l: any, idx: number) => {
+          const kind = l.kind === "pin" ? "pin" : "line";
+          const x1 = clamp(l.x1, 15);
+          const y1 = clamp(l.y1, 20 + idx * 10);
+          return {
+            id: `ai-ln-${Date.now()}-${idx}`,
+            kind,
+            label: String(l.label || `Medida ${idx + 1}`).slice(0, 40),
+            value: "",
+            unit: "cm",
+            x1,
+            y1,
+            x2: kind === "pin" ? x1 : clamp(l.x2, 85),
+            y2: kind === "pin" ? y1 : clamp(l.y2, y1),
+            color: validColors.has(l.color) ? l.color : "amber",
+            category: l.category || "main",
+            notes: l.notes ? String(l.notes) : undefined,
+            required: Boolean(l.required),
+          };
+        })
+      : fallback.lines;
+
+    const checklist: SmartRoomChecklistItem[] =
+      Array.isArray(parsed.checklist) && parsed.checklist.length > 0
+        ? parsed.checklist.map((c: any, idx: number) => ({
+            id: `ai-chk-${Date.now()}-${idx}`,
+            label: String(c.label || `Verificação ${idx + 1}`),
+            hint: String(c.hint || ""),
+            checked: false,
+          }))
+        : fallback.checklist;
+
+    return {
+      wallSummary: String(parsed.wallSummary || fallback.wallSummary),
+      detectedElements: Array.isArray(parsed.detectedElements)
+        ? parsed.detectedElements.map(String)
+        : fallback.detectedElements,
+      lines,
+      checklist,
+      carpentryAlerts: Array.isArray(parsed.carpentryAlerts)
+        ? parsed.carpentryAlerts.map(String)
+        : fallback.carpentryAlerts,
+    };
+  } catch (err) {
+    console.warn("Erro ao analisar foto da parede com Gemini, usando template inteligente:", err);
+    return fallback;
+  }
+}
+
 
 

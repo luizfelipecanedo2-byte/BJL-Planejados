@@ -303,6 +303,82 @@ Extraia todos os dados da nota fiscal (da imagem, PDF ou texto fornecido) e reto
       );
     }
 
+    if (action === "analyze-wall-measurement") {
+      const { base64DataUrl, roomType, wallName, measurementMode, architectNotes } = payload || {};
+      const match = base64DataUrl?.match(/^data:(image\/[a-zA-Z0-9.+/-]+);base64,(.+)$/);
+      if (!match) {
+        return new Response(
+          JSON.stringify({ error: "Formato de imagem inválido." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const mimeType = match[1];
+      const base64Data = match[2];
+      const modeLabel =
+        measurementMode === "final"
+          ? "MEDIDA FINAL EXECUTIVA (para fabricação/plano de corte — exige máxima precisão de bonecas, tomadas, pontos hidráulicos, cortineiro, vigas e desnível)"
+          : "MEDIDA PARA ORÇAMENTO (levantamento comercial rápido na casa do cliente)";
+
+      const prompt = `Você é um Engenheiro Mestre de Medição Técnica de Marcenaria de Alto Padrão da BJL Planejados.
+Analise esta foto real tirada no tablet dentro da casa do cliente.
+Contexto:
+- Ambiente: "${roomType || "Quarto"}"
+- Parede: "${wallName || "Parede 1"}"
+- Tipo de Medição: ${modeLabel}
+${architectNotes ? `- Observações / Projeto do Arquiteto: ${architectNotes}` : ""}
+
+Identifique visualmente na foto onde estão a parede principal, piso, teto/gesso, portas (e boneca da porta), janelas (e peitoril), tomadas/interruptores, pontos de água/esgoto/gás, ar-condicionado, pedras/bancadas, nichos ou vigas/pilares, e posicione LINHAS DE COTA ("line") e PINOS DE PONTO ("pin") em coordenadas percentuais (0 a 100) exatamente sobre os elementos visíveis na imagem.
+Deixe o campo "value" como string vazia "" para o marceneiro digitar o valor medido na trena.
+Escolha "color" entre: "amber", "cyan", "emerald", "rose", "violet".
+
+Retorne EXATAMENTE um JSON com:
+- wallSummary: string
+- detectedElements: string[]
+- lines: Array<{ id, kind: "line"|"pin", label, value: "", unit: "cm", x1, y1, x2, y2, color, category, notes, required }>
+- checklist: Array<{ id, label, hint, checked: false }>
+- carpentryAlerts: string[]`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  { inlineData: { mimeType, data: base64Data } },
+                ],
+              },
+            ],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.2,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return new Response(
+          JSON.stringify({ error: errorData?.error?.message || `Erro Gemini HTTP ${response.status}` }),
+          { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const result = await response.json();
+      const textContent = result?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      const parsedResult = JSON.parse(textContent);
+
+      return new Response(
+        JSON.stringify({ data: parsedResult }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: `Ação inválida: ${action}` }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

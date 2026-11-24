@@ -21,6 +21,7 @@ const Tarefas = lazy(() => import("./pages/Tarefas"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const Agenda = lazy(() => import("./pages/Agenda"));
+const MedicaoTablet = lazy(() => import("./pages/MedicaoTablet"));
 
 
 const queryClient = new QueryClient({
@@ -190,6 +191,7 @@ const App = () => {
               <Route path="/estoque" element={<Navigate to="/admin/estoque" replace />} />
               <Route path="/ordem-servico" element={<Navigate to="/admin/ordem-servico" replace />} />
               <Route path="/agenda" element={<Navigate to="/admin/agenda" replace />} />
+              <Route path="/medicao" element={<Navigate to="/admin/medicao" replace />} />
 
               <Route path="/admin" element={session ? <MainLayout /> : <Navigate to="/login" />}>
                 <Route index element={isAdmin ? <Index /> : <Navigate to="estoque" />} />
@@ -197,6 +199,7 @@ const App = () => {
                 <Route path="clientes" element={isAdmin ? <Clientes /> : <Navigate to="estoque" />} />
                 <Route path="ordem-servico" element={<OrdemServico />} />
                 <Route path="orcamento" element={isAdmin ? <Orcamento /> : <Navigate to="estoque" />} />
+                <Route path="medicao" element={<MedicaoTablet />} />
                 <Route path="estoque" element={<Estoque />} />
                 <Route path="pedidos-semana" element={<PedidosSemana />} />
                 <Route path="tarefas" element={<Tarefas />} />

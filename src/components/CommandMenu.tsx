@@ -17,7 +17,8 @@ import {
   CheckSquare,
   Plus,
   Sparkles,
-  Zap
+  Zap,
+  Ruler
 } from "lucide-react";
 import {
   CommandDialog,
@@ -118,6 +119,11 @@ export function CommandMenu() {
             <span className="text-luxury font-bold">Nova Venda / Negociação</span>
             <CommandShortcut className="text-[10px] font-mono text-primary font-bold">NV</CommandShortcut>
           </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => navigate("/admin/medicao"))}>
+            <Ruler className="mr-2.5 h-4 w-4 text-amber-400" />
+            <span className="text-luxury font-bold">Medição Inteligente Tablet IA</span>
+            <CommandShortcut className="text-[10px] font-mono text-amber-400 font-bold">MED</CommandShortcut>
+          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => navigate("/admin/orcamento"))}>
             <Plus className="mr-2.5 h-4 w-4 text-amber-400" />
             <span className="text-luxury font-bold">Novo Orçamento & Projeto</span>
@@ -142,6 +148,11 @@ export function CommandMenu() {
             <TrendingUp className="mr-2.5 h-4 w-4 text-amber-500" />
             <span className="text-luxury font-bold">CRM Dashboard</span>
             <CommandShortcut className="text-[10px] font-mono opacity-70">⌘1</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => navigate("/admin/medicao"))}>
+            <Ruler className="mr-2.5 h-4 w-4 text-amber-400" />
+            <span className="text-luxury font-bold">Medição Inteligente Tablet IA</span>
+            <CommandShortcut className="text-[10px] font-mono text-amber-400 font-bold">MED</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => navigate("/admin/orcamento"))}>
             <Calculator className="mr-2.5 h-4 w-4 text-amber-400" />
