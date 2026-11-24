@@ -65,6 +65,7 @@ import {
     PAYMENT_METHODS,
     FINANCIAL_INSTITUTIONS,
 } from "@/types/finance";
+import { InboundInvoiceDialog } from "@/components/financeiro/InboundInvoiceDialog";
 
 interface Invoice {
     id: string;
@@ -290,6 +291,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
 
     // Modal de Importação de XML + Alocação de Cliente por Item + Lançamento de Boletos/Cartão 30/60/90
     const [isXmlDialogOpen, setIsXmlDialogOpen] = useState(false);
+    const [isInboundWithoutXmlOpen, setIsInboundWithoutXmlOpen] = useState(false);
     const [parsedXml, setParsedXml] = useState<ParsedXmlData | null>(null);
     const [xmlOptions, setXmlOptions] = useState({
         direction: "entrada" as "entrada" | "saida",
@@ -3342,11 +3344,20 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                     <div className="flex flex-wrap items-center gap-2.5">
                         <Button
                             variant="outline"
+                            onClick={() => setIsInboundWithoutXmlOpen(true)}
+                            className="h-10 rounded-xl border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-black uppercase tracking-wider gap-2"
+                        >
+                            <KeyRound className="h-4 w-4 text-amber-400" />
+                            Entrada s/ XML (Chave / Foto / PDF)
+                        </Button>
+
+                        <Button
+                            variant="outline"
                             onClick={() => xmlInputRef.current?.click()}
                             className="h-10 rounded-xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-xs font-bold gap-2"
                         >
                             <Upload className="h-4 w-4 text-amber-400" />
-                            Importar XML (Compra / SEFAZ)
+                            Importar XML
                         </Button>
 
                         <Button
@@ -5524,6 +5535,13 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                         })()}
                 </DialogContent>
             </Dialog>
+
+            {/* MODAL 5: ENTRADA DE NOTA DE MATERIAL SEM XML (CHAVE / FOTO / PDF / MANUAL) */}
+            <InboundInvoiceDialog
+                open={isInboundWithoutXmlOpen}
+                onOpenChange={setIsInboundWithoutXmlOpen}
+                onSuccess={fetchInvoices}
+            />
         </div>
     );
 }

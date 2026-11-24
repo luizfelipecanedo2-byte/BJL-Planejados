@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Truck, AlertTriangle, Package, Layers, Search, ShieldCheck } from "lucide-react";
+import { Plus, Truck, AlertTriangle, Package, Layers, Search, ShieldCheck, KeyRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Product } from "@/types/product";
 import ProductTable from "@/components/crm/ProductTable";
 import ProductFormDialog from "@/components/crm/ProductFormDialog";
+import { InboundInvoiceDialog } from "@/components/financeiro/InboundInvoiceDialog";
 import { supabase } from "@/lib/supabase";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { MagicButton } from "@/components/ui/magic-button";
@@ -22,6 +23,7 @@ const Estoque = () => {
     const [activeTab, setActiveTab] = useState<string>("insumos");
     const [products, setProducts] = useState<Product[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isInboundInvoiceOpen, setIsInboundInvoiceOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -246,10 +248,20 @@ const Estoque = () => {
                             </TabsList>
 
                             {activeTab === "insumos" && (
-                                <MagicButton onClick={handleNewProduct} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
-                                    <Plus className="h-4 w-4" />
-                                    Novo Insumo
-                                </MagicButton>
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setIsInboundInvoiceOpen(true)}
+                                        className="h-11 rounded-2xl border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-black uppercase tracking-wider text-xs px-4 gap-2"
+                                    >
+                                        <KeyRound className="h-4 w-4 text-amber-400" />
+                                        Entrada de Nota s/ XML
+                                    </Button>
+                                    <MagicButton onClick={handleNewProduct} className="gap-1.5 h-11 px-6 shadow-xl shadow-primary/20">
+                                        <Plus className="h-4 w-4" />
+                                        Novo Insumo
+                                    </MagicButton>
+                                </>
                             )}
                         </div>
                     }
@@ -374,6 +386,12 @@ const Estoque = () => {
                         onUpdate={handleUpdate}
                         editingProduct={editingProduct}
                         isAdmin={isAdmin}
+                    />
+
+                    <InboundInvoiceDialog
+                        open={isInboundInvoiceOpen}
+                        onOpenChange={setIsInboundInvoiceOpen}
+                        onSuccess={fetchProducts}
                     />
 
                     {/* Floating Action Button for Mobile */}

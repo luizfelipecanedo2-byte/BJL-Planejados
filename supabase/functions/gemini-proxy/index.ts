@@ -238,6 +238,71 @@ Retorne sua resposta estritamente no formato JSON especificado.`;
       );
     }
 
+    if (action === "parse-danfe") {
+      const { base64DataUrl, rawText } = payload || {};
+      const parts: any[] = [
+        {
+          text: `Você é um leitor especialista de Notas Fiscais Eletrônicas (NF-e / DANFE) brasileiras para uma marcenaria (BJL Planejados).
+Extraia todos os dados da nota fiscal (da imagem, PDF ou texto fornecido) e retorne EXATAMENTE um objeto JSON com:
+- accessKey: Chave de acesso de 44 dígitos numéricos (apenas números, se encontrada)
+- invoiceNumber: Número da nota fiscal (ex: "14520")
+- series: Série da nota (ex: "1")
+- issueDate: Data de emissão no formato YYYY-MM-DD
+- emitterName: Razão social ou nome fantasia do fornecedor/emitente
+- emitterCnpj: CNPJ do fornecedor/emitente
+- totalAmount: Valor total da nota (número decimal)
+- items: Lista de produtos/materiais da nota, cada um com: code (código), name (descrição do produto), ncm, cfop, unit (UN, CH, MT, etc.), quantity (número), unitPrice (número), totalPrice (número).`,
+        },
+      ];
+
+      if (rawText) {
+        parts.push({ text: `Texto extraído da DANFE / Portal SEFAZ:\n${rawText}` });
+      }
+
+      if (base64DataUrl) {
+        const match = base64DataUrl.match(/^data:([a-zA-Z0-9.+/-]+);base64,(.+)$/);
+        if (match) {
+          parts.push({
+            inlineData: {
+              mimeType: match[1],
+              data: match[2],
+            },
+          });
+        }
+      }
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: {
+              responseMimeType: "application/json",
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return new Response(
+          JSON.stringify({ error: errorData?.error?.message || `Erro Gemini HTTP ${response.status}` }),
+          { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const result = await response.json();
+      const textContent = result?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      const parsedResult = JSON.parse(textContent);
+
+      return new Response(
+        JSON.stringify({ data: parsedResult }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: `Ação inválida: ${action}` }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

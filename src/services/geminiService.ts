@@ -1004,4 +1004,136 @@ ${JSON.stringify(snapshot.catalogHighlights)}
   );
 }
 
+export interface ExtractedDanfeItem {
+  code: string;
+  name: string;
+  ncm?: string;
+  cfop?: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface ExtractedDanfeData {
+  accessKey?: string;
+  invoiceNumber?: string;
+  series?: string;
+  issueDate?: string;
+  emitterName?: string;
+  emitterCnpj?: string;
+  totalAmount?: number;
+  items?: ExtractedDanfeItem[];
+}
+
+/**
+ * Extrai os dados estruturados de uma Nota Fiscal (DANFE) a partir de uma Foto, PDF ou Texto copiado
+ * utilizando Gemini 2.5 Flash (via Edge Function gemini-proxy ou chave configurada).
+ */
+export async function extractDanfeWithAI(params: {
+  base64DataUrl?: string;
+  rawText?: string;
+  customApiKey?: string;
+}): Promise<ExtractedDanfeData> {
+  const { base64DataUrl, rawText, customApiKey } = params;
+
+  // 1. Tenta via Edge Function no Supabase
+  try {
+    const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke("gemini-proxy", {
+      body: {
+        action: "parse-danfe",
+        payload: { base64DataUrl, rawText },
+      },
+    });
+
+    if (!edgeErr && edgeRes?.data) {
+      return edgeRes.data as ExtractedDanfeData;
+    }
+  } catch (fnErr) {
+    console.warn("Edge Function gemini-proxy indisponível para parse-danfe, tentando chave local:", fnErr);
+  }
+
+  // 2. Fallback: chave local ou salva no banco api_settings
+  let activeKey = (
+    customApiKey ||
+    localStorage.getItem("bjl_gemini_api_key") ||
+    import.meta.env.VITE_GEMINI_API_KEY ||
+    ""
+  ).trim();
+
+  if (!activeKey) {
+    try {
+      const { data } = await supabase
+        .from("api_settings")
+        .select("key_value")
+        .eq("key_name", "gemini_api_key")
+        .maybeSingle();
+      if (data?.key_value) {
+        activeKey = data.key_value.trim();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!activeKey) {
+    throw new Error("MISSING_GEMINI_KEY");
+  }
+
+  const parts: any[] = [
+    {
+      text: `Você é um leitor especialista de Notas Fiscais Eletrônicas (NF-e / DANFE) brasileiras para uma marcenaria (BJL Planejados).
+Extraia todos os dados da nota fiscal (da imagem, PDF ou texto fornecido) e retorne EXATAMENTE um objeto JSON com:
+- accessKey: Chave de acesso de 44 dígitos numéricos (apenas números, se encontrada)
+- invoiceNumber: Número da nota fiscal (ex: "14520", apenas dígitos sem zeros à esquerda)
+- series: Série da nota (ex: "1")
+- issueDate: Data de emissão no formato YYYY-MM-DD
+- emitterName: Razão social ou nome fantasia do fornecedor/emitente
+- emitterCnpj: CNPJ do fornecedor/emitente
+- totalAmount: Valor total da nota (número decimal)
+- items: Lista de produtos/materiais da nota, cada um com: code (código), name (descrição do produto), ncm, cfop, unit (UN, CH, MT, etc.), quantity (número), unitPrice (número), totalPrice (número).`,
+    },
+  ];
+
+  if (rawText) {
+    parts.push({ text: `Texto extraído da DANFE / Portal SEFAZ:\n${rawText}` });
+  }
+
+  if (base64DataUrl) {
+    const match = base64DataUrl.match(/^data:([a-zA-Z0-9.+/-]+);base64,(.+)$/);
+    if (match) {
+      parts.push({
+        inlineData: {
+          mimeType: match[1],
+          data: match[2],
+        },
+      });
+    }
+  }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData?.error?.message || `Erro da API Gemini (${response.status})`);
+  }
+
+  const result = await response.json();
+  const textContent = result?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+  return JSON.parse(textContent) as ExtractedDanfeData;
+}
+
+
 
