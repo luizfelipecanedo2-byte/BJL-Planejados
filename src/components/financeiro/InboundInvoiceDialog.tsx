@@ -37,6 +37,7 @@ import {
     ClipboardPaste,
     Search,
     Truck,
+    Users,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -60,6 +61,7 @@ interface InboundInvoiceDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
+    onOpenClientSplitLaunch?: (savedInvoice: any) => void;
 }
 
 const UF_CODES: Record<string, string> = {
@@ -130,6 +132,7 @@ export const InboundInvoiceDialog: React.FC<InboundInvoiceDialogProps> = ({
     open,
     onOpenChange,
     onSuccess,
+    onOpenClientSplitLaunch,
 }) => {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [activeMethod, setActiveMethod] = useState<string>("chave");
@@ -707,8 +710,8 @@ export const InboundInvoiceDialog: React.FC<InboundInvoiceDialogProps> = ({
         }
     };
 
-    // Salvar Nota Fiscal + Atualizar Estoque + Lançar no Financeiro
-    const handleConfirmInboundInvoice = async () => {
+    // Salvar Nota Fiscal + Atualizar Estoque + Lançar no Financeiro (ou abrir Rateio por Cliente)
+    const handleConfirmInboundInvoice = async (openClientSplitAfter = false) => {
         const validItems = items.filter((i) => i.name.trim() !== "");
         const calcSum = validItems.reduce((acc, i) => acc + (Number(i.totalPrice) || 0), 0);
         const finalAmount =
@@ -785,7 +788,11 @@ export const InboundInvoiceDialog: React.FC<InboundInvoiceDialogProps> = ({
                 asaas_status: validItems.length > 0 ? `XML_PAYLOAD:${JSON.stringify(storedPayload)}` : null,
             };
 
-            const { error: invErr } = await supabase.from("invoices").insert([newInvoice]);
+            const { data: insertedInvoice, error: invErr } = await supabase
+                .from("invoices")
+                .insert([newInvoice])
+                .select()
+                .single();
             if (invErr) throw invErr;
 
             // 2. Atualiza ou cadastra cada material no Controle de Estoque (inventory)
@@ -833,16 +840,16 @@ export const InboundInvoiceDialog: React.FC<InboundInvoiceDialogProps> = ({
                 }
             }
 
-            // 3. Lança no Financeiro (Contas a Pagar)
-            if (options.createExpenseTransaction && finalAmount > 0) {
+            // 3. Se NÃO clicou em "Abrir Rateio por Cliente" e deixou marcado o lançamento rápido direto:
+            if (!openClientSplitAfter && options.createExpenseTransaction && finalAmount > 0) {
                 const due = options.dueDate || issueDate || new Date().toISOString().split("T")[0];
                 await supabase.from("transactions").insert([
                     {
                         description: `NF-e Entrada #${finalInvoiceNum} - ${emitterName.trim()} (${summaryItems})`,
                         amount: finalAmount,
                         type: "expense",
-                        category: "Custos de Produção",
-                        subcategory: "Matéria-Prima (MDF/Ferragens)",
+                        category: "Custo com Materiais e Obras",
+                        subcategory: "Compra de MDF e Madeira",
                         contact: emitterName.trim(),
                         payment_method: options.paymentMethod,
                         competence_date: issueDate,
@@ -855,9 +862,11 @@ export const InboundInvoiceDialog: React.FC<InboundInvoiceDialogProps> = ({
             }
 
             toast.success(
-                `Nota de Entrada #${finalInvoiceNum} (${emitterName.trim()}) registrada com sucesso!${
-                    updatedStockCount > 0 ? ` • ${updatedStockCount} materiais somados ao Estoque!` : ""
-                }`
+                openClientSplitAfter
+                    ? `Nota #${finalInvoiceNum} salva! Abrindo tela para colocar os Clientes de cada item e lançar...`
+                    : `Nota de Entrada #${finalInvoiceNum} (${emitterName.trim()}) registrada com sucesso!${
+                          updatedStockCount > 0 ? ` • ${updatedStockCount} materiais somados ao Estoque!` : ""
+                      }`
             );
 
             // Limpa estado e fecha
@@ -871,6 +880,15 @@ export const InboundInvoiceDialog: React.FC<InboundInvoiceDialogProps> = ({
             setPastedText("");
             onOpenChange(false);
             onSuccess?.();
+
+            if (openClientSplitAfter && insertedInvoice) {
+                if (onOpenClientSplitLaunch) {
+                    onOpenClientSplitLaunch(insertedInvoice);
+                } else {
+                    sessionStorage.setItem("bjl_launch_invoice_id", insertedInvoice.id);
+                    window.location.href = "/admin/financeiro";
+                }
+            }
         } catch (err: any) {
             console.error("Erro ao registrar nota de entrada:", err);
             toast.error(`Erro ao salvar nota de entrada: ${err?.message || "Verifique os dados"}`);
@@ -1450,7 +1468,7 @@ export const InboundInvoiceDialog: React.FC<InboundInvoiceDialogProps> = ({
                     </div>
                 </div>
 
-                <DialogFooter className="pt-2 gap-2">
+                <DialogFooter className="pt-2 gap-2 flex-wrap sm:justify-between">
                     <Button
                         type="button"
                         variant="ghost"
@@ -1459,24 +1477,42 @@ export const InboundInvoiceDialog: React.FC<InboundInvoiceDialogProps> = ({
                     >
                         Cancelar
                     </Button>
-                    <Button
-                        type="button"
-                        onClick={handleConfirmInboundInvoice}
-                        disabled={isSaving}
-                        className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-black uppercase tracking-wider text-xs px-6 h-11 gap-2 shadow-lg shadow-primary/20"
-                    >
-                        {isSaving ? (
-                            <>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleConfirmInboundInvoice(false)}
+                            disabled={isSaving}
+                            className="rounded-xl border-white/15 bg-white/[0.04] hover:bg-white/[0.08] font-bold text-xs px-4 h-11 gap-2"
+                        >
+                            {isSaving ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                Registrando Entrada...
-                            </>
-                        ) : (
-                            <>
-                                <CheckCircle2 className="h-4 w-4" />
-                                Confirmar Entrada da Nota (Estoque + Financeiro)
-                            </>
-                        )}
-                    </Button>
+                            ) : (
+                                <CheckCircle2 className="h-4 w-4 text-primary" />
+                            )}
+                            {options.createExpenseTransaction
+                                ? "Salvar & Lançar Direto"
+                                : "Apenas Salvar Nota (Lançar Depois)"}
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={() => handleConfirmInboundInvoice(true)}
+                            disabled={isSaving}
+                            className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 font-black uppercase tracking-wider text-xs px-5 h-11 gap-2 shadow-lg shadow-emerald-600/25"
+                        >
+                            {isSaving ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Salvando...
+                                </>
+                            ) : (
+                                <>
+                                    <Users className="h-4 w-4" />
+                                    Salvar & Colocar Clientes por Item / Lançar
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

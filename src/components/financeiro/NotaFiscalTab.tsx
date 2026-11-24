@@ -107,6 +107,7 @@ interface ParsedXmlDuplicate {
 
 interface ParsedXmlSourceNote {
     id: string;
+    existingInvoiceId?: string;
     invoiceNumber: string;
     series: string;
     issueDate: string;
@@ -240,11 +241,12 @@ interface XmlInstallmentItem {
 
 interface NotaFiscalTabProps {
     onRefresh?: () => void;
+    onNavigateToLancamentos?: () => void;
 }
 
 const FREE_TIER_LIMIT = 30; // Cota mensal gratuita de referência na Nuvem Fiscal
 
-export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
+export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: NotaFiscalTabProps = {}) {
     const { settings: companySettings } = useCompanySettings();
     const xmlInputRef = useRef<HTMLInputElement | null>(null);
     const appendXmlInputRef = useRef<HTMLInputElement | null>(null);
@@ -1880,6 +1882,245 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
         }
     };
 
+    // Converte uma Nota Fiscal já lançada na tabela (XML ou Entrada sem XML) para abrir a tela de Alocar Clientes por Item e Lançar no Financeiro
+    const convertExistingInvoiceToParsedXml = (invoice: Invoice): ParsedXmlData => {
+        const xmlMeta = parseStoredXmlPayload(invoice);
+        const noteId = `existing-${invoice.id}`;
+        const finalInvNum = invoice.invoice_number || "S/N";
+        const issueDate = invoice.issue_date || new Date().toISOString().split("T")[0];
+        const totalAmount = Number(invoice.amount || 0);
+
+        let items: ParsedXmlItem[] = [];
+        if (xmlMeta && Array.isArray(xmlMeta.items) && xmlMeta.items.length > 0) {
+            items = xmlMeta.items.map((it, idx) => ({
+                id: `${noteId}-item-${idx}`,
+                sourceNoteId: noteId,
+                invoiceNumber: finalInvNum,
+                code: it.code || String(idx + 1).padStart(3, "0"),
+                name: it.name || `Item #${idx + 1}`,
+                ncm: it.ncm || "44111490",
+                csosn: it.csosn || "102",
+                cfop: it.cfop || "1102",
+                unit: it.unit || "UN",
+                quantity: Number(it.quantity) || 1,
+                unitPrice: Number(it.unitPrice) || 0,
+                grossPrice: Number(it.grossPrice ?? it.totalPrice) || 0,
+                discount: Number(it.discount ?? 0) || 0,
+                totalPrice: Number(it.totalPrice) || 0,
+                clients: it.clients,
+            }));
+        } else {
+            // Fallback para notas antigas sem XML_PAYLOAD: extrai itens da descrição
+            const cleanedDesc = (invoice.description || "")
+                .replace(/^\[[^\]]+\]\s*/i, "")
+                .replace(/\|\s*Clientes:\s*[^|]+/gi, "")
+                .replace(/\|\s*Doc:\s*[^|]+/gi, "")
+                .replace(/\|\s*Chave:\s*[0-9]{44}/gi, "")
+                .replace(/\|\s*Prot SEFAZ:\s*[^|]+/gi, "")
+                .replace(/\|\s*Qtd:\s*[^|]+/gi, "")
+                .replace(/\|\s*VUnit:\s*[^|]+/gi, "")
+                .replace(/\(\+\d+\s*itens?\)/gi, "")
+                .trim();
+
+            const rawParts = cleanedDesc
+                .split(/,\s*(?=\d+(?:[.,]\d+)?x\s)/i)
+                .map((p) => p.trim())
+                .filter(Boolean);
+
+            if (rawParts.length > 0) {
+                const parsedParts = rawParts.map((part, idx) => {
+                    const m = part.match(/^(\d+(?:[.,]\d+)?)x\s+(.+)$/i);
+                    const qty = m ? parseFloat(m[1].replace(",", ".")) || 1 : 1;
+                    const name = m ? m[2].trim() : part;
+                    return { idx, qty, name };
+                });
+                const perItemTotal =
+                    parsedParts.length > 0
+                        ? Number((totalAmount / parsedParts.length).toFixed(2))
+                        : totalAmount;
+                items = parsedParts.map((p, idx) => {
+                    const isLast = idx === parsedParts.length - 1;
+                    const itemTot = isLast
+                        ? Number(Math.max(0, totalAmount - perItemTotal * (parsedParts.length - 1)).toFixed(2))
+                        : perItemTotal;
+                    const unitP = p.qty > 0 ? Number((itemTot / p.qty).toFixed(2)) : itemTot;
+                    return {
+                        id: `${noteId}-item-${idx}`,
+                        sourceNoteId: noteId,
+                        invoiceNumber: finalInvNum,
+                        code: String(idx + 1).padStart(3, "0"),
+                        name: p.name,
+                        ncm: "44111490",
+                        csosn: "102",
+                        cfop: "1102",
+                        unit: "UN",
+                        quantity: p.qty,
+                        unitPrice: unitP,
+                        grossPrice: itemTot,
+                        discount: 0,
+                        totalPrice: itemTot,
+                    };
+                });
+            } else {
+                items = [
+                    {
+                        id: `${noteId}-item-0`,
+                        sourceNoteId: noteId,
+                        invoiceNumber: finalInvNum,
+                        code: "001",
+                        name: cleanedDesc || `Materiais NF #${finalInvNum}`,
+                        ncm: "44111490",
+                        csosn: "102",
+                        cfop: "1102",
+                        unit: "UN",
+                        quantity: 1,
+                        unitPrice: totalAmount,
+                        grossPrice: totalAmount,
+                        discount: 0,
+                        totalPrice: totalAmount,
+                    },
+                ];
+            }
+        }
+
+        const accessKey =
+            xmlMeta?.accessKey ||
+            invoice.description?.match(/Chave:\s*([0-9]{44})/)?.[1] ||
+            "";
+        const emitterName = xmlMeta?.emitter?.name || invoice.client_name || "Fornecedor";
+        const emitterCnpj =
+            xmlMeta?.emitter?.cnpj ||
+            invoice.description?.match(/Doc:\s*([0-9.\-/]+)/)?.[1] ||
+            "";
+        const productsTotal = xmlMeta?.totals?.productsTotal || totalAmount;
+        const freightAmount = xmlMeta?.totals?.freightAmount || 0;
+        const discountAmount = xmlMeta?.totals?.discountAmount || 0;
+        const otherAmount = xmlMeta?.totals?.otherAmount || 0;
+        const duplicates: ParsedXmlDuplicate[] = xmlMeta?.duplicates || [];
+
+        const sourceNote: ParsedXmlSourceNote = {
+            id: noteId,
+            existingInvoiceId: invoice.id,
+            invoiceNumber: finalInvNum,
+            series: xmlMeta?.series || "1",
+            issueDate,
+            natOp: xmlMeta?.natOp || "ENTRADA DE MATERIAL",
+            protocol: xmlMeta?.protocol || "",
+            emitterName,
+            emitterFantasyName: "",
+            emitterCnpj,
+            emitterIe: xmlMeta?.emitter?.ie || "",
+            emitterAddress: xmlMeta?.emitter?.address || "",
+            emitterNeighborhood: xmlMeta?.emitter?.neighborhood || "",
+            emitterCity: xmlMeta?.emitter?.city || "",
+            emitterUf: xmlMeta?.emitter?.uf || "",
+            emitterCep: xmlMeta?.emitter?.cep || "",
+            emitterPhone: xmlMeta?.emitter?.phone || "",
+            recipientName: xmlMeta?.recipient?.name || "BJL MOVEIS PLANEJADOS LTDA",
+            recipientDoc: xmlMeta?.recipient?.doc || companySettings?.cnpj || "60.528.620/0001-20",
+            accessKey,
+            productsTotal,
+            freightAmount,
+            discountAmount,
+            otherAmount,
+            totalAmount,
+            itemsCount: items.length,
+        };
+
+        return {
+            accessKey,
+            invoiceNumber: finalInvNum,
+            series: sourceNote.series,
+            issueDate,
+            emitterName,
+            emitterFantasyName: "",
+            emitterCnpj,
+            recipientName: sourceNote.recipientName,
+            recipientDoc: sourceNote.recipientDoc,
+            productsTotal,
+            freightAmount,
+            discountAmount,
+            otherAmount,
+            totalAmount,
+            items,
+            duplicates,
+            sourceNotes: [sourceNote],
+        };
+    };
+
+    const handleOpenLaunchFromExistingInvoice = (invoice: Invoice) => {
+        const parsed = convertExistingInvoiceToParsedXml(invoice);
+        const xmlMeta = parseStoredXmlPayload(invoice);
+
+        const initialSplits: Record<string, XmlItemClientSplit[]> = {};
+        parsed.items.forEach((it) => {
+            const savedClient =
+                it.clients && it.clients !== "Estoque Geral"
+                    ? it.clients.split(" / ")[0].replace(/\s*\([^)]*\)$/, "").trim()
+                    : it.clients === "Estoque Geral"
+                    ? "ESTOQUE"
+                    : "";
+            initialSplits[it.id] = [
+                {
+                    id: `${it.id}-0`,
+                    client: savedClient,
+                    quantity: String(it.quantity),
+                    amount: it.totalPrice.toFixed(2),
+                },
+            ];
+        });
+        setXmlItemSplits(initialSplits);
+
+        const detectedSupplier = detectSupplierProfile(parsed.emitterName, parsed.emitterFantasyName);
+        const initialPaymentCat = detectedSupplier === "bruta" ? "Cartao" : "Boleto";
+        const initialPaymentMethod = detectedSupplier === "bruta" ? "Cartão Nubank" : "Boleto";
+
+        const initialPreset =
+            detectedSupplier !== "bruta" && parsed.duplicates.length > 0 ? "xml_dup" : "30_60_90";
+
+        const defaultInstallments = buildInstallmentsFromPreset(
+            parsed.issueDate,
+            parsed.totalAmount,
+            initialPreset,
+            initialPaymentMethod,
+            parsed.duplicates,
+            3,
+            30
+        );
+        setXmlInstallments(defaultInstallments);
+
+        setXmlOptions((prev) => ({
+            ...prev,
+            direction: xmlMeta?.direction || "entrada",
+            updateInventory: false, // Já foi lançada antes, evita duplicar estoque a menos que o usuário marque
+            createExpenseTransaction: true,
+            supplierPreset: detectedSupplier,
+            paymentCategoryType: initialPaymentCat,
+            paymentMethod: initialPaymentMethod,
+            financialInstitution: "Banco Itaú",
+            category: "Custo com Materiais e Obras",
+            subcategory: "Compra de MDF e Madeira",
+            schedulePreset: initialPreset,
+            customInstallmentCount: String(defaultInstallments.length || 3),
+            customIntervalDays: "30",
+            bulkClientTarget: "",
+        }));
+
+        setParsedXml(parsed);
+        setIsXmlDialogOpen(true);
+    };
+
+    useEffect(() => {
+        const pendingId = sessionStorage.getItem("bjl_launch_invoice_id");
+        if (pendingId && invoices.length > 0) {
+            const target = invoices.find((inv) => inv.id === pendingId);
+            if (target) {
+                sessionStorage.removeItem("bjl_launch_invoice_id");
+                handleOpenLaunchFromExistingInvoice(target);
+            }
+        }
+    }, [invoices]);
+
     // Adiciona +1 (ou mais) notas XML para SOMAR o valor nos mesmos Boletos 3x sem perder o rateio já preenchido!
     const handleAppendXmlFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
@@ -2163,34 +2404,54 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 };
 
                 return {
-                    issue_date: sn.issueDate || parsedXml.issueDate,
-                    client_name:
-                        xmlOptions.direction === "entrada"
-                            ? sn.emitterName || partyName
-                            : sn.recipientName || partyName,
-                    description: `[XML ${xmlOptions.direction.toUpperCase()}${
-                        notesToRegister.length > 1
-                            ? ` • SOMADA COM ${notesToRegister.length} NOTAS`
-                            : ""
-                    }] ${noteSummaryItems}${
-                        totalItemsHere > 3 ? ` (+${totalItemsHere - 3} itens)` : ""
-                    }${clientNamesInNote ? ` | Clientes: ${clientNamesInNote}` : ""}${
-                        sn.accessKey ? ` | Chave: ${sn.accessKey}` : ""
-                    }`,
-                    amount: sn.totalAmount,
-                    status: "Autorizada" as const,
-                    invoice_number: sn.invoiceNumber,
-                    type: "NF-e" as const,
-                    asaas_status: `XML_PAYLOAD:${JSON.stringify(storedPayload)}`,
+                    existingInvoiceId: (sn as ParsedXmlSourceNote).existingInvoiceId,
+                    payload: {
+                        issue_date: sn.issueDate || parsedXml.issueDate,
+                        client_name:
+                            xmlOptions.direction === "entrada"
+                                ? sn.emitterName || partyName
+                                : sn.recipientName || partyName,
+                        description: `[${
+                            (sn as ParsedXmlSourceNote).existingInvoiceId ? "ENTRADA MATERIAL" : `XML ${xmlOptions.direction.toUpperCase()}`
+                        }${
+                            notesToRegister.length > 1
+                                ? ` • SOMADA COM ${notesToRegister.length} NOTAS`
+                                : ""
+                        }] ${noteSummaryItems}${
+                            totalItemsHere > 3 ? ` (+${totalItemsHere - 3} itens)` : ""
+                        }${clientNamesInNote ? ` | Clientes: ${clientNamesInNote}` : ""}${
+                            sn.accessKey ? ` | Chave: ${sn.accessKey}` : ""
+                        }`,
+                        amount: sn.totalAmount,
+                        status: "Autorizada" as const,
+                        invoice_number: sn.invoiceNumber,
+                        type: "NF-e" as const,
+                        asaas_status: `XML_PAYLOAD:${JSON.stringify(storedPayload)}`,
+                    },
                 };
             });
 
-            const { data: insertedInvoices, error: invErr } = await supabase
-                .from("invoices")
-                .insert(newInvoicesPayload)
-                .select();
+            const toUpdate = newInvoicesPayload.filter((x) => Boolean(x.existingInvoiceId));
+            const toInsert = newInvoicesPayload.filter((x) => !x.existingInvoiceId).map((x) => x.payload);
 
-            if (invErr) throw invErr;
+            let insertedInvoices: any[] = [];
+            if (toInsert.length > 0) {
+                const { data: insData, error: invErr } = await supabase
+                    .from("invoices")
+                    .insert(toInsert)
+                    .select();
+                if (invErr) throw invErr;
+                insertedInvoices = insData || [];
+            }
+
+            for (const upd of toUpdate) {
+                if (upd.existingInvoiceId) {
+                    await supabase
+                        .from("invoices")
+                        .update(upd.payload)
+                        .eq("id", upd.existingInvoiceId);
+                }
+            }
 
             // 1. Se marcou atualizar estoque (Entrada de chapas MDF / ferragens)
             if (
@@ -2434,7 +2695,7 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 }
             }
 
-            if (insertedInvoices && insertedInvoices.length > 0) {
+            if (insertedInvoices && insertedInvoices.length > 0 && toUpdate.length === 0) {
                 setInvoices((prev) => [...insertedInvoices, ...prev]);
             } else {
                 await fetchInvoices();
@@ -2447,8 +2708,8 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
             toast.success(
                 `${
                     notesToRegister.length > 1
-                        ? `${notesToRegister.length} Notas (${parsedXml.invoiceNumber}) somadas e importadas!`
-                        : `NF-e #${parsedXml.invoiceNumber} importada!`
+                        ? `${notesToRegister.length} Notas (${parsedXml.invoiceNumber}) somadas e lançadas!`
+                        : `NF-e #${parsedXml.invoiceNumber} atualizada!`
                 } ${
                     xmlOptions.createExpenseTransaction
                         ? `${xmlInstallments.length} lançamento(s) (${xmlOptions.paymentMethod}) e rateio de ${xmlClientAllocationSummary.groups.length} cliente(s) criados no Financeiro!`
@@ -2457,6 +2718,10 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
             );
             setIsXmlDialogOpen(false);
             setParsedXml(null);
+
+            if (xmlOptions.createExpenseTransaction && onNavigateToLancamentos) {
+                onNavigateToLancamentos();
+            }
         } catch (err: any) {
             console.error("Erro ao importar XML:", err);
             toast.error("Erro ao salvar dados do XML no banco.");
@@ -3536,10 +3801,25 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-1">
+                                                    {invoice.status !== "Cancelada" && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleOpenLaunchFromExistingInvoice(invoice)}
+                                                            className="h-8 px-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 gap-1.5"
+                                                            title="Colocar Clientes de cada item e Lançar no Financeiro"
+                                                        >
+                                                            <Users className="h-3.5 w-3.5 text-amber-400" />
+                                                            Lançar / Clientes
+                                                        </Button>
+                                                    )}
                                                     {(parseStoredXmlPayload(invoice) ||
                                                         (invoice.description || "")
                                                             .toUpperCase()
-                                                            .includes("[XML")) && (
+                                                            .includes("[XML") ||
+                                                        (invoice.description || "")
+                                                            .toUpperCase()
+                                                            .includes("[ENTRADA")) && (
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
@@ -5514,13 +5794,24 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                                         )}
                                     </div>
 
-                                    <DialogFooter className="gap-2">
+                                    <DialogFooter className="gap-2 flex-wrap">
                                         <Button
                                             variant="ghost"
                                             onClick={() => setViewingInvoice(null)}
                                             className="rounded-xl text-xs"
                                         >
                                             Fechar
+                                        </Button>
+                                        <Button
+                                            onClick={() => {
+                                                const inv = viewingInvoice;
+                                                setViewingInvoice(null);
+                                                handleOpenLaunchFromExistingInvoice(inv);
+                                            }}
+                                            className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-wider text-xs px-5 gap-2 shadow-lg shadow-emerald-600/20"
+                                        >
+                                            <Users className="h-4 w-4" />
+                                            Colocar Clientes & Ir p/ Lançamento
                                         </Button>
                                         <Button
                                             onClick={() => handlePrintDanfe(viewingInvoice)}
@@ -5541,6 +5832,10 @@ export default function NotaFiscalTab({ onRefresh }: NotaFiscalTabProps = {}) {
                 open={isInboundWithoutXmlOpen}
                 onOpenChange={setIsInboundWithoutXmlOpen}
                 onSuccess={fetchInvoices}
+                onOpenClientSplitLaunch={(savedInvoice) => {
+                    fetchInvoices();
+                    handleOpenLaunchFromExistingInvoice(savedInvoice);
+                }}
             />
         </div>
     );
