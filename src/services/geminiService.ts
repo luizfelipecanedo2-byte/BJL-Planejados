@@ -1135,6 +1135,18 @@ Extraia todos os dados da nota fiscal (da imagem, PDF ou texto fornecido) e reto
   return JSON.parse(textContent) as ExtractedDanfeData;
 }
 
+export type DimensionLineColorKey =
+  | "amber"
+  | "cyan"
+  | "emerald"
+  | "rose"
+  | "violet"
+  | "orange"
+  | "lime"
+  | "pink"
+  | "sky"
+  | "yellow";
+
 export interface SmartDimensionLine {
   id: string;
   kind: "line" | "pin";
@@ -1145,7 +1157,7 @@ export interface SmartDimensionLine {
   y1: number;
   x2: number;
   y2: number;
-  color: "amber" | "cyan" | "emerald" | "rose" | "violet";
+  color: DimensionLineColorKey;
   category?: "main" | "opening" | "electrical" | "hydraulic" | "structure";
   notes?: string;
   required?: boolean;

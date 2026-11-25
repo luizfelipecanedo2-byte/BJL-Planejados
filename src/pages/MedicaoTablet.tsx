@@ -132,6 +132,19 @@ const ROOM_PRESETS = [
     { label: "Lavanderia", type: "Lavanderia" },
 ];
 
+const LINE_COLOR_CYCLE_ORDER: SmartDimensionLine["color"][] = [
+    "amber",
+    "cyan",
+    "emerald",
+    "rose",
+    "violet",
+    "orange",
+    "lime",
+    "pink",
+    "sky",
+    "yellow",
+];
+
 const LINE_COLORS: Record<
     SmartDimensionLine["color"],
     {
@@ -147,43 +160,107 @@ const LINE_COLORS: Record<
         stroke: "#f59e0b",
         hex: "#f59e0b",
         badgeBg: "bg-amber-950/90",
-        badgeBorder: "border-amber-400/85",
+        badgeBorder: "border-amber-400/90",
         text: "text-amber-300",
-        label: "Ouro / Principal",
+        label: "Ouro",
     },
     cyan: {
         stroke: "#06b6d4",
         hex: "#06b6d4",
         badgeBg: "bg-cyan-950/90",
-        badgeBorder: "border-cyan-400/85",
+        badgeBorder: "border-cyan-400/90",
         text: "text-cyan-300",
-        label: "Ciano / Aberturas",
+        label: "Azul Ciano",
     },
     emerald: {
         stroke: "#10b981",
         hex: "#10b981",
         badgeBg: "bg-emerald-950/90",
-        badgeBorder: "border-emerald-400/85",
+        badgeBorder: "border-emerald-400/90",
         text: "text-emerald-300",
-        label: "Verde / Elétrica",
+        label: "Verde Esmeralda",
     },
     rose: {
         stroke: "#f43f5e",
         hex: "#f43f5e",
         badgeBg: "bg-rose-950/90",
-        badgeBorder: "border-rose-400/85",
+        badgeBorder: "border-rose-400/90",
         text: "text-rose-300",
-        label: "Alerta / Viga",
+        label: "Vermelho / Coral",
     },
     violet: {
-        stroke: "#8b5cf6",
-        hex: "#8b5cf6",
-        badgeBg: "bg-violet-950/90",
-        badgeBorder: "border-violet-400/85",
-        text: "text-violet-300",
-        label: "Roxo / Detalhe",
+        stroke: "#a855f7",
+        hex: "#a855f7",
+        badgeBg: "bg-purple-950/90",
+        badgeBorder: "border-purple-400/90",
+        text: "text-purple-300",
+        label: "Roxo / Violeta",
+    },
+    orange: {
+        stroke: "#f97316",
+        hex: "#f97316",
+        badgeBg: "bg-orange-950/90",
+        badgeBorder: "border-orange-400/90",
+        text: "text-orange-300",
+        label: "Laranja Vivo",
+    },
+    lime: {
+        stroke: "#84cc16",
+        hex: "#84cc16",
+        badgeBg: "bg-lime-950/90",
+        badgeBorder: "border-lime-400/90",
+        text: "text-lime-300",
+        label: "Verde Lima",
+    },
+    pink: {
+        stroke: "#ec4899",
+        hex: "#ec4899",
+        badgeBg: "bg-pink-950/90",
+        badgeBorder: "border-pink-400/90",
+        text: "text-pink-300",
+        label: "Rosa / Pink",
+    },
+    sky: {
+        stroke: "#38bdf8",
+        hex: "#38bdf8",
+        badgeBg: "bg-sky-950/90",
+        badgeBorder: "border-sky-400/90",
+        text: "text-sky-300",
+        label: "Azul Celeste",
+    },
+    yellow: {
+        stroke: "#facc15",
+        hex: "#facc15",
+        badgeBg: "bg-yellow-950/90",
+        badgeBorder: "border-yellow-300/90",
+        text: "text-yellow-200",
+        label: "Amarelo Neon",
     },
 };
+
+/**
+ * Escolhe automaticamente uma cor diferente das linhas já existentes na parede
+ * para que cada nova linha horizontal ou vertical tenha sua própria cor exclusiva.
+ */
+function pickNextDistinctLineColor(
+    existingLines: SmartDimensionLine[]
+): SmartDimensionLine["color"] {
+    const usedColors = new Set(existingLines.map((l) => l.color));
+    for (const candidate of LINE_COLOR_CYCLE_ORDER) {
+        if (!usedColors.has(candidate)) {
+            return candidate;
+        }
+    }
+    const lastColor = existingLines[existingLines.length - 1]?.color;
+    const nextByIndex =
+        LINE_COLOR_CYCLE_ORDER[
+            existingLines.length % LINE_COLOR_CYCLE_ORDER.length
+        ];
+    if (nextByIndex !== lastColor) return nextByIndex;
+    return LINE_COLOR_CYCLE_ORDER[
+        (existingLines.length + 1) % LINE_COLOR_CYCLE_ORDER.length
+    ];
+}
 
 /**
  * Cria Parede 1, Parede 2, Parede 3 e Parede 4 100% LIMPAS (sem linhas automáticas).
@@ -1364,15 +1441,17 @@ const MedicaoTablet: React.FC = () => {
     const addManualLineOrPin = (preset: {
         kind: "line" | "pin";
         label: string;
-        color: SmartDimensionLine["color"];
+        color?: SmartDimensionLine["color"];
         horizontal?: boolean;
     }) => {
         if (!activeWall) return;
+        const distinctColor = pickNextDistinctLineColor(activeWall.lines);
+
         if (preset.kind === "pin") {
             setIsAddingPinMode({
                 active: true,
                 label: preset.label,
-                color: preset.color,
+                color: distinctColor,
             });
             setIsDrawingNewLine(false);
             toast.info(
@@ -1392,7 +1471,7 @@ const MedicaoTablet: React.FC = () => {
             y1: preset.horizontal !== false ? 30 + offset : 18,
             x2: preset.horizontal !== false ? 80 : 35 + offset,
             y2: preset.horizontal !== false ? 30 + offset : 82,
-            color: preset.color,
+            color: distinctColor,
             required: true,
         };
 
@@ -1528,6 +1607,10 @@ const MedicaoTablet: React.FC = () => {
                     : drawingTempLine.x2;
             const finalY2 = dist < 5 ? drawingTempLine.y1 : drawingTempLine.y2;
 
+            const distinctColor = pickNextDistinctLineColor(
+                activeWall?.lines || []
+            );
+
             const newLine: SmartDimensionLine = {
                 id: `ln-${Date.now()}`,
                 kind: "line",
@@ -1538,7 +1621,7 @@ const MedicaoTablet: React.FC = () => {
                 y1: drawingTempLine.y1,
                 x2: finalX2,
                 y2: finalY2,
-                color: "amber",
+                color: distinctColor,
                 required: true,
             };
 
@@ -3342,7 +3425,13 @@ const MedicaoTablet: React.FC = () => {
                                                 y1={drawingTempLine.y1}
                                                 x2={drawingTempLine.x2}
                                                 y2={drawingTempLine.y2}
-                                                stroke="#10b981"
+                                                stroke={
+                                                    LINE_COLORS[
+                                                        pickNextDistinctLineColor(
+                                                            activeWall.lines
+                                                        )
+                                                    ]?.stroke || "#10b981"
+                                                }
                                                 strokeWidth="0.9"
                                                 strokeDasharray="1.5 1.5"
                                             />
@@ -3445,15 +3534,46 @@ const MedicaoTablet: React.FC = () => {
                                                             "ring-2 ring-white scale-105 z-40"
                                                     )}
                                                 >
-                                                    {line.kind === "pin" && (
-                                                        <span
-                                                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                                                            style={{
-                                                                backgroundColor:
-                                                                    spec.hex,
-                                                            }}
-                                                        />
-                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onPointerDown={(e) =>
+                                                            e.stopPropagation()
+                                                        }
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const currIdx =
+                                                                LINE_COLOR_CYCLE_ORDER.indexOf(
+                                                                    line.color
+                                                                );
+                                                            const nextColor =
+                                                                LINE_COLOR_CYCLE_ORDER[
+                                                                    (currIdx +
+                                                                        1) %
+                                                                        LINE_COLOR_CYCLE_ORDER.length
+                                                                ];
+                                                            updateActiveWall(
+                                                                (wall) => ({
+                                                                    ...wall,
+                                                                    lines: wall.lines.map(
+                                                                        (l) =>
+                                                                            l.id ===
+                                                                            line.id
+                                                                                ? {
+                                                                                      ...l,
+                                                                                      color: nextColor,
+                                                                                  }
+                                                                                : l
+                                                                    ),
+                                                                })
+                                                            );
+                                                        }}
+                                                        className="w-3 h-3 rounded-full shrink-0 border border-white/50 shadow-sm hover:scale-125 transition-transform"
+                                                        style={{
+                                                            backgroundColor:
+                                                                spec.hex,
+                                                        }}
+                                                        title={`Cor: ${spec.name} (toque para trocar de cor)`}
+                                                    />
 
                                                     {/* Nome opcional da linha */}
                                                     {isSelected ? (
