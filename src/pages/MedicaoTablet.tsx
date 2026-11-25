@@ -119,6 +119,31 @@ export interface TabletMeasurementProject {
 
 const LOCAL_STORAGE_KEY = "bjl_tablet_measurements_v2";
 const CLOUD_SETTINGS_KEY = "tablet_measurements_projects_v2";
+const BRIEFING_TEMPLATES_STORAGE_KEY = "bjl_briefing_templates_v1";
+
+export type BriefingTemplateMap = Record<string, RoomBriefingQuestion[]>;
+
+export function getRoomBriefingCategoryKey(
+    roomType: string,
+    roomName: string
+): string {
+    const norm = `${roomType} ${roomName}`.toLowerCase();
+    if (norm.includes("cozinha") || norm.includes("gourmet")) return "cozinha";
+    if (
+        norm.includes("quarto") ||
+        norm.includes("dormit") ||
+        norm.includes("suíte") ||
+        norm.includes("suite")
+    )
+        return "quarto";
+    if (norm.includes("closet")) return "closet";
+    if (norm.includes("sala") || norm.includes("painel") || norm.includes("tv"))
+        return "sala";
+    if (norm.includes("banheiro") || norm.includes("lavabo")) return "banheiro";
+    if (norm.includes("lavanderia") || norm.includes("serviço"))
+        return "lavanderia";
+    return "escritorio";
+}
 
 const ROOM_PRESETS = [
     { label: "Quarto Casal", type: "Quarto" },
@@ -898,6 +923,51 @@ const MedicaoTablet: React.FC = () => {
     // Modal de Briefing Inteligente do Cliente (abre ao clicar em "Confirmar Medidas")
     const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
     const [newCustomQuestionText, setNewCustomQuestionText] = useState("");
+    const [newCustomQuestionOptions, setNewCustomQuestionOptions] = useState("");
+    const [briefingTemplates, setBriefingTemplates] =
+        useState<BriefingTemplateMap>(() => {
+            try {
+                const raw = localStorage.getItem(BRIEFING_TEMPLATES_STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === "object") {
+                        return parsed;
+                    }
+                }
+            } catch {
+                // ignore
+            }
+            return {};
+        });
+
+    const getEditableQuestionsForRoom = useCallback(
+        (roomType: string, roomName: string): RoomBriefingQuestion[] => {
+            const catKey = getRoomBriefingCategoryKey(roomType, roomName);
+            if (
+                briefingTemplates[catKey] &&
+                Array.isArray(briefingTemplates[catKey])
+            ) {
+                return briefingTemplates[catKey];
+            }
+            return getBriefingQuestionsForRoomType(roomType, roomName);
+        },
+        [briefingTemplates]
+    );
+
+    const saveBriefingTemplates = useCallback(
+        (nextMap: BriefingTemplateMap) => {
+            setBriefingTemplates(nextMap);
+            try {
+                localStorage.setItem(
+                    BRIEFING_TEMPLATES_STORAGE_KEY,
+                    JSON.stringify(nextMap)
+                );
+            } catch {
+                // ignore
+            }
+        },
+        []
+    );
 
     // Estados de Desenho de Linhas (100% manual pelo usuário!)
     const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
@@ -1879,7 +1949,7 @@ const MedicaoTablet: React.FC = () => {
             })
             .filter(Boolean);
 
-        const questions = getBriefingQuestionsForRoomType(room.roomType, room.name);
+        const questions = getEditableQuestionsForRoom(room.roomType, room.name);
         const customQs = room.customBriefingQuestions || [];
         const answers = room.briefingAnswers || {};
         const briefingParts: string[] = [];
@@ -3871,7 +3941,36 @@ const MedicaoTablet: React.FC = () => {
                         </DialogHeader>
 
                         <div className="space-y-4 py-1">
-                            {getBriefingQuestionsForRoomType(
+                            <div className="flex items-center justify-between gap-2 px-1">
+                                <span className="text-[11px] text-muted-foreground">
+                                    💡 Você pode <strong>adicionar</strong> novas perguntas abaixo ou <strong>tirar (🗑️)</strong> qualquer pergunta que não usar no dia a dia.
+                                </span>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        const catKey =
+                                            getRoomBriefingCategoryKey(
+                                                activeRoom.roomType,
+                                                activeRoom.name
+                                            );
+                                        const nextMap = {
+                                            ...briefingTemplates,
+                                        };
+                                        delete nextMap[catKey];
+                                        saveBriefingTemplates(nextMap);
+                                        toast.success(
+                                            `Perguntas padrão de ${activeRoom.roomType || activeRoom.name} restauradas!`
+                                        );
+                                    }}
+                                    className="h-7 px-2 text-[10px] text-amber-300 hover:text-amber-200 shrink-0"
+                                >
+                                    ↺ Restaurar Padrão
+                                </Button>
+                            </div>
+
+                            {getEditableQuestionsForRoom(
                                 activeRoom.roomType,
                                 activeRoom.name
                             ).map((q) => {
@@ -3913,42 +4012,134 @@ const MedicaoTablet: React.FC = () => {
                                     }));
                                 };
 
+                                const handleRemoveTemplateQuestion = () => {
+                                    const catKey = getRoomBriefingCategoryKey(
+                                        activeRoom.roomType,
+                                        activeRoom.name
+                                    );
+                                    const currentList =
+                                        getEditableQuestionsForRoom(
+                                            activeRoom.roomType,
+                                            activeRoom.name
+                                        );
+                                    const updatedList = currentList.filter(
+                                        (item) => item.id !== q.id
+                                    );
+                                    saveBriefingTemplates({
+                                        ...briefingTemplates,
+                                        [catKey]: updatedList,
+                                    });
+                                    toast.success(
+                                        "Pergunta removida deste tipo de ambiente!"
+                                    );
+                                };
+
+                                const handleAddOptionToQuestion = () => {
+                                    const newOpt = window.prompt(
+                                        `Nova opção rápida para "${q.question}":`
+                                    );
+                                    if (!newOpt || !newOpt.trim()) return;
+                                    const cleanOpt = newOpt.trim();
+                                    const catKey = getRoomBriefingCategoryKey(
+                                        activeRoom.roomType,
+                                        activeRoom.name
+                                    );
+                                    const currentList =
+                                        getEditableQuestionsForRoom(
+                                            activeRoom.roomType,
+                                            activeRoom.name
+                                        );
+                                    const updatedList = currentList.map(
+                                        (item) =>
+                                            item.id === q.id
+                                                ? {
+                                                      ...item,
+                                                      options:
+                                                          item.options.includes(
+                                                              cleanOpt
+                                                          )
+                                                              ? item.options
+                                                              : [
+                                                                    ...item.options,
+                                                                    cleanOpt,
+                                                                ],
+                                                  }
+                                                : item
+                                    );
+                                    saveBriefingTemplates({
+                                        ...briefingTemplates,
+                                        [catKey]: updatedList,
+                                    });
+                                };
+
                                 return (
                                     <div
                                         key={q.id}
                                         className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2.5"
                                     >
-                                        <Label className="text-xs font-black text-amber-300 block">
-                                            {q.question}
-                                        </Label>
-
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {q.options.map((opt) => {
-                                                const isChosen = q.multiSelect
-                                                    ? selectedList.includes(opt)
-                                                    : currentVal === opt;
-                                                return (
-                                                    <button
-                                                        key={opt}
-                                                        type="button"
-                                                        onClick={() =>
-                                                            handleOptionClick(
-                                                                opt
-                                                            )
-                                                        }
-                                                        className={cn(
-                                                            "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
-                                                            isChosen
-                                                                ? "bg-emerald-500 text-black border-emerald-400 font-black shadow-md"
-                                                                : "bg-slate-900/90 text-white/80 border-white/15 hover:border-amber-400/50 hover:text-white"
-                                                        )}
-                                                    >
-                                                        {isChosen ? "✓ " : ""}
-                                                        {opt}
-                                                    </button>
-                                                );
-                                            })}
+                                        <div className="flex items-start justify-between gap-2">
+                                            <Label className="text-xs font-black text-amber-300 block leading-snug">
+                                                {q.question}
+                                            </Label>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={
+                                                        handleAddOptionToQuestion
+                                                    }
+                                                    className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold text-white/70 hover:text-white"
+                                                    title="Adicionar novo botão de opção rápida nesta pergunta"
+                                                >
+                                                    + Opção
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={
+                                                        handleRemoveTemplateQuestion
+                                                    }
+                                                    className="p-1 rounded-lg text-rose-400/80 hover:text-rose-300 hover:bg-rose-500/15 transition-colors"
+                                                    title="Tirar esta pergunta do Briefing"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
                                         </div>
+
+                                        {q.options.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {q.options.map((opt) => {
+                                                    const isChosen =
+                                                        q.multiSelect
+                                                            ? selectedList.includes(
+                                                                  opt
+                                                              )
+                                                            : currentVal ===
+                                                              opt;
+                                                    return (
+                                                        <button
+                                                            key={opt}
+                                                            type="button"
+                                                            onClick={() =>
+                                                                handleOptionClick(
+                                                                    opt
+                                                                )
+                                                            }
+                                                            className={cn(
+                                                                "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
+                                                                isChosen
+                                                                    ? "bg-emerald-500 text-black border-emerald-400 font-black shadow-md"
+                                                                    : "bg-slate-900/90 text-white/80 border-white/15 hover:border-amber-400/50 hover:text-white"
+                                                            )}
+                                                        >
+                                                            {isChosen
+                                                                ? "✓ "
+                                                                : ""}
+                                                            {opt}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
 
                                         <Input
                                             value={currentVal}
@@ -3978,7 +4169,7 @@ const MedicaoTablet: React.FC = () => {
                                 );
                             })}
 
-                            {/* Perguntas Extras Adicionadas pelo Usuário */}
+                            {/* Perguntas Extras Individuais deste Cliente */}
                             {(activeRoom.customBriefingQuestions || []).map(
                                 (cq) => (
                                     <div
@@ -4033,41 +4224,86 @@ const MedicaoTablet: React.FC = () => {
                                 )
                             )}
 
-                            {/* Adicionar nova pergunta livre no Briefing */}
-                            <div className="p-3 rounded-2xl bg-white/[0.02] border border-dashed border-white/15 flex items-center gap-2">
+                            {/* Adicionar nova pergunta no Briefing (salva automaticamente para o dia a dia!) */}
+                            <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-dashed border-amber-400/30 space-y-2.5">
+                                <Label className="text-[11px] font-black uppercase text-amber-300 block">
+                                    + Adicionar Nova Pergunta para{" "}
+                                    {activeRoom.roomType || activeRoom.name}
+                                </Label>
                                 <Input
                                     value={newCustomQuestionText}
                                     onChange={(e) =>
                                         setNewCustomQuestionText(e.target.value)
                                     }
-                                    placeholder="Adicionar outra pergunta neste briefing (ex: Tem tomada 220V?)..."
+                                    placeholder="Digite a pergunta (ex: Tem ponto de água p/ geladeira?)..."
                                     className="h-9 text-xs bg-slate-900 border-white/15"
                                 />
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!newCustomQuestionText.trim()}
-                                    onClick={() => {
-                                        const qText =
-                                            newCustomQuestionText.trim();
-                                        if (!qText) return;
-                                        const newId = `custom-q-${Date.now()}`;
-                                        updateActiveRoom((r) => ({
-                                            ...r,
-                                            customBriefingQuestions: [
-                                                ...(r.customBriefingQuestions ||
-                                                    []),
-                                                { id: newId, question: qText },
-                                            ],
-                                        }));
-                                        setNewCustomQuestionText("");
-                                    }}
-                                    className="h-9 rounded-xl border-primary/40 text-primary font-bold text-xs shrink-0"
-                                >
-                                    <Plus className="h-3.5 w-3.5 mr-1" />
-                                    Pergunta
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        value={newCustomQuestionOptions}
+                                        onChange={(e) =>
+                                            setNewCustomQuestionOptions(
+                                                e.target.value
+                                            )
+                                        }
+                                        placeholder="Opções de botão separadas por vírgula (ex: Sim, Não, 110V, 220V) — opcional"
+                                        className="h-9 text-xs bg-slate-900 border-white/15"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={!newCustomQuestionText.trim()}
+                                        onClick={() => {
+                                            const qText =
+                                                newCustomQuestionText.trim();
+                                            if (!qText) return;
+                                            const parsedOptions =
+                                                newCustomQuestionOptions
+                                                    .split(",")
+                                                    .map((s) => s.trim())
+                                                    .filter(Boolean);
+                                            const newId = `q-${Date.now()}`;
+                                            const catKey =
+                                                getRoomBriefingCategoryKey(
+                                                    activeRoom.roomType,
+                                                    activeRoom.name
+                                                );
+                                            const currentList =
+                                                getEditableQuestionsForRoom(
+                                                    activeRoom.roomType,
+                                                    activeRoom.name
+                                                );
+                                            saveBriefingTemplates({
+                                                ...briefingTemplates,
+                                                [catKey]: [
+                                                    ...currentList,
+                                                    {
+                                                        id: newId,
+                                                        question: qText,
+                                                        options:
+                                                            parsedOptions.length >
+                                                            0
+                                                                ? parsedOptions
+                                                                : [
+                                                                      "Sim",
+                                                                      "Não",
+                                                                  ],
+                                                    },
+                                                ],
+                                            });
+                                            setNewCustomQuestionText("");
+                                            setNewCustomQuestionOptions("");
+                                            toast.success(
+                                                "Nova pergunta adicionada e salva para os próximos briefings!"
+                                            );
+                                        }}
+                                        className="h-9 rounded-xl border-amber-400/50 bg-amber-500/15 text-amber-300 hover:bg-amber-500 hover:text-black font-black text-xs shrink-0"
+                                    >
+                                        <Plus className="h-3.5 w-3.5 mr-1" />
+                                        Adicionar Pergunta
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
