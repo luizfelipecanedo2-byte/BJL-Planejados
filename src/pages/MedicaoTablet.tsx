@@ -687,42 +687,48 @@ const MedicaoTablet: React.FC = () => {
         [activeWall, updateActiveRoom]
     );
 
-    // Alternar Modo Horizontal (Deitado) <-> Vertical (Em Pé) no Tablet (Gira a tela inteira se o tablet estiver travado em pé!)
+    // Alternar Modo Horizontal (Deitado) <-> Vertical (Em Pé) da PÁGINA INTEIRA no Tablet com Teclado!
     const handleToggleOrientation = async (target: "horizontal" | "vertical") => {
         setCanvasOrientation(target);
         const isHoriz = target === "horizontal";
         setIsScreenRotatedHorizontal(isHoriz);
 
+        const root = document.documentElement;
+        root.classList.remove("bjl-rot-cw", "bjl-rot-ccw", "bjl-force-horizontal", "bjl-force-vertical");
+
+        const mode = isHoriz ? "cw" : "normal";
+        localStorage.setItem("bjl_page_rotation_mode", mode);
+
         if (isHoriz) {
-            document.documentElement.classList.add("bjl-force-horizontal");
-            document.documentElement.classList.remove("bjl-force-vertical");
-        } else {
-            document.documentElement.classList.remove("bjl-force-horizontal");
-            document.documentElement.classList.remove("bjl-force-vertical");
+            root.classList.add("bjl-rot-cw", "bjl-force-horizontal");
         }
 
         window.dispatchEvent(
             new CustomEvent("bjl-orientation-change", {
-                detail: { horizontal: isHoriz },
+                detail: { horizontal: isHoriz, mode },
             })
         );
 
-        try {
-            const scr = window.screen as any;
-            if (isHoriz && scr?.orientation?.lock) {
-                await scr.orientation.lock("landscape");
-            } else if (!isHoriz && scr?.orientation?.unlock) {
-                scr.orientation.unlock();
-            }
-        } catch {
-            // Rotação CSS 90° já cuida dos tablets sem suporte a orientation.lock
-        }
-
         toast.success(
             isHoriz
-                ? "Tela virada para Horizontal (Deitado)!"
-                : "Tela voltada para Vertical (Em pé)!"
+                ? "Sistema inteiro girado para Horizontal (Teclado)!"
+                : "Sistema voltou para a posição Vertical normal!"
         );
+    };
+
+    const handleFlipHorizontalDirection = () => {
+        const root = document.documentElement;
+        const isCurrentlyCw = root.classList.contains("bjl-rot-cw");
+        const nextMode = isCurrentlyCw ? "ccw" : "cw";
+        root.classList.remove("bjl-rot-cw", "bjl-rot-ccw");
+        root.classList.add(nextMode === "cw" ? "bjl-rot-cw" : "bjl-rot-ccw", "bjl-force-horizontal");
+        localStorage.setItem("bjl_page_rotation_mode", nextMode);
+        window.dispatchEvent(
+            new CustomEvent("bjl-orientation-change", {
+                detail: { horizontal: true, mode: nextMode },
+            })
+        );
+        toast.success("Lado horizontal invertido (180°)!");
     };
 
     // Girar a foto da parede em 90 graus (caso a foto do celular venha virada)
@@ -981,25 +987,26 @@ const MedicaoTablet: React.FC = () => {
         setSelectedLineId(newLine.id);
     };
 
-    // Coordenadas percentuais (0 a 100%) no toque/arraste (compatível com tela normal e com tela girada 90° em CSS!)
+    // Coordenadas percentuais (0 a 100%) no toque/arraste (compatível com tela normal, +90° cw e -90° ccw!)
     const getRelativeCoords = (clientX: number, clientY: number) => {
         const rect = canvasContainerRef.current?.getBoundingClientRect();
         if (!rect || rect.width === 0 || rect.height === 0) {
             return { x: 50, y: 50 };
         }
 
-        const isCssRotated90 =
-            document.documentElement.classList.contains("bjl-force-horizontal") &&
-            window.innerHeight > window.innerWidth;
+        const root = document.documentElement;
+        const isCw = root.classList.contains("bjl-rot-cw");
+        const isCcw = root.classList.contains("bjl-rot-ccw");
 
         let rawX: number;
         let rawY: number;
 
-        if (isCssRotated90) {
-            // Em rotação de 90° horário, o eixo X local do quadro corre de cima para baixo na tela (clientY),
-            // e o eixo Y local corre da direita para a esquerda na tela (rect.right - clientX)
+        if (isCw) {
             rawX = ((clientY - rect.top) / rect.height) * 100;
             rawY = ((rect.right - clientX) / rect.width) * 100;
+        } else if (isCcw) {
+            rawX = ((rect.bottom - clientY) / rect.height) * 100;
+            rawY = ((clientX - rect.left) / rect.width) * 100;
         } else {
             rawX = ((clientX - rect.left) / rect.width) * 100;
             rawY = ((clientY - rect.top) / rect.height) * 100;
@@ -1622,7 +1629,7 @@ const MedicaoTablet: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                        {/* BOTÃO EM DESTAQUE NA TELA INICIAL: VIRAR TELA PARA HORIZONTAL OU VERTICAL */}
+                        {/* BOTÃO EM DESTAQUE NA TELA INICIAL: VIRAR A PÁGINA INTEIRA PARA HORIZONTAL OU VERTICAL */}
                         <Button
                             type="button"
                             variant="outline"
@@ -1643,8 +1650,20 @@ const MedicaoTablet: React.FC = () => {
                             <RotateCw className="h-4 w-4" />
                             {isScreenRotatedHorizontal
                                 ? "Voltar p/ Vertical ↕"
-                                : "Virar p/ Horizontal ↔"}
+                                : "Virar Sistema p/ Horizontal ↔"}
                         </Button>
+
+                        {isScreenRotatedHorizontal && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleFlipHorizontalDirection}
+                                className="h-11 px-3.5 rounded-2xl border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-black uppercase"
+                                title="Inverter o lado da tela horizontal (180°)"
+                            >
+                                ⇄ Inverter Lado
+                            </Button>
+                        )}
 
                         <Button
                             type="button"

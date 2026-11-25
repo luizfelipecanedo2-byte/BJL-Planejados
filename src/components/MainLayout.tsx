@@ -81,44 +81,65 @@ const MainLayout = () => {
         return localStorage.getItem("ui_sounds") !== "false";
     });
 
-    const [isHorizontalForced, setIsHorizontalForced] = useState<boolean>(() => {
-        return document.documentElement.classList.contains("bjl-force-horizontal");
+    const [rotationMode, setRotationMode] = useState<"normal" | "cw" | "ccw">(() => {
+        const saved = localStorage.getItem("bjl_page_rotation_mode");
+        if (saved === "cw" || saved === "ccw") return saved;
+        return "normal";
     });
 
-    const toggleScreenOrientation = async () => {
-        const nextHorizontal = !isHorizontalForced;
-        setIsHorizontalForced(nextHorizontal);
-        if (nextHorizontal) {
-            document.documentElement.classList.add("bjl-force-horizontal");
-            document.documentElement.classList.remove("bjl-force-vertical");
-            try {
-                await (window.screen as any)?.orientation?.lock?.("landscape");
-            } catch {
-                // fallback CSS rotation active
-            }
-            toast.success("Tela virada para o Modo Horizontal!");
-        } else {
-            document.documentElement.classList.remove("bjl-force-horizontal");
-            document.documentElement.classList.remove("bjl-force-vertical");
-            try {
-                (window.screen as any)?.orientation?.unlock?.();
-            } catch {
-                // ignore
-            }
-            toast.info("Rotação voltou ao padrão vertical/automático.");
+    const isHorizontalForced = rotationMode !== "normal";
+
+    const applyPageRotation = (mode: "normal" | "cw" | "ccw") => {
+        setRotationMode(mode);
+        localStorage.setItem("bjl_page_rotation_mode", mode);
+        const root = document.documentElement;
+        root.classList.remove("bjl-rot-cw", "bjl-rot-ccw", "bjl-force-horizontal", "bjl-force-vertical");
+        if (mode === "cw") {
+            root.classList.add("bjl-rot-cw", "bjl-force-horizontal");
+        } else if (mode === "ccw") {
+            root.classList.add("bjl-rot-ccw", "bjl-force-horizontal");
         }
         window.dispatchEvent(
             new CustomEvent("bjl-orientation-change", {
-                detail: { horizontal: nextHorizontal },
+                detail: { horizontal: mode !== "normal", mode },
             })
         );
     };
 
     useEffect(() => {
+        // Aplica a rotação salva assim que o sistema abre (em todas as abas: Financeiro, Medição, etc.)
+        const root = document.documentElement;
+        root.classList.remove("bjl-rot-cw", "bjl-rot-ccw", "bjl-force-horizontal", "bjl-force-vertical");
+        if (rotationMode === "cw") {
+            root.classList.add("bjl-rot-cw", "bjl-force-horizontal");
+        } else if (rotationMode === "ccw") {
+            root.classList.add("bjl-rot-ccw", "bjl-force-horizontal");
+        }
+    }, [rotationMode]);
+
+    const toggleScreenOrientation = () => {
+        if (rotationMode === "normal") {
+            applyPageRotation("cw");
+            toast.success("Página inteira girada para Horizontal (Teclado)! Se ficar de cabeça para baixo, clique em 'Inverter'.");
+        } else {
+            applyPageRotation("normal");
+            toast.info("Página voltou para a posição Vertical normal.");
+        }
+    };
+
+    const flipHorizontalSide = () => {
+        const next = rotationMode === "cw" ? "ccw" : "cw";
+        applyPageRotation(next);
+        toast.success("Lado da tela horizontal invertido (180°)!");
+    };
+
+    useEffect(() => {
         const onOrientationEvt = (e: Event) => {
             const detail = (e as CustomEvent)?.detail;
-            if (detail && typeof detail.horizontal === "boolean") {
-                setIsHorizontalForced(detail.horizontal);
+            if (detail?.mode && (detail.mode === "normal" || detail.mode === "cw" || detail.mode === "ccw")) {
+                setRotationMode(detail.mode);
+            } else if (detail && typeof detail.horizontal === "boolean") {
+                setRotationMode(detail.horizontal ? "cw" : "normal");
             }
         };
         window.addEventListener("bjl-orientation-change", onOrientationEvt);
@@ -297,14 +318,22 @@ const MainLayout = () => {
     const currentSectionName = allMenuItems.find(item => item.path === location.pathname)?.label || "Visão Geral";
 
     return (
-        <div className="h-[100dvh] h-dvh bg-background flex flex-col lg:flex-row overflow-hidden w-full relative">
+        <div className={cn(
+            "bg-background flex overflow-hidden w-full relative",
+            isHorizontalForced
+                ? "h-full flex-row"
+                : "h-[100dvh] h-dvh flex-col lg:flex-row"
+        )}>
             <CommandMenu />
             <div className="aurora-bg" />
             <FloatingSawdustBackground />
 
             <aside className={cn(
-                "hidden lg:flex fixed lg:static top-6 bottom-6 left-6 z-50 executive-card border-metallic shadow-2xl flex-col transition-all duration-500 rounded-3xl m-4 lg:mr-0 lg:my-6 overflow-hidden",
-                isSidebarCollapsed ? "w-20" : "w-72"
+                "z-50 executive-card border-metallic shadow-2xl flex-col transition-all duration-500 rounded-3xl overflow-hidden",
+                isHorizontalForced
+                    ? "flex static my-3 ml-3 mr-0"
+                    : "hidden lg:flex fixed lg:static top-6 bottom-6 left-6 m-4 lg:mr-0 lg:my-6",
+                isSidebarCollapsed ? "w-20" : "w-64 lg:w-72"
             )}>
                 <div className={cn("h-24 flex items-center justify-between shrink-0 relative overflow-hidden group border-b border-white/[0.06]", isSidebarCollapsed ? "px-2" : "px-5")}>
                     <div className={cn("flex items-center gap-3.5 w-full relative z-10 transition-all duration-500", isSidebarCollapsed ? "flex-col gap-1 justify-center" : "flex-row justify-start")}>
@@ -542,27 +571,45 @@ const MainLayout = () => {
                         </Magnetic>
                     </div>
 
-                    <div className="flex items-center gap-2 sm:gap-3">
-                        {/* Botão Global para Virar Tela p/ Horizontal ou Vertical no Tablet */}
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                                playClickSound();
-                                toggleScreenOrientation();
-                            }}
-                            className={cn(
-                                "h-9 px-3 rounded-xl font-display font-black text-[11px] uppercase tracking-wider gap-1.5 transition-all",
-                                isHorizontalForced
-                                    ? "bg-amber-500 text-black border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.35)]"
-                                    : "bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40"
+                    <div className="flex items-center gap-1.5 sm:gap-2.5">
+                        {/* Botão Global para Virar a PÁGINA TODA (Financeiro, Medição, CRM, tudo) no Tablet com Teclado */}
+                        <div className="inline-flex items-center gap-1">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    playClickSound();
+                                    toggleScreenOrientation();
+                                }}
+                                className={cn(
+                                    "h-9 px-3 rounded-xl font-display font-black text-[11px] uppercase tracking-wider gap-1.5 transition-all",
+                                    isHorizontalForced
+                                        ? "bg-amber-500 text-black border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.35)]"
+                                        : "bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40"
+                                )}
+                                title="Gira o sistema inteiro (Financeiro, Medição, Menu) em 90° para usar no Tablet com Teclado"
+                            >
+                                <RotateCw className="h-3.5 w-3.5" />
+                                <span>{isHorizontalForced ? "Voltar Vertical" : "Virar Horizontal"}</span>
+                            </Button>
+
+                            {isHorizontalForced && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        playClickSound();
+                                        flipHorizontalSide();
+                                    }}
+                                    className="h-9 px-2.5 rounded-xl bg-white/10 hover:bg-white/20 border-white/20 text-white font-black text-[10px] uppercase"
+                                    title="Inverter o lado da tela horizontal (caso tenha ficado de cabeça para baixo no teclado)"
+                                >
+                                    ⇄ Inverter Lado
+                                </Button>
                             )}
-                            title="Virar o sistema entre Horizontal (Deitado) e Vertical (Em pé)"
-                        >
-                            <RotateCw className="h-3.5 w-3.5" />
-                            <span>{isHorizontalForced ? "Vertical" : "Horizontal"}</span>
-                        </Button>
+                        </div>
 
                         {/* Global Quick Create Launcher (+ Criar) */}
                         <DropdownMenu>
@@ -662,7 +709,10 @@ const MainLayout = () => {
                     </div>
                 </header>
 
-                <main className="flex-1 min-h-0 p-3 md:p-6 lg:p-8 pb-28 lg:pb-10 overflow-y-auto overflow-x-hidden relative max-w-full overscroll-y-contain webkit-overflow-scrolling-touch">
+                <main className={cn(
+                    "flex-1 min-h-0 p-3 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden relative max-w-full overscroll-y-contain webkit-overflow-scrolling-touch",
+                    isHorizontalForced ? "pb-6" : "pb-28 lg:pb-10"
+                )}>
                     {/* Compact High-Tech Financial Telemetry HUD Bar */}
                     {role === 'admin' && (todayDueCount > 0 || overdueCount > 0) && (
                         <div className="mb-6 grid grid-cols-1 xl:grid-cols-2 gap-3 relative z-20 animate-in fade-in slide-in-from-top-3 duration-500">
@@ -740,8 +790,11 @@ const MainLayout = () => {
                 </main>
             </div>
 
-            {/* Mobile / Tablet Bottom Navigation - 6 botões táteis e espaçados */}
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-white/10 grid grid-cols-6 h-[72px] px-1 shadow-2xl safe-area-bottom backdrop-blur-xl bg-background/90">
+            {/* Mobile / Tablet Bottom Navigation - Oculta quando o modo Horizontal de Teclado estiver ativo */}
+            <nav className={cn(
+                "fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-white/10 grid grid-cols-6 h-[72px] px-1 shadow-2xl safe-area-bottom backdrop-blur-xl bg-background/90",
+                isHorizontalForced ? "hidden" : "lg:hidden"
+            )}>
                 <Link
                     to="/admin"
                     onClick={playClickSound}
