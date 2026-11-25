@@ -80,6 +80,14 @@ export interface WallMeasurementData {
     updatedAt?: string;
 }
 
+export interface RoomBriefingQuestion {
+    id: string;
+    question: string;
+    options: string[];
+    placeholder?: string;
+    multiSelect?: boolean;
+}
+
 export interface RoomMeasurementData {
     id: string;
     name: string;
@@ -88,6 +96,9 @@ export interface RoomMeasurementData {
     mdfExternal?: string;
     hardwareNotes?: string;
     walls: WallMeasurementData[];
+    briefingConfirmed?: boolean;
+    briefingAnswers?: Record<string, string>;
+    customBriefingQuestions?: Array<{ id: string; question: string }>;
 }
 
 export interface TabletMeasurementProject {
@@ -202,7 +213,408 @@ function createCleanRoom(name: string, roomType: string): RoomMeasurementData {
         mdfExternal: "",
         hardwareNotes: "",
         walls: createCleanWalls(),
+        briefingConfirmed: false,
+        briefingAnswers: {},
+        customBriefingQuestions: [],
     };
+}
+
+/**
+ * Retorna as perguntas inteligentes de Briefing do Cliente de acordo com o ambiente
+ * (Cozinha, Quarto, Closet, Sala / Painel TV, Banheiro, Lavanderia, Escritório).
+ */
+export function getBriefingQuestionsForRoomType(
+    roomType: string,
+    roomName: string
+): RoomBriefingQuestion[] {
+    const norm = `${roomType} ${roomName}`.toLowerCase();
+
+    if (norm.includes("cozinha") || norm.includes("gourmet")) {
+        return [
+            {
+                id: "cor_mdf",
+                question: "1. Qual a Cor / MDF desejado para a Cozinha?",
+                options: [
+                    "Branco TX",
+                    "Freijó + Gianduia",
+                    "Freijó + Branco",
+                    "Freijó + Grafite",
+                    "Areia / Off-White",
+                    "Verde Sálvia / Menta",
+                    "Preto / Chumbo",
+                ],
+                placeholder: "Ou digite a cor exata do MDF externo e interno...",
+            },
+            {
+                id: "microondas",
+                question: "2. Tem Micro-ondas?",
+                options: [
+                    "Sim (Na Torre Quente)",
+                    "Sim (Embutido no Aéreo)",
+                    "Sim (Sobre a Bancada)",
+                    "Não tem",
+                ],
+                placeholder: "Se souber o tamanho/litros ou medida, anote aqui...",
+            },
+            {
+                id: "forno",
+                question: "3. Tem Forno (Elétrico ou a Gás)?",
+                options: [
+                    "Sim (Forno Elétrico na Torre)",
+                    "Sim (Forno a Gás de Embutir)",
+                    "Não (Vai usar Fogão de Piso)",
+                    "Forno de Bancada",
+                ],
+                placeholder: "Modelo ou medida do forno (ex: 60cm / 80L)...",
+            },
+            {
+                id: "fogao_cooktop",
+                question: "4. Vai usar Cooktop ou Fogão de Piso?",
+                options: [
+                    "Cooktop 5 bocas",
+                    "Cooktop 4 bocas",
+                    "Cooktop por Indução",
+                    "Fogão de Piso 4 bocas",
+                    "Fogão de Piso 5 ou 6 bocas",
+                ],
+            },
+            {
+                id: "geladeira",
+                question: "5. Qual o tipo / tamanho da Geladeira?",
+                options: [
+                    "Duplex Padrão (~70–75cm)",
+                    "Inverse (~75–85cm)",
+                    "Side by Side / French Door (~90–100cm)",
+                ],
+                placeholder: "Largura x Altura da geladeira (se já tiver)...",
+            },
+            {
+                id: "coifa_depurador",
+                question: "6. Tem Coifa ou Depurador (Suggar)?",
+                options: [
+                    "Depurador / Suggar Embutido",
+                    "Coifa de Parede",
+                    "Coifa de Ilha",
+                    "Não terá",
+                ],
+            },
+            {
+                id: "lava_loucas_filtro",
+                question: "7. Vai ter Lava-Louças ou Filtro de Água?",
+                options: [
+                    "Só Filtro / Purificador",
+                    "Lava-Louças 8/10 serviços",
+                    "Lava-Louças 14 serviços",
+                    "Lava-Louças + Filtro",
+                    "Nenhum",
+                ],
+            },
+            {
+                id: "detalhes_acessorios",
+                question: "8. Puxadores, Ferragens e Detalhes desejados:",
+                multiSelect: true,
+                options: [
+                    "Puxador Perfil Alumínio / Gola",
+                    "Puxador Cava no MDF",
+                    "Porta c/ Vidro Reflecta",
+                    "Fita de LED no Aéreo",
+                    "Porta-Temperos",
+                    "Divisor de Talheres",
+                    "Lixeira Embutida",
+                    "Corrediça Telescópica",
+                    "Corrediça Invisível c/ Amortecedor",
+                ],
+            },
+        ];
+    }
+
+    if (
+        norm.includes("quarto") ||
+        norm.includes("dormit") ||
+        norm.includes("suíte") ||
+        norm.includes("suite")
+    ) {
+        return [
+            {
+                id: "cor_mdf",
+                question: "1. Qual a Cor / MDF desejado para o Quarto?",
+                options: [
+                    "Branco TX",
+                    "Freijó + Off-White / Gianduia",
+                    "Amadeirado + Grafite",
+                    "Todo Amadeirado",
+                    "Areia / Cappuccino",
+                    "Branco + Rosa / Infantil",
+                ],
+                placeholder: "Ou digite o padrão de cor escolhido...",
+            },
+            {
+                id: "tamanho_cama",
+                question: "2. Qual o Tamanho da Cama?",
+                options: [
+                    "Solteiro (0,88m)",
+                    "Solteiro King / Viúva (1,10 / 1,28m)",
+                    "Casal Padrão (1,38m)",
+                    "Queen Size (1,58m)",
+                    "King Size (1,93m)",
+                    "Bicama / Beliche",
+                    "Não terá cama",
+                ],
+                placeholder: "Medida exata do colchão/cama se for especial...",
+            },
+            {
+                id: "cabeceira_criado",
+                question: "3. Como será a Cabeceira e Mesas de Cabeceira?",
+                options: [
+                    "Painel Ripado c/ LED + 2 Mesas",
+                    "Cabeceira Estofada + 2 Mesas",
+                    "Só 1 Mesa de Cabeceira",
+                    "Armário Ponte por cima da Cama",
+                    "Não fará cabeceira",
+                ],
+            },
+            {
+                id: "portas_guarda_roupa",
+                question: "4. Tipo de Portas do Guarda-Roupa:",
+                options: [
+                    "Portas de Correr (Trilho Alumínio)",
+                    "Portas de Giro (Dobradiça Amortecedor)",
+                    "Com Porta de Espelho",
+                    "Portas Ripadas / Provençal",
+                    "Aberto (Estilo Closet)",
+                ],
+            },
+            {
+                id: "divisao_interna",
+                question: "5. O que o cliente mais precisa por dentro do Guarda-Roupa?",
+                multiSelect: true,
+                options: [
+                    "Espaço p/ Vestido Longo",
+                    "Muitas Gavetas",
+                    "Gaveta c/ Chave / Porta-Joias",
+                    "Sapateira Corrediça",
+                    "Calceiro",
+                    "Maleiro até o Teto",
+                ],
+            },
+            {
+                id: "painel_tv_bancada",
+                question: "6. Vai ter Painel de TV ou Penteadeira / Bancada de Estudos?",
+                options: [
+                    "Painel de TV no Quarto",
+                    "Penteadeira c/ Espelho e LED",
+                    "Bancada de Estudos / Home Office",
+                    "Painel TV + Bancada",
+                    "Não terá",
+                ],
+            },
+        ];
+    }
+
+    if (norm.includes("closet")) {
+        return [
+            {
+                id: "cor_mdf",
+                question: "1. Qual a Cor / MDF desejado para o Closet?",
+                options: [
+                    "Branco TX",
+                    "Areia / Linho / Trama",
+                    "Amadeirado Freijó",
+                    "Cinza / Grafite",
+                ],
+            },
+            {
+                id: "fechamento_closet",
+                question: "2. O Closet será Aberto ou com Portas?",
+                options: [
+                    "100% Aberto (Colmeia)",
+                    "Portas de Vidro Reflecta",
+                    "Portas de Correr c/ Espelho",
+                    "Portas de Giro",
+                ],
+            },
+            {
+                id: "divisao_closet",
+                question: "3. Itens indispensáveis na divisão do Closet:",
+                multiSelect: true,
+                options: [
+                    "Muitas Gavetas + Porta-Joias",
+                    "Sapateiras Corrediças",
+                    "Cabideiro p/ Vestido Longo",
+                    "Calceiro",
+                    "Ilha Central",
+                    "Espelho Corpo Inteiro",
+                    "Fita de LED nos Cabideiros",
+                    "Penteadeira / Camarim",
+                ],
+            },
+        ];
+    }
+
+    if (norm.includes("sala") || norm.includes("painel") || norm.includes("tv")) {
+        return [
+            {
+                id: "cor_mdf",
+                question: "1. Qual a Cor e Estilo do Painel / Rack?",
+                multiSelect: true,
+                options: [
+                    "Ripado Amadeirado Freijó/Nogueira",
+                    "Marmorizado + Ripado",
+                    "Liso Off-White / Gianduia",
+                    "Com Fita de LED Quente",
+                    "Com Cristaleira / Vidro Reflecta",
+                ],
+            },
+            {
+                id: "tamanho_tv",
+                question: "2. Qual o Tamanho da TV (Polegadas)?",
+                options: [
+                    "50\" a 55\"",
+                    "60\" a 65\"",
+                    "70\" a 75\"",
+                    "80\" a 85\"+",
+                ],
+            },
+            {
+                id: "modelo_rack",
+                question: "3. Como será o Rack?",
+                options: [
+                    "Rack Suspenso c/ Gavetões Cava 45°",
+                    "Rack até o Chão",
+                    "Portas Basculantes",
+                    "Com Nicho Aberto p/ Aparelhos",
+                ],
+            },
+            {
+                id: "aparelhos_rack",
+                question: "4. Quais aparelhos vão ficar no Rack?",
+                multiSelect: true,
+                options: [
+                    "Modem / Roteador Escondido",
+                    "TV Box / Receptor",
+                    "Soundbar",
+                    "Videogame (PS5 / Xbox)",
+                    "Subwoofer",
+                ],
+            },
+        ];
+    }
+
+    if (norm.includes("banheiro") || norm.includes("lavabo")) {
+        return [
+            {
+                id: "cor_mdf",
+                question: "1. Qual a Cor / MDF do Gabinete?",
+                options: [
+                    "Amadeirado Freijó",
+                    "Branco",
+                    "Gianduia / Areia",
+                    "Cinza / Grafite",
+                    "MDF Ultra (Resistente à Água)",
+                ],
+            },
+            {
+                id: "tipo_cuba",
+                question: "2. Qual o tipo de Cuba / Pedra?",
+                options: [
+                    "Cuba Esculpida na Pedra",
+                    "Cuba de Apoio (Sobrepor)",
+                    "Cuba de Embutir",
+                ],
+            },
+            {
+                id: "divisao_gabinete",
+                question: "3. Modelo do Gabinete Inferior:",
+                options: [
+                    "Gavetões + Porta (c/ Recorte Sifão)",
+                    "2 Portas de Giro",
+                    "Gavetas + Nicho Toalhas",
+                    "Com Tulha de Roupa Suja",
+                ],
+            },
+            {
+                id: "espelheira",
+                question: "4. Vai ter Armário Superior (Espelheira)?",
+                options: [
+                    "Espelheira c/ Armário e LED",
+                    "Espelheira Porta de Correr",
+                    "Só Espelho c/ LED atrás",
+                    "Não terá superior",
+                ],
+            },
+        ];
+    }
+
+    if (norm.includes("lavanderia") || norm.includes("serviço")) {
+        return [
+            {
+                id: "cor_mdf",
+                question: "1. Qual a Cor / MDF da Lavanderia?",
+                options: [
+                    "Branco TX",
+                    "Branco + Amadeirado",
+                    "Cinza / Grafite",
+                    "Areia / Gianduia",
+                ],
+            },
+            {
+                id: "maquina_lavar",
+                question: "2. Qual o tipo de Máquina de Lavar?",
+                options: [
+                    "Lava e Seca Frontal (Embutir sob pedra)",
+                    "Máquina Abertura Superior (Tampa abre p/ cima)",
+                    "Máquina + Secadora separadas",
+                ],
+            },
+            {
+                id: "itens_lavanderia",
+                question: "3. O que precisa nos armários da Lavanderia?",
+                multiSelect: true,
+                options: [
+                    "Armário Alto Vassoureiro",
+                    "Suporte Tábua de Passar",
+                    "Cabideiro Aéreo",
+                    "Cesto de Roupas Embutido",
+                    "Armário Aéreo até o Teto",
+                ],
+            },
+        ];
+    }
+
+    // Escritório / Outros ambientes
+    return [
+        {
+            id: "cor_mdf",
+            question: "1. Qual a Cor / MDF desejado?",
+            options: [
+                "Amadeirado Freijó + Branco",
+                "Amadeirado + Grafite",
+                "Branco TX",
+                "Areia / Off-White",
+            ],
+        },
+        {
+            id: "bancada_lugares",
+            question: "2. Estrutura principal desejada neste ambiente:",
+            options: [
+                "Bancada 1 Pessoa + Gaveteiro",
+                "Bancada 2 Pessoas",
+                "Bancada em L",
+                "Armário Fechado + Estante",
+            ],
+        },
+        {
+            id: "detalhes_ambiente",
+            question: "3. Detalhes e acessórios:",
+            multiSelect: true,
+            options: [
+                "Gaveta c/ Chave",
+                "Prateleiras c/ Fita de LED",
+                "Nicho Impressora / Aparelhos",
+                "Portas c/ Amortecedor",
+            ],
+        },
+    ];
 }
 
 /**
@@ -405,6 +817,10 @@ const MedicaoTablet: React.FC = () => {
     const [isNewRoomModalOpen, setIsNewRoomModalOpen] = useState(false);
     const [newRoomName, setNewRoomName] = useState("");
     const [newRoomType, setNewRoomType] = useState("Quarto");
+
+    // Modal de Briefing Inteligente do Cliente (abre ao clicar em "Confirmar Medidas")
+    const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
+    const [newCustomQuestionText, setNewCustomQuestionText] = useState("");
 
     // Estados de Desenho de Linhas (100% manual pelo usuário!)
     const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
@@ -1380,7 +1796,33 @@ const MedicaoTablet: React.FC = () => {
             })
             .filter(Boolean);
 
-        return wallSummaries.join(" // ");
+        const questions = getBriefingQuestionsForRoomType(room.roomType, room.name);
+        const customQs = room.customBriefingQuestions || [];
+        const answers = room.briefingAnswers || {};
+        const briefingParts: string[] = [];
+
+        questions.forEach((q) => {
+            const ans = (answers[q.id] || "").trim();
+            if (ans) {
+                const cleanQ = q.question.replace(/^\d+\.\s*/, "");
+                briefingParts.push(`${cleanQ} ${ans}`);
+            }
+        });
+        customQs.forEach((cq) => {
+            const ans = (answers[cq.id] || "").trim();
+            if (ans) {
+                briefingParts.push(`${cq.question}: ${ans}`);
+            }
+        });
+
+        const briefingText =
+            briefingParts.length > 0
+                ? `📋 BRIEFING: ${briefingParts.join(" | ")}`
+                : "";
+
+        return [wallSummaries.join(" // "), briefingText]
+            .filter(Boolean)
+            .join(" — ");
     };
 
     const handleSaveToServiceOrder = async () => {
@@ -2711,20 +3153,52 @@ const MedicaoTablet: React.FC = () => {
                                                 : "Mostrar"}
                                         </Button>
                                     )}
+
+                                    {/* BOTÃO EM DESTAQUE: CONFIRMAR MEDIDAS -> ABRE O BRIEFING DO AMBIENTE! */}
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() =>
+                                            setIsBriefingModalOpen(true)
+                                        }
+                                        className={cn(
+                                            "h-10 px-4 rounded-xl font-black uppercase text-xs gap-1.5 shadow-lg transition-all",
+                                            activeRoom.briefingConfirmed
+                                                ? "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/50"
+                                                : "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black shadow-emerald-500/25"
+                                        )}
+                                    >
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        {activeRoom.briefingConfirmed
+                                            ? `Briefing Respondido (${activeRoom.name})`
+                                            : `Confirmar Medidas ➔ Briefing (${activeRoom.name})`}
+                                    </Button>
                                 </div>
                             </div>
 
                             {/* CANVAS DA FOTO (Horizontal 16:9 Amplo vs Vertical 3:4 Alto) */}
                             <div
                                 ref={canvasContainerRef}
+                                data-lock-touch={
+                                    isDrawingNewLine ||
+                                    Boolean(isAddingPinMode?.active) ||
+                                    Boolean(dragState)
+                                        ? "true"
+                                        : "false"
+                                }
                                 onPointerDown={handleCanvasPointerDown}
                                 onPointerMove={handleCanvasPointerMove}
                                 onPointerUp={handleCanvasPointerUp}
                                 className={cn(
-                                    "relative rounded-2xl overflow-hidden border-2 select-none touch-none transition-all mx-auto",
+                                    "relative rounded-2xl overflow-hidden border-2 select-none transition-all mx-auto",
+                                    isDrawingNewLine ||
+                                        isAddingPinMode?.active ||
+                                        dragState
+                                        ? "touch-none"
+                                        : "touch-pan-y",
                                     canvasOrientation === "horizontal"
-                                        ? "w-full aspect-[16/9] min-h-[420px] sm:min-h-[540px]"
-                                        : "w-full max-w-[680px] aspect-[3/4] min-h-[540px] sm:min-h-[680px]",
+                                        ? "w-full aspect-[16/9] min-h-[380px] sm:min-h-[480px]"
+                                        : "w-full max-w-[680px] aspect-[3/4] min-h-[480px] sm:min-h-[600px]",
                                     isDrawingNewLine || isAddingPinMode?.active
                                         ? "border-emerald-400 cursor-crosshair shadow-[0_0_30px_rgba(16,185,129,0.25)]"
                                         : "border-white/15 bg-[#0d1322]"
@@ -2898,6 +3372,7 @@ const MedicaoTablet: React.FC = () => {
                                                 {line.kind === "line" && (
                                                     <>
                                                         <div
+                                                            data-lock-touch="true"
                                                             onPointerDown={(
                                                                 e
                                                             ) =>
@@ -2914,7 +3389,7 @@ const MedicaoTablet: React.FC = () => {
                                                                     spec.hex,
                                                             }}
                                                             className={cn(
-                                                                "absolute -translate-x-1/2 -translate-y-1/2 z-20 rounded-full border-2 bg-black/85 cursor-grab active:cursor-grabbing transition-transform",
+                                                                "absolute -translate-x-1/2 -translate-y-1/2 z-20 rounded-full border-2 bg-black/85 cursor-grab active:cursor-grabbing transition-transform touch-none",
                                                                 isSelected
                                                                     ? "w-7 h-7 scale-110 ring-4 ring-amber-400/40"
                                                                     : "w-5 h-5 hover:scale-125"
@@ -2922,6 +3397,7 @@ const MedicaoTablet: React.FC = () => {
                                                             title="Arraste esta ponta da linha"
                                                         />
                                                         <div
+                                                            data-lock-touch="true"
                                                             onPointerDown={(
                                                                 e
                                                             ) =>
@@ -2938,7 +3414,7 @@ const MedicaoTablet: React.FC = () => {
                                                                     spec.hex,
                                                             }}
                                                             className={cn(
-                                                                "absolute -translate-x-1/2 -translate-y-1/2 z-20 rounded-full border-2 bg-black/85 cursor-grab active:cursor-grabbing transition-transform",
+                                                                "absolute -translate-x-1/2 -translate-y-1/2 z-20 rounded-full border-2 bg-black/85 cursor-grab active:cursor-grabbing transition-transform touch-none",
                                                                 isSelected
                                                                     ? "w-7 h-7 scale-110 ring-4 ring-amber-400/40"
                                                                     : "w-5 h-5 hover:scale-125"
@@ -2949,6 +3425,7 @@ const MedicaoTablet: React.FC = () => {
                                                 )}
 
                                                 <div
+                                                    data-lock-touch="true"
                                                     onPointerDown={(e) =>
                                                         startLineDrag(
                                                             e,
@@ -2961,7 +3438,7 @@ const MedicaoTablet: React.FC = () => {
                                                         top: `${midY}%`,
                                                     }}
                                                     className={cn(
-                                                        "absolute -translate-x-1/2 -translate-y-1/2 z-30 rounded-xl border-2 px-2.5 py-1.5 shadow-2xl backdrop-blur-md transition-all cursor-move flex items-center gap-1.5",
+                                                        "absolute -translate-x-1/2 -translate-y-1/2 z-30 rounded-xl border-2 px-2.5 py-1.5 shadow-2xl backdrop-blur-md transition-all cursor-move flex items-center gap-1.5 touch-none",
                                                         spec.badgeBg,
                                                         spec.badgeBorder,
                                                         isSelected &&
@@ -3059,7 +3536,7 @@ const MedicaoTablet: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* PAINEL COMPACTO DE SALVAMENTO & OBSERVAÇÕES */}
+                        {/* PAINEL COMPACTO DE BRIEFING + SALVAMENTO & OBSERVAÇÕES */}
                         <div
                             className={cn(
                                 "executive-card border-metallic rounded-3xl p-4 bg-[#090d16]/95 space-y-4 shadow-2xl",
@@ -3068,6 +3545,94 @@ const MedicaoTablet: React.FC = () => {
                                     : "lg:col-span-4"
                             )}
                         >
+                            {/* Resumo do Briefing do Cliente deste Ambiente (ou Chamada para Confirmar Medidas) */}
+                            <div className="p-3.5 rounded-2xl bg-emerald-500/[0.06] border border-emerald-500/25 space-y-2.5">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <div>
+                                        <h3 className="text-xs font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                                            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                                            Briefing de {activeRoom.name}
+                                        </h3>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            {activeRoom.briefingConfirmed
+                                                ? "Respostas do cliente salvas neste ambiente"
+                                                : "Terminou de tirar as medidas? Clique para responder as perguntas deste ambiente!"}
+                                        </p>
+                                    </div>
+
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() =>
+                                            setIsBriefingModalOpen(true)
+                                        }
+                                        className="h-9 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase text-[11px] gap-1.5"
+                                    >
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                        {activeRoom.briefingConfirmed
+                                            ? "Editar Briefing"
+                                            : "Confirmar Medidas & Responder Briefing"}
+                                    </Button>
+                                </div>
+
+                                {activeRoom.briefingAnswers &&
+                                    Object.values(
+                                        activeRoom.briefingAnswers
+                                    ).some((v) => v && v.trim().length > 0) && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-2 border-t border-white/10">
+                                            {getBriefingQuestionsForRoomType(
+                                                activeRoom.roomType,
+                                                activeRoom.name
+                                            ).map((q) => {
+                                                const ans =
+                                                    activeRoom.briefingAnswers?.[
+                                                        q.id
+                                                    ];
+                                                if (!ans?.trim()) return null;
+                                                return (
+                                                    <div
+                                                        key={q.id}
+                                                        className="px-2.5 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs"
+                                                    >
+                                                        <span className="text-[10px] font-bold text-muted-foreground block">
+                                                            {q.question.replace(
+                                                                /^\d+\.\s*/,
+                                                                ""
+                                                            )}
+                                                        </span>
+                                                        <span className="font-black text-emerald-300">
+                                                            {ans}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                            {(
+                                                activeRoom.customBriefingQuestions ||
+                                                []
+                                            ).map((cq) => {
+                                                const ans =
+                                                    activeRoom.briefingAnswers?.[
+                                                        cq.id
+                                                    ];
+                                                if (!ans?.trim()) return null;
+                                                return (
+                                                    <div
+                                                        key={cq.id}
+                                                        className="px-2.5 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs"
+                                                    >
+                                                        <span className="text-[10px] font-bold text-muted-foreground block">
+                                                            {cq.question}
+                                                        </span>
+                                                        <span className="font-black text-emerald-300">
+                                                            {ans}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                            </div>
+
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
                                     <Label className="text-[10px] font-black uppercase text-muted-foreground">
@@ -3163,6 +3728,258 @@ const MedicaoTablet: React.FC = () => {
             )}
 
             {/* MODAL: ADICIONAR NOVO AMBIENTE (Com Parede 1, 2, 3 e 4 limpas) */}
+            {/* MODAL: BRIEFING DO CLIENTE POR AMBIENTE (ABRE AO CLICAR EM CONFIRMAR MEDIDAS) */}
+            {activeRoom && (
+                <Dialog
+                    open={isBriefingModalOpen}
+                    onOpenChange={setIsBriefingModalOpen}
+                >
+                    <DialogContent className="sm:max-w-2xl max-h-[88vh] overflow-y-auto bg-slate-950 border-white/15 text-white">
+                        <DialogHeader>
+                            <DialogTitle className="text-base sm:text-lg font-black uppercase flex items-center gap-2">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                                Briefing do Cliente — {activeRoom.name} (
+                                {activeProject.clientName})
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-muted-foreground">
+                                Toque nas opções abaixo ou digite os detalhes que o cliente pediu para{" "}
+                                <strong className="text-white">
+                                    {activeRoom.name}
+                                </strong>
+                                . Tudo ficará salvo junto com as medidas!
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-4 py-1">
+                            {getBriefingQuestionsForRoomType(
+                                activeRoom.roomType,
+                                activeRoom.name
+                            ).map((q) => {
+                                const currentVal =
+                                    activeRoom.briefingAnswers?.[q.id] || "";
+                                const selectedList = currentVal
+                                    .split(",")
+                                    .map((s) => s.trim())
+                                    .filter(Boolean);
+
+                                const handleOptionClick = (opt: string) => {
+                                    let nextAnswer = opt;
+                                    if (q.multiSelect) {
+                                        if (selectedList.includes(opt)) {
+                                            nextAnswer = selectedList
+                                                .filter((item) => item !== opt)
+                                                .join(", ");
+                                        } else {
+                                            nextAnswer = [
+                                                ...selectedList,
+                                                opt,
+                                            ].join(", ");
+                                        }
+                                    } else {
+                                        nextAnswer =
+                                            currentVal === opt ? "" : opt;
+                                    }
+
+                                    updateActiveRoom((r) => ({
+                                        ...r,
+                                        mdfExternal:
+                                            q.id === "cor_mdf" && nextAnswer
+                                                ? nextAnswer
+                                                : r.mdfExternal,
+                                        briefingAnswers: {
+                                            ...(r.briefingAnswers || {}),
+                                            [q.id]: nextAnswer,
+                                        },
+                                    }));
+                                };
+
+                                return (
+                                    <div
+                                        key={q.id}
+                                        className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2.5"
+                                    >
+                                        <Label className="text-xs font-black text-amber-300 block">
+                                            {q.question}
+                                        </Label>
+
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {q.options.map((opt) => {
+                                                const isChosen = q.multiSelect
+                                                    ? selectedList.includes(opt)
+                                                    : currentVal === opt;
+                                                return (
+                                                    <button
+                                                        key={opt}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            handleOptionClick(
+                                                                opt
+                                                            )
+                                                        }
+                                                        className={cn(
+                                                            "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
+                                                            isChosen
+                                                                ? "bg-emerald-500 text-black border-emerald-400 font-black shadow-md"
+                                                                : "bg-slate-900/90 text-white/80 border-white/15 hover:border-amber-400/50 hover:text-white"
+                                                        )}
+                                                    >
+                                                        {isChosen ? "✓ " : ""}
+                                                        {opt}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <Input
+                                            value={currentVal}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                updateActiveRoom((r) => ({
+                                                    ...r,
+                                                    mdfExternal:
+                                                        q.id === "cor_mdf" &&
+                                                        val
+                                                            ? val
+                                                            : r.mdfExternal,
+                                                    briefingAnswers: {
+                                                        ...(r.briefingAnswers ||
+                                                            {}),
+                                                        [q.id]: val,
+                                                    },
+                                                }));
+                                            }}
+                                            placeholder={
+                                                q.placeholder ||
+                                                "Ou digite / complemente a resposta aqui..."
+                                            }
+                                            className="h-9 text-xs bg-slate-900/90 border-white/15"
+                                        />
+                                    </div>
+                                );
+                            })}
+
+                            {/* Perguntas Extras Adicionadas pelo Usuário */}
+                            {(activeRoom.customBriefingQuestions || []).map(
+                                (cq) => (
+                                    <div
+                                        key={cq.id}
+                                        className="p-3.5 rounded-2xl bg-primary/[0.06] border border-primary/30 space-y-2"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-black text-primary">
+                                                {cq.question}
+                                            </Label>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    updateActiveRoom((r) => ({
+                                                        ...r,
+                                                        customBriefingQuestions:
+                                                            (
+                                                                r.customBriefingQuestions ||
+                                                                []
+                                                            ).filter(
+                                                                (item) =>
+                                                                    item.id !==
+                                                                    cq.id
+                                                            ),
+                                                    }))
+                                                }
+                                                className="text-rose-400 hover:text-rose-300 text-xs"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                        <Input
+                                            value={
+                                                activeRoom.briefingAnswers?.[
+                                                    cq.id
+                                                ] || ""
+                                            }
+                                            onChange={(e) =>
+                                                updateActiveRoom((r) => ({
+                                                    ...r,
+                                                    briefingAnswers: {
+                                                        ...(r.briefingAnswers ||
+                                                            {}),
+                                                        [cq.id]: e.target.value,
+                                                    },
+                                                }))
+                                            }
+                                            placeholder="Digite a resposta..."
+                                            className="h-9 text-xs bg-slate-900 border-white/15"
+                                        />
+                                    </div>
+                                )
+                            )}
+
+                            {/* Adicionar nova pergunta livre no Briefing */}
+                            <div className="p-3 rounded-2xl bg-white/[0.02] border border-dashed border-white/15 flex items-center gap-2">
+                                <Input
+                                    value={newCustomQuestionText}
+                                    onChange={(e) =>
+                                        setNewCustomQuestionText(e.target.value)
+                                    }
+                                    placeholder="Adicionar outra pergunta neste briefing (ex: Tem tomada 220V?)..."
+                                    className="h-9 text-xs bg-slate-900 border-white/15"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!newCustomQuestionText.trim()}
+                                    onClick={() => {
+                                        const qText =
+                                            newCustomQuestionText.trim();
+                                        if (!qText) return;
+                                        const newId = `custom-q-${Date.now()}`;
+                                        updateActiveRoom((r) => ({
+                                            ...r,
+                                            customBriefingQuestions: [
+                                                ...(r.customBriefingQuestions ||
+                                                    []),
+                                                { id: newId, question: qText },
+                                            ],
+                                        }));
+                                        setNewCustomQuestionText("");
+                                    }}
+                                    className="h-9 rounded-xl border-primary/40 text-primary font-bold text-xs shrink-0"
+                                >
+                                    <Plus className="h-3.5 w-3.5 mr-1" />
+                                    Pergunta
+                                </Button>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setIsBriefingModalOpen(false)}
+                            >
+                                Fechar
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => {
+                                    updateActiveRoom((r) => ({
+                                        ...r,
+                                        briefingConfirmed: true,
+                                    }));
+                                    setIsBriefingModalOpen(false);
+                                    toast.success(
+                                        `Medidas e Briefing de ${activeRoom.name} confirmados!`
+                                    );
+                                }}
+                                className="bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase text-xs px-5"
+                            >
+                                <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                                Salvar e Confirmar Briefing ({activeRoom.name})
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
             <Dialog
                 open={isNewRoomModalOpen}
                 onOpenChange={setIsNewRoomModalOpen}

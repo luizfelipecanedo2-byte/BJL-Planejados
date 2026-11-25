@@ -28,11 +28,13 @@ import {
     Zap,
     Sparkles,
     Plus,
-    RotateCw
+    RotateCw,
+    ChevronUp,
+    ChevronDown
 } from "lucide-react";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -88,6 +90,116 @@ const MainLayout = () => {
     });
 
     const isHorizontalForced = rotationMode !== "normal";
+    const mainScrollRef = useRef<HTMLElement | null>(null);
+
+    // Ponte de Rolagem (Touch no Tablet + Trackpad do Teclado) quando a página está girada em 90°
+    useEffect(() => {
+        if (rotationMode === "normal") return;
+
+        const findScrollTarget = (startEl: HTMLElement | null): HTMLElement | null => {
+            let el: HTMLElement | null = startEl;
+            while (el && el !== document.body && el !== document.documentElement) {
+                const style = window.getComputedStyle(el);
+                const canScrollY =
+                    (style.overflowY === "auto" || style.overflowY === "scroll") &&
+                    el.scrollHeight > el.clientHeight + 4;
+                if (canScrollY) return el;
+                el = el.parentElement;
+            }
+            return mainScrollRef.current;
+        };
+
+        let activeScrollEl: HTMLElement | null = null;
+        let lastX = 0;
+        let lastY = 0;
+        let velocityY = 0;
+        let momentumFrame: number | null = null;
+
+        const stopMomentum = () => {
+            if (momentumFrame !== null) {
+                cancelAnimationFrame(momentumFrame);
+                momentumFrame = null;
+            }
+        };
+
+        const onTouchStart = (e: TouchEvent) => {
+            stopMomentum();
+            if (e.touches.length !== 1) return;
+            const target = e.target as HTMLElement | null;
+            if (target?.closest("[data-lock-touch='true']")) {
+                activeScrollEl = null;
+                return;
+            }
+            activeScrollEl = findScrollTarget(target);
+            lastX = e.touches[0].clientX;
+            lastY = e.touches[0].clientY;
+            velocityY = 0;
+        };
+
+        const onTouchMove = (e: TouchEvent) => {
+            if (!activeScrollEl || e.touches.length !== 1) return;
+            const curX = e.touches[0].clientX;
+            const curY = e.touches[0].clientY;
+            const dx = curX - lastX;
+            const dy = curY - lastY;
+            lastX = curX;
+            lastY = curY;
+
+            // Quando a tela está girada em 90°, o arrasto vertical (para cima e para baixo) corre no eixo X físico do tablet
+            const deltaScrollY = rotationMode === "cw" ? dx : -dx;
+            const deltaScrollX = rotationMode === "cw" ? dy : -dy;
+
+            if (Math.abs(deltaScrollY) >= Math.abs(deltaScrollX) * 0.7) {
+                activeScrollEl.scrollTop += deltaScrollY * 1.25;
+                velocityY = deltaScrollY * 1.25;
+                if (e.cancelable) e.preventDefault();
+            } else {
+                activeScrollEl.scrollLeft += deltaScrollX * 1.15;
+            }
+        };
+
+        const onTouchEnd = () => {
+            if (!activeScrollEl || Math.abs(velocityY) < 1.5) {
+                activeScrollEl = null;
+                return;
+            }
+            const el = activeScrollEl;
+            const step = () => {
+                velocityY *= 0.92;
+                if (Math.abs(velocityY) < 0.5) {
+                    momentumFrame = null;
+                    return;
+                }
+                el.scrollTop += velocityY;
+                momentumFrame = requestAnimationFrame(step);
+            };
+            momentumFrame = requestAnimationFrame(step);
+        };
+
+        const onWheel = (e: WheelEvent) => {
+            const target = e.target as HTMLElement | null;
+            const scrollEl = findScrollTarget(target);
+            if (!scrollEl) return;
+            const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+            if (delta !== 0) {
+                scrollEl.scrollTop += delta;
+                if (e.cancelable) e.preventDefault();
+            }
+        };
+
+        window.addEventListener("touchstart", onTouchStart, { passive: true });
+        window.addEventListener("touchmove", onTouchMove, { passive: false });
+        window.addEventListener("touchend", onTouchEnd, { passive: true });
+        window.addEventListener("wheel", onWheel, { passive: false });
+
+        return () => {
+            stopMomentum();
+            window.removeEventListener("touchstart", onTouchStart);
+            window.removeEventListener("touchmove", onTouchMove);
+            window.removeEventListener("touchend", onTouchEnd);
+            window.removeEventListener("wheel", onWheel);
+        };
+    }, [rotationMode]);
 
     const applyPageRotation = (mode: "normal" | "cw" | "ccw") => {
         setRotationMode(mode);
@@ -709,10 +821,13 @@ const MainLayout = () => {
                     </div>
                 </header>
 
-                <main className={cn(
-                    "flex-1 min-h-0 p-3 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden relative max-w-full overscroll-y-contain webkit-overflow-scrolling-touch",
-                    isHorizontalForced ? "pb-6" : "pb-28 lg:pb-10"
-                )}>
+                <main
+                    ref={mainScrollRef}
+                    className={cn(
+                        "flex-1 min-h-0 p-3 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden relative max-w-full overscroll-y-contain webkit-overflow-scrolling-touch",
+                        isHorizontalForced ? "pb-16" : "pb-28 lg:pb-10"
+                    )}
+                >
                     {/* Compact High-Tech Financial Telemetry HUD Bar */}
                     {role === 'admin' && (todayDueCount > 0 || overdueCount > 0) && (
                         <div className="mb-6 grid grid-cols-1 xl:grid-cols-2 gap-3 relative z-20 animate-in fade-in slide-in-from-top-3 duration-500">
@@ -1184,6 +1299,40 @@ const MainLayout = () => {
 
             {/* Sócio IA Drawer Global (Exclusivo Admin) */}
             {role === 'admin' && <BJLPartnerChat />}
+
+            {/* Botões Flutuantes de Rolagem Rápida (Subir / Descer) quando em Modo Horizontal no Tablet */}
+            {isHorizontalForced && (
+                <div className="fixed right-4 bottom-20 z-50 flex flex-col gap-2">
+                    <Button
+                        type="button"
+                        size="icon"
+                        onClick={() => {
+                            mainScrollRef.current?.scrollBy({
+                                top: -320,
+                                behavior: "smooth",
+                            });
+                        }}
+                        className="h-11 w-11 rounded-2xl bg-black/85 hover:bg-primary text-amber-400 hover:text-black border border-amber-500/40 shadow-2xl"
+                        title="Rolar página para cima"
+                    >
+                        <ChevronUp className="h-6 w-6" />
+                    </Button>
+                    <Button
+                        type="button"
+                        size="icon"
+                        onClick={() => {
+                            mainScrollRef.current?.scrollBy({
+                                top: 320,
+                                behavior: "smooth",
+                            });
+                        }}
+                        className="h-11 w-11 rounded-2xl bg-black/85 hover:bg-primary text-amber-400 hover:text-black border border-amber-500/40 shadow-2xl"
+                        title="Rolar página para baixo"
+                    >
+                        <ChevronDown className="h-6 w-6" />
+                    </Button>
+                </div>
+            )}
 
             {/* High-Tech Floating Quick Actions Dock */}
             <div className="fixed bottom-6 right-6 z-40 hidden sm:flex items-center gap-2 p-1.5 glass-panel-pro rounded-2xl shadow-2xl border border-white/10">
