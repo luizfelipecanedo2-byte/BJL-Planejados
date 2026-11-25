@@ -27,7 +27,8 @@ import {
     ShieldCheck,
     Zap,
     Sparkles,
-    Plus
+    Plus,
+    RotateCw
 } from "lucide-react";
 
 
@@ -79,6 +80,51 @@ const MainLayout = () => {
     const [soundsEnabled, setSoundsEnabled] = useState(() => {
         return localStorage.getItem("ui_sounds") !== "false";
     });
+
+    const [isHorizontalForced, setIsHorizontalForced] = useState<boolean>(() => {
+        return document.documentElement.classList.contains("bjl-force-horizontal");
+    });
+
+    const toggleScreenOrientation = async () => {
+        const nextHorizontal = !isHorizontalForced;
+        setIsHorizontalForced(nextHorizontal);
+        if (nextHorizontal) {
+            document.documentElement.classList.add("bjl-force-horizontal");
+            document.documentElement.classList.remove("bjl-force-vertical");
+            try {
+                await (window.screen as any)?.orientation?.lock?.("landscape");
+            } catch {
+                // fallback CSS rotation active
+            }
+            toast.success("Tela virada para o Modo Horizontal!");
+        } else {
+            document.documentElement.classList.remove("bjl-force-horizontal");
+            document.documentElement.classList.remove("bjl-force-vertical");
+            try {
+                (window.screen as any)?.orientation?.unlock?.();
+            } catch {
+                // ignore
+            }
+            toast.info("Rotação voltou ao padrão vertical/automático.");
+        }
+        window.dispatchEvent(
+            new CustomEvent("bjl-orientation-change", {
+                detail: { horizontal: nextHorizontal },
+            })
+        );
+    };
+
+    useEffect(() => {
+        const onOrientationEvt = (e: Event) => {
+            const detail = (e as CustomEvent)?.detail;
+            if (detail && typeof detail.horizontal === "boolean") {
+                setIsHorizontalForced(detail.horizontal);
+            }
+        };
+        window.addEventListener("bjl-orientation-change", onOrientationEvt);
+        return () =>
+            window.removeEventListener("bjl-orientation-change", onOrientationEvt);
+    }, []);
 
     const toggleSounds = () => {
         const newValue = !soundsEnabled;
@@ -497,6 +543,27 @@ const MainLayout = () => {
                     </div>
 
                     <div className="flex items-center gap-2 sm:gap-3">
+                        {/* Botão Global para Virar Tela p/ Horizontal ou Vertical no Tablet */}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                playClickSound();
+                                toggleScreenOrientation();
+                            }}
+                            className={cn(
+                                "h-9 px-3 rounded-xl font-display font-black text-[11px] uppercase tracking-wider gap-1.5 transition-all",
+                                isHorizontalForced
+                                    ? "bg-amber-500 text-black border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.35)]"
+                                    : "bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40"
+                            )}
+                            title="Virar o sistema entre Horizontal (Deitado) e Vertical (Em pé)"
+                        >
+                            <RotateCw className="h-3.5 w-3.5" />
+                            <span>{isHorizontalForced ? "Vertical" : "Horizontal"}</span>
+                        </Button>
+
                         {/* Global Quick Create Launcher (+ Criar) */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

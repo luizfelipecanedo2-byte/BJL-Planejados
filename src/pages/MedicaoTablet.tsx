@@ -364,7 +364,23 @@ const MedicaoTablet: React.FC = () => {
 
     // Orientação do Tablet: "horizontal" (Paisagem 16:9 amplo) vs "vertical" (Retrato 3:4)
     const [canvasOrientation, setCanvasOrientation] = useState<"horizontal" | "vertical">("horizontal");
+    const [isScreenRotatedHorizontal, setIsScreenRotatedHorizontal] = useState<boolean>(() =>
+        document.documentElement.classList.contains("bjl-force-horizontal")
+    );
     const [isFullscreen, setIsFullscreen] = useState(false);
+
+    useEffect(() => {
+        const onOrientationEvt = (e: Event) => {
+            const detail = (e as CustomEvent)?.detail;
+            if (detail && typeof detail.horizontal === "boolean") {
+                setIsScreenRotatedHorizontal(detail.horizontal);
+                setCanvasOrientation(detail.horizontal ? "horizontal" : "vertical");
+            }
+        };
+        window.addEventListener("bjl-orientation-change", onOrientationEvt);
+        return () =>
+            window.removeEventListener("bjl-orientation-change", onOrientationEvt);
+    }, []);
 
     // Modo Câmera do Celular (para tirar fotos rápidas no celular e jogar automático para o tablet)
     const [isPhoneCameraMode, setIsPhoneCameraMode] = useState<boolean>(() => {
@@ -671,23 +687,41 @@ const MedicaoTablet: React.FC = () => {
         [activeWall, updateActiveRoom]
     );
 
-    // Alternar Modo Horizontal (Deitado) <-> Vertical (Em Pé) no Tablet
+    // Alternar Modo Horizontal (Deitado) <-> Vertical (Em Pé) no Tablet (Gira a tela inteira se o tablet estiver travado em pé!)
     const handleToggleOrientation = async (target: "horizontal" | "vertical") => {
         setCanvasOrientation(target);
+        const isHoriz = target === "horizontal";
+        setIsScreenRotatedHorizontal(isHoriz);
+
+        if (isHoriz) {
+            document.documentElement.classList.add("bjl-force-horizontal");
+            document.documentElement.classList.remove("bjl-force-vertical");
+        } else {
+            document.documentElement.classList.remove("bjl-force-horizontal");
+            document.documentElement.classList.remove("bjl-force-vertical");
+        }
+
+        window.dispatchEvent(
+            new CustomEvent("bjl-orientation-change", {
+                detail: { horizontal: isHoriz },
+            })
+        );
+
         try {
             const scr = window.screen as any;
-            if (scr?.orientation?.lock) {
-                await scr.orientation.lock(
-                    target === "horizontal" ? "landscape" : "portrait"
-                );
+            if (isHoriz && scr?.orientation?.lock) {
+                await scr.orientation.lock("landscape");
+            } else if (!isHoriz && scr?.orientation?.unlock) {
+                scr.orientation.unlock();
             }
         } catch {
-            // Navegadores que não permitem lock de hardware apenas ajustam o layout visual para Horizontal/Vertical
+            // Rotação CSS 90° já cuida dos tablets sem suporte a orientation.lock
         }
-        toast.info(
-            target === "horizontal"
-                ? "Modo Horizontal (Paisagem Ampla) ativado!"
-                : "Modo Vertical (Retrato) ativado!"
+
+        toast.success(
+            isHoriz
+                ? "Tela virada para Horizontal (Deitado)!"
+                : "Tela voltada para Vertical (Em pé)!"
         );
     };
 
@@ -947,20 +981,32 @@ const MedicaoTablet: React.FC = () => {
         setSelectedLineId(newLine.id);
     };
 
-    // Coordenadas percentuais (0 a 100%) no toque/arraste
+    // Coordenadas percentuais (0 a 100%) no toque/arraste (compatível com tela normal e com tela girada 90° em CSS!)
     const getRelativeCoords = (clientX: number, clientY: number) => {
         const rect = canvasContainerRef.current?.getBoundingClientRect();
         if (!rect || rect.width === 0 || rect.height === 0) {
             return { x: 50, y: 50 };
         }
-        const x = Math.max(
-            3,
-            Math.min(97, Math.round(((clientX - rect.left) / rect.width) * 1000) / 10)
-        );
-        const y = Math.max(
-            3,
-            Math.min(97, Math.round(((clientY - rect.top) / rect.height) * 1000) / 10)
-        );
+
+        const isCssRotated90 =
+            document.documentElement.classList.contains("bjl-force-horizontal") &&
+            window.innerHeight > window.innerWidth;
+
+        let rawX: number;
+        let rawY: number;
+
+        if (isCssRotated90) {
+            // Em rotação de 90° horário, o eixo X local do quadro corre de cima para baixo na tela (clientY),
+            // e o eixo Y local corre da direita para a esquerda na tela (rect.right - clientX)
+            rawX = ((clientY - rect.top) / rect.height) * 100;
+            rawY = ((rect.right - clientX) / rect.width) * 100;
+        } else {
+            rawX = ((clientX - rect.left) / rect.width) * 100;
+            rawY = ((clientY - rect.top) / rect.height) * 100;
+        }
+
+        const x = Math.max(3, Math.min(97, Math.round(rawX * 10) / 10));
+        const y = Math.max(3, Math.min(97, Math.round(rawY * 10) / 10));
         return { x, y };
     };
 
@@ -1575,7 +1621,31 @@ const MedicaoTablet: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {/* BOTÃO EM DESTAQUE NA TELA INICIAL: VIRAR TELA PARA HORIZONTAL OU VERTICAL */}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                                handleToggleOrientation(
+                                    isScreenRotatedHorizontal
+                                        ? "vertical"
+                                        : "horizontal"
+                                )
+                            }
+                            className={cn(
+                                "h-11 px-4 rounded-2xl text-xs font-black uppercase tracking-wider gap-2 transition-all",
+                                isScreenRotatedHorizontal
+                                    ? "bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/25"
+                                    : "border-amber-500/50 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300"
+                            )}
+                        >
+                            <RotateCw className="h-4 w-4" />
+                            {isScreenRotatedHorizontal
+                                ? "Voltar p/ Vertical ↕"
+                                : "Virar p/ Horizontal ↔"}
+                        </Button>
+
                         <Button
                             type="button"
                             variant="outline"
@@ -2141,8 +2211,8 @@ const MedicaoTablet: React.FC = () => {
                             Atualizar
                         </Button>
 
-                        {/* BOTÃO HORIZONTAL ↔ VERTICAL */}
-                        <div className="inline-flex p-1 rounded-xl bg-black/60 border border-white/10">
+                        {/* BOTÃO HORIZONTAL ↔ VERTICAL (GIRA A TELA DO TABLET) */}
+                        <div className="inline-flex p-1 rounded-xl bg-black/60 border border-amber-500/30">
                             <button
                                 type="button"
                                 onClick={() =>
@@ -2150,11 +2220,11 @@ const MedicaoTablet: React.FC = () => {
                                 }
                                 className={cn(
                                     "px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 transition-all",
-                                    canvasOrientation === "horizontal"
+                                    isScreenRotatedHorizontal
                                         ? "bg-amber-500 text-black"
-                                        : "text-white/60 hover:text-white"
+                                        : "text-amber-300/80 hover:text-white"
                                 )}
-                                title="Quadro da foto em formato Horizontal (Deitado / Paisagem)"
+                                title="Virar a tela para o formato Horizontal (Deitado)"
                             >
                                 <MoveHorizontal className="h-3.5 w-3.5" />
                                 Horizontal
@@ -2166,11 +2236,11 @@ const MedicaoTablet: React.FC = () => {
                                 }
                                 className={cn(
                                     "px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 transition-all",
-                                    canvasOrientation === "vertical"
+                                    !isScreenRotatedHorizontal
                                         ? "bg-amber-500 text-black"
-                                        : "text-white/60 hover:text-white"
+                                        : "text-amber-300/80 hover:text-white"
                                 )}
-                                title="Quadro da foto em formato Vertical (Em pé / Retrato)"
+                                title="Voltar a tela para o formato Vertical (Em pé)"
                             >
                                 <MoveVertical className="h-3.5 w-3.5" />
                                 Vertical

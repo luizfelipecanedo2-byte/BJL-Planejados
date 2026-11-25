@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bjl-planejados-v2';
+const CACHE_NAME = 'bjl-planejados-v3';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo-bjl.png'
