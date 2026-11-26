@@ -252,12 +252,14 @@ const OrdemServico = () => {
                     }
                 }
 
-                const [{ data: logsData }, { data: allocData }] = await Promise.all([
+                const [{ data: logsData }, { data: allocData }, { data: manualExpData }] = await Promise.all([
                     supabase.from('service_order_labor_logs').select('*'),
-                    supabase.from('transaction_allocations').select('*')
+                    supabase.from('transaction_allocations').select('*'),
+                    supabase.from('service_expenses').select('*')
                 ]);
 
                 const allocations = allocData || [];
+                const manualExpensesList = manualExpData || [];
                 const allocatedTxIds = new Set<string>();
                 allocations.forEach((a: any) => {
                     if (a.transaction_id) allocatedTxIds.add(a.transaction_id);
@@ -287,6 +289,15 @@ const OrdemServico = () => {
 
                     const allocCost = matchedAllocations.reduce((sum, a) => sum + Number(a.amount || 0), 0);
 
+                    const matchedManualExpenses = manualExpensesList.filter((e: any) => {
+                        const eClient = norm(e.client_name);
+                        const eEnv = norm(e.environment);
+                        if (clientClean && eClient === clientClean && actionClean && eEnv === actionClean) return true;
+                        if (ticketClean && ticketClean !== 's/n' && eClient.startsWith(ticketClean)) return true;
+                        return false;
+                    });
+                    const manualCost = matchedManualExpenses.reduce((sum: number, e: any) => sum + Number(e.spent_value || 0), 0);
+
                     const matchedDirectTx = expenses.filter(t => {
                         if (allocatedTxIds.has(t.id)) return false;
                         if (!ticketClean || ticketClean === 's/n') return false;
@@ -302,7 +313,7 @@ const OrdemServico = () => {
                     });
 
                     const directCost = matchedDirectTx.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-                    const spentCost = allocCost + directCost;
+                    const spentCost = allocCost + directCost + manualCost;
 
                     const amount = order.amount || 0;
                     const costRatio = amount > 0 ? (spentCost / amount) * 100 : (spentCost > 0 ? 100 : 0);
