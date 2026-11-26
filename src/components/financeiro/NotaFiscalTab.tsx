@@ -298,7 +298,8 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Clientes, Vendas & Ordens de Serviço do CRM para preenchimento em 1 clique e rateio por item
+    // Orçamentos, Clientes, Vendas & Ordens de Serviço para preenchimento em 1 clique com todos os itens do orçamento
+    const [crmBudgets, setCrmBudgets] = useState<any[]>([]);
     const [crmClients, setCrmClients] = useState<any[]>([]);
     const [crmSales, setCrmSales] = useState<any[]>([]);
     const [crmServiceOrders, setCrmServiceOrders] = useState<any[]>([]);
@@ -609,11 +610,13 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
 
     const fetchCrmData = async () => {
         try {
-            const [clientsRes, salesRes, osRes] = await Promise.all([
+            const [budgetsRes, clientsRes, salesRes, osRes] = await Promise.all([
+                supabase.from("budgets").select("*").order("created_at", { ascending: false }),
                 supabase.from("clients").select("*").order("name"),
                 supabase.from("sales").select("*").order("created_at", { ascending: false }),
                 supabase.from("service_orders").select("*").order("created_at", { ascending: false }),
             ]);
+            if (budgetsRes.data) setCrmBudgets(budgetsRes.data);
             if (clientsRes.data) setCrmClients(clientsRes.data);
             if (salesRes.data) setCrmSales(salesRes.data);
             if (osRes.data) {
@@ -1530,77 +1533,336 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
         handlePrintDanfe(draftInvoice);
     };
 
+    // Extrai todos os itens/ambientes e valores reais de um Orçamento (<!--BJL_AMBIENTES:...-->, pastas <!--BJL_CHILD_IDS:...--> ou valor do orçamento)
+    const extractItemsFromSingleBudget = (
+        budget: any,
+        allBudgets: any[]
+    ): Array<{ description: string; observation?: string; value: number }> => {
+        if (!budget) return [];
+        const notes = typeof budget.notes === "string" ? budget.notes : "";
+        const budgetTotal =
+            Number(budget.total_value) > 0
+                ? Number(budget.total_value)
+                : Number(budget.total_cost) > 0 && Number(budget.markup_factor) > 0
+                ? Number((Number(budget.total_cost) * Number(budget.markup_factor)).toFixed(2))
+                : 0;
+
+        // 1. Verifica se o orçamento possui itens/ambientes detalhados salvos em <!--BJL_AMBIENTES:[...]-->
+        if (notes.includes("<!--BJL_AMBIENTES:")) {
+            try {
+                const match = notes.match(/<!--BJL_AMBIENTES:([\s\S]*?)-->/);
+                if (match && match[1]) {
+                    const parsed = JSON.parse(match[1]);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        const validAmbs = parsed
+                            .map((a: any) => ({
+                                description: String(a.description || budget.project_name || "Móveis Planejados")
+                                    .replace(/^Orçamento:\s*/i, "")
+                                    .trim(),
+                                observation: String(a.observation || "").trim(),
+                                value: Number(a.value) || 0,
+                            }))
+                            .filter((a: any) => a.description || a.value > 0);
+
+                        if (validAmbs.length > 0) {
+                            const sumAmb = validAmbs.reduce((acc, a) => acc + a.value, 0);
+                            if (sumAmb <= 0 && budgetTotal > 0) {
+                                const perItem = Number((budgetTotal / validAmbs.length).toFixed(2));
+                                return validAmbs.map((a, idx) => ({
+                                    ...a,
+                                    value:
+                                        idx === validAmbs.length - 1
+                                            ? Number((budgetTotal - perItem * (validAmbs.length - 1)).toFixed(2))
+                                            : perItem,
+                                }));
+                            }
+                            return validAmbs;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("Erro ao ler BJL_AMBIENTES do orçamento:", e);
+            }
+        }
+
+        // 2. Verifica se é uma pasta com IDs filhos em <!--BJL_CHILD_IDS:[...]-->
+        if (notes.includes("<!--BJL_CHILD_IDS:")) {
+            try {
+                const match = notes.match(/<!--BJL_CHILD_IDS:([\s\S]*?)-->/);
+                if (match && match[1]) {
+                    const childIds = JSON.parse(match[1]);
+                    if (Array.isArray(childIds) && childIds.length > 0) {
+                        const children = allBudgets.filter(
+                            (c) => c.id !== budget.id && childIds.includes(c.id)
+                        );
+                        const approvedChildren = children.filter((c) => c.status === "aprovado");
+                        const activeChildren =
+                            approvedChildren.length > 0 ? approvedChildren : children;
+                        if (activeChildren.length > 0) {
+                            return activeChildren.flatMap((c) =>
+                                extractItemsFromSingleBudget(c, allBudgets)
+                            );
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("Erro ao ler BJL_CHILD_IDS do orçamento:", e);
+            }
+        }
+
+        // 3. Fallback: item único com o nome do projeto e o valor total real do orçamento
+        const cleanDesc =
+            (budget.project_name || "Móveis Planejados sob medida")
+                .replace(/^PROJETO COMPLETO:\s*/i, "")
+                .replace(/^Orçamento:\s*/i, "")
+                .trim() || "Móveis Planejados sob medida";
+
+        return [
+            {
+                description: cleanDesc,
+                value: budgetTotal,
+            },
+        ];
+    };
+
+    // Busca todos os itens do(s) orçamento(s) de um cliente ou de um budget_id específico
+    const resolveBudgetItemsForClientOrBudget = (
+        clientName?: string,
+        preferredBudgetId?: string | null
+    ): {
+        clientName: string;
+        items: Array<{ description: string; observation?: string; value: number }>;
+        totalValue: number;
+    } | null => {
+        if (preferredBudgetId) {
+            const exactBudget = crmBudgets.find((b) => b.id === preferredBudgetId);
+            if (exactBudget) {
+                const items = extractItemsFromSingleBudget(exactBudget, crmBudgets);
+                const totalValue = Number(
+                    items.reduce((acc, i) => acc + (Number(i.value) || 0), 0).toFixed(2)
+                );
+                return {
+                    clientName: (exactBudget.client_name || clientName || "").trim(),
+                    items,
+                    totalValue,
+                };
+            }
+        }
+
+        const cleanTarget = (clientName || "").split("+")[0].trim().toLowerCase();
+        if (!cleanTarget) return null;
+
+        const clientBudgets = crmBudgets.filter((b) => {
+            const bClient = (b.client_name || "").split("+")[0].trim().toLowerCase();
+            return bClient === cleanTarget && b.status !== "rejeitado";
+        });
+
+        if (clientBudgets.length === 0) return null;
+
+        // Se existir uma pasta unificada ("PROJETO COMPLETO" ou com BJL_CHILD_IDS / múltiplos BJL_AMBIENTES), prioriza ela para não duplicar com os filhos
+        const unifiedBudget = clientBudgets.find((b) => {
+            const projUpper = (b.project_name || "").toUpperCase();
+            const notes = typeof b.notes === "string" ? b.notes : "";
+            return (
+                projUpper.startsWith("PROJETO COMPLETO") ||
+                notes.includes("<!--BJL_CHILD_IDS:") ||
+                (notes.includes("<!--BJL_AMBIENTES:") && projUpper.includes("+"))
+            );
+        });
+
+        if (unifiedBudget) {
+            const items = extractItemsFromSingleBudget(unifiedBudget, crmBudgets);
+            const totalValue = Number(
+                items.reduce((acc, i) => acc + (Number(i.value) || 0), 0).toFixed(2)
+            );
+            return {
+                clientName: (unifiedBudget.client_name || clientName || "").trim(),
+                items,
+                totalValue,
+            };
+        }
+
+        // Caso o cliente tenha orçamentos separados (ex: 1 orçamento para Quarto + 1 orçamento para Closet), junta os itens de todos
+        const approvedOnly = clientBudgets.filter((b) => b.status === "aprovado");
+        const budgetsToUse = approvedOnly.length > 0 ? approvedOnly : clientBudgets;
+        const allItems = budgetsToUse.flatMap((b) => extractItemsFromSingleBudget(b, crmBudgets));
+        const totalValue = Number(
+            allItems.reduce((acc, i) => acc + (Number(i.value) || 0), 0).toFixed(2)
+        );
+
+        return {
+            clientName: (budgetsToUse[0]?.client_name || clientName || "").trim(),
+            items: allItems,
+            totalValue,
+        };
+    };
+
+    const applyResolvedItemsToEmitForm = (
+        selectedVal: string,
+        resolvedClientName: string,
+        matchingClient: any,
+        items: Array<{ description: string; observation?: string; value: number }>
+    ) => {
+        const validItems =
+            items.length > 0
+                ? items
+                : [{ description: "Fabricação e fornecimento de móveis planejados sob medida", value: 0 }];
+
+        const firstItem = validItems[0];
+        const restItems = validItems.slice(1);
+
+        setEmitForm((prev) => ({
+            ...prev,
+            selectedSaleId: selectedVal,
+            clientName: resolvedClientName || prev.clientName,
+            clientDoc: matchingClient?.cpf || matchingClient?.document || prev.clientDoc || "",
+            clientAddress: matchingClient?.address || prev.clientAddress || "",
+            clientCity: matchingClient?.city || "Sao Fidelis",
+            clientUf: matchingClient?.state || "RJ",
+            clientCep: matchingClient?.zip_code || "28400-000",
+            clientPhone: formatPhoneBrDisplay(matchingClient?.phone) || prev.clientPhone || "(22) ",
+            clientEmail: matchingClient?.email || prev.clientEmail || "",
+            description: firstItem.description.toUpperCase(),
+            quantity: "1",
+            unitPrice: firstItem.value > 0 ? firstItem.value.toFixed(2) : "",
+            amount: firstItem.value > 0 ? firstItem.value.toFixed(2) : "",
+        }));
+
+        setEmitExtraItems(
+            restItems.map((it, idx) => ({
+                id: `budget-extra-${idx}-${Date.now()}`,
+                code: String(idx + 2).padStart(3, "0"),
+                description: it.description.toUpperCase(),
+                ncm: emitForm.ncm || "94036000",
+                cfop: emitForm.cfop || "5102",
+                unit: "UN",
+                quantity: "1",
+                unitPrice: it.value > 0 ? it.value.toFixed(2) : "0.00",
+                amount: it.value > 0 ? it.value.toFixed(2) : "0.00",
+            }))
+        );
+
+        const totalPulled = validItems.reduce((acc, i) => acc + (Number(i.value) || 0), 0);
+        if (validItems.length > 1) {
+            toast.success(
+                `${validItems.length} itens puxados do Orçamento de ${resolvedClientName} (${formatCurrency(
+                    totalPulled
+                )})!`
+            );
+        } else if (totalPulled > 0) {
+            toast.success(
+                `Orçamento de ${resolvedClientName} carregado: ${firstItem.description} (${formatCurrency(
+                    totalPulled
+                )})!`
+            );
+        }
+    };
+
     const handleSelectSaleOrClient = (val: string) => {
-        if (val.startsWith("sale:")) {
+        if (val.startsWith("budget:")) {
+            const budgetId = val.replace("budget:", "");
+            const budget = crmBudgets.find((b) => b.id === budgetId);
+            if (budget) {
+                const cName = (budget.client_name || "").trim();
+                const matchingClient = crmClients.find(
+                    (c) => (c.name || "").trim().toLowerCase() === cName.toLowerCase()
+                );
+                const resolved = resolveBudgetItemsForClientOrBudget(cName, budget.id);
+                applyResolvedItemsToEmitForm(
+                    val,
+                    cName,
+                    matchingClient,
+                    resolved?.items || []
+                );
+            }
+        } else if (val.startsWith("sale:")) {
             const saleId = val.replace("sale:", "");
             const sale = crmSales.find((s) => s.id === saleId);
             if (sale) {
+                const cName = (sale.client_name || "").trim();
                 const matchingClient = crmClients.find(
-                    (c) => (c.name || "").toLowerCase() === (sale.client_name || "").toLowerCase()
+                    (c) => (c.name || "").trim().toLowerCase() === cName.toLowerCase()
                 );
-                const saleTotal = Number(sale.total_value || 0);
-                const saleQty = Math.max(1, Number(sale.quantity || 1));
-                const calcUnit = saleTotal > 0 ? (saleTotal / saleQty).toFixed(2) : "";
-                setEmitForm((prev) => ({
-                    ...prev,
-                    selectedSaleId: val,
-                    clientName: sale.client_name || "",
-                    clientDoc: matchingClient?.cpf || matchingClient?.document || "",
-                    clientAddress: matchingClient?.address || "",
-                    clientCity: matchingClient?.city || "Sao Fidelis",
-                    clientUf: matchingClient?.state || "RJ",
-                    clientCep: matchingClient?.zip_code || "28400-000",
-                    clientPhone: formatPhoneBrDisplay(matchingClient?.phone) || "(22) ",
-                    clientEmail: matchingClient?.email || "",
-                    description: `${sale.product || "Móveis Planejados"}`,
-                    quantity: String(saleQty),
-                    unitPrice: calcUnit,
-                    amount: saleTotal > 0 ? String(saleTotal) : "",
-                }));
+                // Prioriza SEMPRE puxar todos os itens e valores reais do Orçamento vinculado (budget_id ou pelo nome do cliente)
+                const resolvedBudget = resolveBudgetItemsForClientOrBudget(
+                    cName,
+                    sale.budget_id
+                );
+
+                if (resolvedBudget && resolvedBudget.items.length > 0) {
+                    applyResolvedItemsToEmitForm(
+                        val,
+                        cName,
+                        matchingClient,
+                        resolvedBudget.items
+                    );
+                } else {
+                    const saleTotal = Number(sale.total_value || 0);
+                    const cleanProd = (sale.product || "Móveis Planejados")
+                        .replace(/^Orçamento:\s*/i, "")
+                        .replace(/^PROJETO COMPLETO:\s*/i, "")
+                        .trim();
+                    applyResolvedItemsToEmitForm(val, cName, matchingClient, [
+                        { description: cleanProd, value: saleTotal },
+                    ]);
+                }
             }
         } else if (val.startsWith("client:")) {
             const clientId = val.replace("client:", "");
             const client = crmClients.find((c) => c.id === clientId);
             if (client) {
-                setEmitForm((prev) => ({
-                    ...prev,
-                    selectedSaleId: val,
-                    clientName: client.name || "",
-                    clientDoc: client.cpf || client.document || "",
-                    clientAddress: client.address || "",
-                    clientCity: client.city || "Sao Fidelis",
-                    clientUf: client.state || "RJ",
-                    clientCep: client.zip_code || "28400-000",
-                    clientPhone: formatPhoneBrDisplay(client.phone) || "(22) ",
-                    clientEmail: client.email || "",
-                }));
+                const cName = (client.name || "").trim();
+                const resolvedBudget = resolveBudgetItemsForClientOrBudget(cName, null);
+                if (resolvedBudget && resolvedBudget.items.length > 0) {
+                    applyResolvedItemsToEmitForm(
+                        val,
+                        cName,
+                        client,
+                        resolvedBudget.items
+                    );
+                } else {
+                    setEmitExtraItems([]);
+                    setEmitForm((prev) => ({
+                        ...prev,
+                        selectedSaleId: val,
+                        clientName: cName,
+                        clientDoc: client.cpf || client.document || "",
+                        clientAddress: client.address || "",
+                        clientCity: client.city || "Sao Fidelis",
+                        clientUf: client.state || "RJ",
+                        clientCep: client.zip_code || "28400-000",
+                        clientPhone: formatPhoneBrDisplay(client.phone) || "(22) ",
+                        clientEmail: client.email || "",
+                    }));
+                }
             }
         } else if (val.startsWith("os:")) {
             const osId = val.replace("os:", "");
             const os = crmServiceOrders.find((o) => o.id === osId);
             if (os) {
+                const cName = (os.client || "").trim();
                 const matchingClient = crmClients.find(
-                    (c) => (c.name || "").toLowerCase() === (os.client || "").toLowerCase()
+                    (c) => (c.name || "").trim().toLowerCase() === cName.toLowerCase()
                 );
-                const osVal = Number(os.value || 0);
-                setEmitForm((prev) => ({
-                    ...prev,
-                    selectedSaleId: val,
-                    clientName: os.client || "",
-                    clientDoc: matchingClient?.cpf || matchingClient?.document || "",
-                    clientAddress: matchingClient?.address || "",
-                    clientCity: matchingClient?.city || "Sao Fidelis",
-                    clientUf: matchingClient?.state || "RJ",
-                    clientCep: matchingClient?.zip_code || "28400-000",
-                    clientPhone: formatPhoneBrDisplay(matchingClient?.phone) || "(22) ",
-                    clientEmail: matchingClient?.email || "",
-                    description: os.action
-                        ? `${os.action} (${os.ticket_number || "OS"})`
-                        : prev.description,
-                    quantity: "1",
-                    unitPrice: osVal > 0 ? osVal.toFixed(2) : prev.unitPrice,
-                    amount: osVal > 0 ? osVal.toFixed(2) : prev.amount,
-                }));
+                const resolvedBudget = resolveBudgetItemsForClientOrBudget(cName, null);
+                if (resolvedBudget && resolvedBudget.items.length > 0) {
+                    applyResolvedItemsToEmitForm(
+                        val,
+                        cName,
+                        matchingClient,
+                        resolvedBudget.items
+                    );
+                } else {
+                    const osVal = Number(os.value || 0);
+                    applyResolvedItemsToEmitForm(val, cName, matchingClient, [
+                        {
+                            description: os.action
+                                ? `${os.action} (${os.ticket_number || "OS"})`
+                                : "Móveis Planejados",
+                            value: osVal,
+                        },
+                    ]);
+                }
             }
         }
     };
@@ -4324,37 +4586,92 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
 
                     {emitStep === "form" ? (
                         <form onSubmit={handleOpenEmitPreview} className="space-y-4 py-2">
-                            {/* Seletor rápido de Venda / OS / Cliente do CRM */}
+                            {/* Seletor rápido de Orçamento / Venda / OS / Cliente do CRM */}
                             <div className="p-3.5 rounded-2xl bg-primary/5 border border-primary/20 space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1.5">
                                     <Sparkles className="h-3.5 w-3.5" />
-                                    Puxar Dados Automaticamente do CRM (Opcional)
+                                    Puxar Itens e Valores Automaticamente do Orçamento / CRM
                                 </Label>
                                 <Select value={emitForm.selectedSaleId} onValueChange={handleSelectSaleOrClient}>
                                     <SelectTrigger className="h-10 rounded-xl bg-black/40 border-white/10 text-xs">
-                                        <SelectValue placeholder="Escolher Venda Fechada, Ordem de Serviço ou Cliente Cadastrado..." />
+                                        <SelectValue placeholder="Escolher Orçamento, Venda, Ordem de Serviço ou Cliente..." />
                                     </SelectTrigger>
-                                    <SelectContent className="max-h-72 z-[100] bg-[#121218] border-white/15 text-foreground">
+                                    <SelectContent className="max-h-80 z-[100] bg-[#121218] border-white/15 text-foreground">
+                                        {crmBudgets.length > 0 && (
+                                            <>
+                                                <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-amber-400">
+                                                    📋 Orçamentos (Puxa todos os itens e valores do orçamento)
+                                                </div>
+                                                {crmBudgets.slice(0, 30).map((b) => {
+                                                    const bItems = extractItemsFromSingleBudget(b, crmBudgets);
+                                                    const bTotal = bItems.reduce(
+                                                        (acc, i) => acc + (Number(i.value) || 0),
+                                                        0
+                                                    );
+                                                    const itemsSummary =
+                                                        bItems.length > 1
+                                                            ? `${bItems.length} itens: ${bItems
+                                                                  .slice(0, 3)
+                                                                  .map((i) => i.description)
+                                                                  .join(" + ")}${
+                                                                  bItems.length > 3
+                                                                      ? ` (+${bItems.length - 3})`
+                                                                      : ""
+                                                              }`
+                                                            : bItems[0]?.description || b.project_name;
+                                                    return (
+                                                        <SelectItem
+                                                            key={`budget:${b.id}`}
+                                                            value={`budget:${b.id}`}
+                                                        >
+                                                            [ORÇAMENTO] {b.client_name} — {itemsSummary} (
+                                                            {formatCurrency(bTotal)})
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                            </>
+                                        )}
                                         {crmSales.length > 0 && (
                                             <>
-                                                <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-primary">
+                                                <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-primary mt-1">
                                                     Vendas / Projetos Recentes
                                                 </div>
-                                                {crmSales.slice(0, 15).map((s) => (
-                                                    <SelectItem key={`sale:${s.id}`} value={`sale:${s.id}`}>
-                                                        [VENDA] {s.client_name} — {s.product} ({formatCurrency(Number(s.total_value || 0))})
-                                                    </SelectItem>
-                                                ))}
+                                                {crmSales.slice(0, 15).map((s) => {
+                                                    const resolved = resolveBudgetItemsForClientOrBudget(
+                                                        s.client_name,
+                                                        s.budget_id
+                                                    );
+                                                    const displayTotal =
+                                                        resolved && resolved.totalValue > 0
+                                                            ? resolved.totalValue
+                                                            : Number(s.total_value || 0);
+                                                    const displayLabel =
+                                                        resolved && resolved.items.length > 1
+                                                            ? `${resolved.items.length} itens do orçamento (${resolved.items
+                                                                  .slice(0, 2)
+                                                                  .map((i) => i.description)
+                                                                  .join(" + ")}${
+                                                                  resolved.items.length > 2 ? "..." : ""
+                                                              })`
+                                                            : resolved?.items[0]?.description || s.product;
+                                                    return (
+                                                        <SelectItem key={`sale:${s.id}`} value={`sale:${s.id}`}>
+                                                            [VENDA] {s.client_name} — {displayLabel} (
+                                                            {formatCurrency(displayTotal)})
+                                                        </SelectItem>
+                                                    );
+                                                })}
                                             </>
                                         )}
                                         {crmServiceOrders.length > 0 && (
                                             <>
-                                                <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-amber-400 mt-1">
+                                                <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-sky-400 mt-1">
                                                     Ordens de Serviço (OS)
                                                 </div>
                                                 {crmServiceOrders.slice(0, 20).map((os) => (
                                                     <SelectItem key={`os:${os.id}`} value={`os:${os.id}`}>
-                                                        [OS] {os.ticket_number} — {os.client} {os.action ? `(${os.action})` : ""}
+                                                        [OS] {os.ticket_number} — {os.client}{" "}
+                                                        {os.action ? `(${os.action})` : ""}
                                                     </SelectItem>
                                                 ))}
                                             </>
