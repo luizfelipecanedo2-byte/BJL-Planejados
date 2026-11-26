@@ -26,6 +26,9 @@ import {
     Split,
     Layers,
     X,
+    Eye,
+    ArrowLeft,
+    Pencil,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -265,29 +268,49 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
     const [newCustomClientName, setNewCustomClientName] = useState("");
     const [showNewClientInput, setShowNewClientInput] = useState(false);
 
-    // Modal de Emissão 1-Click
+    // Modal de Emissão 1-Click + Prévia de Conferência antes de confirmar
     const [isEmitOpen, setIsEmitOpen] = useState(false);
+    const [emitStep, setEmitStep] = useState<"form" | "preview">("form");
     const [isEmitting, setIsEmitting] = useState(false);
+    const [emitExtraItems, setEmitExtraItems] = useState<
+        Array<{
+            id: string;
+            code: string;
+            description: string;
+            ncm: string;
+            cfop: string;
+            unit: string;
+            quantity: string;
+            unitPrice: string;
+            amount: string;
+        }>
+    >([]);
     const [emitForm, setEmitForm] = useState({
         type: "NF-e" as "NF-e" | "NFS-e",
         selectedSaleId: "",
         clientName: "",
         clientDoc: "",
+        clientIe: "",
         clientAddress: "",
-        clientNeighborhood: "",
+        clientNeighborhood: "Centro",
         clientCity: "Sao Fidelis",
         clientUf: "RJ",
         clientCep: "28400-000",
         clientPhone: "",
         clientEmail: "",
+        natOp: "Venda Dentro do Estado",
         description: "Fabricação e fornecimento de móveis planejados sob medida em MDF",
         quantity: "1",
         unitPrice: "",
         amount: "",
         ncm: "94036000", // Móveis de madeira
         cfop: "5102", // Venda Dentro do Estado (igual Nota Fiscal Neto.pdf)
+        csosn: "0102",
+        unit: "UN",
         serviceCode: "14.13", // Carpintaria e marcenaria (LC 116)
         taxRate: "6.0", // Simples Nacional Anexo I/III referência
+        extraInfo:
+            "DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL. NAO GERA DIREITO A CREDITO FISCAL DE ICMS, ISS E IPI.",
         autoCreateFinance: true,
     });
 
@@ -1287,6 +1310,188 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
         );
     }, [xmlInstallments]);
 
+    const emitPreviewItems = useMemo(() => {
+        const primaryQty = Math.max(1, parseFloat(String(emitForm.quantity || "1").replace(",", ".")) || 1);
+        const primaryAmt = Math.max(0, parseFloat(String(emitForm.amount || "0").replace(",", ".")) || 0);
+        const rawPrimaryUnit = parseFloat(String(emitForm.unitPrice || "0").replace(",", "."));
+        const primaryUnit =
+            rawPrimaryUnit > 0
+                ? rawPrimaryUnit
+                : primaryQty > 0
+                ? Number((primaryAmt / primaryQty).toFixed(2))
+                : 0;
+
+        const baseItem = {
+            code: "001",
+            description: (emitForm.description || "Móveis Planejados").trim(),
+            ncm: (emitForm.ncm || "94036000").trim(),
+            csosn: (emitForm.csosn || "0102").trim(),
+            cfop: (emitForm.cfop || "5102").trim(),
+            unit: (emitForm.unit || "UN").trim().toUpperCase(),
+            quantity: primaryQty,
+            unitPrice: primaryUnit,
+            totalPrice: primaryAmt > 0 ? primaryAmt : Number((primaryQty * primaryUnit).toFixed(2)),
+        };
+
+        const extras = emitExtraItems.map((it, idx) => {
+            const q = Math.max(1, parseFloat(String(it.quantity || "1").replace(",", ".")) || 1);
+            const a = Math.max(0, parseFloat(String(it.amount || "0").replace(",", ".")) || 0);
+            const uRaw = parseFloat(String(it.unitPrice || "0").replace(",", "."));
+            const u = uRaw > 0 ? uRaw : q > 0 ? Number((a / q).toFixed(2)) : 0;
+            const tot = a > 0 ? a : Number((q * u).toFixed(2));
+            return {
+                code: it.code || String(idx + 2).padStart(3, "0"),
+                description: (it.description || `Item #${idx + 2}`).trim(),
+                ncm: (it.ncm || emitForm.ncm || "94036000").trim(),
+                csosn: (emitForm.csosn || "0102").trim(),
+                cfop: (it.cfop || emitForm.cfop || "5102").trim(),
+                unit: (it.unit || "UN").trim().toUpperCase(),
+                quantity: q,
+                unitPrice: u,
+                totalPrice: tot,
+            };
+        });
+
+        return [baseItem, ...extras];
+    }, [emitForm, emitExtraItems]);
+
+    const emitTotalAmount = useMemo(() => {
+        return Number(emitPreviewItems.reduce((acc, it) => acc + it.totalPrice, 0).toFixed(2));
+    }, [emitPreviewItems]);
+
+    const handleAddEmitExtraItem = () => {
+        setEmitExtraItems((prev) => [
+            ...prev,
+            {
+                id: `extra-emit-${Date.now()}-${prev.length}`,
+                code: String(prev.length + 2).padStart(3, "0"),
+                description: "",
+                ncm: emitForm.ncm || "94036000",
+                cfop: emitForm.cfop || "5102",
+                unit: "UN",
+                quantity: "1",
+                unitPrice: "",
+                amount: "",
+            },
+        ]);
+    };
+
+    const handleUpdateEmitExtraItem = (
+        id: string,
+        field: "description" | "quantity" | "unitPrice" | "amount" | "ncm" | "cfop" | "unit",
+        value: string
+    ) => {
+        setEmitExtraItems((prev) =>
+            prev.map((item) => {
+                if (item.id !== id) return item;
+                const next = { ...item, [field]: value };
+                const qty = Math.max(1, parseFloat(String(next.quantity || "1").replace(",", ".")) || 1);
+                if (field === "quantity" || field === "unitPrice") {
+                    const unit = parseFloat(String(next.unitPrice || "0").replace(",", "."));
+                    if (!isNaN(unit) && unit > 0) {
+                        next.amount = (qty * unit).toFixed(2);
+                    }
+                } else if (field === "amount") {
+                    const tot = parseFloat(String(next.amount || "0").replace(",", "."));
+                    if (!isNaN(tot) && tot > 0) {
+                        next.unitPrice = (tot / qty).toFixed(2);
+                    }
+                }
+                return next;
+            })
+        );
+    };
+
+    const handleRemoveEmitExtraItem = (id: string) => {
+        setEmitExtraItems((prev) => prev.filter((item) => item.id !== id));
+    };
+
+    const handleOpenEmitPreview = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!emitForm.clientName.trim()) {
+            toast.error("Preencha o Nome / Razão Social do Destinatário (Cliente) para visualizar a prévia.");
+            return;
+        }
+        if (isNaN(emitTotalAmount) || emitTotalAmount <= 0) {
+            toast.error("Preencha o valor da nota fiscal para visualizar a prévia.");
+            return;
+        }
+        setEmitStep("preview");
+    };
+
+    const buildEmitStoredPayload = (
+        invoiceNumberStr: string,
+        sefazKeyStr = "",
+        sefazProtocolStr = ""
+    ): StoredXmlPayload => {
+        return {
+            direction: "saida",
+            series: "1",
+            natOp: emitForm.natOp?.trim() || "Venda Dentro do Estado",
+            protocol: sefazProtocolStr || "PRÉVIA - AGUARDANDO TRANSMISSÃO",
+            accessKey: sefazKeyStr || "",
+            emitter: {
+                name: "BJL MOVEIS PLANEJADOS LTDA",
+                cnpj: companySettings?.cnpj || "60.528.620/0001-20",
+                ie: "15469064",
+                address: "Rua Maria Vitipo Raposo, 138",
+                neighborhood: "Barao de Macaubas",
+                city: "Sao Fidelis",
+                uf: "RJ",
+                cep: "28400-000",
+                phone: companySettings?.phone || "(22) 99703-9852",
+            },
+            recipient: {
+                name: emitForm.clientName.trim(),
+                doc: emitForm.clientDoc.trim(),
+                ie: emitForm.clientIe.trim(),
+                address: emitForm.clientAddress.trim() || "Centro",
+                neighborhood: emitForm.clientNeighborhood.trim() || "Centro",
+                city: emitForm.clientCity.trim() || "Sao Fidelis",
+                uf: emitForm.clientUf.trim() || "RJ",
+                cep: emitForm.clientCep.trim() || "28400-000",
+                phone: emitForm.clientPhone.trim(),
+            },
+            totals: {
+                productsTotal: emitTotalAmount,
+                discountAmount: 0,
+                freightAmount: 0,
+                otherAmount: 0,
+                totalAmount: emitTotalAmount,
+            },
+            items: emitPreviewItems.map((it, idx) => ({
+                code: it.code || String(idx + 1).padStart(3, "0"),
+                name: it.description,
+                ncm: it.ncm || "94036000",
+                csosn: it.csosn || "0102",
+                cfop: it.cfop || "5102",
+                unit: it.unit || "UN",
+                quantity: it.quantity,
+                unitPrice: it.unitPrice,
+                grossPrice: it.totalPrice,
+                discount: 0,
+                totalPrice: it.totalPrice,
+            })),
+        };
+    };
+
+    const handlePrintEmitPreview = () => {
+        const todayIso = new Date().toISOString().split("T")[0];
+        const previewPayload = buildEmitStoredPayload("PRÉVIA");
+        const draftInvoice: Invoice = {
+            id: "preview-draft",
+            issue_date: todayIso,
+            client_name: emitForm.clientName.trim() || "DESTINATÁRIO",
+            description: emitPreviewItems.map((i) => `${i.quantity}x ${i.description}`).join(", "),
+            amount: emitTotalAmount,
+            status: "Pendente",
+            invoice_number: "PRÉVIA",
+            type: emitForm.type,
+            asaas_status: `XML_PAYLOAD:${JSON.stringify(previewPayload)}`,
+        };
+        handlePrintDanfe(draftInvoice);
+    };
+
     const handleSelectSaleOrClient = (val: string) => {
         if (val.startsWith("sale:")) {
             const saleId = val.replace("sale:", "");
@@ -1332,17 +1537,39 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                     clientEmail: client.email || "",
                 }));
             }
+        } else if (val.startsWith("os:")) {
+            const osId = val.replace("os:", "");
+            const os = crmServiceOrders.find((o) => o.id === osId);
+            if (os) {
+                const matchingClient = crmClients.find(
+                    (c) => (c.name || "").toLowerCase() === (os.client || "").toLowerCase()
+                );
+                const osVal = Number(os.value || 0);
+                setEmitForm((prev) => ({
+                    ...prev,
+                    selectedSaleId: val,
+                    clientName: os.client || "",
+                    clientDoc: matchingClient?.cpf || matchingClient?.document || "",
+                    clientAddress: matchingClient?.address || "",
+                    clientCity: matchingClient?.city || "Sao Fidelis",
+                    clientUf: matchingClient?.state || "RJ",
+                    clientCep: matchingClient?.zip_code || "28400-000",
+                    clientPhone: matchingClient?.phone || "",
+                    clientEmail: matchingClient?.email || "",
+                    description: os.action
+                        ? `${os.action} (${os.ticket_number || "OS"})`
+                        : prev.description,
+                    quantity: "1",
+                    unitPrice: osVal > 0 ? osVal.toFixed(2) : prev.unitPrice,
+                    amount: osVal > 0 ? osVal.toFixed(2) : prev.amount,
+                }));
+            }
         }
     };
 
-    const handleEmitInvoice = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const numericQty = Math.max(1, parseFloat(String(emitForm.quantity || "1").replace(",", ".")) || 1);
-        const numericAmount = parseFloat(String(emitForm.amount || "0").replace(",", "."));
-        const numericUnitPrice =
-            parseFloat(String(emitForm.unitPrice || "0").replace(",", ".")) > 0
-                ? parseFloat(String(emitForm.unitPrice || "0").replace(",", "."))
-                : Number((numericAmount / numericQty).toFixed(2));
+    const handleEmitInvoice = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        const numericAmount = emitTotalAmount;
 
         if (!emitForm.clientName.trim() || isNaN(numericAmount) || numericAmount <= 0) {
             toast.error("Preencha o nome do cliente e um valor válido para emitir a nota.");
@@ -1365,32 +1592,31 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                     : { cpf: cleanDoc.length === 11 ? cleanDoc : "12675588733" };
 
             const notaasNfeBody = {
-                naturezaOperacao: "VENDA DE PRODUCAO DO ESTABELECIMENTO",
+                naturezaOperacao:
+                    emitForm.natOp?.trim().toUpperCase() || "VENDA DE PRODUCAO DO ESTABELECIMENTO",
                 dest: {
                     nome: emitForm.clientName.trim(),
                     ...docField,
                     endereco: {
                         logradouro: emitForm.clientAddress?.trim() || "Rua Maria Vitipo Raposo",
                         numero: "138",
-                        bairro: "Centro",
-                        cidade: "Sao Fidelis",
-                        uf: "RJ",
-                        cep: "28400000",
+                        bairro: emitForm.clientNeighborhood?.trim() || "Centro",
+                        cidade: emitForm.clientCity?.trim() || "Sao Fidelis",
+                        uf: emitForm.clientUf?.trim() || "RJ",
+                        cep: (emitForm.clientCep || "28400000").replace(/\D/g, "") || "28400000",
                         codigoMunicipio: "3304805",
                     },
                 },
-                items: [
-                    {
-                        codigo: "001",
-                        descricao: emitForm.description.trim(),
-                        cfop: emitForm.cfop || "5102",
-                        ncm: (emitForm.ncm || "94036000").replace(/\D/g, ""),
-                        unidade: "UN",
-                        quantidade: numericQty,
-                        valorUnitario: numericUnitPrice,
-                        valorTotal: numericAmount,
-                    },
-                ],
+                items: emitPreviewItems.map((it, idx) => ({
+                    codigo: it.code || String(idx + 1).padStart(3, "0"),
+                    descricao: it.description,
+                    cfop: it.cfop || "5102",
+                    ncm: (it.ncm || "94036000").replace(/\D/g, ""),
+                    unidade: it.unit || "UN",
+                    quantidade: it.quantity,
+                    valorUnitario: it.unitPrice,
+                    valorTotal: it.totalPrice,
+                })),
                 pagamentos: [
                     {
                         meio: "17",
@@ -1454,10 +1680,20 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
             }
 
             const todayIso = new Date().toISOString().split("T")[0];
+            const itemsDescSummary = emitPreviewItems
+                .map((it) => `${it.quantity}x ${it.description}`)
+                .join(", ");
+            const primaryItem = emitPreviewItems[0];
+            const storedEmitPayload = buildEmitStoredPayload(
+                invoiceNumberGenerated,
+                sefazKey,
+                sefazProtocol || "333260001022548"
+            );
+
             const newInvoiceRecord: any = {
                 issue_date: todayIso,
                 client_name: emitForm.clientName.trim(),
-                description: `${emitForm.description.trim()} | Qtd: ${numericQty} | VUnit: ${numericUnitPrice.toFixed(2)}${
+                description: `${itemsDescSummary} | Qtd: ${primaryItem.quantity} | VUnit: ${primaryItem.unitPrice.toFixed(2)}${
                     emitForm.clientDoc ? ` | Doc: ${emitForm.clientDoc}` : ""
                 }${sefazKey ? ` | Chave: ${sefazKey}` : ""}${
                     sefazProtocol ? ` | Prot SEFAZ: ${sefazProtocol}` : ""
@@ -1467,7 +1703,7 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                 invoice_number: invoiceNumberGenerated,
                 type: emitForm.type,
                 asaas_id: notaasInvoiceId || null,
-                asaas_status: sefazStatusText || null,
+                asaas_status: `XML_PAYLOAD:${JSON.stringify(storedEmitPayload)}`,
             };
 
             const { data: inserted, error: insertError } = await supabase
@@ -1506,9 +1742,11 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
             toast.success(
                 sefazProtocol
                     ? `${emitForm.type} #${invoiceNumberGenerated} AUTORIZADA na SEFAZ! Protocolo: ${sefazProtocol}`
-                    : `${emitForm.type} #${invoiceNumberGenerated} registrada com sucesso!`
+                    : `${emitForm.type} #${invoiceNumberGenerated} confirmada e registrada com sucesso!`
             );
             setIsEmitOpen(false);
+            setEmitStep("form");
+            setEmitExtraItems([]);
         } catch (error: any) {
             console.error("Erro ao emitir nota fiscal:", error);
             toast.error("Erro ao registrar nota fiscal no banco de dados.");
@@ -2266,6 +2504,89 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                 "dd/MM/yyyy"
             )}!`
         );
+    };
+
+    const handlePreviewXmlDanfe = () => {
+        if (!parsedXml) return;
+        const primaryNote = parsedXml.sourceNotes[0];
+        const previewPayload: StoredXmlPayload = {
+            direction: xmlOptions.direction,
+            series: parsedXml.series || "1",
+            natOp: primaryNote?.natOp || "Venda de mercadoria adquirida ou recebida de terceiros",
+            protocol: primaryNote?.protocol || "PRÉVIA DE CONFERÊNCIA",
+            accessKey: parsedXml.accessKey || "",
+            emitter: {
+                name: parsedXml.emitterName,
+                cnpj: parsedXml.emitterCnpj,
+                ie: primaryNote?.emitterIe || "",
+                address: primaryNote?.emitterAddress || "",
+                neighborhood: primaryNote?.emitterNeighborhood || "",
+                city: primaryNote?.emitterCity || "",
+                uf: primaryNote?.emitterUf || "",
+                cep: primaryNote?.emitterCep || "",
+                phone: primaryNote?.emitterPhone || "",
+            },
+            recipient: {
+                name: parsedXml.recipientName || "BJL MOVEIS PLANEJADOS LTDA",
+                doc: parsedXml.recipientDoc || companySettings?.cnpj || "60.528.620/0001-20",
+                ie: primaryNote?.recipientIe || "15469064",
+                address: primaryNote?.recipientAddress || "Rua Maria Vitipo Raposo, 138",
+                neighborhood: primaryNote?.recipientNeighborhood || "Barao de Macaubas",
+                city: primaryNote?.recipientCity || "Sao Fidelis",
+                uf: primaryNote?.recipientUf || "RJ",
+                cep: primaryNote?.recipientCep || "28400-000",
+                phone: primaryNote?.recipientPhone || companySettings?.phone || "(22) 99703-9852",
+            },
+            totals: {
+                productsTotal: parsedXml.productsTotal,
+                discountAmount: parsedXml.discountAmount,
+                freightAmount: parsedXml.freightAmount,
+                otherAmount: parsedXml.otherAmount,
+                totalAmount: parsedXml.totalAmount,
+            },
+            duplicates: xmlInstallments.map((inst, idx) => ({
+                number: String(idx + 1).padStart(3, "0"),
+                dueDate: inst.dueDate,
+                amount: parseFloat(String(inst.amount).replace(",", ".")) || 0,
+            })),
+            items: parsedXml.items.map((it) => {
+                const splits = xmlItemSplits[it.id] || [];
+                const clientsLabel = splits
+                    .map((sp) => {
+                        const c = (sp.client || "").trim();
+                        if (!c || c === "ESTOQUE") return "Estoque Geral";
+                        return splits.length > 1 ? `${c} (${sp.quantity} ${it.unit})` : c;
+                    })
+                    .filter(Boolean)
+                    .join(" / ");
+                return {
+                    code: it.code,
+                    name: it.name,
+                    ncm: it.ncm,
+                    csosn: it.csosn || "102",
+                    cfop: it.cfop || "5102",
+                    unit: it.unit || "UN",
+                    quantity: it.quantity,
+                    unitPrice: it.unitPrice,
+                    grossPrice: it.grossPrice ?? it.totalPrice,
+                    discount: it.discount ?? 0,
+                    totalPrice: it.totalPrice,
+                    clients: clientsLabel || undefined,
+                };
+            }),
+        };
+
+        handlePrintDanfe({
+            id: "xml-preview",
+            issue_date: parsedXml.issueDate,
+            client_name: parsedXml.emitterName,
+            description: "Prévia da Nota Fiscal",
+            amount: parsedXml.totalAmount,
+            status: "Pendente",
+            invoice_number: parsedXml.invoiceNumber || "PRÉVIA",
+            type: "NF-e",
+            asaas_status: `XML_PAYLOAD:${JSON.stringify(previewPayload)}`,
+        });
     };
 
     const handleConfirmXmlImport = async () => {
@@ -3626,7 +3947,10 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                         </Button>
 
                         <Button
-                            onClick={() => setIsEmitOpen(true)}
+                            onClick={() => {
+                                setEmitStep("form");
+                                setIsEmitOpen(true);
+                            }}
                             className="h-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-black uppercase tracking-wider gap-2 shadow-lg shadow-primary/20"
                         >
                             <Plus className="h-4 w-4" />
@@ -3890,331 +4214,1182 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                 </div>
             </div>
 
-            {/* MODAL 1: EMITIR NOTA FISCAL EM 1 CLIQUE */}
-            <Dialog open={isEmitOpen} onOpenChange={setIsEmitOpen}>
-                <DialogContent className="max-w-2xl bg-[#0c0c10] border border-white/15 shadow-2xl rounded-3xl text-foreground">
+            {/* MODAL 1: EMITIR NOTA FISCAL EM 1 CLIQUE COM PRÉVIA VISUAL DA DANFE ANTES DE CONFIRMAR */}
+            <Dialog
+                open={isEmitOpen}
+                onOpenChange={(open) => {
+                    setIsEmitOpen(open);
+                    if (!open) setEmitStep("form");
+                }}
+            >
+                <DialogContent
+                    className={cn(
+                        "max-h-[92vh] overflow-y-auto bg-[#0c0c10] border border-white/15 shadow-2xl rounded-3xl text-foreground transition-all",
+                        emitStep === "preview" ? "max-w-4xl" : "max-w-3xl"
+                    )}
+                >
                     <DialogHeader>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="tech-hud-pill text-primary border-primary/30 bg-primary/10">
-                                1-CLICK EMISSOR // NUVEM FISCAL
-                            </span>
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-2">
+                                <span className="tech-hud-pill text-primary border-primary/30 bg-primary/10">
+                                    1-CLICK EMISSOR // CONFERÊNCIA PRÉVIA
+                                </span>
+                                {emitStep === "preview" && (
+                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/40 animate-pulse">
+                                        👁️ Modo Prévia — Ainda Não Emitida
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Seletor de Etapa: 1. Preencher Dados -> 2. Prévia da Nota */}
+                            <div className="flex items-center gap-1.5 bg-white/[0.04] p-1 rounded-xl border border-white/10">
+                                <button
+                                    type="button"
+                                    onClick={() => setEmitStep("form")}
+                                    className={cn(
+                                        "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5",
+                                        emitStep === "form"
+                                            ? "bg-primary text-primary-foreground shadow"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    <Pencil className="h-3 w-3" />
+                                    1. Dados da Nota
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleOpenEmitPreview()}
+                                    className={cn(
+                                        "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5",
+                                        emitStep === "preview"
+                                            ? "bg-amber-500 text-black shadow"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    <Eye className="h-3 w-3" />
+                                    2. Prévia da Nota (DANFE)
+                                </button>
+                            </div>
                         </div>
+
                         <DialogTitle className="text-xl font-display font-black">
-                            Emitir Nota Fiscal Eletrônica
+                            {emitStep === "form"
+                                ? "Emitir Nota Fiscal Eletrônica — Preenchimento"
+                                : `Prévia de Conferência da ${emitForm.type} — Confira Antes de Confirmar`}
                         </DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground">
-                            Selecione uma venda ou cliente do CRM para preencher automaticamente e transmitir a nota.
+                            {emitStep === "form"
+                                ? "Preencha ou puxe os dados do cliente/venda abaixo e clique em 'Visualizar Prévia da Nota' para ver como a nota vai ficar antes de confirmar."
+                                : "Veja abaixo o espelho exato de como a Nota Fiscal (DANFE) vai ficar. Se estiver tudo certinho, clique em 'Confirmar e Emitir Nota' no rodapé."}
                         </DialogDescription>
                     </DialogHeader>
 
-                    <form onSubmit={handleEmitInvoice} className="space-y-4 py-2">
-                        {/* Seletor rápido de Venda / Cliente do CRM */}
-                        <div className="p-3.5 rounded-2xl bg-primary/5 border border-primary/20 space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1.5">
-                                <Sparkles className="h-3.5 w-3.5" />
-                                Puxar Dados Automaticamente do CRM (Opcional)
-                            </Label>
-                            <Select value={emitForm.selectedSaleId} onValueChange={handleSelectSaleOrClient}>
-                                <SelectTrigger className="h-10 rounded-xl bg-black/40 border-white/10 text-xs">
-                                    <SelectValue placeholder="Escolher Venda Fechada ou Cliente Cadastrado..." />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-72 z-[100] bg-[#121218] border-white/15 text-foreground">
-                                    {crmSales.length > 0 && (
-                                        <>
-                                            <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-primary">
-                                                Vendas / Projetos Recentes
-                                            </div>
-                                            {crmSales.slice(0, 15).map((s) => (
-                                                <SelectItem key={`sale:${s.id}`} value={`sale:${s.id}`}>
-                                                    [VENDA] {s.client_name} — {s.product} ({formatCurrency(Number(s.total_value || 0))})
-                                                </SelectItem>
-                                            ))}
-                                        </>
-                                    )}
-                                    {crmClients.length > 0 && (
-                                        <>
-                                            <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-400 mt-1">
-                                                Carteira de Clientes
-                                            </div>
-                                            {crmClients.slice(0, 25).map((c) => (
-                                                <SelectItem key={`client:${c.id}`} value={`client:${c.id}`}>
-                                                    [CLIENTE] {c.name} {c.cpf ? `(${c.cpf})` : ""}
-                                                </SelectItem>
-                                            ))}
-                                        </>
-                                    )}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                    Modelo da Nota Fiscal
+                    {emitStep === "form" ? (
+                        <form onSubmit={handleOpenEmitPreview} className="space-y-4 py-2">
+                            {/* Seletor rápido de Venda / OS / Cliente do CRM */}
+                            <div className="p-3.5 rounded-2xl bg-primary/5 border border-primary/20 space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1.5">
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                    Puxar Dados Automaticamente do CRM (Opcional)
                                 </Label>
-                                <Select
-                                    value={emitForm.type}
-                                    onValueChange={(v: "NF-e" | "NFS-e") =>
-                                        setEmitForm((prev) => ({
-                                            ...prev,
-                                            type: v,
-                                            description:
-                                                v === "NF-e"
-                                                    ? "Fabricação e fornecimento de móveis planejados sob medida em MDF"
-                                                    : "Serviço de marcenaria, fabricação e montagem de móveis planejados sob encomenda",
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger className="h-10 rounded-xl bg-white/[0.03] border-white/10 text-xs font-bold">
-                                        <SelectValue />
+                                <Select value={emitForm.selectedSaleId} onValueChange={handleSelectSaleOrClient}>
+                                    <SelectTrigger className="h-10 rounded-xl bg-black/40 border-white/10 text-xs">
+                                        <SelectValue placeholder="Escolher Venda Fechada, Ordem de Serviço ou Cliente Cadastrado..." />
                                     </SelectTrigger>
-                                    <SelectContent className="z-[100] bg-[#121218] border-white/15 text-foreground">
-                                        <SelectItem value="NF-e">
-                                            NF-e (Modelo 55 — Venda de Móveis / Produtos)
-                                        </SelectItem>
-                                        <SelectItem value="NFS-e">
-                                            NFS-e (Prefeitura — Serviço de Marcenaria / Montagem)
-                                        </SelectItem>
+                                    <SelectContent className="max-h-72 z-[100] bg-[#121218] border-white/15 text-foreground">
+                                        {crmSales.length > 0 && (
+                                            <>
+                                                <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-primary">
+                                                    Vendas / Projetos Recentes
+                                                </div>
+                                                {crmSales.slice(0, 15).map((s) => (
+                                                    <SelectItem key={`sale:${s.id}`} value={`sale:${s.id}`}>
+                                                        [VENDA] {s.client_name} — {s.product} ({formatCurrency(Number(s.total_value || 0))})
+                                                    </SelectItem>
+                                                ))}
+                                            </>
+                                        )}
+                                        {crmServiceOrders.length > 0 && (
+                                            <>
+                                                <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-amber-400 mt-1">
+                                                    Ordens de Serviço (OS)
+                                                </div>
+                                                {crmServiceOrders.slice(0, 20).map((os) => (
+                                                    <SelectItem key={`os:${os.id}`} value={`os:${os.id}`}>
+                                                        [OS] {os.ticket_number} — {os.client} {os.action ? `(${os.action})` : ""}
+                                                    </SelectItem>
+                                                ))}
+                                            </>
+                                        )}
+                                        {crmClients.length > 0 && (
+                                            <>
+                                                <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-400 mt-1">
+                                                    Carteira de Clientes
+                                                </div>
+                                                {crmClients.slice(0, 25).map((c) => (
+                                                    <SelectItem key={`client:${c.id}`} value={`client:${c.id}`}>
+                                                        [CLIENTE] {c.name} {c.cpf ? `(${c.cpf})` : ""}
+                                                    </SelectItem>
+                                                ))}
+                                            </>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
 
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                    Valor Total da Nota (R$)
-                                </Label>
-                                <Input
-                                    type="number"
-                                    step="0.01"
-                                    required
-                                    placeholder="0.00"
-                                    value={emitForm.amount}
-                                    onChange={(e) => {
-                                        const newTotal = e.target.value;
-                                        const qty = Math.max(1, parseFloat(emitForm.quantity || "1") || 1);
-                                        const totalNum = parseFloat(newTotal);
-                                        setEmitForm((prev) => ({
-                                            ...prev,
-                                            amount: newTotal,
-                                            unitPrice:
-                                                !isNaN(totalNum) && totalNum > 0
-                                                    ? (totalNum / qty).toFixed(2)
-                                                    : prev.unitPrice,
-                                        }));
-                                    }}
-                                    className="h-10 rounded-xl bg-white/[0.03] border-white/10 font-tech font-bold text-primary"
-                                />
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                    Nome / Razão Social do Destinatário
-                                </Label>
-                                <Input
-                                    required
-                                    placeholder="Ex: João Carlos da Silva"
-                                    value={emitForm.clientName}
-                                    onChange={(e) =>
-                                        setEmitForm((prev) => ({ ...prev, clientName: e.target.value }))
-                                    }
-                                    className="h-10 rounded-xl bg-white/[0.03] border-white/10 text-xs"
-                                />
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                    CPF ou CNPJ do Cliente
-                                </Label>
-                                <Input
-                                    placeholder="000.000.000-00"
-                                    value={emitForm.clientDoc}
-                                    onChange={(e) =>
-                                        setEmitForm((prev) => ({ ...prev, clientDoc: e.target.value }))
-                                    }
-                                    className="h-10 rounded-xl bg-white/[0.03] border-white/10 font-tech text-xs"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                            <div className="sm:col-span-6 space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                    Discriminação dos Móveis / Serviços na Nota
-                                </Label>
-                                <Input
-                                    required
-                                    placeholder="Ex: Nicho 30x30 em MDF"
-                                    value={emitForm.description}
-                                    onChange={(e) =>
-                                        setEmitForm((prev) => ({ ...prev, description: e.target.value }))
-                                    }
-                                    className="h-10 rounded-xl bg-white/[0.03] border-white/10 text-xs"
-                                />
-                            </div>
-
-                            <div className="sm:col-span-3 space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">
-                                    Quantidade (Unid.)
-                                </Label>
-                                <Input
-                                    type="number"
-                                    min="1"
-                                    step="1"
-                                    required
-                                    placeholder="1"
-                                    value={emitForm.quantity}
-                                    onChange={(e) => {
-                                        const newQtyStr = e.target.value;
-                                        const qty = Math.max(1, parseFloat(newQtyStr) || 1);
-                                        const unit = parseFloat(emitForm.unitPrice || "0");
-                                        const total = parseFloat(emitForm.amount || "0");
-                                        setEmitForm((prev) => ({
-                                            ...prev,
-                                            quantity: newQtyStr,
-                                            amount:
-                                                !isNaN(unit) && unit > 0
-                                                    ? (qty * unit).toFixed(2)
-                                                    : prev.amount,
-                                            unitPrice:
-                                                (isNaN(unit) || unit <= 0) && !isNaN(total) && total > 0
-                                                    ? (total / qty).toFixed(2)
-                                                    : prev.unitPrice,
-                                        }));
-                                    }}
-                                    className="h-10 rounded-xl bg-primary/10 border-primary/30 font-tech font-bold text-primary text-center text-xs"
-                                />
-                            </div>
-
-                            <div className="sm:col-span-3 space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                    Valor Unitário (R$)
-                                </Label>
-                                <Input
-                                    type="number"
-                                    step="0.01"
-                                    placeholder="0.00"
-                                    value={emitForm.unitPrice}
-                                    onChange={(e) => {
-                                        const newUnitStr = e.target.value;
-                                        const unit = parseFloat(newUnitStr);
-                                        const qty = Math.max(1, parseFloat(emitForm.quantity || "1") || 1);
-                                        setEmitForm((prev) => ({
-                                            ...prev,
-                                            unitPrice: newUnitStr,
-                                            amount:
-                                                !isNaN(unit) && unit > 0
-                                                    ? (qty * unit).toFixed(2)
-                                                    : prev.amount,
-                                        }));
-                                    }}
-                                    className="h-10 rounded-xl bg-white/[0.03] border-white/10 font-tech text-xs"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Parâmetros Fiscais de Marcenaria já pré-configurados */}
-                        <div className="grid grid-cols-3 gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                            {emitForm.type === "NF-e" ? (
-                                <>
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                                            NCM (Móveis Madeira)
-                                        </Label>
-                                        <Input
-                                            value={emitForm.ncm}
-                                            onChange={(e) =>
-                                                setEmitForm((prev) => ({ ...prev, ncm: e.target.value }))
-                                            }
-                                            className="h-8 rounded-lg bg-black/30 border-white/10 font-tech text-xs"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                                            CFOP (Produção Própria)
-                                        </Label>
-                                        <Input
-                                            value={emitForm.cfop}
-                                            onChange={(e) =>
-                                                setEmitForm((prev) => ({ ...prev, cfop: e.target.value }))
-                                            }
-                                            className="h-8 rounded-lg bg-black/30 border-white/10 font-tech text-xs"
-                                        />
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="col-span-2 space-y-1">
-                                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                                        Item Lista de Serviço (LC 116 - Marcenaria)
+                            {/* Modelo da Nota e Natureza da Operação */}
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                <div className="sm:col-span-5 space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                        Modelo da Nota Fiscal
                                     </Label>
-                                    <Input
-                                        value={emitForm.serviceCode}
-                                        onChange={(e) =>
+                                    <Select
+                                        value={emitForm.type}
+                                        onValueChange={(v: "NF-e" | "NFS-e") =>
                                             setEmitForm((prev) => ({
                                                 ...prev,
-                                                serviceCode: e.target.value,
+                                                type: v,
+                                                description:
+                                                    v === "NF-e"
+                                                        ? "Fabricação e fornecimento de móveis planejados sob medida em MDF"
+                                                        : "Serviço de marcenaria, fabricação e montagem de móveis planejados sob encomenda",
                                             }))
+                                        }
+                                    >
+                                        <SelectTrigger className="h-10 rounded-xl bg-white/[0.03] border-white/10 text-xs font-bold">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-[100] bg-[#121218] border-white/15 text-foreground">
+                                            <SelectItem value="NF-e">
+                                                NF-e (Modelo 55 — Venda de Móveis / Produtos)
+                                            </SelectItem>
+                                            <SelectItem value="NFS-e">
+                                                NFS-e (Prefeitura — Serviço de Marcenaria / Montagem)
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="sm:col-span-4 space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                        Natureza da Operação
+                                    </Label>
+                                    <Input
+                                        placeholder="Venda Dentro do Estado"
+                                        value={emitForm.natOp}
+                                        onChange={(e) =>
+                                            setEmitForm((prev) => ({ ...prev, natOp: e.target.value }))
+                                        }
+                                        className="h-10 rounded-xl bg-white/[0.03] border-white/10 text-xs"
+                                    />
+                                </div>
+
+                                <div className="sm:col-span-3 space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                        Valor Total da Nota
+                                    </Label>
+                                    <div className="h-10 px-3 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-end font-tech font-black text-primary text-sm">
+                                        {formatCurrency(emitTotalAmount)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* BLOCO DESTINATÁRIO & ENDEREÇO COMPLETO (PARA SAIR CERTINHO NA DANFE) */}
+                            <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                                        Dados do Destinatário (Cliente) na Nota
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                        Confira Nome, CPF/CNPJ e Endereço
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                    <div className="sm:col-span-6 space-y-1">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                            Nome / Razão Social do Destinatário *
+                                        </Label>
+                                        <Input
+                                            required
+                                            placeholder="Ex: João Carlos da Silva"
+                                            value={emitForm.clientName}
+                                            onChange={(e) =>
+                                                setEmitForm((prev) => ({ ...prev, clientName: e.target.value }))
+                                            }
+                                            className="h-9 rounded-xl bg-black/40 border-white/10 text-xs font-semibold"
+                                        />
+                                    </div>
+
+                                    <div className="sm:col-span-3 space-y-1">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                            CPF ou CNPJ do Cliente
+                                        </Label>
+                                        <Input
+                                            placeholder="000.000.000-00"
+                                            value={emitForm.clientDoc}
+                                            onChange={(e) =>
+                                                setEmitForm((prev) => ({ ...prev, clientDoc: e.target.value }))
+                                            }
+                                            className="h-9 rounded-xl bg-black/40 border-white/10 font-tech text-xs"
+                                        />
+                                    </div>
+
+                                    <div className="sm:col-span-3 space-y-1">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                            Telefone / Celular
+                                        </Label>
+                                        <Input
+                                            placeholder="(22) 99999-9999"
+                                            value={emitForm.clientPhone}
+                                            onChange={(e) =>
+                                                setEmitForm((prev) => ({ ...prev, clientPhone: e.target.value }))
+                                            }
+                                            className="h-9 rounded-xl bg-black/40 border-white/10 font-tech text-xs"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                                    <div className="sm:col-span-5 space-y-1">
+                                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                            Endereço (Rua, Nº, Compl.)
+                                        </Label>
+                                        <Input
+                                            placeholder="Ex: Rua Maria Vitipo Raposo, 138"
+                                            value={emitForm.clientAddress}
+                                            onChange={(e) =>
+                                                setEmitForm((prev) => ({ ...prev, clientAddress: e.target.value }))
+                                            }
+                                            className="h-8 rounded-lg bg-black/40 border-white/10 text-xs"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-2 space-y-1">
+                                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                            Bairro
+                                        </Label>
+                                        <Input
+                                            placeholder="Centro"
+                                            value={emitForm.clientNeighborhood}
+                                            onChange={(e) =>
+                                                setEmitForm((prev) => ({
+                                                    ...prev,
+                                                    clientNeighborhood: e.target.value,
+                                                }))
+                                            }
+                                            className="h-8 rounded-lg bg-black/40 border-white/10 text-xs"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-2 space-y-1">
+                                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                            Município
+                                        </Label>
+                                        <Input
+                                            placeholder="Sao Fidelis"
+                                            value={emitForm.clientCity}
+                                            onChange={(e) =>
+                                                setEmitForm((prev) => ({ ...prev, clientCity: e.target.value }))
+                                            }
+                                            className="h-8 rounded-lg bg-black/40 border-white/10 text-xs"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-1 space-y-1">
+                                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                            UF
+                                        </Label>
+                                        <Input
+                                            placeholder="RJ"
+                                            maxLength={2}
+                                            value={emitForm.clientUf}
+                                            onChange={(e) =>
+                                                setEmitForm((prev) => ({
+                                                    ...prev,
+                                                    clientUf: e.target.value.toUpperCase(),
+                                                }))
+                                            }
+                                            className="h-8 rounded-lg bg-black/40 border-white/10 font-tech text-xs text-center"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-2 space-y-1">
+                                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                            CEP
+                                        </Label>
+                                        <Input
+                                            placeholder="28400-000"
+                                            value={emitForm.clientCep}
+                                            onChange={(e) =>
+                                                setEmitForm((prev) => ({ ...prev, clientCep: e.target.value }))
+                                            }
+                                            className="h-8 rounded-lg bg-black/40 border-white/10 font-tech text-xs"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* BLOCO PRODUTOS / SERVIÇOS DA NOTA */}
+                            <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                        Produtos / Serviços Discriminados na Nota ({emitPreviewItems.length})
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleAddEmitExtraItem}
+                                        className="h-7 px-2.5 rounded-lg border-primary/30 bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary/20"
+                                    >
+                                        <Plus className="h-3 w-3 mr-1" />+ Adicionar Outro Item na Nota
+                                    </Button>
+                                </div>
+
+                                {/* Item Principal #001 */}
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                                    <div className="sm:col-span-6 space-y-1">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                            Item #001 — Descrição do Móvel / Serviço *
+                                        </Label>
+                                        <Input
+                                            required
+                                            placeholder="Ex: Armário de cozinha sob medida em MDF"
+                                            value={emitForm.description}
+                                            onChange={(e) =>
+                                                setEmitForm((prev) => ({ ...prev, description: e.target.value }))
+                                            }
+                                            className="h-9 rounded-xl bg-black/40 border-white/10 text-xs"
+                                        />
+                                    </div>
+
+                                    <div className="sm:col-span-2 space-y-1">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                            Qtd.
+                                        </Label>
+                                        <Input
+                                            type="number"
+                                            min="1"
+                                            step="any"
+                                            required
+                                            placeholder="1"
+                                            value={emitForm.quantity}
+                                            onChange={(e) => {
+                                                const newQtyStr = e.target.value;
+                                                const qty = Math.max(1, parseFloat(newQtyStr) || 1);
+                                                const unit = parseFloat(emitForm.unitPrice || "0");
+                                                const total = parseFloat(emitForm.amount || "0");
+                                                setEmitForm((prev) => ({
+                                                    ...prev,
+                                                    quantity: newQtyStr,
+                                                    amount:
+                                                        !isNaN(unit) && unit > 0
+                                                            ? (qty * unit).toFixed(2)
+                                                            : prev.amount,
+                                                    unitPrice:
+                                                        (isNaN(unit) || unit <= 0) && !isNaN(total) && total > 0
+                                                            ? (total / qty).toFixed(2)
+                                                            : prev.unitPrice,
+                                                }));
+                                            }}
+                                            className="h-9 rounded-xl bg-primary/10 border-primary/30 font-tech font-bold text-primary text-center text-xs"
+                                        />
+                                    </div>
+
+                                    <div className="sm:col-span-2 space-y-1">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                            Vlr. Unit. (R$)
+                                        </Label>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            value={emitForm.unitPrice}
+                                            onChange={(e) => {
+                                                const newUnitStr = e.target.value;
+                                                const unit = parseFloat(newUnitStr);
+                                                const qty = Math.max(1, parseFloat(emitForm.quantity || "1") || 1);
+                                                setEmitForm((prev) => ({
+                                                    ...prev,
+                                                    unitPrice: newUnitStr,
+                                                    amount:
+                                                        !isNaN(unit) && unit > 0
+                                                            ? (qty * unit).toFixed(2)
+                                                            : prev.amount,
+                                                }));
+                                            }}
+                                            className="h-9 rounded-xl bg-black/40 border-white/10 font-tech text-xs"
+                                        />
+                                    </div>
+
+                                    <div className="sm:col-span-2 space-y-1">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                            Subtotal (R$) *
+                                        </Label>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            required
+                                            placeholder="0.00"
+                                            value={emitForm.amount}
+                                            onChange={(e) => {
+                                                const newTotal = e.target.value;
+                                                const qty = Math.max(1, parseFloat(emitForm.quantity || "1") || 1);
+                                                const totalNum = parseFloat(newTotal);
+                                                setEmitForm((prev) => ({
+                                                    ...prev,
+                                                    amount: newTotal,
+                                                    unitPrice:
+                                                        !isNaN(totalNum) && totalNum > 0
+                                                            ? (totalNum / qty).toFixed(2)
+                                                            : prev.unitPrice,
+                                                }));
+                                            }}
+                                            className="h-9 rounded-xl bg-black/40 border-primary/30 font-tech font-bold text-primary text-xs"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Itens Extras Adicionais (se o usuário clicou em + Adicionar Outro Item) */}
+                                {emitExtraItems.map((ext, idx) => (
+                                    <div
+                                        key={ext.id}
+                                        className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end pt-2 border-t border-white/[0.06]"
+                                    >
+                                        <div className="sm:col-span-6 space-y-1">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                Item #{String(idx + 2).padStart(3, "0")} — Descrição
+                                            </Label>
+                                            <Input
+                                                required
+                                                placeholder="Ex: Painel ripado sala em MDF Freijó"
+                                                value={ext.description}
+                                                onChange={(e) =>
+                                                    handleUpdateEmitExtraItem(ext.id, "description", e.target.value)
+                                                }
+                                                className="h-9 rounded-xl bg-black/40 border-white/10 text-xs"
+                                            />
+                                        </div>
+
+                                        <div className="sm:col-span-2 space-y-1">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                                Qtd.
+                                            </Label>
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                step="any"
+                                                value={ext.quantity}
+                                                onChange={(e) =>
+                                                    handleUpdateEmitExtraItem(ext.id, "quantity", e.target.value)
+                                                }
+                                                className="h-9 rounded-xl bg-primary/10 border-primary/30 font-tech font-bold text-primary text-center text-xs"
+                                            />
+                                        </div>
+
+                                        <div className="sm:col-span-2 space-y-1">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                Vlr. Unit. (R$)
+                                            </Label>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                placeholder="0.00"
+                                                value={ext.unitPrice}
+                                                onChange={(e) =>
+                                                    handleUpdateEmitExtraItem(ext.id, "unitPrice", e.target.value)
+                                                }
+                                                className="h-9 rounded-xl bg-black/40 border-white/10 font-tech text-xs"
+                                            />
+                                        </div>
+
+                                        <div className="sm:col-span-2 flex items-center gap-1.5">
+                                            <div className="flex-1 space-y-1">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                    Subtotal (R$)
+                                                </Label>
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    placeholder="0.00"
+                                                    value={ext.amount}
+                                                    onChange={(e) =>
+                                                        handleUpdateEmitExtraItem(ext.id, "amount", e.target.value)
+                                                    }
+                                                    className="h-9 rounded-xl bg-black/40 border-primary/30 font-tech font-bold text-primary text-xs"
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveEmitExtraItem(ext.id)}
+                                                className="mt-5 p-2 rounded-lg text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
+                                                title="Remover item"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Parâmetros Fiscais de Marcenaria já pré-configurados */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+                                {emitForm.type === "NF-e" ? (
+                                    <>
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                                NCM (Móveis Madeira)
+                                            </Label>
+                                            <Input
+                                                value={emitForm.ncm}
+                                                onChange={(e) =>
+                                                    setEmitForm((prev) => ({ ...prev, ncm: e.target.value }))
+                                                }
+                                                className="h-8 rounded-lg bg-black/30 border-white/10 font-tech text-xs"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                                CFOP (Operação)
+                                            </Label>
+                                            <Input
+                                                value={emitForm.cfop}
+                                                onChange={(e) =>
+                                                    setEmitForm((prev) => ({ ...prev, cfop: e.target.value }))
+                                                }
+                                                className="h-8 rounded-lg bg-black/30 border-white/10 font-tech text-xs"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                                CSOSN (Simples)
+                                            </Label>
+                                            <Input
+                                                value={emitForm.csosn}
+                                                onChange={(e) =>
+                                                    setEmitForm((prev) => ({ ...prev, csosn: e.target.value }))
+                                                }
+                                                className="h-8 rounded-lg bg-black/30 border-white/10 font-tech text-xs"
+                                            />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="col-span-3 space-y-1">
+                                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                            Item Lista de Serviço (LC 116 - Marcenaria)
+                                        </Label>
+                                        <Input
+                                            value={emitForm.serviceCode}
+                                            onChange={(e) =>
+                                                setEmitForm((prev) => ({
+                                                    ...prev,
+                                                    serviceCode: e.target.value,
+                                                }))
+                                            }
+                                            className="h-8 rounded-lg bg-black/30 border-white/10 font-tech text-xs"
+                                        />
+                                    </div>
+                                )}
+                                <div className="space-y-1">
+                                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                        Alíquota Simples (%)
+                                    </Label>
+                                    <Input
+                                        value={emitForm.taxRate}
+                                        onChange={(e) =>
+                                            setEmitForm((prev) => ({ ...prev, taxRate: e.target.value }))
                                         }
                                         className="h-8 rounded-lg bg-black/30 border-white/10 font-tech text-xs"
                                     />
                                 </div>
-                            )}
-                            <div className="space-y-1">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                                    Alíquota Simples (%)
-                                </Label>
-                                <Input
-                                    value={emitForm.taxRate}
-                                    onChange={(e) =>
-                                        setEmitForm((prev) => ({ ...prev, taxRate: e.target.value }))
-                                    }
-                                    className="h-8 rounded-lg bg-black/30 border-white/10 font-tech text-xs"
-                                />
                             </div>
-                        </div>
 
-                        <label className="flex items-center gap-2.5 text-xs text-muted-foreground cursor-pointer select-none">
-                            <input
-                                type="checkbox"
-                                checked={emitForm.autoCreateFinance}
-                                onChange={(e) =>
-                                    setEmitForm((prev) => ({
-                                        ...prev,
-                                        autoCreateFinance: e.target.checked,
-                                    }))
-                                }
-                                className="rounded border-white/20 text-primary focus:ring-primary"
-                            />
-                            Lançar faturamento automaticamente nos Lançamentos Financeiros / DRE
-                        </label>
+                            <label className="flex items-center gap-2.5 text-xs text-muted-foreground cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={emitForm.autoCreateFinance}
+                                    onChange={(e) =>
+                                        setEmitForm((prev) => ({
+                                            ...prev,
+                                            autoCreateFinance: e.target.checked,
+                                        }))
+                                    }
+                                    className="rounded border-white/20 text-primary focus:ring-primary"
+                                />
+                                Lançar faturamento automaticamente nos Lançamentos Financeiros / DRE ao confirmar
+                            </label>
 
-                        <DialogFooter className="pt-2">
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => setIsEmitOpen(false)}
-                                className="rounded-xl text-xs"
-                            >
-                                Cancelar
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={isEmitting}
-                                className="rounded-xl bg-primary text-primary-foreground font-black uppercase tracking-wider text-xs px-6"
-                            >
-                                {isEmitting ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Transmitindo...
-                                    </>
-                                ) : (
-                                    <>
-                                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                                        Transmitir & Gerar DANFE
-                                    </>
-                                )}
-                            </Button>
-                        </DialogFooter>
-                    </form>
+                            <DialogFooter className="pt-2 gap-2">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => setIsEmitOpen(false)}
+                                    className="rounded-xl text-xs"
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    className="rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-wider text-xs px-6 gap-2 shadow-lg shadow-amber-500/20"
+                                >
+                                    <Eye className="h-4 w-4" />
+                                    Visualizar Prévia da Nota (Antes de Confirmar)
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    ) : (
+                        /* ETAPA 2: PRÉVIA VISUAL DA NOTA FISCAL (ESPELHO DANFE / NFS-e NA TELA ANTES DE CONFIRMAR) */
+                        (() => {
+                            const cleanDocDigits = (emitForm.clientDoc || "").replace(/\D/g, "");
+                            const isDocValid =
+                                cleanDocDigits.length === 11 || cleanDocDigits.length === 14;
+                            const formattedClientDoc =
+                                cleanDocDigits.length === 11
+                                    ? cleanDocDigits.replace(
+                                          /(\d{3})(\d{3})(\d{3})(\d{2})/,
+                                          "$1.$2.$3-$4"
+                                      )
+                                    : cleanDocDigits.length === 14
+                                    ? cleanDocDigits.replace(
+                                          /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
+                                          "$1.$2.$3/$4-$5"
+                                      )
+                                    : emitForm.clientDoc || "Não informado";
+
+                            const bjlCnpjFormatted = (companySettings?.cnpj || "60.528.620/0001-20")
+                                .replace(/\D/g, "")
+                                .replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+                            const todayFormatted = format(new Date(), "dd/MM/yyyy");
+                            const previewAccessKey = `332611${(
+                                companySettings?.cnpj || "60528620000120"
+                            )
+                                .replace(/\D/g, "")
+                                .padEnd(14, "0")}550010000000011300000210`;
+
+                            return (
+                                <div className="space-y-4 py-2">
+                                    {/* Barra Superior de Conferência + Alertas */}
+                                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2 text-amber-300 font-black text-xs uppercase tracking-wider">
+                                                <Eye className="h-4 w-4 text-amber-400 shrink-0" />
+                                                Conferência Prévia — Verifique se todos os dados estão corretos
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Esta é a visualização fiel de como sua{" "}
+                                                <strong>{emitForm.type}</strong> ficará. Caso precise corrigir algum valor, nome, CPF/CNPJ ou endereço, clique em{" "}
+                                                <strong>"Voltar e Editar Dados"</strong>.
+                                            </p>
+                                            {!isDocValid && (
+                                                <div className="flex items-center gap-1.5 text-[11px] text-amber-400 font-bold pt-1">
+                                                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                                                    Atenção: O CPF/CNPJ do destinatário ({emitForm.clientDoc || "vazio"}) não possui 11 ou 14 dígitos.
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setEmitStep("form")}
+                                                className="h-9 rounded-xl border-white/15 bg-black/40 hover:bg-white/10 text-xs font-bold gap-1.5"
+                                            >
+                                                <Pencil className="h-3.5 w-3.5" />
+                                                Editar Dados
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handlePrintEmitPreview}
+                                                className="h-9 rounded-xl border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold gap-1.5"
+                                            >
+                                                <Printer className="h-3.5 w-3.5" />
+                                                Abrir / Imprimir Prévia
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {/* ESPELHO VISUAL REAL DA DANFE / NOTA FISCAL (FOLHA A4 BRANCA FIEL AO PADRÃO SEFAZ) */}
+                                    <div className="rounded-2xl border-2 border-amber-500/40 bg-white text-black p-4 shadow-2xl overflow-x-auto">
+                                        <div className="min-w-[680px] space-y-1.5 font-sans text-[10px] text-black">
+                                            {/* 1. CANHOTO */}
+                                            <table className="w-full border-collapse border border-black">
+                                                <tbody>
+                                                    <tr>
+                                                        <td
+                                                            colSpan={2}
+                                                            className="border border-black p-1 text-[8px] leading-tight w-[82%]"
+                                                        >
+                                                            RECEBEMOS DE <strong>BJL MOVEIS PLANEJADOS LTDA</strong> OS PRODUTOS E SERVIÇOS CONSTANTES NA NOTA FISCAL INDICADA AO LADO. Destinatário:{" "}
+                                                            <strong>{emitForm.clientName.toUpperCase()}</strong> | Emissão:{" "}
+                                                            <strong>{todayFormatted}</strong> | Valor:{" "}
+                                                            <strong>{formatCurrency(emitTotalAmount)}</strong>
+                                                        </td>
+                                                        <td
+                                                            rowSpan={2}
+                                                            className="border border-black p-1 text-center align-middle w-[18%]"
+                                                        >
+                                                            <div className="font-black text-xs">{emitForm.type}</div>
+                                                            <div className="font-bold text-[10px] text-amber-700">
+                                                                PRÉVIA
+                                                            </div>
+                                                            <div className="text-[9px] font-semibold">Série 1</div>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="border border-black p-1 h-6 w-[25%] text-[7px] text-neutral-700 uppercase">
+                                                            DATA DE RECEBIMENTO
+                                                        </td>
+                                                        <td className="border border-black p-1 h-6 w-[57%] text-[7px] text-neutral-700 uppercase">
+                                                            IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            <div className="border-b border-dashed border-black my-1" />
+
+                                            {/* 2. CABEÇALHO EMITENTE / DANFE / CONTROLE DO FISCO */}
+                                            <table className="w-full border-collapse border border-black">
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="border border-black p-2 text-center align-middle w-[14%]">
+                                                            <img
+                                                                src="/logo-danfe-bjl.png"
+                                                                alt="BJL Planejados"
+                                                                className="w-16 h-16 object-contain rounded-full bg-black mx-auto"
+                                                            />
+                                                        </td>
+                                                        <td className="border border-black p-2 text-center align-middle w-[26%]">
+                                                            <div className="font-black text-[11px] uppercase">
+                                                                BJL MOVEIS PLANEJADOS LTDA
+                                                            </div>
+                                                            <div className="text-[8.5px] leading-snug mt-1 text-neutral-800">
+                                                                Rua Maria Vitipo Raposo, 138
+                                                                <br />
+                                                                Bairro: Barão de Macaúbas
+                                                                <br />
+                                                                São Fidélis - RJ • CEP: 28400-000
+                                                                <br />
+                                                                Fone: {companySettings?.phone || "(22) 99703-9852"}
+                                                            </div>
+                                                        </td>
+                                                        <td className="border border-black p-1.5 text-center align-middle w-[16%]">
+                                                            <div className="font-black text-sm leading-none">
+                                                                {emitForm.type === "NF-e" ? "DANFE" : "DANFSE"}
+                                                            </div>
+                                                            <div className="text-[7px] leading-tight my-1">
+                                                                DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA
+                                                            </div>
+                                                            <div className="flex items-center justify-center gap-1.5 my-1">
+                                                                <div className="text-left text-[7px] leading-tight">
+                                                                    0 - ENTRADA
+                                                                    <br />1 - SAÍDA
+                                                                </div>
+                                                                <div className="border border-black w-5 h-4 flex items-center justify-center font-black text-[10px]">
+                                                                    1
+                                                                </div>
+                                                            </div>
+                                                            <div className="font-bold text-[8.5px]">
+                                                                SÉRIE: 1 • PÁG. 1/1
+                                                            </div>
+                                                        </td>
+                                                        <td className="border border-black p-0 align-top w-[44%]">
+                                                            <div className="border-b border-black p-1.5">
+                                                                <span className="block text-[7px] uppercase text-neutral-700">
+                                                                    CONTROLE DO FISCO (PRÉVIA DE CONFERÊNCIA)
+                                                                </span>
+                                                                <div className="h-6 mt-0.5 flex items-center justify-center overflow-hidden">
+                                                                    {previewAccessKey.split("").map((d, i) => (
+                                                                        <span
+                                                                            key={i}
+                                                                            style={{
+                                                                                display: "inline-block",
+                                                                                height: "22px",
+                                                                                width: `${(parseInt(d, 10) % 3) + 1}px`,
+                                                                                background: "#000",
+                                                                                marginRight: `${((parseInt(d, 10) + i) % 2) + 1}px`,
+                                                                            }}
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                            <div className="border-b border-black p-1.5">
+                                                                <span className="block text-[7px] uppercase text-neutral-700">
+                                                                    CHAVE DE ACESSO (SERÁ GERADA NA AUTORIZAÇÃO SEFAZ)
+                                                                </span>
+                                                                <div className="text-center font-mono font-bold text-[9px] tracking-tight">
+                                                                    {previewAccessKey}
+                                                                </div>
+                                                            </div>
+                                                            <div className="p-1 text-center text-[7.5px] bg-amber-50 text-amber-900 font-bold">
+                                                                PRÉVIA PARA CONFERÊNCIA DOS DADOS ANTES DA TRANSMISSÃO SEFAZ
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            {/* NATUREZA DA OPERAÇÃO & DADOS FISCAIS DO EMITENTE */}
+                                            <table className="w-full border-collapse border border-black">
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="border border-black p-1 w-[56%]">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                NATUREZA DA OPERAÇÃO
+                                                            </span>
+                                                            <span className="font-bold text-[10px] uppercase">
+                                                                {emitForm.natOp || "Venda Dentro do Estado"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1 w-[44%]">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                PROTOCOLO DE AUTORIZAÇÃO DE USO
+                                                            </span>
+                                                            <span className="font-bold text-[9.5px] text-amber-700">
+                                                                AGUARDANDO CONFIRMAÇÃO DE EMISSÃO
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            <table className="w-full border-collapse border border-black">
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="border border-black p-1 w-[33%]">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                INSCRIÇÃO ESTADUAL
+                                                            </span>
+                                                            <span className="font-bold text-[10px]">15469064</span>
+                                                        </td>
+                                                        <td className="border border-black p-1 w-[33%]">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                INSCRIÇÃO ESTADUAL DO SUBST. TRIB.
+                                                            </span>
+                                                            <span className="font-bold text-[10px]">&nbsp;</span>
+                                                        </td>
+                                                        <td className="border border-black p-1 w-[34%]">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                CNPJ DO EMITENTE
+                                                            </span>
+                                                            <span className="font-bold text-[10px]">
+                                                                {bjlCnpjFormatted}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            {/* 3. DESTINATÁRIO / REMETENTE */}
+                                            <div className="font-black text-[8.5px] uppercase tracking-wider pt-1">
+                                                DESTINATÁRIO / REMETENTE
+                                            </div>
+                                            <table className="w-full border-collapse border border-black">
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="border border-black p-1 w-[58%]">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                NOME / RAZÃO SOCIAL
+                                                            </span>
+                                                            <span className="font-bold text-[10.5px] uppercase">
+                                                                {emitForm.clientName || "---"}
+                                                            </span>
+                                                        </td>
+                                                        <td
+                                                            className={cn(
+                                                                "border border-black p-1 w-[26%]",
+                                                                !isDocValid && "bg-amber-100"
+                                                            )}
+                                                        >
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                CNPJ / CPF
+                                                            </span>
+                                                            <span className="font-bold text-[10.5px]">
+                                                                {formattedClientDoc}
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1 w-[16%]">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                DATA DE EMISSÃO
+                                                            </span>
+                                                            <span className="font-bold text-[10px]">
+                                                                {todayFormatted}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="border border-black p-1">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                ENDEREÇO
+                                                            </span>
+                                                            <span className="font-bold text-[10px]">
+                                                                {emitForm.clientAddress?.trim() || "Centro"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                BAIRRO / DISTRITO
+                                                            </span>
+                                                            <span className="font-bold text-[10px]">
+                                                                {emitForm.clientNeighborhood?.trim() || "Centro"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                CEP
+                                                            </span>
+                                                            <span className="font-bold text-[10px]">
+                                                                {emitForm.clientCep?.trim() || "28400-000"}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="border border-black p-1">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                MUNICÍPIO
+                                                            </span>
+                                                            <span className="font-bold text-[10px]">
+                                                                {emitForm.clientCity?.trim() || "Sao Fidelis"} —{" "}
+                                                                {emitForm.clientUf?.trim() || "RJ"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                FONE / CELULAR
+                                                            </span>
+                                                            <span className="font-bold text-[10px]">
+                                                                {emitForm.clientPhone?.trim() || "---"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                DATA DE SAÍDA
+                                                            </span>
+                                                            <span className="font-bold text-[10px]">
+                                                                {todayFormatted}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            {/* 4. CÁLCULO DO IMPOSTO */}
+                                            <div className="font-black text-[8.5px] uppercase tracking-wider pt-1">
+                                                CÁLCULO DO IMPOSTO
+                                            </div>
+                                            <table className="w-full border-collapse border border-black">
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="border border-black p-1">
+                                                            <span className="block text-[6.5px] uppercase text-neutral-700">
+                                                                BASE DE CÁLC. ICMS
+                                                            </span>
+                                                            <span className="font-bold text-[9.5px] block text-right">
+                                                                0,00
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1">
+                                                            <span className="block text-[6.5px] uppercase text-neutral-700">
+                                                                VALOR DO ICMS
+                                                            </span>
+                                                            <span className="font-bold text-[9.5px] block text-right">
+                                                                0,00
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1">
+                                                            <span className="block text-[6.5px] uppercase text-neutral-700">
+                                                                VALOR DO FRETE
+                                                            </span>
+                                                            <span className="font-bold text-[9.5px] block text-right">
+                                                                0,00
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1">
+                                                            <span className="block text-[6.5px] uppercase text-neutral-700">
+                                                                DESCONTO
+                                                            </span>
+                                                            <span className="font-bold text-[9.5px] block text-right">
+                                                                0,00
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1">
+                                                            <span className="block text-[6.5px] uppercase text-neutral-700">
+                                                                OUTRAS DESP.
+                                                            </span>
+                                                            <span className="font-bold text-[9.5px] block text-right">
+                                                                0,00
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1 bg-neutral-100">
+                                                            <span className="block text-[6.5px] uppercase text-neutral-700">
+                                                                V. TOTAL DOS PRODUTOS
+                                                            </span>
+                                                            <span className="font-black text-[10.5px] block text-right">
+                                                                {formatCurrency(emitTotalAmount)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1 bg-emerald-50">
+                                                            <span className="block text-[6.5px] font-bold uppercase text-emerald-900">
+                                                                V. TOTAL DA NOTA
+                                                            </span>
+                                                            <span className="font-black text-[11px] text-emerald-900 block text-right">
+                                                                {formatCurrency(emitTotalAmount)}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            {/* 5. DADOS DOS PRODUTOS / SERVIÇOS */}
+                                            <div className="font-black text-[8.5px] uppercase tracking-wider pt-1">
+                                                DADOS DO PRODUTO / SERVIÇO ({emitPreviewItems.length}{" "}
+                                                {emitPreviewItems.length === 1 ? "ITEM" : "ITENS"})
+                                            </div>
+                                            <table className="w-full border-collapse border border-black">
+                                                <thead>
+                                                    <tr className="bg-neutral-100 text-[7.5px] font-black">
+                                                        <th className="border border-black p-1 text-center w-[7%]">
+                                                            CÓD.
+                                                        </th>
+                                                        <th className="border border-black p-1 text-left w-[41%]">
+                                                            DESCRIÇÃO DO PRODUTO / SERVIÇO
+                                                        </th>
+                                                        <th className="border border-black p-1 text-center w-[9%]">
+                                                            NCM/SH
+                                                        </th>
+                                                        <th className="border border-black p-1 text-center w-[6%]">
+                                                            CSOSN
+                                                        </th>
+                                                        <th className="border border-black p-1 text-center w-[6%]">
+                                                            CFOP
+                                                        </th>
+                                                        <th className="border border-black p-1 text-center w-[5%]">
+                                                            UN
+                                                        </th>
+                                                        <th className="border border-black p-1 text-right w-[7%]">
+                                                            QTD.
+                                                        </th>
+                                                        <th className="border border-black p-1 text-right w-[9%]">
+                                                            VLR. UNIT.
+                                                        </th>
+                                                        <th className="border border-black p-1 text-right w-[10%]">
+                                                            VLR. TOTAL
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {emitPreviewItems.map((it, idx) => (
+                                                        <tr key={idx} className="text-[9px]">
+                                                            <td className="border border-black p-1.5 text-center font-mono">
+                                                                {it.code}
+                                                            </td>
+                                                            <td className="border border-black p-1.5 font-bold uppercase">
+                                                                {it.description}
+                                                            </td>
+                                                            <td className="border border-black p-1.5 text-center font-mono">
+                                                                {emitForm.type === "NF-e"
+                                                                    ? it.ncm
+                                                                    : emitForm.serviceCode}
+                                                            </td>
+                                                            <td className="border border-black p-1.5 text-center font-mono">
+                                                                {it.csosn}
+                                                            </td>
+                                                            <td className="border border-black p-1.5 text-center font-mono">
+                                                                {it.cfop}
+                                                            </td>
+                                                            <td className="border border-black p-1.5 text-center">
+                                                                {it.unit}
+                                                            </td>
+                                                            <td className="border border-black p-1.5 text-right font-mono">
+                                                                {Number(it.quantity).toLocaleString("pt-BR", {
+                                                                    minimumFractionDigits: 2,
+                                                                    maximumFractionDigits: 4,
+                                                                })}
+                                                            </td>
+                                                            <td className="border border-black p-1.5 text-right font-mono">
+                                                                {formatCurrency(it.unitPrice)}
+                                                            </td>
+                                                            <td className="border border-black p-1.5 text-right font-mono font-black">
+                                                                {formatCurrency(it.totalPrice)}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+
+                                            {/* 6. DADOS ADICIONAIS */}
+                                            <div className="font-black text-[8.5px] uppercase tracking-wider pt-1">
+                                                DADOS ADICIONAIS
+                                            </div>
+                                            <table className="w-full border-collapse border border-black">
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="border border-black p-1.5 w-[65%] h-12 align-top">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                INFORMAÇÕES COMPLEMENTARES
+                                                            </span>
+                                                            <span className="text-[8px] font-medium leading-tight block mt-0.5">
+                                                                {emitForm.extraInfo}
+                                                            </span>
+                                                        </td>
+                                                        <td className="border border-black p-1.5 w-[35%] h-12 align-top">
+                                                            <span className="block text-[7px] uppercase text-neutral-700">
+                                                                RESERVA AO FISCO
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <DialogFooter className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setEmitStep("form")}
+                                            disabled={isEmitting}
+                                            className="rounded-xl text-xs font-bold border-white/15 bg-white/[0.04] hover:bg-white/[0.1] gap-2"
+                                        >
+                                            <ArrowLeft className="h-4 w-4" />
+                                            Voltar e Corrigir Dados
+                                        </Button>
+
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                onClick={() => setIsEmitOpen(false)}
+                                                disabled={isEmitting}
+                                                className="rounded-xl text-xs"
+                                            >
+                                                Cancelar
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                onClick={() => handleEmitInvoice()}
+                                                disabled={isEmitting}
+                                                className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-wider text-xs px-6 h-10 gap-2 shadow-lg shadow-emerald-600/25"
+                                            >
+                                                {isEmitting ? (
+                                                    <>
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                        Confirmando e Emitindo...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <CheckCircle2 className="h-4 w-4" />
+                                                        Tudo Certo! Confirmar e Emitir Nota
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </DialogFooter>
+                                </div>
+                            );
+                        })()
+                    )}
                 </DialogContent>
             </Dialog>
 
@@ -5356,13 +6531,22 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                         </div>
                     )}
 
-                    <DialogFooter className="gap-2">
+                    <DialogFooter className="gap-2 flex-wrap">
                         <Button
                             variant="ghost"
                             onClick={() => setIsXmlDialogOpen(false)}
                             className="rounded-xl text-xs"
                         >
                             Cancelar
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handlePreviewXmlDanfe}
+                            className="rounded-xl border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold text-xs px-4 h-10 gap-2"
+                        >
+                            <Eye className="h-4 w-4 text-amber-400" />
+                            Visualizar Prévia da Nota (DANFE)
                         </Button>
                         <Button
                             onClick={handleConfirmXmlImport}
