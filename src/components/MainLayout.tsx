@@ -91,25 +91,108 @@ const MainLayout = () => {
 
     const isHorizontalForced = rotationMode !== "normal";
     const mainScrollRef = useRef<HTMLElement | null>(null);
+    const [rotatedViewport, setRotatedViewport] = useState<{
+        width: number;
+        height: number;
+    }>(() => ({
+        width: typeof window !== "undefined" ? window.innerHeight : 1280,
+        height: typeof window !== "undefined" ? window.innerWidth : 800,
+    }));
+
+    // Sincroniza as medidas reais em pixels da tela visível do Tablet (evita que min-height: 100% ou 100vh corte o final da página!)
+    useEffect(() => {
+        const updateViewportVars = () => {
+            const physW = Math.round(
+                window.visualViewport?.width ||
+                    document.documentElement.clientWidth ||
+                    window.innerWidth
+            );
+            const physH = Math.round(
+                window.visualViewport?.height ||
+                    document.documentElement.clientHeight ||
+                    window.innerHeight
+            );
+            const root = document.documentElement;
+            root.style.setProperty("--bjl-phys-w", `${physW}px`);
+            root.style.setProperty("--bjl-phys-h", `${physH}px`);
+            root.style.setProperty("--bjl-rot-w", `${physH}px`);
+            root.style.setProperty("--bjl-rot-h", `${physW}px`);
+            setRotatedViewport({ width: physH, height: physW });
+        };
+
+        updateViewportVars();
+        window.addEventListener("resize", updateViewportVars);
+        window.addEventListener("orientationchange", updateViewportVars);
+        window.visualViewport?.addEventListener("resize", updateViewportVars);
+
+        return () => {
+            window.removeEventListener("resize", updateViewportVars);
+            window.removeEventListener("orientationchange", updateViewportVars);
+            window.visualViewport?.removeEventListener(
+                "resize",
+                updateViewportVars
+            );
+        };
+    }, [rotationMode]);
 
     // Ponte de Rolagem (Touch no Tablet + Trackpad do Teclado) quando a página está girada em 90°
     useEffect(() => {
         if (rotationMode === "normal") return;
 
-        const findScrollTarget = (startEl: HTMLElement | null): HTMLElement | null => {
+        const findScrollableChain = (
+            startEl: HTMLElement | null
+        ): HTMLElement[] => {
+            const chain: HTMLElement[] = [];
             let el: HTMLElement | null = startEl;
-            while (el && el !== document.body && el !== document.documentElement) {
+            while (
+                el &&
+                el !== document.body &&
+                el !== document.documentElement
+            ) {
                 const style = window.getComputedStyle(el);
                 const canScrollY =
-                    (style.overflowY === "auto" || style.overflowY === "scroll") &&
-                    el.scrollHeight > el.clientHeight + 4;
-                if (canScrollY) return el;
+                    (style.overflowY === "auto" ||
+                        style.overflowY === "scroll") &&
+                    el.scrollHeight > el.clientHeight + 2;
+                if (canScrollY) {
+                    chain.push(el);
+                }
                 el = el.parentElement;
             }
-            return mainScrollRef.current;
+            if (
+                mainScrollRef.current &&
+                !chain.includes(mainScrollRef.current)
+            ) {
+                chain.push(mainScrollRef.current);
+            }
+            return chain;
         };
 
-        let activeScrollEl: HTMLElement | null = null;
+        // Aplica a rolagem vertical; se um card interno chegar no limite, transfere o restante da rolagem para o <main> até o final da página!
+        const applyScrollYWithChain = (
+            chain: HTMLElement[],
+            deltaY: number
+        ) => {
+            if (!deltaY || chain.length === 0) return;
+            for (const el of chain) {
+                const prevTop = el.scrollTop;
+                const maxTop = Math.max(0, el.scrollHeight - el.clientHeight);
+                const canMoveDown = deltaY > 0 && prevTop < maxTop - 0.5;
+                const canMoveUp = deltaY < 0 && prevTop > 0.5;
+
+                if (canMoveDown || canMoveUp || el === chain[chain.length - 1]) {
+                    el.scrollTop = Math.max(
+                        0,
+                        Math.min(maxTop, prevTop + deltaY)
+                    );
+                    if (Math.abs(el.scrollTop - prevTop) > 0.5) {
+                        return;
+                    }
+                }
+            }
+        };
+
+        let activeChain: HTMLElement[] = [];
         let lastX = 0;
         let lastY = 0;
         let velocityY = 0;
@@ -127,17 +210,17 @@ const MainLayout = () => {
             if (e.touches.length !== 1) return;
             const target = e.target as HTMLElement | null;
             if (target?.closest("[data-lock-touch='true']")) {
-                activeScrollEl = null;
+                activeChain = [];
                 return;
             }
-            activeScrollEl = findScrollTarget(target);
+            activeChain = findScrollableChain(target);
             lastX = e.touches[0].clientX;
             lastY = e.touches[0].clientY;
             velocityY = 0;
         };
 
         const onTouchMove = (e: TouchEvent) => {
-            if (!activeScrollEl || e.touches.length !== 1) return;
+            if (activeChain.length === 0 || e.touches.length !== 1) return;
             const curX = e.touches[0].clientX;
             const curY = e.touches[0].clientY;
             const dx = curX - lastX;
@@ -145,32 +228,40 @@ const MainLayout = () => {
             lastX = curX;
             lastY = curY;
 
+            // Sempre bloqueia o touchcancel nativo do navegador para a rolagem nunca travar no meio do caminho
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+
             // Quando a tela está girada em 90°, o arrasto vertical (para cima e para baixo) corre no eixo X físico do tablet
             const deltaScrollY = rotationMode === "cw" ? dx : -dx;
             const deltaScrollX = rotationMode === "cw" ? dy : -dy;
 
-            if (Math.abs(deltaScrollY) >= Math.abs(deltaScrollX) * 0.7) {
-                activeScrollEl.scrollTop += deltaScrollY * 1.25;
-                velocityY = deltaScrollY * 1.25;
-                if (e.cancelable) e.preventDefault();
+            if (Math.abs(deltaScrollY) >= Math.abs(deltaScrollX) * 0.4) {
+                const stepY = deltaScrollY * 1.45;
+                applyScrollYWithChain(activeChain, stepY);
+                velocityY = stepY;
             } else {
-                activeScrollEl.scrollLeft += deltaScrollX * 1.15;
+                const targetEl = activeChain[0];
+                if (targetEl) {
+                    targetEl.scrollLeft += deltaScrollX * 1.25;
+                }
             }
         };
 
         const onTouchEnd = () => {
-            if (!activeScrollEl || Math.abs(velocityY) < 1.5) {
-                activeScrollEl = null;
+            if (activeChain.length === 0 || Math.abs(velocityY) < 1.2) {
+                activeChain = [];
                 return;
             }
-            const el = activeScrollEl;
+            const chainCopy = [...activeChain];
             const step = () => {
-                velocityY *= 0.92;
-                if (Math.abs(velocityY) < 0.5) {
+                velocityY *= 0.93;
+                if (Math.abs(velocityY) < 0.4) {
                     momentumFrame = null;
                     return;
                 }
-                el.scrollTop += velocityY;
+                applyScrollYWithChain(chainCopy, velocityY);
                 momentumFrame = requestAnimationFrame(step);
             };
             momentumFrame = requestAnimationFrame(step);
@@ -178,11 +269,14 @@ const MainLayout = () => {
 
         const onWheel = (e: WheelEvent) => {
             const target = e.target as HTMLElement | null;
-            const scrollEl = findScrollTarget(target);
-            if (!scrollEl) return;
-            const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+            const chain = findScrollableChain(target);
+            if (chain.length === 0) return;
+            const delta =
+                Math.abs(e.deltaY) >= Math.abs(e.deltaX)
+                    ? e.deltaY
+                    : e.deltaX;
             if (delta !== 0) {
-                scrollEl.scrollTop += delta;
+                applyScrollYWithChain(chain, delta);
                 if (e.cancelable) e.preventDefault();
             }
         };
@@ -430,23 +524,44 @@ const MainLayout = () => {
     const currentSectionName = allMenuItems.find(item => item.path === location.pathname)?.label || "Visão Geral";
 
     return (
-        <div className={cn(
-            "bg-background flex overflow-hidden w-full relative",
-            isHorizontalForced
-                ? "h-full flex-row"
-                : "h-[100dvh] h-dvh flex-col lg:flex-row"
-        )}>
+        <div
+            style={
+                isHorizontalForced
+                    ? {
+                          width: `${rotatedViewport.width}px`,
+                          height: `${rotatedViewport.height}px`,
+                          maxHeight: `${rotatedViewport.height}px`,
+                          minHeight: 0,
+                      }
+                    : undefined
+            }
+            className={cn(
+                "bg-background flex overflow-hidden w-full relative",
+                isHorizontalForced
+                    ? "flex-row"
+                    : "h-[100dvh] h-dvh flex-col lg:flex-row"
+            )}
+        >
             <CommandMenu />
             <div className="aurora-bg" />
             <FloatingSawdustBackground />
 
-            <aside className={cn(
-                "z-50 executive-card border-metallic shadow-2xl flex-col transition-all duration-500 rounded-3xl overflow-hidden",
-                isHorizontalForced
-                    ? "flex static my-3 ml-3 mr-0"
-                    : "hidden lg:flex fixed lg:static top-6 bottom-6 left-6 m-4 lg:mr-0 lg:my-6",
-                isSidebarCollapsed ? "w-20" : "w-64 lg:w-72"
-            )}>
+            <aside
+                style={
+                    isHorizontalForced
+                        ? {
+                              maxHeight: `${Math.max(240, rotatedViewport.height - 24)}px`,
+                          }
+                        : undefined
+                }
+                className={cn(
+                    "z-50 executive-card border-metallic shadow-2xl flex-col transition-all duration-500 rounded-3xl overflow-hidden",
+                    isHorizontalForced
+                        ? "flex static my-3 ml-3 mr-0"
+                        : "hidden lg:flex fixed lg:static top-6 bottom-6 left-6 m-4 lg:mr-0 lg:my-6",
+                    isSidebarCollapsed ? "w-20" : "w-64 lg:w-72"
+                )}
+            >
                 <div className={cn("h-24 flex items-center justify-between shrink-0 relative overflow-hidden group border-b border-white/[0.06]", isSidebarCollapsed ? "px-2" : "px-5")}>
                     <div className={cn("flex items-center gap-3.5 w-full relative z-10 transition-all duration-500", isSidebarCollapsed ? "flex-col gap-1 justify-center" : "flex-row justify-start")}>
                         <div className="relative shrink-0">
@@ -823,9 +938,18 @@ const MainLayout = () => {
 
                 <main
                     ref={mainScrollRef}
+                    style={
+                        isHorizontalForced
+                            ? {
+                                  height: `${Math.max(200, rotatedViewport.height - 68)}px`,
+                                  maxHeight: `${Math.max(200, rotatedViewport.height - 68)}px`,
+                                  minHeight: 0,
+                              }
+                            : undefined
+                    }
                     className={cn(
                         "flex-1 min-h-0 p-3 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden relative max-w-full overscroll-y-contain webkit-overflow-scrolling-touch",
-                        isHorizontalForced ? "pb-16" : "pb-28 lg:pb-10"
+                        isHorizontalForced ? "pb-36" : "pb-28 lg:pb-10"
                     )}
                 >
                     {/* Compact High-Tech Financial Telemetry HUD Bar */}
@@ -899,7 +1023,7 @@ const MainLayout = () => {
                         </div>
                     )}
 
-                    <div className="relative z-10 w-full min-h-full">
+                    <div className="relative z-10 w-full">
                         <Outlet />
                     </div>
                 </main>

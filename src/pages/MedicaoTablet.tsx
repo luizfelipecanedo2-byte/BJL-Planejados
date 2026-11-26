@@ -3348,7 +3348,7 @@ const MedicaoTablet: React.FC = () => {
                                         isAddingPinMode?.active ||
                                         dragState
                                         ? "touch-none"
-                                        : "touch-pan-y",
+                                        : "",
                                     canvasOrientation === "horizontal"
                                         ? "w-full aspect-[16/9] min-h-[380px] sm:min-h-[480px]"
                                         : "w-full max-w-[680px] aspect-[3/4] min-h-[480px] sm:min-h-[600px]",

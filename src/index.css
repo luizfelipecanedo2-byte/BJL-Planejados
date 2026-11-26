@@ -900,8 +900,12 @@
 /* Rotação forçada da PÁGINA TODA (Financeiro, Medição, CRM, Modais, tudo) para Tablet com Teclado */
 html.bjl-rot-cw,
 html.bjl-rot-ccw {
-  width: 100vw !important;
-  height: 100vh !important;
+  width: var(--bjl-phys-w, 100vw) !important;
+  height: var(--bjl-phys-h, 100vh) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: var(--bjl-phys-w, 100vw) !important;
+  max-height: var(--bjl-phys-h, 100vh) !important;
   overflow: hidden !important;
   margin: 0 !important;
   padding: 0 !important;
@@ -910,34 +914,44 @@ html.bjl-rot-ccw {
 html.bjl-rot-cw body {
   position: fixed !important;
   top: 0 !important;
-  left: 100vw !important;
-  width: 100vh !important;
-  height: 100vw !important;
-  max-width: 100vh !important;
-  max-height: 100vw !important;
+  left: var(--bjl-phys-w, 100vw) !important;
+  width: var(--bjl-rot-w, 100vh) !important;
+  height: var(--bjl-rot-h, 100vw) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: var(--bjl-rot-w, 100vh) !important;
+  max-height: var(--bjl-rot-h, 100vw) !important;
   transform: rotate(90deg) !important;
   transform-origin: 0 0 !important;
   overflow: hidden !important;
   margin: 0 !important;
+  padding: 0 !important;
 }
 
 html.bjl-rot-ccw body {
   position: fixed !important;
-  top: 100vh !important;
+  top: var(--bjl-phys-h, 100vh) !important;
   left: 0 !important;
-  width: 100vh !important;
-  height: 100vw !important;
-  max-width: 100vh !important;
-  max-height: 100vw !important;
+  width: var(--bjl-rot-w, 100vh) !important;
+  height: var(--bjl-rot-h, 100vw) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: var(--bjl-rot-w, 100vh) !important;
+  max-height: var(--bjl-rot-h, 100vw) !important;
   transform: rotate(-90deg) !important;
   transform-origin: 0 0 !important;
   overflow: hidden !important;
   margin: 0 !important;
+  padding: 0 !important;
 }
 
 html.bjl-rot-cw #root,
 html.bjl-rot-ccw #root {
-  width: 100% !important;
-  height: 100% !important;
+  width: var(--bjl-rot-w, 100vh) !important;
+  height: var(--bjl-rot-h, 100vw) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: var(--bjl-rot-w, 100vh) !important;
+  max-height: var(--bjl-rot-h, 100vw) !important;
   overflow: hidden !important;
 }
