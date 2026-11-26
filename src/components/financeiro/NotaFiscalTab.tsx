@@ -205,6 +205,44 @@ const parseStoredXmlPayload = (invoice: Invoice): StoredXmlPayload | null => {
     }
 };
 
+// Máscara automática de Telefone / Celular com DDD entre parênteses: (22) 99999-9999
+const formatPhoneBrInput = (raw: string): string => {
+    let digits = (raw || "").replace(/\D/g, "");
+    if (digits.length >= 12 && digits.startsWith("55")) {
+        digits = digits.slice(2);
+    }
+    digits = digits.slice(0, 11);
+    if (digits.length === 0) return "";
+    if (digits.length <= 2) return `(${digits}`;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    }
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+};
+
+// Formatação final para exibição na Nota / DANFE (adiciona o DDD padrão (22) caso tenha sido digitado apenas o número de 8 ou 9 dígitos)
+const formatPhoneBrDisplay = (raw?: string): string => {
+    let digits = (raw || "").replace(/\D/g, "");
+    if (digits.length >= 12 && digits.startsWith("55")) {
+        digits = digits.slice(2);
+    }
+    if (digits.length <= 2) return "";
+    if (digits.length === 8) {
+        return `(22) ${digits.slice(0, 4)}-${digits.slice(4)}`;
+    }
+    if (digits.length === 9) {
+        return `(22) ${digits.slice(0, 5)}-${digits.slice(5)}`;
+    }
+    if (digits.length === 10) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    }
+    if (digits.length >= 11) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+    }
+    return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+};
+
 interface ParsedXmlData {
     accessKey: string;
     invoiceNumber: string;
@@ -296,7 +334,7 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
         clientCity: "Sao Fidelis",
         clientUf: "RJ",
         clientCep: "28400-000",
-        clientPhone: "",
+        clientPhone: "(22) ",
         clientEmail: "",
         natOp: "Venda Dentro do Estado",
         description: "Fabricação e fornecimento de móveis planejados sob medida em MDF",
@@ -1450,7 +1488,7 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                 city: emitForm.clientCity.trim() || "Sao Fidelis",
                 uf: emitForm.clientUf.trim() || "RJ",
                 cep: emitForm.clientCep.trim() || "28400-000",
-                phone: emitForm.clientPhone.trim(),
+                phone: formatPhoneBrDisplay(emitForm.clientPhone),
             },
             totals: {
                 productsTotal: emitTotalAmount,
@@ -1512,7 +1550,7 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                     clientCity: matchingClient?.city || "Sao Fidelis",
                     clientUf: matchingClient?.state || "RJ",
                     clientCep: matchingClient?.zip_code || "28400-000",
-                    clientPhone: matchingClient?.phone || "",
+                    clientPhone: formatPhoneBrDisplay(matchingClient?.phone) || "(22) ",
                     clientEmail: matchingClient?.email || "",
                     description: `${sale.product || "Móveis Planejados"}`,
                     quantity: String(saleQty),
@@ -1533,7 +1571,7 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                     clientCity: client.city || "Sao Fidelis",
                     clientUf: client.state || "RJ",
                     clientCep: client.zip_code || "28400-000",
-                    clientPhone: client.phone || "",
+                    clientPhone: formatPhoneBrDisplay(client.phone) || "(22) ",
                     clientEmail: client.email || "",
                 }));
             }
@@ -1554,7 +1592,7 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                     clientCity: matchingClient?.city || "Sao Fidelis",
                     clientUf: matchingClient?.state || "RJ",
                     clientCep: matchingClient?.zip_code || "28400-000",
-                    clientPhone: matchingClient?.phone || "",
+                    clientPhone: formatPhoneBrDisplay(matchingClient?.phone) || "(22) ",
                     clientEmail: matchingClient?.email || "",
                     description: os.action
                         ? `${os.action} (${os.ticket_number || "OS"})`
@@ -3180,7 +3218,7 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
             cep: "28400-000",
             city: "Sao Fidelis",
             uf: "RJ",
-            phone: companySettings?.phone || "(22) 99703-9852",
+            phone: formatPhoneBrDisplay(companySettings?.phone) || "(22) 99703-9852",
         };
 
         const otherParty = {
@@ -3196,7 +3234,7 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
             cep: storedXml?.emitter?.cep || matchedClient?.zip_code || "",
             city: storedXml?.emitter?.city || matchedClient?.city || "",
             uf: storedXml?.emitter?.uf || matchedClient?.state || "",
-            phone: storedXml?.emitter?.phone || matchedClient?.phone || "",
+            phone: formatPhoneBrDisplay(storedXml?.emitter?.phone || matchedClient?.phone || ""),
         };
 
         // Para XML de ENTRADA (Compra), o Emitente é o Fornecedor (ex: C&D / Bruta) e o Destinatário é a BJL!
@@ -3211,7 +3249,7 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                   cep: storedXml?.recipient?.cep || bjlCompany.cep,
                   city: storedXml?.recipient?.city || bjlCompany.city,
                   uf: storedXml?.recipient?.uf || bjlCompany.uf,
-                  phone: storedXml?.recipient?.phone || bjlCompany.phone,
+                  phone: formatPhoneBrDisplay(storedXml?.recipient?.phone || bjlCompany.phone),
               }
             : {
                   name: storedXml?.recipient?.name || invoice.client_name,
@@ -3226,7 +3264,7 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                   cep: storedXml?.recipient?.cep || matchedClient?.zip_code || "28400-000",
                   city: storedXml?.recipient?.city || matchedClient?.city || "Sao Fidelis",
                   uf: storedXml?.recipient?.uf || matchedClient?.state || "RJ",
-                  phone: storedXml?.recipient?.phone || matchedClient?.phone || "",
+                  phone: formatPhoneBrDisplay(storedXml?.recipient?.phone || matchedClient?.phone || ""),
               };
 
         const accessKey =
@@ -4437,13 +4475,23 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
 
                                     <div className="sm:col-span-3 space-y-1">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                            Telefone / Celular
+                                            Telefone / Celular (DDD auto)
                                         </Label>
                                         <Input
                                             placeholder="(22) 99999-9999"
                                             value={emitForm.clientPhone}
                                             onChange={(e) =>
-                                                setEmitForm((prev) => ({ ...prev, clientPhone: e.target.value }))
+                                                setEmitForm((prev) => ({
+                                                    ...prev,
+                                                    clientPhone: formatPhoneBrInput(e.target.value),
+                                                }))
+                                            }
+                                            onBlur={(e) =>
+                                                setEmitForm((prev) => ({
+                                                    ...prev,
+                                                    clientPhone:
+                                                        formatPhoneBrDisplay(e.target.value) || "(22) ",
+                                                }))
                                             }
                                             className="h-9 rounded-xl bg-black/40 border-white/10 font-tech text-xs"
                                         />
@@ -5159,7 +5207,7 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                                                                 FONE / CELULAR
                                                             </span>
                                                             <span className="font-bold text-[10px]">
-                                                                {emitForm.clientPhone?.trim() || "---"}
+                                                                {formatPhoneBrDisplay(emitForm.clientPhone) || "---"}
                                                             </span>
                                                         </td>
                                                         <td className="border border-black p-1">
