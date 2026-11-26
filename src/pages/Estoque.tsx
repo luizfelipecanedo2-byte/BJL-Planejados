@@ -1,13 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Truck, AlertTriangle, Package, Layers, Search, ShieldCheck, KeyRound } from "lucide-react";
+import { Plus, Truck, AlertTriangle, Package, Layers, Search, ShieldCheck, KeyRound, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Product } from "@/types/product";
 import ProductTable from "@/components/crm/ProductTable";
 import ProductFormDialog from "@/components/crm/ProductFormDialog";
 import { InboundInvoiceDialog } from "@/components/financeiro/InboundInvoiceDialog";
+import { classifyWoodworkingItem, normalizeText } from "@/lib/stockMatcher";
 import { supabase } from "@/lib/supabase";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { MagicButton } from "@/components/ui/magic-button";
@@ -153,6 +154,67 @@ const Estoque = () => {
         }
     };
 
+    const handleUnifyDuplicatesWithAI = async () => {
+        const groups = new Map<string, Product[]>();
+        for (const p of products) {
+            const cls = classifyWoodworkingItem(p.name);
+            const key = cls.signature || `name:${normalizeText(p.name)}`;
+            const arr = groups.get(key) || [];
+            arr.push(p);
+            groups.set(key, arr);
+        }
+
+        const duplicateGroups = Array.from(groups.values()).filter((g) => g.length > 1);
+        if (duplicateGroups.length === 0) {
+            toast.success("O estoque já está 100% limpo e sem itens duplicados!");
+            return;
+        }
+
+        let mergedCount = 0;
+        try {
+            for (const grp of duplicateGroups) {
+                // Mantém o item com código curto (#1..#50) ou o primeiro cadastrado
+                const sorted = [...grp].sort((a, b) => {
+                    const cA = (a.idEstoque || "999999").trim();
+                    const cB = (b.idEstoque || "999999").trim();
+                    const shortA = cA.length <= 2 ? 0 : 1;
+                    const shortB = cB.length <= 2 ? 0 : 1;
+                    if (shortA !== shortB) return shortA - shortB;
+                    return b.quantity - a.quantity;
+                });
+
+                const primary = sorted[0];
+                const duplicates = sorted.slice(1);
+                const totalQty = sorted.reduce((acc, item) => acc + Number(item.quantity || 0), 0);
+                const latestPrice =
+                    sorted.find((i) => i.id !== primary.id && Number(i.unitPrice) > 0)?.unitPrice ||
+                    primary.unitPrice;
+
+                await supabase
+                    .from("inventory")
+                    .update({
+                        quantity: totalQty,
+                        unit_price: latestPrice,
+                    })
+                    .eq("id", primary.id);
+
+                const idsToDelete = duplicates.map((d) => d.id);
+                await supabase.from("inventory").delete().in("id", idsToDelete);
+                mergedCount += idsToDelete.length;
+            }
+
+            await fetchProducts();
+            toast.success(
+                `IA unificou ${mergedCount} ${
+                    mergedCount === 1 ? "item duplicado" : "itens duplicados"
+                } somando as quantidades automaticamente!`
+            );
+        } catch (err) {
+            console.error("Erro ao unificar duplicados:", err);
+            toast.error("Erro ao unificar itens duplicados.");
+        }
+    };
+
     const handleOrderProduct = async (product: Product) => {
         try {
             // Pergunta a quantidade desejada
@@ -249,6 +311,15 @@ const Estoque = () => {
 
                             {activeTab === "insumos" && (
                                 <>
+                                    <Button
+                                        variant="outline"
+                                        onClick={handleUnifyDuplicatesWithAI}
+                                        className="h-11 rounded-2xl border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-black uppercase tracking-wider text-xs px-4 gap-2"
+                                        title="Unificar automaticamente itens iguais vindos de fornecedores diferentes (ex: Bruta vs C&D)"
+                                    >
+                                        <Sparkles className="h-4 w-4 text-emerald-400" />
+                                        Unificar Duplicados (IA)
+                                    </Button>
                                     <Button
                                         variant="outline"
                                         onClick={() => setIsInboundInvoiceOpen(true)}

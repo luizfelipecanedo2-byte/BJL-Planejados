@@ -69,6 +69,10 @@ import {
     FINANCIAL_INSTITUTIONS,
 } from "@/types/finance";
 import { InboundInvoiceDialog } from "@/components/financeiro/InboundInvoiceDialog";
+import {
+    findBestInventoryMatch,
+    isEstoqueGeralDestination,
+} from "@/lib/stockMatcher";
 
 interface Invoice {
     id: string;
@@ -298,11 +302,13 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Orçamentos, Clientes, Vendas & Ordens de Serviço para preenchimento em 1 clique com todos os itens do orçamento
+    // Orçamentos, Clientes, Vendas, Ordens de Serviço & Catálogo de Estoque
     const [crmBudgets, setCrmBudgets] = useState<any[]>([]);
     const [crmClients, setCrmClients] = useState<any[]>([]);
     const [crmSales, setCrmSales] = useState<any[]>([]);
     const [crmServiceOrders, setCrmServiceOrders] = useState<any[]>([]);
+    const [crmInventory, setCrmInventory] = useState<any[]>([]);
+    const [xmlItemStockOverrides, setXmlItemStockOverrides] = useState<Record<string, string>>({});
     const [customClientOptions, setCustomClientOptions] = useState<string[]>([]);
     const [newCustomClientName, setNewCustomClientName] = useState("");
     const [showNewClientInput, setShowNewClientInput] = useState(false);
@@ -610,15 +616,17 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
 
     const fetchCrmData = async () => {
         try {
-            const [budgetsRes, clientsRes, salesRes, osRes] = await Promise.all([
+            const [budgetsRes, clientsRes, salesRes, osRes, invRes] = await Promise.all([
                 supabase.from("budgets").select("*").order("created_at", { ascending: false }),
                 supabase.from("clients").select("*").order("name"),
                 supabase.from("sales").select("*").order("created_at", { ascending: false }),
                 supabase.from("service_orders").select("*").order("created_at", { ascending: false }),
+                supabase.from("inventory").select("*").order("name"),
             ]);
             if (budgetsRes.data) setCrmBudgets(budgetsRes.data);
             if (clientsRes.data) setCrmClients(clientsRes.data);
             if (salesRes.data) setCrmSales(salesRes.data);
+            if (invRes.data) setCrmInventory(invRes.data);
             if (osRes.data) {
                 const sortedOs = [...osRes.data].sort((a: any, b: any) => {
                     const getNum = (t?: string) => {
@@ -2627,10 +2635,17 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
         );
         setXmlInstallments(defaultInstallments);
 
+        const shouldUpdateStockFromInbound =
+            sessionStorage.getItem("bjl_launch_invoice_update_stock") === "true";
+        if (shouldUpdateStockFromInbound) {
+            sessionStorage.removeItem("bjl_launch_invoice_update_stock");
+        }
+
+        setXmlItemStockOverrides({});
         setXmlOptions((prev) => ({
             ...prev,
             direction: xmlMeta?.direction || "entrada",
-            updateInventory: false, // Já foi lançada antes, evita duplicar estoque a menos que o usuário marque
+            updateInventory: shouldUpdateStockFromInbound,
             createExpenseTransaction: true,
             supplierPreset: detectedSupplier,
             paymentCategoryType: initialPaymentCat,
@@ -3074,37 +3089,83 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                 }
             }
 
-            // 1. Se marcou atualizar estoque (Entrada de chapas MDF / ferragens)
+            // 1. Se marcou atualizar estoque: SÓ entra no estoque aquilo que estiver em ESTOQUE GERAL!
+            // Itens com nome de Cliente / OS NÃO entram no estoque, e itens de Estoque Geral usam IA para somar no item já existente sem duplicar!
             if (
                 xmlOptions.direction === "entrada" &&
                 xmlOptions.updateInventory &&
                 parsedXml.items.length > 0
             ) {
                 const { data: currentStock } = await supabase.from("inventory").select("*");
+                const workingStock: any[] = [...(currentStock || [])];
+
                 for (const item of parsedXml.items) {
-                    const existing = (currentStock || []).find(
-                        (s: any) => (s.name || "").toLowerCase() === item.name.toLowerCase()
+                    const splits = xmlItemSplits[item.id] || [
+                        {
+                            id: `${item.id}-0`,
+                            client: "ESTOQUE",
+                            quantity: String(item.quantity),
+                            amount: item.totalPrice.toFixed(2),
+                        },
+                    ];
+
+                    // Soma APENAS a quantidade destinada ao ESTOQUE GERAL (ignora qualquer parte com nome de cliente/OS)
+                    const stockQtyToAdd = splits.reduce((acc, sp) => {
+                        if (!isEstoqueGeralDestination(sp.client)) return acc;
+                        const q = parseFloat(String(sp.quantity).replace(",", ".")) || 0;
+                        return acc + Math.max(0, q);
+                    }, 0);
+
+                    // Se o item está com nome do cliente, NÃO entra no estoque!
+                    if (stockQtyToAdd <= 0) {
+                        continue;
+                    }
+
+                    const explicitStockId = xmlItemStockOverrides[item.id];
+                    const matchResult = findBestInventoryMatch(
+                        item.name,
+                        workingStock,
+                        item.code,
+                        explicitStockId && explicitStockId !== "__NEW__" ? explicitStockId : undefined
                     );
+                    const existing =
+                        explicitStockId === "__NEW__" ? null : matchResult.matchedItem;
+
                     if (existing) {
+                        const newQuantity = Number(existing.quantity || 0) + stockQtyToAdd;
+                        const newUnitPrice =
+                            item.unitPrice > 0 ? item.unitPrice : Number(existing.unit_price || 0);
                         await supabase
                             .from("inventory")
                             .update({
-                                quantity: Number(existing.quantity || 0) + item.quantity,
-                                unit_price: item.unitPrice > 0 ? item.unitPrice : existing.unit_price,
+                                quantity: newQuantity,
+                                unit_price: newUnitPrice,
                             })
                             .eq("id", existing.id);
+
+                        existing.quantity = newQuantity;
+                        existing.unit_price = newUnitPrice;
                     } else {
-                        await supabase.from("inventory").insert([
-                            {
-                                id_estoque: item.code || String(Math.floor(100 + Math.random() * 900)),
-                                name: item.name,
-                                quantity: item.quantity,
-                                unit_price: item.unitPrice,
-                                min_stock_level: 5,
-                            },
-                        ]);
+                        const newStockRow = {
+                            id_estoque: item.code || String(Math.floor(100 + Math.random() * 900)),
+                            name: item.name.trim(),
+                            quantity: stockQtyToAdd,
+                            unit_price: item.unitPrice,
+                            min_stock_level: 5,
+                        };
+                        const { data: insertedStock } = await supabase
+                            .from("inventory")
+                            .insert([newStockRow])
+                            .select()
+                            .single();
+                        if (insertedStock) {
+                            workingStock.push(insertedStock);
+                        } else {
+                            workingStock.push({ ...newStockRow, id: `temp-${Date.now()}` });
+                        }
                     }
                 }
+                fetchCrmData();
             }
 
             // 2. Se marcou lançar no Financeiro (Boletos 30/60/90 somados, Cartão ou À Vista + Rateio por Cliente/Item)
@@ -6354,6 +6415,111 @@ export default function NotaFiscalTab({ onRefresh, onNavigateToLancamentos }: No
                                                         ))}
                                                     </div>
                                                 )}
+
+                                                {/* INDICADOR INTELIGENTE DE ESTOQUE (SÓ ENTRA SE FOR ESTOQUE GERAL + RECONHECIMENTO IA DE ITEM EXISTENTE) */}
+                                                {(() => {
+                                                    const stockQtyForThisItem = itemSplits.reduce((acc, sp) => {
+                                                        if (!isEstoqueGeralDestination(sp.client)) return acc;
+                                                        const q = parseFloat(String(sp.quantity).replace(",", ".")) || 0;
+                                                        return acc + Math.max(0, q);
+                                                    }, 0);
+
+                                                    if (stockQtyForThisItem <= 0) {
+                                                        return (
+                                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-300/90 bg-amber-500/10 border border-amber-500/25 rounded-lg px-2.5 py-1">
+                                                                <span>🚫 Material com Nome de Cliente —</span>
+                                                                <span className="text-white">NÃO entra no Estoque</span>
+                                                                <span className="text-muted-foreground font-normal">
+                                                                    (vai direto para o custo da obra do cliente)
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    const explicitId = xmlItemStockOverrides[item.id];
+                                                    const matchRes = findBestInventoryMatch(
+                                                        item.name,
+                                                        crmInventory,
+                                                        item.code,
+                                                        explicitId && explicitId !== "__NEW__" ? explicitId : undefined
+                                                    );
+                                                    const matchedStock =
+                                                        explicitId === "__NEW__" ? null : matchRes.matchedItem;
+
+                                                    return (
+                                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[10px] bg-emerald-500/10 border border-emerald-500/25 rounded-lg px-2.5 py-1.5">
+                                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                                <Sparkles className="h-3 w-3 text-emerald-400 shrink-0" />
+                                                                {matchedStock ? (
+                                                                    <>
+                                                                        <span className="font-black text-emerald-300 uppercase">
+                                                                            IA Estoque:
+                                                                        </span>
+                                                                        <span className="text-foreground">
+                                                                            Vai somar{" "}
+                                                                            <strong className="text-emerald-300">
+                                                                                +{stockQtyForThisItem} {item.unit}
+                                                                            </strong>{" "}
+                                                                            em{" "}
+                                                                            <strong className="text-white">
+                                                                                #{matchedStock.id_estoque || "---"} — {matchedStock.name}
+                                                                            </strong>{" "}
+                                                                            <span className="text-muted-foreground font-tech">
+                                                                                (Atual: {matchedStock.quantity} →{" "}
+                                                                                {Number(matchedStock.quantity || 0) + stockQtyForThisItem})
+                                                                            </span>
+                                                                        </span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <span className="font-black text-sky-300 uppercase">
+                                                                            Novo no Estoque:
+                                                                        </span>
+                                                                        <span className="text-foreground">
+                                                                            Será criado como novo item{" "}
+                                                                            <strong className="text-white">
+                                                                                "{item.name}"
+                                                                            </strong>{" "}
+                                                                            (+{stockQtyForThisItem} {item.unit})
+                                                                        </span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+
+                                                            <select
+                                                                value={
+                                                                    explicitId ||
+                                                                    (matchedStock ? matchedStock.id : "__NEW__")
+                                                                }
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setXmlItemStockOverrides((prev) => ({
+                                                                        ...prev,
+                                                                        [item.id]: val,
+                                                                    }));
+                                                                }}
+                                                                className="h-6 rounded bg-black/60 border border-white/15 px-1.5 text-[10px] text-emerald-200 max-w-[230px]"
+                                                                title="Escolher em qual item do estoque somar"
+                                                            >
+                                                                {matchedStock && (
+                                                                    <option value={matchedStock.id}>
+                                                                        ✓ Somar em: #{matchedStock.id_estoque} — {matchedStock.name}
+                                                                    </option>
+                                                                )}
+                                                                <option value="__NEW__">
+                                                                    + Criar como novo item no estoque
+                                                                </option>
+                                                                <optgroup label="Ou vincular a outro item do Estoque:">
+                                                                    {crmInventory.map((invItem: any) => (
+                                                                        <option key={invItem.id} value={invItem.id}>
+                                                                            #{invItem.id_estoque || "---"} — {invItem.name} (Qtd: {invItem.quantity})
+                                                                        </option>
+                                                                    ))}
+                                                                </optgroup>
+                                                            </select>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                         );
                                     })}

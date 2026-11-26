@@ -43,6 +43,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractDanfeWithAI } from "@/services/geminiService";
+import { findBestInventoryMatch } from "@/lib/stockMatcher";
 
 export interface InboundInvoiceItem {
     code: string;
@@ -796,37 +797,56 @@ export const InboundInvoiceDialog: React.FC<InboundInvoiceDialogProps> = ({
             if (invErr) throw invErr;
 
             // 2. Atualiza ou cadastra cada material no Controle de Estoque (inventory)
+            // Se o usuário clicou em "Salvar & Colocar Clientes por Item / Lançar" (openClientSplitAfter = true),
+            // o estoque só será atualizado DEPOIS que ele escolher o que é Estoque Geral vs Cliente!
             let updatedStockCount = 0;
-            if (options.updateInventory && validItems.length > 0) {
+            if (!openClientSplitAfter && options.updateInventory && validItems.length > 0) {
                 const { data: currentStock } = await supabase.from("inventory").select("*");
+                const workingStock: any[] = [...(currentStock || [])];
+
                 for (const item of validItems) {
-                    const existing = (currentStock || []).find(
-                        (s: any) =>
-                            (item.inventoryId && s.id === item.inventoryId) ||
-                            (s.name || "").trim().toLowerCase() === item.name.trim().toLowerCase()
+                    const matchResult = findBestInventoryMatch(
+                        item.name,
+                        workingStock,
+                        item.code,
+                        item.inventoryId
                     );
+                    const existing = matchResult.matchedItem;
 
                     if (existing) {
+                        const newQuantity = Number(existing.quantity || 0) + Number(item.quantity || 0);
+                        const newUnitPrice =
+                            Number(item.unitPrice) > 0
+                                ? Number(item.unitPrice)
+                                : Number(existing.unit_price || 0);
                         await supabase
                             .from("inventory")
                             .update({
-                                quantity: Number(existing.quantity || 0) + Number(item.quantity || 0),
-                                unit_price:
-                                    Number(item.unitPrice) > 0
-                                        ? Number(item.unitPrice)
-                                        : Number(existing.unit_price || 0),
+                                quantity: newQuantity,
+                                unit_price: newUnitPrice,
                             })
                             .eq("id", existing.id);
+
+                        existing.quantity = newQuantity;
+                        existing.unit_price = newUnitPrice;
                     } else {
-                        await supabase.from("inventory").insert([
-                            {
-                                id_estoque: item.code || String(Math.floor(100 + Math.random() * 900)),
-                                name: item.name.trim(),
-                                quantity: Number(item.quantity) || 1,
-                                unit_price: Number(item.unitPrice) || 0,
-                                min_stock_level: 5,
-                            },
-                        ]);
+                        const newStockRow = {
+                            id_estoque: item.code || String(Math.floor(100 + Math.random() * 900)),
+                            name: item.name.trim(),
+                            quantity: Number(item.quantity) || 1,
+                            unit_price: Number(item.unitPrice) || 0,
+                            min_stock_level: 5,
+                        };
+                        const { data: insertedStock } = await supabase
+                            .from("inventory")
+                            .insert([newStockRow])
+                            .select()
+                            .single();
+                        if (insertedStock) {
+                            workingStock.push(insertedStock);
+                        } else {
+                            workingStock.push({ ...newStockRow, id: `temp-${Date.now()}` });
+                        }
                     }
                     updatedStockCount++;
 
@@ -838,6 +858,13 @@ export const InboundInvoiceDialog: React.FC<InboundInvoiceDialogProps> = ({
                             .eq("id", item.weeklyOrderId);
                     }
                 }
+            }
+
+            if (openClientSplitAfter) {
+                sessionStorage.setItem(
+                    "bjl_launch_invoice_update_stock",
+                    options.updateInventory ? "true" : "false"
+                );
             }
 
             // 3. Se NÃO clicou em "Abrir Rateio por Cliente" e deixou marcado o lançamento rápido direto:
@@ -1350,6 +1377,39 @@ export const InboundInvoiceDialog: React.FC<InboundInvoiceDialogProps> = ({
                                                 <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
                                         </div>
+                                        {item.name.trim() !== "" && (() => {
+                                            const mRes = findBestInventoryMatch(
+                                                item.name,
+                                                inventoryCatalog,
+                                                item.code,
+                                                item.inventoryId
+                                            );
+                                            const matched = mRes.matchedItem;
+                                            return (
+                                                <div className="col-span-12 flex items-center justify-between gap-2 text-[10px] px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <Sparkles className="h-3 w-3 text-emerald-400 shrink-0" />
+                                                        {matched ? (
+                                                            <span>
+                                                                <strong className="text-emerald-300">IA Estoque:</strong>{" "}
+                                                                Reconhecido como{" "}
+                                                                <strong className="text-white">
+                                                                    #{matched.id_estoque || "---"} — {matched.name}
+                                                                </strong>{" "}
+                                                                <span className="text-muted-foreground font-tech">
+                                                                    (Se for p/ Estoque Geral: {matched.quantity} →{" "}
+                                                                    {Number(matched.quantity || 0) + (Number(item.quantity) || 0)})
+                                                                </span>
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-sky-300">
+                                                                Novo insumo (ou escolha abaixo se é p/ Cliente ou Estoque Geral)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 ))}
                             </div>
