@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useSales } from "@/hooks/useSales";
 import { Sale, STATUS_LABELS, CHANNEL_LABELS, TEMPERATURE_LABELS } from "@/types/sale";
 import { formatCurrency } from "@/lib/salesUtils";
@@ -39,9 +40,22 @@ import { CarpentryWorkbenchScene } from "@/components/ui/WoodworkingArt";
 
 const Index = () => {
   const { sales, addSale, updateSale, deleteSale, updateStatus } = useSales();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [formOpen, setFormOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "hot" | "negotiation" | "closed">("all");
+
+  useEffect(() => {
+    if (searchParams.get("new") === "true") {
+      setEditingSale(null);
+      setFormOpen(true);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("new");
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const hotCount = useMemo(() => sales.filter(s => s.temperature === "quente" || (s.temperature as string) === "alta" || s.status === "visita" || s.status === "projeto").length, [sales]);
   const negotiationCount = useMemo(() => sales.filter(s => s.status === "negociacao").length, [sales]);

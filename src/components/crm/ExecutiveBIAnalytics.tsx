@@ -176,47 +176,50 @@ export const ExecutiveBIAnalytics: React.FC<ExecutiveBIAnalyticsProps> = ({
         color: "#64748b",
         desc: "Cliente esfriou, não respondeu WhatsApp ou mudou de planos.",
       },
+      "Motivo em Apuração (Sem Obs.)": {
+        count: 0,
+        value: 0,
+        color: "#f59e0b",
+        desc: "Negócio marcado como perdido/congelado sem justificativa detalhada nas observações.",
+      },
     };
 
-    // Classificação por notas ou distribuição representativa
-    lostSales.forEach((s, idx) => {
+    // Classificação 100% fiel às observações reais cadastradas nos negócios
+    lostSales.forEach((s) => {
       const text = `${s.notes || ""} ${s.product || ""}`.toLowerCase();
-      let assigned = false;
 
-      if (text.includes("caro") || text.includes("preço") || text.includes("valor") || text.includes("orçamento")) {
+      if (text.includes("caro") || text.includes("preço") || text.includes("preco") || text.includes("valor") || text.includes("orçamento") || text.includes("desconto")) {
         categories["Preço / Orçamento Acima"].count += 1;
         categories["Preço / Orçamento Acima"].value += s.totalValue || 0;
-        assigned = true;
-      } else if (text.includes("prazo") || text.includes("urgente") || text.includes("demora")) {
+      } else if (text.includes("prazo") || text.includes("urgente") || text.includes("demora") || text.includes("entrega")) {
         categories["Prazo de Entrega da Fábrica"].count += 1;
         categories["Prazo de Entrega da Fábrica"].value += s.totalValue || 0;
-        assigned = true;
-      } else if (text.includes("concorrente") || text.includes("fechou com outro") || text.includes("outra")) {
+      } else if (text.includes("concorrente") || text.includes("fechou com outro") || text.includes("outra") || text.includes("marceneiro")) {
         categories["Concorrência / Marcenaria Local"].count += 1;
         categories["Concorrência / Marcenaria Local"].value += s.totalValue || 0;
-        assigned = true;
-      } else if (text.includes("obra") || text.includes("chave") || text.includes("reforma")) {
+      } else if (text.includes("obra") || text.includes("chave") || text.includes("reforma") || text.includes("constru")) {
         categories["Atraso de Obra / Chaves"].count += 1;
         categories["Atraso de Obra / Chaves"].value += s.totalValue || 0;
-        assigned = true;
-      }
-
-      if (!assigned) {
-        const fallbackKeys = Object.keys(categories);
-        const targetKey = fallbackKeys[idx % fallbackKeys.length];
-        categories[targetKey].count += 1;
-        categories[targetKey].value += s.totalValue || 0;
+      } else if (text.includes("sumiu") || text.includes("retorno") || text.includes("desist") || text.includes("responde")) {
+        categories["Desistência / Sem Retorno"].count += 1;
+        categories["Desistência / Sem Retorno"].value += s.totalValue || 0;
+      } else {
+        categories["Motivo em Apuração (Sem Obs.)"].count += 1;
+        categories["Motivo em Apuração (Sem Obs.)"].value += s.totalValue || 0;
       }
     });
 
-    const chartData = Object.entries(categories).map(([name, data]) => ({
-      name,
-      count: data.count,
-      value: data.value,
-      percentage: totalLostValue > 0 ? Math.round((data.value / totalLostValue) * 100) : 0,
-      color: data.color,
-      desc: data.desc,
-    })).sort((a, b) => b.value - a.value);
+    const chartData = Object.entries(categories)
+      .filter(([, data]) => data.count > 0 || totalLostCount === 0)
+      .map(([name, data]) => ({
+        name,
+        count: data.count,
+        value: data.value,
+        percentage: totalLostValue > 0 ? Math.round((data.value / totalLostValue) * 100) : 0,
+        color: data.color,
+        desc: data.desc,
+      }))
+      .sort((a, b) => b.value - a.value);
 
     return {
       totalLostValue,
@@ -284,15 +287,46 @@ export const ExecutiveBIAnalytics: React.FC<ExecutiveBIAnalyticsProps> = ({
     const closedPartnerLeads = partnerSales.filter((s) => s.status === "fechado" || s.status === "pos_venda").length;
     const partnerConversionRate = totalPartnerLeads > 0 ? Math.round((closedPartnerLeads / totalPartnerLeads) * 100) : 0;
 
-    // Estimativa de RT (Reserva Técnica padrão de 5% sobre faturamento de parcerias)
-    const estimatedRT = partnerTotalRevenue * 0.05;
+    // Estimativa de RT (Reserva Técnica padrão de 5% sobre faturamento de parcerias de arquitetos)
+    const architectClosedRevenue = partnerSales
+      .filter((s) => (s.status === "fechado" || s.status === "pos_venda") && (s.channel === "arquiteto" || (s.clientProfession || "").toLowerCase().includes("arquiteto")))
+      .reduce((sum, s) => sum + (s.totalValue || 0), 0);
+    const estimatedRT = architectClosedRevenue * 0.05;
 
-    const partnerList = [
-      { name: "Escritórios de Arquitetura", leads: Math.max(1, Math.round(totalPartnerLeads * 0.45)), value: partnerTotalRevenue * 0.55, rt: partnerTotalRevenue * 0.55 * 0.05 },
-      { name: "Designers de Interiores", leads: Math.max(1, Math.round(totalPartnerLeads * 0.30)), value: partnerTotalRevenue * 0.30, rt: partnerTotalRevenue * 0.30 * 0.05 },
-      { name: "Engenheiros & Construtoras", leads: Math.max(1, Math.round(totalPartnerLeads * 0.15)), value: partnerTotalRevenue * 0.10, rt: partnerTotalRevenue * 0.10 * 0.05 },
-      { name: "Indicações de Clientes VIP", leads: Math.max(1, Math.round(totalPartnerLeads * 0.10)), value: partnerTotalRevenue * 0.05, rt: 0 },
-    ];
+    // Agrupamento REAL por Arquiteto / Canal / Indicador a partir das vendas cadastradas
+    const groupedMap = new Map<string, { name: string; leads: number; closedCount: number; value: number; pipeline: number; rt: number }>();
+
+    partnerSales.forEach((s) => {
+      const isClosed = s.status === "fechado" || s.status === "pos_venda";
+      const isLost = s.status === "nao_fechou" || s.status === "congelado";
+      const isArch = s.channel === "arquiteto" || (s.clientProfession || "").toLowerCase().includes("arquiteto");
+      const rawPartnerName = (s.clientProfession || "").trim();
+      const groupKey = rawPartnerName
+        ? `Arq./Parc.: ${rawPartnerName}`
+        : s.channel === "arquiteto"
+        ? "Parceria Arquitetura & Design"
+        : "Indicação de Clientes VIP";
+
+      const existing = groupedMap.get(groupKey) || {
+        name: groupKey,
+        leads: 0,
+        closedCount: 0,
+        value: 0,
+        pipeline: 0,
+        rt: 0,
+      };
+      existing.leads += 1;
+      if (isClosed) {
+        existing.closedCount += 1;
+        existing.value += s.totalValue || 0;
+        if (isArch) existing.rt += (s.totalValue || 0) * 0.05;
+      } else if (!isLost) {
+        existing.pipeline += s.totalValue || 0;
+      }
+      groupedMap.set(groupKey, existing);
+    });
+
+    const partnerList = Array.from(groupedMap.values()).sort((a, b) => (b.value + b.pipeline) - (a.value + a.pipeline));
 
     return {
       partnerSales,
@@ -691,24 +725,36 @@ export const ExecutiveBIAnalytics: React.FC<ExecutiveBIAnalyticsProps> = ({
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-white/10 text-muted-foreground uppercase text-[10px] tracking-wider">
-                    <th className="pb-3 font-bold">Canal / Categoria Parceira</th>
-                    <th className="pb-3 font-bold text-center">Volume Indicado</th>
+                    <th className="pb-3 font-bold">Arquiteto / Canal Parceiro</th>
+                    <th className="pb-3 font-bold text-center">Indicações</th>
+                    <th className="pb-3 font-bold text-right">Em Negociação</th>
                     <th className="pb-3 font-bold text-right">Volume Faturado</th>
                     <th className="pb-3 font-bold text-right text-primary">RT Estimada (5%)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 font-mono">
-                  {partnerData.partnerList.map((p) => (
-                    <tr key={p.name} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="py-3 font-sans font-bold text-white flex items-center gap-2">
-                        <Building2 className="h-3.5 w-3.5 text-primary" />
-                        {p.name}
+                  {partnerData.partnerList.length > 0 ? (
+                    partnerData.partnerList.map((p) => (
+                      <tr key={p.name} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3 font-sans font-bold text-white flex items-center gap-2">
+                          <Building2 className="h-3.5 w-3.5 text-primary" />
+                          {p.name}
+                        </td>
+                        <td className="py-3 text-center text-muted-foreground">
+                          {p.leads} ({p.closedCount} fech.)
+                        </td>
+                        <td className="py-3 text-right font-bold text-amber-300">{formatCurrency(p.pipeline)}</td>
+                        <td className="py-3 text-right font-bold text-emerald-400">{formatCurrency(p.value)}</td>
+                        <td className="py-3 text-right font-bold text-amber-400">{formatCurrency(p.rt)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-6 text-center text-muted-foreground font-sans text-xs">
+                        Nenhum projeto vinculado ao canal Arquiteto ou Indicação neste período.
                       </td>
-                      <td className="py-3 text-center text-muted-foreground">{p.leads} projetos</td>
-                      <td className="py-3 text-right font-bold text-emerald-400">{formatCurrency(p.value)}</td>
-                      <td className="py-3 text-right font-bold text-amber-400">{formatCurrency(p.rt)}</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>

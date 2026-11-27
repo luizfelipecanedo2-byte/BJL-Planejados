@@ -778,6 +778,88 @@ const DashboardTab = ({
                 </Card>
             </div>
 
+            {/* NOVO INDICADOR MOVELEIRO: TÁBUA DE PONTO DE EQUILÍBRIO (BREAK-EVEN DA MARCENARIA) */}
+            {(() => {
+                const isAnual = selectedDashMonth === 'anual';
+                const currentMonthIdx = !isAnual ? Number(selectedDashMonth) : new Date().getMonth();
+                const periodFixedCost = isAnual
+                    ? totalFixosYear
+                    : (fixedVsVariableData[currentMonthIdx]?.["Custos Fixos"] || 0);
+                const periodVariableCost = isAnual
+                    ? totalVariaveisYear
+                    : (fixedVsVariableData[currentMonthIdx]?.["Custos Variáveis"] || 0);
+                const periodRev = currentSummary.receitaBrutaMes || 0;
+                // Margem de contribuição real (ou 55% padrão da marcenaria caso ainda sem lançamentos no mês)
+                const contributionRatio = periodRev > 0
+                    ? Math.max(0.25, Math.min(0.85, (periodRev - periodVariableCost) / periodRev))
+                    : 0.55;
+                const breakEvenRevenue = periodFixedCost > 0 ? periodFixedCost / contributionRatio : 0;
+                const breakEvenPct = breakEvenRevenue > 0 ? Math.min(100, (periodRev / breakEvenRevenue) * 100) : (periodRev > 0 ? 100 : 0);
+                const isBreakEvenReached = periodRev >= breakEvenRevenue && breakEvenRevenue > 0;
+                const missingForBreakEven = Math.max(0, breakEvenRevenue - periodRev);
+                const estimatedBreakEvenDay = isBreakEvenReached && periodRev > 0
+                    ? Math.max(1, Math.min(30, Math.round((breakEvenRevenue / periodRev) * 30)))
+                    : null;
+
+                return (
+                    <div className="executive-card border-metallic wood-ruler-top p-5 sm:p-6 rounded-3xl relative overflow-hidden">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+                            <div className="space-y-1.5 max-w-xl">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-black uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/35">
+                                        🪚 Termômetro de Galpão • Break-Even Point
+                                    </span>
+                                    {isBreakEvenReached ? (
+                                        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/35">
+                                            ✓ Custo Fixo 100% Coberto {estimatedBreakEvenDay && !isAnual ? `(atingido ~dia ${estimatedBreakEvenDay})` : ""}
+                                        </span>
+                                    ) : (
+                                        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-black uppercase bg-amber-500/15 text-amber-200 border border-amber-500/30">
+                                            Em Cobertura Operacional ({breakEvenPct.toFixed(0)}%)
+                                        </span>
+                                    )}
+                                </div>
+                                <h3 className="text-sm sm:text-base font-display font-black uppercase text-white tracking-wide">
+                                    Ponto de Equilíbrio da Marcenaria ({isAnual ? `Ano ${selectedYear}` : ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"][currentMonthIdx]})
+                                </h3>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                    Considerando <strong className="text-amber-300 font-mono">{formatCurrency(periodFixedCost)}</strong> de estrutura fixa (galpão, equipe, máquinas) e margem de contribuição de <strong className="text-cyan-300 font-mono">{(contributionRatio * 100).toFixed(0)}%</strong> após chapas/insumos, o faturamento mínimo para empatar é de <strong className="text-white font-mono">{formatCurrency(breakEvenRevenue)}</strong>.
+                                </p>
+                            </div>
+
+                            <div className="w-full lg:w-[440px] bg-[#221409]/90 p-4 rounded-2xl border border-amber-500/30 space-y-2.5 shrink-0">
+                                <div className="flex items-center justify-between text-[10px] font-mono">
+                                    <span className="uppercase font-bold text-amber-200/80">Corte de Equilíbrio Operacional</span>
+                                    <span className={cn("font-black text-xs", isBreakEvenReached ? "text-emerald-400" : "text-amber-400")}>
+                                        {breakEvenPct.toFixed(1)}%
+                                    </span>
+                                </div>
+                                <WoodCuttingProgressBar
+                                    percent={breakEvenPct}
+                                    showSaw={true}
+                                    height="md"
+                                    colorVariant={isBreakEvenReached ? "emerald" : "wood"}
+                                />
+                                <div className="flex items-center justify-between text-[10px] font-mono pt-1">
+                                    <span className="text-muted-foreground">
+                                        Faturado: <strong className="text-white">{formatCurrency(periodRev)}</strong>
+                                    </span>
+                                    {isBreakEvenReached ? (
+                                        <span className="text-emerald-400 font-bold">
+                                            Lucro Acima do Equilíbrio: +{formatCurrency(Math.max(0, periodRev - breakEvenRevenue))}
+                                        </span>
+                                    ) : (
+                                        <span className="text-amber-300 font-bold">
+                                            Faltam: {formatCurrency(missingForBreakEven)}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* RADAR FINANCEIRO - PRÓXIMOS VENCIMENTOS */}
             <div className="space-y-3">
                 <div className="flex items-center gap-2.5">

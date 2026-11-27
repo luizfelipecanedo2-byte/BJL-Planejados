@@ -2158,28 +2158,34 @@ const MedicaoTablet: React.FC = () => {
                 .map((r) => r.name)
                 .join(" + ");
 
-            const { error } = await supabase.from("budgets").insert([
-                {
-                    client_name: activeProject.clientName.trim(),
-                    project_name: `${projectName} (${activeProject.measurementMode === "final" ? "Medida Final" : "Medição"})`,
-                    status: "rascunho",
-                    total_value: 0,
-                    cash_value: 0,
-                    installment_10x: 0,
-                    installment_21x: 0,
-                    days_estimated: Math.max(3, activeProject.rooms.length * 4),
-                    notes: fullNotes,
-                },
-            ]);
+            const daysEst = Math.max(3, activeProject.rooms.length * 4);
 
-            if (error) throw error;
+            // Guarda o pacote rico da medição para o Calculador de Orçamento IA abrir já preenchido
+            const medicaoBridgePayload = {
+                clientName: activeProject.clientName.trim(),
+                projectName: `${projectName} (${activeProject.measurementMode === "final" ? "Medida Final" : "Medição"})`,
+                daysEstimated: daysEst,
+                notes: fullNotes,
+                rooms: activeProject.rooms.map((r) => ({
+                    name: r.name,
+                    roomType: r.roomType,
+                    mdfInternal: r.mdfInternal || "",
+                    mdfExternal: r.mdfExternal || "",
+                    hardwareNotes: r.hardwareNotes || "",
+                    summary: buildRoomMeasurementsSummary(r),
+                })),
+            };
+            sessionStorage.setItem(
+                "bjl_medicao_to_orcamento",
+                JSON.stringify(medicaoBridgePayload)
+            );
 
             toast.success(
-                `Medição de ${activeProject.clientName} enviada para Orçamentos!`
+                `Medição de ${activeProject.clientName} carregada na Calculadora de Orçamento IA!`
             );
-            navigate("/admin/orcamento");
+            navigate("/admin/orcamento?fromMedicao=true");
         } catch (err: any) {
-            toast.error(`Erro ao criar orçamento: ${err?.message || ""}`);
+            toast.error(`Erro ao enviar para orçamento: ${err?.message || ""}`);
         } finally {
             setIsSavingAction(false);
         }
@@ -2794,6 +2800,17 @@ const MedicaoTablet: React.FC = () => {
                                 Câmera Celular
                             </button>
                         </div>
+
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleSendToBudget}
+                            className="h-9 px-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black text-[11px] font-black uppercase gap-1.5 shadow-lg shadow-emerald-500/20"
+                            title="Levar ambientes, medidas e briefing direto para a Calculadora de Orçamento IA"
+                        >
+                            <Calculator className="h-3.5 w-3.5" />
+                            Gerar Orçamento IA
+                        </Button>
 
                         <Button
                             type="button"

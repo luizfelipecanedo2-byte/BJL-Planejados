@@ -12,13 +12,25 @@ import {
     Search,
     Package,
     Sparkles,
-    Filter
+    Filter,
+    ShieldAlert,
+    BarChart3
 } from "lucide-react";
 import { ServiceExpense } from "@/types/serviceExpense";
 import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { NextGenKpiCard } from "@/components/ui/NextGenKpiCard";
+import {
+    ResponsiveContainer,
+    ComposedChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+} from "recharts";
 
 interface ServiceExpensesTabProps {
     serviceExpenses: ServiceExpense[];
@@ -49,6 +61,7 @@ const ServiceExpensesTab = ({
     const [marginFilter, setMarginFilter] = useState<'all' | 'healthy' | 'warning' | 'danger'>('all');
     const [onlyOS33Plus, setOnlyOS33Plus] = useState<boolean>(true);
     const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+    const [showChart, setShowChart] = useState<boolean>(true);
 
     const toggleExpand = (id: string) => {
         setExpandedIds(prev => ({ ...prev, [id]: !prev[id] }));
@@ -124,41 +137,74 @@ const ServiceExpensesTab = ({
     const avgMarginPct = totalRevenue > 0 ? ((totalGrossProfit / totalRevenue) * 100).toFixed(1) : "0.0";
     const avgCostPct = totalRevenue > 0 ? ((totalCosts / totalRevenue) * 100).toFixed(1) : "0.0";
 
+    // Dados do Novo Gráfico de Marcenaria: Top Obras (Contrato vs Custo Real de Chapas/Insumos vs Lucro Sobrando)
+    const topProjectsChartData = useMemo(() => {
+        return filteredExpenses
+            .filter(e => !e.clientName.includes("ESTOQUE") && (e.serviceValue > 0 || e.spentValue > 0))
+            .slice(0, 10)
+            .map(e => {
+                const shortName = e.clientName.length > 22 ? e.clientName.slice(0, 22) + "…" : e.clientName;
+                const lucro = Math.max(0, e.serviceValue - e.spentValue);
+                const costPct = e.serviceValue > 0 ? Math.round((e.spentValue / e.serviceValue) * 100) : 100;
+                return {
+                    name: shortName,
+                    fullName: `${e.clientName} (${e.environment})`,
+                    "Contrato (R$)": Number(e.serviceValue.toFixed(2)),
+                    "Gasto Chapas/Insumos": Number(e.spentValue.toFixed(2)),
+                    "Lucro da Obra": Number(lucro.toFixed(2)),
+                    costPct,
+                };
+            });
+    }, [filteredExpenses]);
+
     return (
         <div className="space-y-6">
-            {/* Cabeçalho */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-muted/20 p-6 rounded-2xl border border-border/50 shadow-sm transition-all hover:bg-muted/30">
+            {/* Cabeçalho Padronizado Oficina Madeira Nobre & Ouro */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 executive-card border-metallic wood-ruler-top p-6 rounded-3xl shadow-2xl">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-secondary/10 rounded-xl text-secondary border border-secondary/20 shadow-lg shadow-secondary/5">
+                    <div className="p-3 bg-primary/15 rounded-2xl text-primary border border-primary/30 shadow-lg">
                         <Home className="h-6 w-6" />
                     </div>
                     <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-2xl font-black tracking-tight text-secondary-foreground uppercase tracking-widest">
-                                Custos & Margem por Serviço
-                            </h3>
+                            <span className="text-[9px] font-mono font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                🪚 Bancada de Custos por OS
+                            </span>
                             <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider">
                                 Somando da OS 33 para cima
                             </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground font-medium uppercase opacity-70">
-                            Acompanhe o valor total das obras, custos de produção e lucro/margem (a partir da OS-033)
+                        <h3 className="text-xl sm:text-2xl font-display font-black tracking-tight text-white uppercase">
+                            Custos & Margem Real por Serviço
+                        </h3>
+                        <p className="text-xs text-muted-foreground font-medium">
+                            Acompanhe o valor total das obras, chapas de MDF, ferragens e lucro/margem (a partir da OS-033)
                         </p>
                     </div>
                 </div>
-                <Button 
-                    onClick={handleNewServiceExpense} 
-                    size="lg" 
-                    className="bg-secondary hover:bg-secondary/80 text-secondary-foreground font-black uppercase tracking-widest text-xs px-8 rounded-xl shadow-xl shadow-secondary/10 gap-2 transition-transform hover:scale-105"
-                >
-                    <Plus className="h-4 w-4" />
-                    Novo Registro Manual
-                </Button>
+                <div className="flex flex-wrap items-center gap-2.5">
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowChart(!showChart)}
+                        className="border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 font-mono font-bold uppercase text-[10px] tracking-wider rounded-xl h-11 px-4 gap-2"
+                    >
+                        <BarChart3 className="h-4 w-4 text-amber-400" />
+                        {showChart ? "Ocultar Gráfico de Obras" : "Ver Gráfico de Obras"}
+                    </Button>
+                    <Button 
+                        onClick={handleNewServiceExpense} 
+                        size="lg" 
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-display font-black uppercase tracking-wider text-xs px-6 h-11 rounded-xl shadow-xl shadow-primary/20 gap-2 transition-transform hover:scale-105"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Novo Registro Manual
+                    </Button>
+                </div>
             </div>
 
             {/* Radar Inteligente de Quebra de Margem na Produção & Serviços (OS 33+) */}
-            <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900/95 via-slate-950 to-black border border-white/10 shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl -mr-40 -mt-40 pointer-events-none" />
+            <div className="p-5 sm:p-6 rounded-3xl executive-card border-metallic shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 rounded-full blur-3xl -mr-40 -mt-40 pointer-events-none" />
 
                 <div className="flex items-center gap-4 z-10">
                     <div className={cn(
@@ -291,8 +337,78 @@ const ServiceExpensesTab = ({
                 />
             </div>
 
+            {/* NOVO GRÁFICO MOVELEIRO: COMPARATIVO DE OBRAS (CONTRATO VS CHAPAS/INSUMOS VS LUCRO) */}
+            {showChart && topProjectsChartData.length > 0 && (
+                <div className="executive-card border-metallic p-6 rounded-3xl space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-500/20 pb-4">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-black uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                    🪵 Gabarito de Rentabilidade por OS
+                                </span>
+                                <span className="text-[10px] font-mono text-muted-foreground">
+                                    Top {topProjectsChartData.length} Obras Listadas
+                                </span>
+                            </div>
+                            <h4 className="text-base font-display font-black uppercase text-white mt-1">
+                                Raio-X das Obras: Valor do Contrato vs. Insumos Consumidos vs. Lucro Sobrando
+                            </h4>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-[10px] font-mono font-bold">
+                            <span className="flex items-center gap-1.5 text-amber-400">
+                                <span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" /> Contrato Fechado
+                            </span>
+                            <span className="flex items-center gap-1.5 text-rose-400">
+                                <span className="w-2.5 h-2.5 rounded-sm bg-rose-500 inline-block" /> Gasto Chapas/Insumos
+                            </span>
+                            <span className="flex items-center gap-1.5 text-emerald-400">
+                                <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block" /> Lucro Bruto Obra
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="h-[290px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={topProjectsChartData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(251, 191, 36, 0.08)" vertical={false} />
+                                <XAxis
+                                    dataKey="name"
+                                    fontSize={10}
+                                    tick={{ fill: "#fef3c7", fontWeight: 700 }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    interval={0}
+                                    angle={-12}
+                                    textAnchor="end"
+                                />
+                                <YAxis
+                                    fontSize={10}
+                                    tick={{ fill: "#d6c5b3" }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: "rgba(32, 19, 10, 0.96)",
+                                        border: "1px solid rgba(245, 158, 11, 0.4)",
+                                        borderRadius: "14px",
+                                        fontSize: 12,
+                                    }}
+                                    formatter={(val: number, name: string) => [formatCurrency(val), name]}
+                                    labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName || ""}
+                                />
+                                <Bar dataKey="Contrato (R$)" fill="#f59e0b" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                                <Bar dataKey="Gasto Chapas/Insumos" fill="#f43f5e" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                                <Bar dataKey="Lucro da Obra" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
+
             {/* Barra de Busca e Filtros */}
-            <div className="flex flex-col sm:flex-row items-center gap-3 bg-muted/20 p-3 rounded-xl border border-border/50">
+            <div className="flex flex-col sm:flex-row items-center gap-3 executive-card border-metallic p-3.5 rounded-2xl">
                 <div className="flex items-center gap-2 flex-1 w-full">
                     <Search className="h-4 w-4 text-muted-foreground ml-2 shrink-0" />
                     <Input

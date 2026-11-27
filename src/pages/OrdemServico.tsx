@@ -4,6 +4,7 @@ import ServiceOrderTable from "@/components/crm/ServiceOrderTable";
 import ServiceOrderFormDialog from "@/components/crm/ServiceOrderFormDialog";
 import { ServiceOrder, ServiceStatus, OSStageConfig, OS_STAGE_COLORS } from "@/types/serviceOrder";
 import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useSearchParams, Link } from "react-router-dom";
 import ProductionTimeline from "@/components/crm/ProductionTimeline";
 import OSKanbanBoard from "@/components/crm/OSKanbanBoard";
 import ManageOSStagesDialog from "@/components/crm/ManageOSStagesDialog";
@@ -67,9 +68,42 @@ const OrdemServico = () => {
         })
     );
     const { settings } = useCompanySettings();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [orders, setOrders] = useState<ServiceOrder[]>(() => osMemoryCache.orders);
     const [tasks, setTasks] = useState<any[]>(() => osMemoryCache.tasks);
+    const [availableOffcutsCount, setAvailableOffcutsCount] = useState<number>(0);
+    const [availableOffcutsSample, setAvailableOffcutsSample] = useState<string[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    useEffect(() => {
+        if (searchParams.get("new") === "true") {
+            setEditingOrder(null);
+            setIsDialogOpen(true);
+            setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.delete("new");
+                return next;
+            }, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
+
+    useEffect(() => {
+        supabase
+            .from("mdf_offcuts")
+            .select("color_name, thickness_mm, width_cm, height_cm, quantity, status")
+            .eq("status", "disponivel")
+            .gt("quantity", 0)
+            .limit(20)
+            .then(({ data }) => {
+                if (data && data.length > 0) {
+                    const totalQty = data.reduce((acc, r) => acc + (Number(r.quantity) || 1), 0);
+                    setAvailableOffcutsCount(totalQty);
+                    setAvailableOffcutsSample(
+                        data.slice(0, 4).map((r) => `${r.color_name} ${r.thickness_mm}mm (${r.width_cm}x${r.height_cm}cm)`)
+                    );
+                }
+            });
+    }, []);
     const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
     const [selectedGalleryOrder, setSelectedGalleryOrder] = useState<ServiceOrder | null>(null);
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
@@ -1018,6 +1052,36 @@ const OrdemServico = () => {
                 </Card>
             </div>
 
+            {/* Alerta Inteligente de Aproveitamento de Sobras & Retalhos de MDF no Plano de Corte */}
+            {availableOffcutsCount > 0 && orders.some(o => o.status === "Plano de corte") && (
+                <div className="px-5 py-3.5 rounded-3xl bg-amber-500/10 border border-amber-500/35 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-300 shrink-0">
+                            <Layers className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[10px] font-mono font-black uppercase tracking-widest text-amber-300">
+                                    🪵 Economia de Chapas • Plano de Corte Ativo
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-200 border border-amber-500/30">
+                                    {availableOffcutsCount} retalhos disponíveis
+                                </span>
+                            </div>
+                            <p className="text-xs text-white/85 mt-0.5">
+                                Há OS em <strong>Plano de Corte</strong> e você possui sobras catalogadas no estoque ({availableOffcutsSample.join(" • ")}).
+                            </p>
+                        </div>
+                    </div>
+                    <Link
+                        to="/admin/estoque"
+                        className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-display font-black uppercase text-[10px] tracking-wider shrink-0 text-center transition-all"
+                    >
+                        Consultar Retalhos MDF
+                    </Link>
+                </div>
+            )}
+
             {/* Radar de Prejuízo & Margem */}
             {isAdmin && (
                 <div className="p-5 rounded-3xl executive-card border-metallic shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1641,6 +1705,49 @@ const SortableServiceOrderCard = ({
                                     );
                                 })()}
 
+                                {/* Termômetro Duplo da Obra: 1. Prazo/Custo Fabril (Dias Orçados vs Horas Reais) | 2. Margem de Material */}
+                                {(() => {
+                                    const estimatedDays = Math.max(1, Number(order.daysEstimated) || 1);
+                                    const totalLoggedHours = (order.laborLogs || []).reduce((acc, l) => acc + (Number(l.hours) || 0), 0);
+                                    const realDaysFromHours = totalLoggedHours > 0 ? Math.round((totalLoggedHours / 8.8) * 10) / 10 : 0;
+                                    const openDateMs = order.openDate ? new Date(order.openDate).getTime() : Date.now();
+                                    const endDateMs = order.completionDate ? new Date(order.completionDate).getTime() : Date.now();
+                                    const elapsedCalendarDays = Math.max(1, Math.round((endDateMs - openDateMs) / (1000 * 60 * 60 * 24)));
+                                    const isTimeWarning = realDaysFromHours > estimatedDays;
+                                    const spentCost = Number(order.spentCost || 0);
+                                    const costRatio = Number(order.costRatio || 0);
+
+                                    return (
+                                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                            <div className="px-3 py-2 rounded-xl bg-black/30 border border-white/[0.07] flex items-center justify-between text-[10px] font-mono">
+                                                <span className="text-muted-foreground flex items-center gap-1.5">
+                                                    <Clock className="h-3 w-3 text-amber-400" />
+                                                    Tempo Fábrica:
+                                                </span>
+                                                <span className={cn("font-bold", isTimeWarning ? "text-rose-400" : "text-amber-200")}>
+                                                    Orçado: {estimatedDays}d • {totalLoggedHours > 0 ? `Apontado: ${totalLoggedHours}h (~${realDaysFromHours}d)` : `Em curso: ${elapsedCalendarDays}d`}
+                                                </span>
+                                            </div>
+
+                                            <div className="px-3 py-2 rounded-xl bg-black/30 border border-white/[0.07] flex items-center justify-between text-[10px] font-mono">
+                                                <span className="text-muted-foreground flex items-center gap-1.5">
+                                                    <DollarSign className="h-3 w-3 text-emerald-400" />
+                                                    Insumos Obra:
+                                                </span>
+                                                <span className={cn(
+                                                    "font-bold",
+                                                    order.marginStatus === "danger" ? "text-rose-400" :
+                                                    order.marginStatus === "warning" ? "text-amber-400" : "text-emerald-400"
+                                                )}>
+                                                    {spentCost > 0
+                                                        ? `R$ ${spentCost.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${costRatio}% do contrato)`
+                                                        : "Sem notas rateadas"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
                                 {/* Lista de Ambientes e seu progresso */}
                                 {environmentProgress.length > 0 && (
                                     <div className="mt-4 pt-3 border-t border-white/5 space-y-2.5">
@@ -1688,6 +1795,66 @@ const SortableServiceOrderCard = ({
                                 >
                                     <Camera className="h-3.5 w-3.5 text-amber-400" />
                                     <span>{(order.attachments?.length || 0) > 0 ? `${order.attachments?.length} fotos` : 'Medidas'}</span>
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const progress = getStatusProgress(order.status, order.id);
+                                        const w = window.open("", "_blank");
+                                        if (!w) {
+                                            toast.error("Permita pop-ups para gerar o Card Visual do Cliente.");
+                                            return;
+                                        }
+                                        const stagesHtml = [
+                                            { label: "1. Plano de Corte", threshold: 25 },
+                                            { label: "2. Fitagem & Usinagem", threshold: 35 },
+                                            { label: "3. Pré-Montagem Fabril", threshold: 55 },
+                                            { label: "4. Acabamento & Embalagem", threshold: 75 },
+                                            { label: "5. Entrega & Instalação", threshold: 95 },
+                                        ]
+                                            .map((st) => {
+                                                const done = order.status === "Entregue e Finalizado" || progress >= st.threshold;
+                                                return `<div style="flex:1;padding:12px;border-radius:12px;background:${done ? "#fef3c7" : "#f1f5f9"};border:2px solid ${done ? "#d97706" : "#cbd5e1"};text-align:center;">
+                                                    <div style="font-size:18px;margin-bottom:4px;">${done ? "✅" : "⏳"}</div>
+                                                    <div style="font-size:11px;font-weight:800;color:${done ? "#92400e" : "#64748b"};text-transform:uppercase;">${st.label}</div>
+                                                </div>`;
+                                            })
+                                            .join("");
+
+                                        w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Status do Projeto - ${order.client}</title>
+                                        <style>body{font-family:'Segoe UI',system-ui,sans-serif;background:#1c1108;color:#fff;margin:0;padding:30px;display:flex;justify-content:center;}
+                                        .card{max-width:760px;width:100%;background:#fff;color:#0f172a;border-radius:24px;padding:32px;box-shadow:0 25px 50px rgba(0,0,0,0.5);border-top:8px solid #d97706;}
+                                        @media print{body{background:#fff;padding:0;}.no-print{display:none!important;}.card{box-shadow:none;}}</style></head>
+                                        <body><div class="card">
+                                            <div class="no-print" style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:16px;">
+                                                <button onclick="window.print()" style="background:#d97706;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:800;cursor:pointer;">Imprimir / Salvar PDF para WhatsApp</button>
+                                            </div>
+                                            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f1f5f9;padding-bottom:16px;margin-bottom:20px;">
+                                                <div>
+                                                    <div style="font-size:11px;font-weight:800;color:#d97706;text-transform:uppercase;letter-spacing:1.5px;">BJL Planejados • Acompanhamento de Produção</div>
+                                                    <h1 style="margin:4px 0 0;font-size:24px;font-weight:900;">${order.client}</h1>
+                                                    <p style="margin:4px 0 0;font-size:13px;color:#64748b;font-weight:600;">Ordem de Serviço: ${order.ticketNumber} • Ambiente(s): ${order.action || "Móveis Sob Medida"}</p>
+                                                </div>
+                                                <div style="text-align:right;">
+                                                    <span style="display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:900;text-transform:uppercase;">Etapa Atual: ${order.status}</span>
+                                                    <div style="font-size:11px;color:#64748b;margin-top:6px;">Previsão: ${new Date(order.forecastDate).toLocaleDateString("pt-BR")}</div>
+                                                </div>
+                                            </div>
+                                            <h3 style="font-size:12px;text-transform:uppercase;color:#475569;letter-spacing:1px;margin-bottom:12px;">Linha do Tempo da Marcenaria (${progress}% Concluído)</h3>
+                                            <div style="display:flex;gap:10px;margin-bottom:24px;">${stagesHtml}</div>
+                                            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px;font-size:12px;color:#334155;line-height:1.5;">
+                                                <strong>Compromisso de Qualidade BJL Planejados:</strong> Seu projeto está sendo executado com rigor milimétrico em nossa oficina. Qualquer dúvida, nossa equipe está à disposição!
+                                            </div>
+                                        </div></body></html>`);
+                                        w.document.close();
+                                    }}
+                                    className="text-[10px] font-black uppercase rounded-xl h-8 border-amber-500/35 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 gap-1"
+                                    title="Gerar Card / PDF Visual da Linha do Tempo da Obra para enviar ao cliente no WhatsApp"
+                                >
+                                    <span>📄 Status Cliente</span>
                                 </Button>
 
                                 {order.clientPhone && (

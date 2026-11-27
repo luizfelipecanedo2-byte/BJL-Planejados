@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { CSS } from '@dnd-kit/utilities';
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { format, isToday, isTomorrow, addDays, startOfWeek, endOfWeek, isWithinInterval, parseISO } from "date-fns";
+import { format, isToday, isTomorrow, addDays, startOfWeek, endOfWeek, isWithinInterval, parseISO, differenceInCalendarDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -105,6 +106,7 @@ const checkTaskVisibility = (dueDate: string, status: string, activeView: string
 };
 
 const Tarefas = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
     const { activeCollaborators } = useCollaborators();
     const collaboratorNames = useMemo(() => activeCollaborators.map(c => c.name), [activeCollaborators]);
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -280,6 +282,18 @@ const Tarefas = () => {
         fetchInitialData();
     }, []);
 
+    useEffect(() => {
+        if (searchParams.get("new") === "true") {
+            resetForm();
+            setIsDialogOpen(true);
+            setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.delete("new");
+                return next;
+            }, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
+
     const fetchInitialData = async () => {
         setLoading(true);
         try {
@@ -341,30 +355,8 @@ const Tarefas = () => {
         // Também busca as ordens de serviço para manter prazos atualizados
         fetchServiceOrders();
 
-        const today = format(new Date(), "yyyy-MM-dd");
-        const tasksToUpdate = (data || []).filter(t => t.status === 'pending' && t.due_date < today);
-        
-        if (tasksToUpdate.length > 0) {
-            // Fire single background update
-            supabase.from('tasks')
-                .update({ due_date: today })
-                .eq('status', 'pending')
-                .lt('due_date', today)
-                .then(({ error: err }) => {
-                    if (err) console.error("Error updating overdue tasks:", err);
-                });
-            
-            // Optimistically update local data
-            const updatedData = (data || []).map(t => {
-                if (t.status === 'pending' && t.due_date < today) {
-                    return { ...t, due_date: today };
-                }
-                return t;
-            });
-            setTasks(updatedData);
-        } else {
-            setTasks(data || []);
-        }
+        // Preserva a data original de vencimento (due_date) para exibir há quantos dias uma tarefa está atrasada!
+        setTasks(data || []);
     };
 
     const resetForm = () => {
@@ -384,6 +376,11 @@ const Tarefas = () => {
         setEditingTask(task);
         setNewTitle(task.title);
         const parsed = parseTaskDescription(task.description);
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const isTaskOverdue = task.status === "pending" && Boolean(task.due_date) && task.due_date < todayStr;
+    const overdueDaysCount = isTaskOverdue
+        ? Math.max(1, differenceInCalendarDays(new Date(), parseISO(task.due_date)))
+        : 0;
         setNewDescription(parsed.description || "");
         
         // Split collaborators if they contain " e "
@@ -552,6 +549,11 @@ const Tarefas = () => {
 
         nonCompletedTasks.forEach(task => {
             const parsed = parseTaskDescription(task.description);
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const isTaskOverdue = task.status === "pending" && Boolean(task.due_date) && task.due_date < todayStr;
+    const overdueDaysCount = isTaskOverdue
+        ? Math.max(1, differenceInCalendarDays(new Date(), parseISO(task.due_date)))
+        : 0;
             const collab = parsed.collaborator;
             if (collab) {
                 const colabs = collab.split(/\s+e\s+/).map(c => c.trim());
@@ -793,6 +795,11 @@ const Tarefas = () => {
 
                 collabTasks.forEach(task => {
                     const parsed = parseTaskDescription(task.description);
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const isTaskOverdue = task.status === "pending" && Boolean(task.due_date) && task.due_date < todayStr;
+    const overdueDaysCount = isTaskOverdue
+        ? Math.max(1, differenceInCalendarDays(new Date(), parseISO(task.due_date)))
+        : 0;
                     const isCompleted = task.status === 'completed';
                     const priorityClass = task.priority === 'high' ? 'priority-high' : task.priority === 'normal' ? 'priority-normal' : 'priority-low';
                     const priorityLabel = task.priority === 'high' ? 'Alta' : task.priority === 'normal' ? 'Normal' : 'Baixa';
@@ -1921,6 +1928,11 @@ const SortableTaskItem = ({ task, isAdmin, onEdit, onToggleStatus, onDelete }: S
     };
 
     const parsed = parseTaskDescription(task.description);
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const isTaskOverdue = task.status === "pending" && Boolean(task.due_date) && task.due_date < todayStr;
+    const overdueDaysCount = isTaskOverdue
+        ? Math.max(1, differenceInCalendarDays(new Date(), parseISO(task.due_date)))
+        : 0;
 
     return (
         <div 
@@ -1946,6 +1958,12 @@ const SortableTaskItem = ({ task, isAdmin, onEdit, onToggleStatus, onDelete }: S
                         task.priority === 'normal' ? 'bg-amber-500' : 'bg-emerald-500'
                     )} />
                     <p className="text-[13px] font-bold text-white/90 leading-tight break-words font-['Outfit']">{task.title}</p>
+                    {isTaskOverdue && (
+                        <span className="text-[8px] font-black uppercase tracking-wider text-rose-300 bg-rose-500/20 border border-rose-500/40 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 animate-pulse">
+                            <AlertCircle className="h-2.5 w-2.5 text-rose-400" />
+                            Atrasada há {overdueDaysCount}d ({format(parseISO(task.due_date), "dd/MM")})
+                        </span>
+                    )}
                     {parsed.collaborator && (
                         <span className="text-[8px] font-black uppercase tracking-widest text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
                             <UserIcon className="h-2 w-2 text-primary/70" />

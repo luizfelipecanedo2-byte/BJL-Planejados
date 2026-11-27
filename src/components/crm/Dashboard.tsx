@@ -39,7 +39,10 @@ import {
   Pie,
   Cell,
   AreaChart,
-  Area
+  Area,
+  ReferenceLine,
+  ComposedChart,
+  Line,
 } from "recharts";
 import { CHANNEL_LABELS, SaleChannel } from "@/types/sale";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -81,27 +84,55 @@ interface Task {
   due_date?: string;
 }
 
-const MiniSparkline = ({ color = "#f59e0b", trend = "up" }: { color?: string; trend?: "up" | "down" | "neutral" }) => {
-  const points = trend === "up" 
-    ? "0,25 15,22 30,24 45,18 60,20 75,12 90,14 105,6 120,4"
-    : trend === "down"
-    ? "0,6 15,8 30,14 45,12 60,18 75,16 90,22 105,20 120,26"
-    : "0,16 15,14 30,18 45,15 60,16 75,14 90,17 105,15 120,16";
+const MiniSparkline = ({
+  color = "#f59e0b",
+  trend = "up",
+  values,
+}: {
+  color?: string;
+  trend?: "up" | "down" | "neutral";
+  values?: number[];
+}) => {
+  const { points, areaPoints } = useMemo(() => {
+    if (values && values.length >= 2 && values.some((v) => v > 0)) {
+      const maxVal = Math.max(...values, 1);
+      const minVal = Math.min(...values, 0);
+      const span = Math.max(maxVal - minVal, 1);
+      const stepX = 120 / (values.length - 1);
+      const coords = values.map((v, idx) => {
+        const x = Math.round(idx * stepX * 10) / 10;
+        const normalized = (v - minVal) / span;
+        const y = Math.round((26 - normalized * 22) * 10) / 10;
+        return `${x},${y}`;
+      });
+      const pts = coords.join(" ");
+      return {
+        points: pts,
+        areaPoints: `${pts} 120,30 0,30`,
+      };
+    }
 
-  const areaPoints = trend === "up"
-    ? "0,25 15,22 30,24 45,18 60,20 75,12 90,14 105,6 120,4 120,30 0,30"
-    : trend === "down"
-    ? "0,6 15,8 30,14 45,12 60,18 75,16 90,22 105,20 120,26 120,30 0,30"
-    : "0,16 15,14 30,18 45,15 60,16 75,14 90,17 105,15 120,16 120,30 0,30";
+    const fallbackPoints =
+      trend === "up"
+        ? "0,25 15,22 30,24 45,18 60,20 75,12 90,14 105,6 120,4"
+        : trend === "down"
+        ? "0,6 15,8 30,14 45,12 60,18 75,16 90,22 105,20 120,26"
+        : "0,16 15,14 30,18 45,15 60,16 75,14 90,17 105,15 120,16";
 
-  const gradId = `spark-grad-${color.replace(/[^a-zA-Z0-9]/g, '')}`;
+    return {
+      points: fallbackPoints,
+      areaPoints: `${fallbackPoints} 120,30 0,30`,
+    };
+  }, [values, trend]);
+
+  const gradId = `spark-grad-${color.replace(/[^a-zA-Z0-9]/g, "")}`;
 
   return (
-    <div className="w-full h-7 overflow-hidden mt-1 select-none pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity duration-300">
+    <div className="w-full h-7 overflow-hidden mt-1 select-none pointer-events-none opacity-65 group-hover:opacity-100 transition-opacity duration-300">
       <svg viewBox="0 0 120 30" className="w-full h-full" preserveAspectRatio="none">
         <defs>
           <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+            <stop offset="0%" stopColor={color} stopOpacity="0.4" />
             <stop offset="100%" stopColor={color} stopOpacity="0.0" />
           </linearGradient>
         </defs>
@@ -109,7 +140,7 @@ const MiniSparkline = ({ color = "#f59e0b", trend = "up" }: { color?: string; tr
         <polyline
           fill="none"
           stroke={color}
-          strokeWidth="2"
+          strokeWidth="2.2"
           strokeLinecap="round"
           strokeLinejoin="round"
           points={points}
@@ -134,6 +165,9 @@ const Dashboard = ({ sales }: DashboardProps) => {
   });
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [goalInput, setGoalInput] = useState(salesGoal.toString());
+  const [salesChartMode, setSalesChartMode] = useState<"area" | "bars">("area");
+  const [salesSeriesFilter, setSalesSeriesFilter] = useState<"all" | "focus" | "closed">("focus");
+  const [envChartMetric, setEnvChartMetric] = useState<"revenue" | "ticket" | "count">("revenue");
 
   const handleSaveGoal = () => {
     const newGoal = parseFloat(goalInput);
@@ -369,6 +403,146 @@ const Dashboard = ({ sales }: DashboardProps) => {
     const channelData = getChannelData(revenueSales, true);
     const allChannelData = getChannelData(budgetSales, false);
 
+    // Cálculo REAL de crescimento vs período anterior (Mês anterior ou Ano anterior)
+    const previousPeriodRevenue = (() => {
+      const yr = parseInt(targetYear);
+      let prevYr = yr;
+      let prevMo: number | undefined = undefined;
+      if (targetMonth !== undefined) {
+        if (targetMonth === 0) {
+          prevYr = yr - 1;
+          prevMo = 11;
+        } else {
+          prevMo = targetMonth - 1;
+        }
+      } else {
+        prevYr = yr - 1;
+      }
+      return sales
+        .filter((s) => {
+          if (s.status !== "fechado" && s.status !== "pos_venda") return false;
+          const d = parseDateOnly(s.closedDate) || parseDateOnly(s.contactDate) || parseDateOnly(s.createdAt);
+          if (!d) return false;
+          return d.getFullYear() === prevYr && (prevMo === undefined || d.getMonth() === prevMo);
+        })
+        .reduce((sum, s) => sum + (s.totalValue || 0), 0);
+    })();
+
+    const growthVsPreviousPct =
+      previousPeriodRevenue > 0
+        ? Math.round(((totalRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 1000) / 10
+        : totalRevenue > 0
+        ? 100
+        : 0;
+
+    // Sparklines REAIS extraídos dos pontos do gráfico do período
+    const closedSparkValues = chartData.map((d) => Number(d.Fechado || 0) + Number(d["Pós Venda"] || 0));
+    const budgetSparkValues = chartData.map(
+      (d) =>
+        Number(d.Fechado || 0) +
+        Number(d["Em Andamento"] || 0) +
+        Number(d["Pós Venda"] || 0) +
+        Number(d.Congelado || 0) +
+        Number(d["Não Fechou"] || 0)
+    );
+    const lostSparkValues = chartData.map((d) => Number(d.Congelado || 0) + Number(d["Não Fechou"] || 0));
+
+    // Classificação Moveleira por Ambiente Planejado (Cozinha, Closet, Quarto, Sala/Painel, Gourmet, Banheiro, Escritório)
+    const environmentCategories = [
+      { key: "cozinha", label: "Cozinha Planejada", icon: "🍳", woodTone: "#f59e0b", grain: "Freijó & Grafite", keywords: ["cozinha", "armario cozinha", "armário cozinha", "ilha", "despensa"] },
+      { key: "closet", label: "Closet & Roupeiros", icon: "👔", woodTone: "#d97706", grain: "Nogueira & Linho", keywords: ["closet", "roupeiro", "guarda-roupa", "guarda roupa", "armario quarto"] },
+      { key: "quarto", label: "Dormitório / Suíte", icon: "🛏️", woodTone: "#eab308", grain: "Carvalho & Branco", keywords: ["quarto", "dormit", "suíte", "suite", "cabeceira", "solteiro", "casal", "infantil"] },
+      { key: "gourmet", label: "Área Gourmet & Bar", icon: "🥩", woodTone: "#ea580c", grain: "Imbuia & Preto", keywords: ["gourmet", "churrasqueira", "varanda", "adega", "bar"] },
+      { key: "sala", label: "Sala & Painel Ripado", icon: "📺", woodTone: "#10b981", grain: "Cumaru Ripado", keywords: ["sala", "painel", "rack", "home", "tv", "ripado", "cristaleira"] },
+      { key: "banheiro", label: "Banheiros & Lavanderia", icon: "🚿", woodTone: "#06b6d4", grain: "MDF Ultra Naval", keywords: ["banheiro", "lavabo", "gabinete", "lavanderia", "area de servico", "área de serviço"] },
+      { key: "escritorio", label: "Escritório / Comercial", icon: "💼", woodTone: "#8b5cf6", grain: "Louro Freijó", keywords: ["escritorio", "escritório", "comercial", "loja", "consultorio", "consultório", "recepção", "mesa"] },
+    ];
+
+    const envMap = new Map<
+      string,
+      {
+        key: string;
+        name: string;
+        icon: string;
+        woodTone: string;
+        grain: string;
+        closedRevenue: number;
+        pipelineRevenue: number;
+        totalRevenue: number;
+        totalCount: number;
+        closedCount: number;
+      }
+    >();
+
+    environmentCategories.forEach((cat) => {
+      envMap.set(cat.key, {
+        key: cat.key,
+        name: cat.label,
+        icon: cat.icon,
+        woodTone: cat.woodTone,
+        grain: cat.grain,
+        closedRevenue: 0,
+        pipelineRevenue: 0,
+        totalRevenue: 0,
+        totalCount: 0,
+        closedCount: 0,
+      });
+    });
+
+    budgetSales.forEach((s) => {
+      const text = `${s.product || ""} ${s.projectName || ""} ${s.notes || ""}`.toLowerCase();
+      const isClosed = s.status === "fechado" || s.status === "pos_venda";
+      const isLost = s.status === "nao_fechou" || s.status === "congelado";
+      const val = Number(s.totalValue || 0);
+
+      let matchedKey = "";
+      for (const cat of environmentCategories) {
+        if (cat.keywords.some((kw) => text.includes(kw))) {
+          matchedKey = cat.key;
+          break;
+        }
+      }
+      if (!matchedKey) {
+        // Projeto completo ou múltiplos ambientes entram em Cozinha/Closet ou Dormitório proporcionalmente
+        matchedKey = text.includes("completo") || text.includes("casa") || text.includes("apto") ? "cozinha" : "quarto";
+      }
+
+      const item = envMap.get(matchedKey);
+      if (item) {
+        item.totalCount += 1;
+        item.totalRevenue += val;
+        if (isClosed) {
+          item.closedCount += 1;
+          item.closedRevenue += val;
+        } else if (!isLost) {
+          item.pipelineRevenue += val;
+        }
+      }
+    });
+
+    const environmentWoodData = Array.from(envMap.values())
+      .map((item) => {
+        const activeOrClosedVal = item.closedRevenue > 0 ? item.closedRevenue : item.totalRevenue;
+        const avgTicket = item.totalCount > 0 ? Math.round(item.totalRevenue / item.totalCount) : 0;
+        const conversion = item.totalCount > 0 ? Math.round((item.closedCount / item.totalCount) * 100) : 0;
+        return {
+          ...item,
+          displayRevenue: activeOrClosedVal,
+          Fechado: item.closedRevenue,
+          "Em Orçamento": item.pipelineRevenue,
+          "Ticket Médio": avgTicket,
+          "Projetos": item.totalCount,
+          conversion,
+        };
+      })
+      .filter((item) => item.totalCount > 0 || item.totalRevenue > 0)
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+    const maxEnvRevenue = Math.max(...environmentWoodData.map((e) => e.totalRevenue), 1);
+    const chartTargetReference = isDaily
+      ? Math.round(salesGoal / Math.max(chartData.length, 28))
+      : salesGoal;
+
     const today = new Date();
     const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
     const currentDay = Math.max(today.getDate(), 1);
@@ -484,8 +658,16 @@ const Dashboard = ({ sales }: DashboardProps) => {
                   </div>
                   <div>
                     <h3 className="text-xs font-black uppercase tracking-wider text-amber-200/80">Receita Faturada & Móveis Contratados</h3>
-                    <p className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 mt-0.5 font-mono">
-                      <TrendingUp className="h-3 w-3" /> +18.2% vs período anterior
+                    <p className={cn(
+                      "text-[10px] font-semibold flex items-center gap-1 mt-0.5 font-mono",
+                      growthVsPreviousPct >= 0 ? "text-emerald-400" : "text-rose-400"
+                    )}>
+                      {growthVsPreviousPct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                      {previousPeriodRevenue > 0
+                        ? `${growthVsPreviousPct >= 0 ? "+" : ""}${growthVsPreviousPct}% vs período anterior (${formatCurrency(previousPeriodRevenue)})`
+                        : totalRevenue > 0
+                        ? "Faturamento ativo no período selecionado"
+                        : "Aguardando fechamentos no período"}
                     </p>
                   </div>
                 </div>
@@ -506,7 +688,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
                 </div>
               </div>
 
-              <MiniSparkline color="#f59e0b" trend="up" />
+              <MiniSparkline color="#f59e0b" trend={growthVsPreviousPct >= 0 ? "up" : "down"} values={closedSparkValues} />
             </div>
           </div>
 
@@ -543,7 +725,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
               </div>
             </div>
 
-            <MiniSparkline color="#eab308" trend="up" />
+            <MiniSparkline color="#eab308" trend="up" values={budgetSparkValues} />
           </div>
 
           {/* SATELLITE 2: Ticket Médio Fechado - Ilustração Plaina Manual & Acabamento */}
@@ -567,7 +749,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
               </div>
             </div>
 
-            <MiniSparkline color="#f59e0b" trend="up" />
+            <MiniSparkline color="#f59e0b" trend="up" values={closedSparkValues} />
           </div>
 
           {/* SATELLITE 3: Taxa de Conversão - Ilustração Parafusadeira Profissional */}
@@ -617,7 +799,7 @@ const Dashboard = ({ sales }: DashboardProps) => {
               </div>
             </div>
 
-            <MiniSparkline color="#f43f5e" trend="down" />
+            <MiniSparkline color="#f43f5e" trend="down" values={lostSparkValues} />
           </div>
 
           {/* SATELLITE 5: Tarefas Operacionais da Fábrica (Spans full width) com Formão, Malho, Parafusadeira e Serrote */}
@@ -711,78 +893,387 @@ const Dashboard = ({ sales }: DashboardProps) => {
           </div>
         </div>
 
-        <PremiumCard className="rounded-[2.5rem] luxury-shadow overflow-hidden group">
-          <div className="flex items-center justify-between mb-8">
+        {/* GRÁFICO 1: BANCADA DE DESEMPENHO COMERCIAL & CORTE DE METAS */}
+        <PremiumCard className="rounded-[2.5rem] luxury-shadow overflow-hidden group border border-amber-500/30">
+          {/* Régua Milimetrada de Marcenaria no Topo */}
+          <div className="flex items-center justify-between px-4 py-1.5 mb-5 rounded-xl bg-[#1e1209]/90 border border-amber-500/20 text-[9px] font-mono text-amber-300/60 select-none overflow-hidden">
+            <span>0mm</span>
+            <span>| 450mm</span>
+            <span>| 900mm</span>
+            <span className="text-amber-400 font-bold">⚡ GABARITO DE CORTE COMERCIAL ({titleSuffix})</span>
+            <span>| 1850mm</span>
+            <span>| 2750mm</span>
+          </div>
+
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
-               <div className="p-2 bg-primary/10 rounded-lg">
-                  <BarChart3 className="h-5 w-5 text-primary" />
-               </div>
-               <h3 className="text-sm font-bold text-luxury uppercase tracking-[0.3em] text-primary/80">
-                 Desempenho de Vendas ({titleSuffix})
-               </h3>
+              <div className="p-2.5 bg-amber-500/15 border border-amber-500/30 rounded-2xl text-amber-400">
+                <SpinningSawBlade size="sm" className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-luxury uppercase tracking-wider text-white">
+                  Bancada de Desempenho Comercial ({titleSuffix})
+                </h3>
+                <p className="text-[10px] font-mono text-muted-foreground">
+                  Linha laser de corte de meta: <strong className="text-amber-300">{formatCurrency(chartTargetReference)}</strong> {isDaily ? "/ dia" : "/ mês"}
+                </p>
+              </div>
+            </div>
+
+            {/* Seletores Interativos: Modo do Gráfico + Filtro de Etapas para não poluir */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1 bg-[#1e1209]/80 p-1 rounded-xl border border-amber-500/25">
+                <button
+                  type="button"
+                  onClick={() => setSalesSeriesFilter("focus")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase transition-all",
+                    salesSeriesFilter === "focus"
+                      ? "bg-amber-500 text-black shadow"
+                      : "text-amber-100/70 hover:text-white"
+                  )}
+                >
+                  Foco Fechamento
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSalesSeriesFilter("closed")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase transition-all",
+                    salesSeriesFilter === "closed"
+                      ? "bg-emerald-500 text-black shadow"
+                      : "text-amber-100/70 hover:text-white"
+                  )}
+                >
+                  Só Fechados
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSalesSeriesFilter("all")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase transition-all",
+                    salesSeriesFilter === "all"
+                      ? "bg-primary text-black shadow"
+                      : "text-amber-100/70 hover:text-white"
+                  )}
+                >
+                  Funil Completo (5)
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1 bg-[#1e1209]/80 p-1 rounded-xl border border-amber-500/25">
+                <button
+                  type="button"
+                  onClick={() => setSalesChartMode("area")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase transition-all",
+                    salesChartMode === "area"
+                      ? "bg-amber-400/20 text-amber-300 border border-amber-400/40"
+                      : "text-muted-foreground hover:text-white"
+                  )}
+                >
+                  🌊 Curvas Laser
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSalesChartMode("bars")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase transition-all",
+                    salesChartMode === "bars"
+                      ? "bg-amber-400/20 text-amber-300 border border-amber-400/40"
+                      : "text-muted-foreground hover:text-white"
+                  )}
+                >
+                  🪵 Tábuas MDF
+                </button>
+              </div>
             </div>
           </div>
+
           <ResponsiveContainer width="100%" height={350}>
-            <AreaChart data={chartData}>
-              <defs>
-                <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="6" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-                <linearGradient id="colorFechado" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.0}/>
-                </linearGradient>
-                <linearGradient id="colorAndamento" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.0}/>
-                </linearGradient>
-                <linearGradient id="colorCongelado" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--kanban-congelado))" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="hsl(var(--kanban-congelado))" stopOpacity={0.0}/>
-                </linearGradient>
-                <linearGradient id="colorPosVenda" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--kanban-pos_venda))" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="hsl(var(--kanban-pos_venda))" stopOpacity={0.0}/>
-                </linearGradient>
-                <linearGradient id="colorNaoFechou" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--kanban-nao_fechou))" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="hsl(var(--kanban-nao_fechou))" stopOpacity={0.0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="white" strokeOpacity={0.05} vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} stroke="transparent" />
-              <YAxis
-                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                stroke="transparent"
-                tickFormatter={(v) =>
-                  v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toString()
-                }
-              />
-              <Tooltip
-                formatter={(value: number) => formatCurrency(value)}
-                contentStyle={{
-                  backgroundColor: "rgba(20, 20, 20, 0.9)",
-                  backdropFilter: "blur(12px)",
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
-                  borderRadius: "16px",
-                  fontSize: 12,
-                  boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.5)"
-                }}
-                cursor={{ stroke: 'white', strokeWidth: 1, strokeDasharray: '3 3' }}
-              />
-              <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
-              <Area type="monotone" dataKey="Fechado" stroke="hsl(var(--kanban-fechado))" strokeWidth={2.5} fillOpacity={1} fill="url(#colorFechado)" filter="url(#neon-glow)" />
-              <Area type="monotone" dataKey="Em Andamento" stroke="hsl(var(--primary))" strokeWidth={2.5} fillOpacity={1} fill="url(#colorAndamento)" filter="url(#neon-glow)" />
-              <Area type="monotone" dataKey="Pós Venda" stroke="hsl(var(--kanban-pos_venda))" strokeWidth={2} fillOpacity={1} fill="url(#colorPosVenda)" filter="url(#neon-glow)" />
-              <Area type="monotone" dataKey="Congelado" stroke="hsl(var(--kanban-congelado))" strokeWidth={1.5} fillOpacity={1} fill="url(#colorCongelado)" filter="url(#neon-glow)" />
-              <Area type="monotone" dataKey="Não Fechou" stroke="hsl(var(--kanban-nao_fechou))" strokeWidth={1.5} fillOpacity={1} fill="url(#colorNaoFechou)" filter="url(#neon-glow)" />
-            </AreaChart>
+            {salesChartMode === "area" ? (
+              <AreaChart data={chartData}>
+                <defs>
+                  <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="5" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  <linearGradient id="colorFechado" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.45} />
+                    <stop offset="95%" stopColor="hsl(var(--kanban-fechado))" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="colorAndamento" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.38} />
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="colorCongelado" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--kanban-congelado))" stopOpacity={0.28} />
+                    <stop offset="95%" stopColor="hsl(var(--kanban-congelado))" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="colorPosVenda" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--kanban-pos_venda))" stopOpacity={0.38} />
+                    <stop offset="95%" stopColor="hsl(var(--kanban-pos_venda))" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="colorNaoFechou" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--kanban-nao_fechou))" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="hsl(var(--kanban-nao_fechou))" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(251, 191, 36, 0.08)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} stroke="transparent" />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  stroke="transparent"
+                  tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toString())}
+                />
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{
+                    backgroundColor: "rgba(32, 19, 10, 0.95)",
+                    backdropFilter: "blur(12px)",
+                    border: "1px solid rgba(245, 158, 11, 0.35)",
+                    borderRadius: "16px",
+                    fontSize: 12,
+                    boxShadow: "0 12px 24px -4px rgba(0, 0, 0, 0.7)",
+                  }}
+                  cursor={{ stroke: "#f59e0b", strokeWidth: 1, strokeDasharray: "4 4" }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: "18px", fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.08em" }} />
+                <ReferenceLine
+                  y={chartTargetReference}
+                  stroke="#fbbf24"
+                  strokeDasharray="6 4"
+                  strokeWidth={1.5}
+                  label={{
+                    value: `⚡ Corte Meta (${formatCurrency(chartTargetReference)})`,
+                    position: "insideTopRight",
+                    fill: "#fcd34d",
+                    fontSize: 10,
+                    fontWeight: 800,
+                  }}
+                />
+                <Area type="monotone" dataKey="Fechado" stroke="hsl(var(--kanban-fechado))" strokeWidth={3} fillOpacity={1} fill="url(#colorFechado)" filter="url(#neon-glow)" />
+                {(salesSeriesFilter === "focus" || salesSeriesFilter === "all") && (
+                  <Area type="monotone" dataKey="Em Andamento" stroke="hsl(var(--primary))" strokeWidth={2.5} fillOpacity={1} fill="url(#colorAndamento)" filter="url(#neon-glow)" />
+                )}
+                <Area type="monotone" dataKey="Pós Venda" stroke="hsl(var(--kanban-pos_venda))" strokeWidth={2} fillOpacity={1} fill="url(#colorPosVenda)" />
+                {salesSeriesFilter === "all" && (
+                  <>
+                    <Area type="monotone" dataKey="Congelado" stroke="hsl(var(--kanban-congelado))" strokeWidth={1.5} fillOpacity={1} fill="url(#colorCongelado)" />
+                    <Area type="monotone" dataKey="Não Fechou" stroke="hsl(var(--kanban-nao_fechou))" strokeWidth={1.5} fillOpacity={1} fill="url(#colorNaoFechou)" />
+                  </>
+                )}
+              </AreaChart>
+            ) : (
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(251, 191, 36, 0.08)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} stroke="transparent" />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  stroke="transparent"
+                  tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toString())}
+                />
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{
+                    backgroundColor: "rgba(32, 19, 10, 0.95)",
+                    border: "1px solid rgba(245, 158, 11, 0.35)",
+                    borderRadius: "16px",
+                    fontSize: 12,
+                  }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: "18px", fontSize: "11px", fontWeight: "bold", textTransform: "uppercase" }} />
+                <ReferenceLine
+                  y={chartTargetReference}
+                  stroke="#fbbf24"
+                  strokeDasharray="6 4"
+                  strokeWidth={1.5}
+                />
+                <Bar dataKey="Fechado" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Pós Venda" stackId="a" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                {(salesSeriesFilter === "focus" || salesSeriesFilter === "all") && (
+                  <Bar dataKey="Em Andamento" stackId="b" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                )}
+                {salesSeriesFilter === "all" && (
+                  <>
+                    <Bar dataKey="Congelado" stackId="c" fill="#64748b" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Não Fechou" stackId="c" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                  </>
+                )}
+              </BarChart>
+            )}
           </ResponsiveContainer>
         </PremiumCard>
+
+        {/* NOVO GRÁFICO DE MARCENARIA: PLANO DE CORTE & RENTABILIDADE POR AMBIENTE MOVELEIRO */}
+        <div className="executive-card p-6 sm:p-8 rounded-[2.5rem] border-metallic relative overflow-hidden space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-amber-500/20 pb-5">
+            <div className="flex items-center gap-3.5">
+              <div className="p-3 rounded-2xl bg-amber-500/15 border border-amber-500/35 text-amber-400">
+                <AnimatedCabinet3D size="sm" className="w-7 h-7" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-black uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/35">
+                    🪵 DNA Moveleiro • Chapas & Ambientes
+                  </span>
+                  <span className="text-[10px] font-mono text-muted-foreground uppercase">{titleSuffix}</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-white tracking-tight mt-1">
+                  Mapa de Produção & Faturamento por Ambiente Planejado
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Descubra quais cômodos (Cozinha, Closet, Dormitório, Gourmet, Sala) trazem maior volume financeiro e ticket médio para a marcenaria
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 bg-[#1e1209]/85 p-1 rounded-xl border border-amber-500/30 self-start lg:self-auto">
+              <button
+                type="button"
+                onClick={() => setEnvChartMetric("revenue")}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase transition-all",
+                  envChartMetric === "revenue" ? "bg-amber-500 text-black shadow" : "text-amber-100/70 hover:text-white"
+                )}
+              >
+                💰 Volume (R$)
+              </button>
+              <button
+                type="button"
+                onClick={() => setEnvChartMetric("ticket")}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase transition-all",
+                  envChartMetric === "ticket" ? "bg-amber-500 text-black shadow" : "text-amber-100/70 hover:text-white"
+                )}
+              >
+                📐 Ticket Médio
+              </button>
+              <button
+                type="button"
+                onClick={() => setEnvChartMetric("count")}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase transition-all",
+                  envChartMetric === "count" ? "bg-amber-500 text-black shadow" : "text-amber-100/70 hover:text-white"
+                )}
+              >
+                📦 Nº de Ambientes
+              </button>
+            </div>
+          </div>
+
+          {environmentWoodData.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+              {/* Gráfico Visual de Barras Estilo Pranchas de MDF */}
+              <div className="lg:col-span-6 h-[310px] bg-[#1a0f07]/70 p-4 rounded-3xl border border-amber-500/20">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={environmentWoodData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(251, 191, 36, 0.08)" horizontal={false} />
+                    <XAxis
+                      type="number"
+                      tick={{ fontSize: 10, fill: "#d6c5b3" }}
+                      stroke="transparent"
+                      tickFormatter={(v) =>
+                        envChartMetric === "count"
+                          ? `${v}`
+                          : v >= 1000
+                          ? `R$ ${(v / 1000).toFixed(0)}k`
+                          : `R$ ${v}`
+                      }
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={135}
+                      tick={{ fontSize: 11, fill: "#fef3c7", fontWeight: 700 }}
+                      stroke="transparent"
+                    />
+                    <Tooltip
+                      formatter={(value: number, name: string) =>
+                        envChartMetric === "count" ? [`${value} projetos`, name] : [formatCurrency(value), name]
+                      }
+                      contentStyle={{
+                        backgroundColor: "rgba(32, 19, 10, 0.96)",
+                        border: "1px solid rgba(245, 158, 11, 0.4)",
+                        borderRadius: "14px",
+                        fontSize: 12,
+                      }}
+                    />
+                    {envChartMetric === "revenue" ? (
+                      <>
+                        <Bar dataKey="Fechado" stackId="env" fill="#10b981" radius={[0, 4, 4, 0]} barSize={22} />
+                        <Bar dataKey="Em Orçamento" stackId="env" fill="#f59e0b" radius={[0, 6, 6, 0]} barSize={22} />
+                      </>
+                    ) : envChartMetric === "ticket" ? (
+                      <Bar dataKey="Ticket Médio" fill="#f59e0b" radius={[0, 6, 6, 0]} barSize={22} />
+                    ) : (
+                      <Bar dataKey="Projetos" fill="#eab308" radius={[0, 6, 6, 0]} barSize={22} />
+                    )}
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Pranchas de Marcenaria Detalhadas com Acabamento MDF e Escala */}
+              <div className="lg:col-span-6 space-y-3">
+                {environmentWoodData.slice(0, 5).map((env) => {
+                  const widthPct = Math.max(8, Math.round((env.totalRevenue / maxEnvRevenue) * 100));
+                  return (
+                    <div
+                      key={env.key}
+                      className="p-3.5 rounded-2xl bg-[#24150a]/85 border border-amber-500/25 hover:border-amber-400/60 transition-all space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-lg">{env.icon}</span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black uppercase tracking-tight text-white truncate">
+                                {env.name}
+                              </span>
+                              <span className="text-[9px] font-mono px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/25 hidden sm:inline-block">
+                                Padrão: {env.grain}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono text-muted-foreground block">
+                              {env.totalCount} {env.totalCount === 1 ? "projeto" : "projetos"} ({env.closedCount} fechados • {env.conversion}% conv.)
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-right font-mono shrink-0">
+                          <span className="text-xs sm:text-sm font-black text-amber-400 block">
+                            {formatCurrency(env.totalRevenue)}
+                          </span>
+                          <span className="text-[9px] text-emerald-400 font-bold">
+                            Ticket: {formatCurrency(env["Ticket Médio"])}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Tábua de Madeira com Veios e Linha de Corte */}
+                      <div className="w-full h-3 rounded-lg bg-black/50 border border-amber-500/20 overflow-hidden relative p-0.5">
+                        <div
+                          className="h-full rounded-md transition-all duration-700 relative"
+                          style={{
+                            width: `${widthPct}%`,
+                            background: `linear-gradient(90deg, #92400e 0%, ${env.woodTone} 70%, #fde68a 100%)`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="py-10 text-center text-xs font-mono text-muted-foreground uppercase tracking-widest border border-dashed border-amber-500/20 rounded-2xl">
+              Cadastre negócios com o nome do ambiente (Cozinha, Closet, Quarto, Gourmet) para visualizar o plano de corte comercial.
+            </div>
+          )}
+        </div>
 
         {/* BI 360°: Funil de Conversão, Velocidade, Forecast Ponderado, Perdas e Parcerias */}
         <ExecutiveBIAnalytics

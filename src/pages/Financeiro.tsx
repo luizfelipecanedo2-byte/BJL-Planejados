@@ -112,6 +112,15 @@ const Financeiro = () => {
         next.delete('overdue');
         return next;
       }, { replace: true });
+    } else if (searchParams.get('new') === 'true') {
+      setEditingTransaction(null);
+      setDialogInitialType("expense");
+      setIsDialogOpen(true);
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.delete('new');
+        return next;
+      }, { replace: true });
     } else if (sessionStorage.getItem("bjl_launch_invoice_id")) {
       setActiveTab("notas_fiscais");
     }

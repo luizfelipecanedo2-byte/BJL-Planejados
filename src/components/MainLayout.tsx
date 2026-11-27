@@ -373,12 +373,8 @@ const MainLayout = () => {
         themes.forEach(t => document.documentElement.classList.remove(t));
         document.documentElement.classList.add(currentTheme);
         
-        // Add or remove the 'dark' class to enable Tailwind's dark: variant classes
-        if (currentTheme === "theme-emerald") {
-            document.documentElement.classList.remove("dark");
-        } else {
-            document.documentElement.classList.add("dark");
-        }
+        // Mantém a classe 'dark' ativa em todos os temas para garantir contraste perfeito de textos e cards
+        document.documentElement.classList.add("dark");
         
         localStorage.setItem("appTheme", currentTheme);
     }, [currentTheme]);
@@ -851,30 +847,34 @@ const MainLayout = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-60 p-2 bg-[#0d0d12]/95 backdrop-blur-2xl border border-white/10 text-white rounded-2xl shadow-2xl z-50">
                                 <DropdownMenuLabel className="text-[9px] font-mono font-bold text-muted-foreground uppercase tracking-widest px-2.5 py-1.5">
-                                    Acesso Instantâneo
+                                    Criação Instantânea (1 Clique)
                                 </DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => navigate("/admin")} className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-primary/15 hover:text-primary text-xs font-semibold">
+                                <DropdownMenuItem onClick={() => navigate("/admin?new=true")} className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-primary/15 hover:text-primary text-xs font-semibold">
                                     <TrendingUp className="h-4 w-4 text-primary" />
-                                    <span>Funil Comercial & Leads</span>
+                                    <span>Novo Negócio / Lead no CRM</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => navigate("/admin/orcamento")} className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-amber-500/15 hover:text-amber-400 text-xs font-semibold">
+                                <DropdownMenuItem onClick={() => navigate("/admin/orcamento?new=true")} className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-amber-500/15 hover:text-amber-400 text-xs font-semibold">
                                     <Calculator className="h-4 w-4 text-amber-400" />
                                     <span>Novo Orçamento com IA</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => navigate("/admin/ordem-servico")} className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-cyan-500/15 hover:text-cyan-400 text-xs font-semibold">
+                                <DropdownMenuItem onClick={() => navigate("/admin/medicao")} className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-amber-500/15 hover:text-amber-300 text-xs font-semibold">
+                                    <Ruler className="h-4 w-4 text-amber-300" />
+                                    <span>Nova Medição Tablet IA</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => navigate("/admin/ordem-servico?new=true")} className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-cyan-500/15 hover:text-cyan-400 text-xs font-semibold">
                                     <ClipboardList className="h-4 w-4 text-cyan-400" />
                                     <span>Nova Ordem de Serviço</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => navigate("/admin/tarefas")} className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-emerald-500/15 hover:text-emerald-400 text-xs font-semibold">
+                                <DropdownMenuItem onClick={() => navigate("/admin/tarefas?new=true")} className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-emerald-500/15 hover:text-emerald-400 text-xs font-semibold">
                                     <CheckSquare className="h-4 w-4 text-emerald-400" />
                                     <span>Nova Tarefa na Fábrica</span>
                                 </DropdownMenuItem>
                                 {role === 'admin' && (
                                     <>
                                         <DropdownMenuSeparator className="bg-white/10 my-1" />
-                                        <DropdownMenuItem onClick={() => navigate("/admin/financeiro")} className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-purple-500/15 hover:text-purple-400 text-xs font-semibold">
+                                        <DropdownMenuItem onClick={() => navigate("/admin/financeiro?new=true")} className="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-purple-500/15 hover:text-purple-400 text-xs font-semibold">
                                             <DollarSign className="h-4 w-4 text-purple-400" />
-                                            <span>Lançamento Financeiro</span>
+                                            <span>Novo Lançamento Financeiro</span>
                                         </DropdownMenuItem>
                                     </>
                                 )}
@@ -952,74 +952,55 @@ const MainLayout = () => {
                         isHorizontalForced ? "pb-36" : "pb-28 lg:pb-10"
                     )}
                 >
-                    {/* Compact High-Tech Financial Telemetry HUD Bar */}
+                    {/* Faixa Executiva Compacta de Telemetria Financeira (Economiza espaço vertical no Tablet e Desktop) */}
                     {role === 'admin' && (todayDueCount > 0 || overdueCount > 0) && (
-                        <div className="mb-6 grid grid-cols-1 xl:grid-cols-2 gap-3 relative z-20 animate-in fade-in slide-in-from-top-3 duration-500">
-                            {todayDueCount > 0 && (
-                                <div className="px-4 py-3 rounded-2xl bg-amber-500/[0.07] border border-amber-500/25 backdrop-blur-xl flex items-center justify-between gap-3 shadow-[0_10px_30px_-10px_rgba(245,158,11,0.15)]">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="p-2 bg-amber-500/15 border border-amber-500/30 rounded-xl text-amber-400 shrink-0">
-                                            <Clock className="h-4 w-4 animate-pulse" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-mono font-black text-amber-400 uppercase tracking-wider">
-                                                    VENCIMENTO HOJE
-                                                </span>
-                                                <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold">
-                                                    {todayDueCount} {todayDueCount === 1 ? 'conta' : 'contas'}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-white/80 truncate mt-0.5">
-                                                Total programado para hoje:{" "}
-                                                <strong className="font-mono text-amber-400">
-                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(todayDueSum)}
-                                                </strong>
-                                            </p>
-                                        </div>
+                        <div className="mb-4 px-3.5 py-2 rounded-2xl bg-[#1f1209]/90 border border-amber-500/30 backdrop-blur-xl flex flex-wrap items-center justify-between gap-2.5 relative z-20 shadow-lg">
+                            <div className="flex flex-wrap items-center gap-3 text-xs">
+                                {todayDueCount > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/20 border border-amber-500/35 text-amber-300 font-mono text-[10px] font-black uppercase">
+                                            <Clock className="h-3 w-3 animate-pulse" />
+                                            Hoje ({todayDueCount})
+                                        </span>
+                                        <strong className="font-mono text-amber-400 text-xs">
+                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(todayDueSum)}
+                                        </strong>
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate('/admin/financeiro?today=true')}
+                                            className="text-[10px] font-mono font-bold uppercase text-black bg-amber-400 hover:bg-amber-300 px-2.5 py-0.5 rounded-md transition-colors"
+                                        >
+                                            Ver Hoje
+                                        </button>
                                     </div>
-                                    <Button 
-                                        onClick={() => navigate('/admin/financeiro?today=true')}
-                                        size="sm"
-                                        className="bg-amber-500 hover:bg-amber-400 text-black font-display font-bold uppercase text-[10px] tracking-wider px-4 h-8 rounded-xl shrink-0"
-                                    >
-                                        Ver Hoje
-                                    </Button>
-                                </div>
-                            )}
+                                )}
 
-                            {overdueCount > 0 && (
-                                <div className="px-4 py-3 rounded-2xl bg-rose-500/[0.07] border border-rose-500/25 backdrop-blur-xl flex items-center justify-between gap-3 shadow-[0_10px_30px_-10px_rgba(244,63,94,0.15)]">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="p-2 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-400 shrink-0">
-                                            <AlertTriangle className="h-4 w-4 animate-pulse" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-mono font-black text-rose-400 uppercase tracking-wider">
-                                                    PENDÊNCIAS VENCIDAS
-                                                </span>
-                                                <span className="px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 font-mono text-[10px] font-bold">
-                                                    {overdueCount} em atraso
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-white/80 truncate mt-0.5">
-                                                Volume pendente acumulado:{" "}
-                                                <strong className="font-mono text-rose-400">
-                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(overdueSum)}
-                                                </strong>
-                                            </p>
-                                        </div>
+                                {todayDueCount > 0 && overdueCount > 0 && (
+                                    <div className="h-4 w-px bg-white/15 hidden sm:block" />
+                                )}
+
+                                {overdueCount > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/35 text-rose-300 font-mono text-[10px] font-black uppercase">
+                                            <AlertTriangle className="h-3 w-3 animate-pulse" />
+                                            Vencidas ({overdueCount})
+                                        </span>
+                                        <strong className="font-mono text-rose-400 text-xs">
+                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(overdueSum)}
+                                        </strong>
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate('/admin/financeiro?overdue=true')}
+                                            className="text-[10px] font-mono font-bold uppercase text-white bg-rose-600 hover:bg-rose-500 px-2.5 py-0.5 rounded-md transition-colors"
+                                        >
+                                            Regularizar
+                                        </button>
                                     </div>
-                                    <Button 
-                                        onClick={() => navigate('/admin/financeiro?overdue=true')}
-                                        size="sm"
-                                        className="bg-rose-600 hover:bg-rose-500 text-white font-display font-bold uppercase text-[10px] tracking-wider px-4 h-8 rounded-xl shrink-0"
-                                    >
-                                        Regularizar
-                                    </Button>
-                                </div>
-                            )}
+                                )}
+                            </div>
+                            <span className="text-[9px] font-mono uppercase tracking-widest text-amber-200/50 hidden xl:inline">
+                                Radar Financeiro BJL
+                            </span>
                         </div>
                     )}
 
@@ -1328,11 +1309,11 @@ const MainLayout = () => {
                                             )}
                                         >
                                             <div className="space-y-1">
-                                                <span className="font-bold text-xs text-foreground block group-hover:text-primary transition-colors">Nordic Frost</span>
-                                                <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Claro Gelado & Esmeralda</span>
+                                                <span className="font-bold text-xs text-foreground block group-hover:text-primary transition-colors">Floresta & Esmeralda</span>
+                                                <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">Verde Escuro Nobre & Esmeralda</span>
                                             </div>
                                             <div className="flex items-center gap-1">
-                                                <div className="w-3.5 h-3.5 rounded-full bg-[#f9fafb] border border-black/10" />
+                                                <div className="w-3.5 h-3.5 rounded-full bg-[#09221a] border border-emerald-400/40" />
                                                 <div className="w-3.5 h-3.5 rounded-full bg-emerald-500" />
                                             </div>
                                         </button>

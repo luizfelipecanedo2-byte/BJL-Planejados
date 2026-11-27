@@ -800,13 +800,66 @@ const Orcamento = () => {
         loadCrmAndClients();
     }, []);
 
-    // Escutar parâmetros de URL vindos do CRM (ex: clique no botão 'Orçar' ou 'Orçamento Ativo')
+    // Escutar parâmetros de URL vindos do CRM, Ação Rápida ou Medição Tablet IA
     useEffect(() => {
         const clientParam = searchParams.get("client");
         const saleIdParam = searchParams.get("saleId");
         const budgetIdParam = searchParams.get("budgetId");
         const projectParam = searchParams.get("project");
         const openNewParam = searchParams.get("new");
+        const fromMedicaoParam = searchParams.get("fromMedicao");
+
+        if (fromMedicaoParam === "true") {
+            const rawBridge = sessionStorage.getItem("bjl_medicao_to_orcamento");
+            if (rawBridge) {
+                try {
+                    const parsed = JSON.parse(rawBridge);
+                    setEditingBudgetId(null);
+                    setFormData(prev => ({
+                        ...prev,
+                        client_name: parsed.clientName || prev.client_name,
+                        project_name: parsed.projectName || prev.project_name || "Móveis Planejados",
+                        days_estimated: Number(parsed.daysEstimated) || prev.days_estimated || 4,
+                        notes: parsed.notes || prev.notes,
+                    }));
+
+                    // Pré-selecionar chapas de MDF ou ferragens citadas no briefing da medição
+                    if (allMaterials.length > 0 && Array.isArray(parsed.rooms)) {
+                        const matchedIds: string[] = [];
+                        const nextQty: Record<string, number> = {};
+                        const nextRawQty: Record<string, string> = {};
+                        const searchCorpus = parsed.rooms
+                            .map((r: any) => `${r.mdfInternal || ""} ${r.mdfExternal || ""} ${r.hardwareNotes || ""} ${r.summary || ""}`)
+                            .join(" ")
+                            .toLowerCase();
+
+                        if (searchCorpus.includes("branco")) {
+                            const mdfBranco = allMaterials.find(m => m.category === "MDF" && m.name.toLowerCase().includes("branco"));
+                            if (mdfBranco) {
+                                matchedIds.push(mdfBranco.id);
+                                const estSheets = Math.max(2, parsed.rooms.length * 3);
+                                nextQty[mdfBranco.id] = estSheets;
+                                nextRawQty[mdfBranco.id] = String(estSheets);
+                            }
+                        }
+
+                        if (matchedIds.length > 0) {
+                            setSelectedMaterialIds(prev => Array.from(new Set([...prev, ...matchedIds])));
+                            setQuantities(prev => ({ ...prev, ...nextQty }));
+                            setRawQuantities(prev => ({ ...prev, ...nextRawQty }));
+                        }
+                    }
+
+                    setIsDialogOpen(true);
+                    toast.success(`Dados da medição de ${parsed.clientName} importados para o orçamento!`);
+                } catch (e) {
+                    console.error("Erro ao ler ponte de medição:", e);
+                }
+                sessionStorage.removeItem("bjl_medicao_to_orcamento");
+            }
+            setSearchParams({}, { replace: true });
+            return;
+        }
 
         if (budgetIdParam && budgets.length > 0) {
             const foundBudget = budgets.find(b => b.id === budgetIdParam);
@@ -829,10 +882,17 @@ const Orcamento = () => {
             }
             setIsDialogOpen(true);
             toast.info(`Orçamento iniciado para o lead: ${clientParam}`);
-            // Limpar query params para evitar reabertura involuntária em refresh
+            setSearchParams({}, { replace: true });
+            return;
+        }
+
+        if (openNewParam === "true" && !clientParam) {
+            setEditingBudgetId(null);
+            setFormData(getDefaultBudgetFormData());
+            setIsDialogOpen(true);
             setSearchParams({}, { replace: true });
         }
-    }, [searchParams, setSearchParams, budgets]);
+    }, [searchParams, setSearchParams, budgets, allMaterials]);
 
     // Filtrar sugestões de clientes do CRM conforme digitação
     const filteredCrmClients = useMemo(() => {
