@@ -319,15 +319,27 @@ const Financeiro = () => {
 
       if (error) throw error;
 
-      const mappedExpenses: ServiceExpense[] = (data || []).map(e => ({
-        id: e.id,
-        clientName: e.client_name,
-        environment: e.environment,
-        serviceValue: Number(e.service_value),
-        spentValue: Number(e.spent_value),
-        items: e.items || [],
-        createdAt: e.created_at ? new Date(e.created_at) : new Date()
-      }));
+      const mappedExpenses: ServiceExpense[] = (data || []).map(e => {
+        const createdDate = e.created_at ? new Date(e.created_at) : new Date();
+        const fallbackDateStr = !isNaN(createdDate.getTime())
+          ? `${createdDate.getFullYear()}-${String(createdDate.getMonth() + 1).padStart(2, '0')}-${String(createdDate.getDate()).padStart(2, '0')}`
+          : undefined;
+        const mappedItems = Array.isArray(e.items)
+          ? e.items.map((it: any) => ({
+              ...it,
+              date: it.date || fallbackDateStr
+            }))
+          : [];
+        return {
+          id: e.id,
+          clientName: e.client_name,
+          environment: e.environment,
+          serviceValue: Number(e.service_value),
+          spentValue: Number(e.spent_value),
+          items: mappedItems,
+          createdAt: createdDate
+        };
+      });
 
       setServiceExpenses(mappedExpenses);
     } catch (error) {
@@ -347,6 +359,13 @@ const Financeiro = () => {
 
   const combinedServiceExpenses = useMemo(() => {
     const norm = (s?: string) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const formatItemDate = (d?: Date | string | null) => {
+      if (!d) return undefined;
+      if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) return d.substring(0, 10);
+      const dt = d instanceof Date ? d : new Date(d);
+      if (isNaN(dt.getTime())) return undefined;
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    };
     const txById = new Map<string, Transaction>();
     transactions.forEach(t => txById.set(t.id, t));
     const allocatedTxIds = new Set<string>();
@@ -519,7 +538,8 @@ const Financeiro = () => {
           unit: 'un',
           quantity: 1,
           unitValue: Number(a.amount),
-          totalValue: Number(a.amount)
+          totalValue: Number(a.amount),
+          date: formatItemDate(parentTx?.dueDate || parentTx?.competenceDate || a.created_at)
         };
       });
 
@@ -530,7 +550,8 @@ const Financeiro = () => {
           unit: 'un',
           quantity: 1,
           unitValue: Number(t.amount),
-          totalValue: Number(t.amount)
+          totalValue: Number(t.amount),
+          date: formatItemDate(t.dueDate || t.competenceDate)
         };
       });
 
@@ -613,7 +634,8 @@ const Financeiro = () => {
           unit: 'un',
           quantity: 1,
           unitValue: Number(a.amount),
-          totalValue: Number(a.amount)
+          totalValue: Number(a.amount),
+          date: formatItemDate(parentTx?.dueDate || parentTx?.competenceDate || a.created_at)
         };
       });
 
@@ -669,7 +691,8 @@ const Financeiro = () => {
           unit: 'un',
           quantity: 1,
           unitValue: Number(t.amount),
-          totalValue: Number(t.amount)
+          totalValue: Number(t.amount),
+          date: formatItemDate(t.dueDate || t.competenceDate)
         };
       });
 

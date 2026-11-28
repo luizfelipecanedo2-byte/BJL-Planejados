@@ -10,9 +10,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ServiceExpense, ExpenseItem } from "@/types/serviceExpense";
-import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, Calendar } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
+
+const getTodayStr = () => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+};
+
+const formatDateBR = (dateStr?: string) => {
+    if (!dateStr) return "-";
+    if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+        const [y, m, d] = dateStr.substring(0, 10).split("-");
+        return `${d}/${m}/${y}`;
+    }
+    const parsed = new Date(dateStr);
+    if (!isNaN(parsed.getTime())) {
+        return parsed.toLocaleDateString("pt-BR");
+    }
+    return dateStr;
+};
 
 interface ServiceExpenseFormDialogProps {
     open: boolean;
@@ -39,7 +60,7 @@ const ServiceExpenseFormDialog = ({
         serviceValue: "",
     });
     const [items, setItems] = useState<ExpenseItem[]>([]);
-    const [newItem, setNewItem] = useState({ description: "", unit: "un", quantity: "1", unitValue: "" });
+    const [newItem, setNewItem] = useState({ description: "", date: getTodayStr(), unit: "un", quantity: "1", unitValue: "" });
     const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
     const [clients, setClients] = useState<{ name: string }[]>([]);
 
@@ -67,6 +88,8 @@ const ServiceExpenseFormDialog = ({
             });
             setItems([]);
         }
+        setEditingItemIndex(null);
+        setNewItem({ description: "", date: getTodayStr(), unit: "un", quantity: "1", unitValue: "" });
     }, [editingExpense, open]);
 
     const handleAddItem = () => {
@@ -78,6 +101,7 @@ const ServiceExpenseFormDialog = ({
 
         const itemData: ExpenseItem = {
             description: newItem.description,
+            date: newItem.date || getTodayStr(),
             unit: newItem.unit,
             quantity: qty,
             unitValue: unitVal,
@@ -93,13 +117,14 @@ const ServiceExpenseFormDialog = ({
             setItems([...items, itemData]);
         }
 
-        setNewItem({ description: "", unit: "un", quantity: "1", unitValue: "" });
+        setNewItem({ description: "", date: getTodayStr(), unit: "un", quantity: "1", unitValue: "" });
     };
 
     const handleEditItem = (index: number) => {
         const item = items[index];
         setNewItem({
             description: item.description,
+            date: item.date || getTodayStr(),
             unit: item.unit,
             quantity: item.quantity.toString(),
             unitValue: item.unitValue.toString()
@@ -109,7 +134,7 @@ const ServiceExpenseFormDialog = ({
 
     const handleCancelEdit = () => {
         setEditingItemIndex(null);
-        setNewItem({ description: "", unit: "un", quantity: "1", unitValue: "" });
+        setNewItem({ description: "", date: getTodayStr(), unit: "un", quantity: "1", unitValue: "" });
     };
 
     const handleRemoveItem = (index: number) => {
@@ -131,6 +156,7 @@ const ServiceExpenseFormDialog = ({
 
             const itemData: ExpenseItem = {
                 description: newItem.description,
+                date: newItem.date || getTodayStr(),
                 unit: newItem.unit,
                 quantity: qty,
                 unitValue: unitVal,
@@ -162,7 +188,7 @@ const ServiceExpenseFormDialog = ({
         }
         onOpenChange(false);
         setEditingItemIndex(null);
-        setNewItem({ description: "", unit: "un", quantity: "1", unitValue: "" });
+        setNewItem({ description: "", date: getTodayStr(), unit: "un", quantity: "1", unitValue: "" });
     };
 
     const update = (field: string, value: string) => {
@@ -180,7 +206,7 @@ const ServiceExpenseFormDialog = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[850px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[960px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{editingExpense ? "Editar Gasto por Serviço" : "Novo Gasto por Serviço"}</DialogTitle>
                 </DialogHeader>
@@ -238,8 +264,8 @@ const ServiceExpenseFormDialog = ({
                     <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
                         <Label className="text-base font-bold">Lista de Materiais / Gastos</Label>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-                            <div className="sm:col-span-4 space-y-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_56px_72px_100px_110px_68px] gap-2 items-end">
+                            <div className="space-y-1">
                                 <Label htmlFor="itemDesc" className="text-xs">Descrição do Material</Label>
                                 <Input
                                     id="itemDesc"
@@ -248,16 +274,27 @@ const ServiceExpenseFormDialog = ({
                                     onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
                                 />
                             </div>
-                            <div className="sm:col-span-1 space-y-1">
+                            <div className="space-y-1">
+                                <Label htmlFor="itemDate" className="text-xs">Data</Label>
+                                <Input
+                                    id="itemDate"
+                                    type="date"
+                                    value={newItem.date}
+                                    onChange={(e) => setNewItem({ ...newItem, date: e.target.value })}
+                                    className="px-2 text-xs"
+                                />
+                            </div>
+                            <div className="space-y-1">
                                 <Label htmlFor="itemUnit" className="text-xs">Un.</Label>
                                 <Input
                                     id="itemUnit"
                                     placeholder="un"
                                     value={newItem.unit}
                                     onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
+                                    className="px-2 text-center"
                                 />
                             </div>
-                            <div className="sm:col-span-2 space-y-1">
+                            <div className="space-y-1">
                                 <Label htmlFor="itemQty" className="text-xs">Qtd.</Label>
                                 <Input
                                     id="itemQty"
@@ -266,9 +303,10 @@ const ServiceExpenseFormDialog = ({
                                     placeholder="1"
                                     value={newItem.quantity}
                                     onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
+                                    className="px-2 text-center"
                                 />
                             </div>
-                            <div className="sm:col-span-2 space-y-1">
+                            <div className="space-y-1">
                                 <Label htmlFor="itemVal" className="text-xs">Valor Un.</Label>
                                 <Input
                                     id="itemVal"
@@ -279,13 +317,13 @@ const ServiceExpenseFormDialog = ({
                                     onChange={(e) => setNewItem({ ...newItem, unitValue: e.target.value })}
                                 />
                             </div>
-                            <div className="sm:col-span-2 space-y-1">
+                            <div className="space-y-1">
                                 <Label className="text-xs">Total</Label>
-                                <div className="h-10 flex items-center px-3 bg-background border rounded text-sm font-medium">
+                                <div className="h-10 flex items-center px-3 bg-background border rounded text-sm font-medium truncate">
                                     {formatCurrency((parseFloat(newItem.quantity) || 0) * (parseFloat(newItem.unitValue) || 0))}
                                 </div>
                             </div>
-                            <div className="sm:col-span-1 flex gap-1">
+                            <div className="flex gap-1">
                                 <Button
                                     type="button"
                                     onClick={handleAddItem}
@@ -302,28 +340,35 @@ const ServiceExpenseFormDialog = ({
                         </div>
 
                         <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                            {items.length > 0 ? (
-                                <div className="hidden sm:grid grid-cols-12 gap-2 px-2 text-xs font-bold text-muted-foreground mb-1">
-                                    <div className="col-span-4">Descrição</div>
-                                    <div className="col-span-1 text-center">Un.</div>
-                                    <div className="col-span-2 text-center">Qtd.</div>
-                                    <div className="col-span-2 text-right">Valor Un.</div>
-                                    <div className="col-span-2 text-right">Total</div>
-                                    <div className="col-span-1"></div>
+                            {(items.length > 0 || (editingExpense?.autoItems && editingExpense.autoItems.length > 0)) ? (
+                                <div className="hidden sm:grid sm:grid-cols-[1fr_140px_56px_72px_100px_110px_68px] gap-2 px-2 text-xs font-bold text-muted-foreground mb-1">
+                                    <div>Descrição</div>
+                                    <div className="text-center">Data</div>
+                                    <div className="text-center">Un.</div>
+                                    <div className="text-center">Qtd.</div>
+                                    <div className="text-right">Valor Un.</div>
+                                    <div className="text-right">Total</div>
+                                    <div></div>
                                 </div>
                             ) : null}
 
                             {editingExpense?.autoItems && editingExpense.autoItems.length > 0 && editingExpense.autoItems.map((item, index) => (
                                 <div
                                     key={`auto-${index}`}
-                                    className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center p-2 rounded border bg-blue-50/50 border-blue-100 opacity-90"
+                                    className="grid grid-cols-1 sm:grid-cols-[1fr_140px_56px_72px_100px_110px_68px] gap-2 items-center p-2 rounded border bg-blue-50/50 border-blue-100 opacity-90"
                                 >
-                                    <div className="col-span-4 text-sm font-medium italic text-blue-900">{item.description}</div>
-                                    <div className="col-span-1 text-center text-sm text-blue-800">{item.unit}</div>
-                                    <div className="col-span-2 text-center text-sm text-blue-800">{item.quantity}</div>
-                                    <div className="col-span-2 text-right text-sm text-blue-800">{formatCurrency(item.unitValue)}</div>
-                                    <div className="col-span-2 text-right text-sm font-bold text-blue-900">{formatCurrency(item.totalValue)}</div>
-                                    <div className="col-span-1 flex justify-end gap-1">
+                                    <div className="text-sm font-medium italic text-blue-900">{item.description}</div>
+                                    <div className="flex items-center sm:justify-center">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-100/90 text-blue-900 border border-blue-300 text-xs font-semibold whitespace-nowrap">
+                                            <Calendar className="h-3 w-3 shrink-0" />
+                                            {formatDateBR(item.date)}
+                                        </span>
+                                    </div>
+                                    <div className="text-center text-sm text-blue-800">{item.unit}</div>
+                                    <div className="text-center text-sm text-blue-800">{item.quantity}</div>
+                                    <div className="text-right text-sm text-blue-800">{formatCurrency(item.unitValue)}</div>
+                                    <div className="text-right text-sm font-bold text-blue-900">{formatCurrency(item.totalValue)}</div>
+                                    <div className="flex justify-end gap-1">
                                     </div>
                                 </div>
                             ))}
@@ -331,14 +376,20 @@ const ServiceExpenseFormDialog = ({
                             {items.map((item, index) => (
                                 <div
                                     key={index}
-                                    className={`grid grid-cols-1 sm:grid-cols-12 gap-2 items-center p-2 rounded border group transition-colors ${editingItemIndex === index ? 'bg-green-50 border-green-200' : 'bg-background'}`}
+                                    className={`grid grid-cols-1 sm:grid-cols-[1fr_140px_56px_72px_100px_110px_68px] gap-2 items-center p-2 rounded border group transition-colors ${editingItemIndex === index ? 'bg-green-50/10 border-green-500/40' : 'bg-background'}`}
                                 >
-                                    <div className="col-span-4 text-sm font-medium">{item.description}</div>
-                                    <div className="col-span-1 text-center text-sm text-muted-foreground">{item.unit}</div>
-                                    <div className="col-span-2 text-center text-sm">{item.quantity}</div>
-                                    <div className="col-span-2 text-right text-sm">{formatCurrency(item.unitValue)}</div>
-                                    <div className="col-span-2 text-right text-sm font-bold text-red-600">{formatCurrency(item.totalValue)}</div>
-                                    <div className="col-span-1 flex justify-end gap-1">
+                                    <div className="text-sm font-medium">{item.description}</div>
+                                    <div className="flex items-center sm:justify-center">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/15 text-amber-500 border border-amber-500/30 text-xs font-semibold whitespace-nowrap">
+                                            <Calendar className="h-3 w-3 shrink-0" />
+                                            {formatDateBR(item.date)}
+                                        </span>
+                                    </div>
+                                    <div className="text-center text-sm text-muted-foreground">{item.unit}</div>
+                                    <div className="text-center text-sm">{item.quantity}</div>
+                                    <div className="text-right text-sm">{formatCurrency(item.unitValue)}</div>
+                                    <div className="text-right text-sm font-bold text-red-600">{formatCurrency(item.totalValue)}</div>
+                                    <div className="flex justify-end gap-1">
                                         <Button
                                             type="button"
                                             variant="ghost"

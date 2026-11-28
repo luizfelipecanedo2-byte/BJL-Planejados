@@ -14,7 +14,8 @@ import {
     Sparkles,
     Filter,
     ShieldAlert,
-    BarChart3
+    BarChart3,
+    Calendar
 } from "lucide-react";
 import { ServiceExpense } from "@/types/serviceExpense";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,19 @@ import {
     Tooltip,
     Legend,
 } from "recharts";
+
+const formatItemDateBR = (dateStr?: string) => {
+    if (!dateStr) return null;
+    if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+        const [y, m, d] = dateStr.substring(0, 10).split("-");
+        return `${d}/${m}/${y}`;
+    }
+    const parsed = new Date(dateStr);
+    if (!isNaN(parsed.getTime())) {
+        return parsed.toLocaleDateString("pt-BR");
+    }
+    return dateStr;
+};
 
 interface ServiceExpensesTabProps {
     serviceExpenses: ServiceExpense[];
@@ -666,7 +680,15 @@ const ServiceExpensesTab = ({
                                                         <div key={idx} className="bg-background/80 border border-blue-500/20 p-2.5 rounded-xl flex items-center justify-between text-xs">
                                                             <div className="min-w-0 pr-2">
                                                                 <p className="font-bold text-foreground truncate">{item.description}</p>
-                                                                <span className="text-[10px] text-muted-foreground">{item.quantity} {item.unit}</span>
+                                                                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                                                                    <span className="text-[10px] text-muted-foreground">{item.quantity} {item.unit}</span>
+                                                                    {formatItemDateBR(item.date) && (
+                                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-semibold">
+                                                                            <Calendar className="h-2.5 w-2.5" />
+                                                                            {formatItemDateBR(item.date)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                             <span className="font-mono font-bold text-rose-500 shrink-0">
                                                                 {formatCurrency(item.totalValue)}
@@ -689,7 +711,15 @@ const ServiceExpensesTab = ({
                                                         <div key={idx} className="bg-background/80 border border-border/60 p-2.5 rounded-xl flex items-center justify-between text-xs">
                                                             <div className="min-w-0 pr-2">
                                                                 <p className="font-bold text-foreground truncate">{item.description}</p>
-                                                                <span className="text-[10px] text-muted-foreground">{item.quantity} {item.unit} • {formatCurrency(item.unitValue)}/un</span>
+                                                                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                                                                    <span className="text-[10px] text-muted-foreground">{item.quantity} {item.unit} • {formatCurrency(item.unitValue)}/un</span>
+                                                                    {formatItemDateBR(item.date) && (
+                                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-semibold">
+                                                                            <Calendar className="h-2.5 w-2.5" />
+                                                                            {formatItemDateBR(item.date)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                             <span className="font-mono font-bold text-rose-500 shrink-0">
                                                                 {formatCurrency(item.totalValue)}

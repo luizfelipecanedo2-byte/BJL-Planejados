@@ -5,6 +5,7 @@ export interface ExpenseItem {
     quantity: number;
     unitValue: number;
     totalValue: number;
+    date?: string;
 }
 
 export interface ServiceIncomeItem {
